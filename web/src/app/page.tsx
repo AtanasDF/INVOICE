@@ -6,21 +6,35 @@ import { clientsStore, receiptsStore, invoicesStore } from "@/lib/storage";
 
 export default function Dashboard() {
   const [counts, setCounts] = useState({ clients: 0, receipts: 0, invoices: 0, monthTotal: 0, monthVat: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const receipts = receiptsStore.all();
-    const now = new Date();
-    const monthReceipts = receipts.filter((r) => {
-      const d = new Date(r.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    setCounts({
-      clients: clientsStore.all().length,
-      receipts: receipts.length,
-      invoices: invoicesStore.all().length,
-      monthTotal: monthReceipts.reduce((s, r) => s + r.amount, 0),
-      monthVat: monthReceipts.reduce((s, r) => s + r.vatAmount, 0),
-    });
+    let cancelled = false;
+    async function load() {
+      const [clients, receipts, invoices] = await Promise.all([
+        clientsStore.all(),
+        receiptsStore.all(),
+        invoicesStore.all(),
+      ]);
+      if (cancelled) return;
+      const now = new Date();
+      const monthReceipts = receipts.filter((r) => {
+        const d = new Date(r.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+      setCounts({
+        clients: clients.length,
+        receipts: receipts.length,
+        invoices: invoices.length,
+        monthTotal: monthReceipts.reduce((s, r) => s + r.amount, 0),
+        monthVat: monthReceipts.reduce((s, r) => s + r.vatAmount, 0),
+      });
+      setLoading(false);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const cards = [
@@ -28,6 +42,10 @@ export default function Dashboard() {
     { label: "Saved receipts", value: counts.receipts, href: "/receipts" },
     { label: "Invoices created", value: counts.invoices, href: "/invoices" },
   ];
+
+  if (loading) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
 
   return (
     <div className="space-y-8">
@@ -43,7 +61,7 @@ export default function Dashboard() {
           <Link
             key={c.label}
             href={c.href}
-            className="rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md"
+            className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md"
           >
             <div className="text-3xl font-bold">{c.value}</div>
             <div className="mt-1 text-sm text-neutral-600">{c.label}</div>
@@ -51,7 +69,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="rounded-xl border bg-white p-5 shadow-sm">
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
         <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-2">
           <div>

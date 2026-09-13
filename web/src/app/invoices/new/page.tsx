@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, InvoiceItem, clientsStore, invoicesStore, uid } from "@/lib/storage";
+import { Client, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -12,9 +12,11 @@ export default function NewInvoicePage() {
   const [number, setNumber] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
   const [items, setItems] = useState<InvoiceItem[]>([{ description: "", quantity: 1, unitPrice: 0 }]);
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setClients(clientsStore.all());
+    clientsStore.all().then(setClients);
   }, []);
 
   function updateItem(idx: number, patch: Partial<InvoiceItem>) {
@@ -31,18 +33,23 @@ export default function NewInvoicePage() {
 
   const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
-  function save() {
-    const all = invoicesStore.all();
-    const inv = { id: uid(), clientId, date, number, items, notes };
-    invoicesStore.save([...all, inv]);
-    router.push(`/invoices/${inv.id}`);
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      const inv = await invoicesStore.add({ clientId, date, number, items, notes });
+      router.push(`/invoices/${inv.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save invoice.");
+      setSaving(false);
+    }
   }
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">New invoice</h1>
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 shadow-sm">
+      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Select a client or company</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -81,10 +88,12 @@ export default function NewInvoicePage() {
 
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (payment details, etc.)" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
         <div className="flex items-center justify-between border-t pt-3">
           <div className="text-lg font-bold">Total: £{total.toFixed(2)}</div>
-          <button onClick={save} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-            Save invoice
+          <button onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {saving ? "Saving…" : "Save invoice"}
           </button>
         </div>
       </div>

@@ -9,10 +9,14 @@ function monthKey(dateStr: string) {
 
 export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   useEffect(() => {
-    setReceipts(receiptsStore.all());
+    receiptsStore.all().then((r) => {
+      setReceipts(r);
+      setLoading(false);
+    });
   }, []);
 
   const monthReceipts = useMemo(
@@ -36,6 +40,10 @@ export default function ExpensesPage() {
     { total: 0, vat: 0 }
   );
 
+  if (loading) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -44,17 +52,17 @@ export default function ExpensesPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="text-2xl font-bold">£{totals.total.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">Total business costs</div>
         </div>
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="text-2xl font-bold">£{totals.vat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">VAT to keep for review</div>
         </div>
       </div>
 
-      <div className="rounded-xl border bg-white p-5 shadow-sm">
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">By category</h2>
         {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this month.</p>}
         <div className="mt-3 space-y-2">

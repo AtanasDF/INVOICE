@@ -11,20 +11,29 @@ function total(inv: Invoice) {
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setInvoices(invoicesStore.all());
-    setClients(clientsStore.all());
+    Promise.all([invoicesStore.all(), clientsStore.all()]).then(([inv, c]) => {
+      setInvoices(inv);
+      setClients(c);
+      setLoading(false);
+    });
   }, []);
 
   function clientName(id: string) {
     return clients.find((c) => c.id === id)?.name || "No client";
   }
 
-  function removeInvoice(id: string) {
-    const next = invoices.filter((i) => i.id !== id);
-    setInvoices(next);
-    invoicesStore.save(next);
+  async function removeInvoice(id: string) {
+    setError(null);
+    try {
+      await invoicesStore.remove(id);
+      setInvoices((prev) => prev.filter((i) => i.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove invoice.");
+    }
   }
 
   return (
@@ -39,13 +48,15 @@ export default function InvoicesPage() {
         </Link>
       </div>
 
-      <div className="space-y-3">
-        {invoices.length === 0 && <p className="text-sm text-neutral-500">No invoices yet.</p>}
-        {invoices
-          .slice()
-          .sort((a, b) => (a.date < b.date ? 1 : -1))
-          .map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm">
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {loading ? (
+        <p className="text-sm text-neutral-500">Loading…</p>
+      ) : (
+        <div className="space-y-3">
+          {invoices.length === 0 && <p className="text-sm text-neutral-500">No invoices yet.</p>}
+          {invoices.map((inv) => (
+            <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
               <div>
                 <div className="font-medium">#{inv.number} · {clientName(inv.clientId)}</div>
                 <div className="text-sm text-neutral-500">{inv.date} · £{total(inv).toFixed(2)}</div>
@@ -56,7 +67,8 @@ export default function InvoicesPage() {
               </div>
             </div>
           ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Client, Receipt, clientsStore, receiptsStore, uid } from "@/lib/storage";
+import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
 
 const CATEGORIES = ["Fuel", "Supplies", "Equipment", "Travel", "Meals", "Other"];
 
 export default function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [vendor, setVendor] = useState("");
@@ -15,11 +16,16 @@ export default function ReceiptsPage() {
   const [amount, setAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setClients(clientsStore.all());
-    setReceipts(receiptsStore.all());
+    Promise.all([clientsStore.all(), receiptsStore.all()]).then(([c, r]) => {
+      setClients(c);
+      setReceipts(r);
+      setLoading(false);
+    });
   }, []);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -30,13 +36,13 @@ export default function ReceiptsPage() {
     reader.readAsDataURL(file);
   }
 
-  function addReceipt(e: React.FormEvent) {
+  async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
     if (!amount) return;
-    const next: Receipt[] = [
-      ...receipts,
-      {
-        id: uid(),
+    setError(null);
+    setSaving(true);
+    try {
+      const created = await receiptsStore.add({
         clientId,
         date,
         vendor,
@@ -44,21 +50,28 @@ export default function ReceiptsPage() {
         amount: parseFloat(amount) || 0,
         vatAmount: parseFloat(vatAmount) || 0,
         imageDataUrl,
-      },
-    ];
-    setReceipts(next);
-    receiptsStore.save(next);
-    setVendor("");
-    setAmount("");
-    setVatAmount("");
-    setImageDataUrl(null);
-    if (fileRef.current) fileRef.current.value = "";
+      });
+      setReceipts((prev) => [created, ...prev]);
+      setVendor("");
+      setAmount("");
+      setVatAmount("");
+      setImageDataUrl(null);
+      if (fileRef.current) fileRef.current.value = "";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save receipt.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function removeReceipt(id: string) {
-    const next = receipts.filter((r) => r.id !== id);
-    setReceipts(next);
-    receiptsStore.save(next);
+  async function removeReceipt(id: string) {
+    setError(null);
+    try {
+      await receiptsStore.remove(id);
+      setReceipts((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove receipt.");
+    }
   }
 
   function clientName(id: string) {
@@ -74,7 +87,7 @@ export default function ReceiptsPage() {
         </p>
       </div>
 
-      <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 shadow-sm">
+      <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <input
           ref={fileRef}
           type="file"
@@ -104,16 +117,19 @@ export default function ReceiptsPage() {
           <input className="rounded-lg border px-3 py-2" placeholder="Amount (£)" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
           <input className="rounded-lg border px-3 py-2" placeholder="VAT amount (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
-        <button className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">Save receipt</button>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {saving ? "Saving…" : "Save receipt"}
+        </button>
       </form>
 
-      <div className="space-y-3">
-        {receipts.length === 0 && <p className="text-sm text-neutral-500">No receipts saved yet.</p>}
-        {receipts
-          .slice()
-          .sort((a, b) => (a.date < b.date ? 1 : -1))
-          .map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm">
+      {loading ? (
+        <p className="text-sm text-neutral-500">Loading…</p>
+      ) : (
+        <div className="space-y-3">
+          {receipts.length === 0 && <p className="text-sm text-neutral-500">No receipts saved yet.</p>}
+          {receipts.map((r) => (
+            <div key={r.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
               <div className="flex items-center gap-3">
                 {r.imageDataUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -127,7 +143,8 @@ export default function ReceiptsPage() {
               <button onClick={() => removeReceipt(r.id)} className="text-sm text-red-600">Remove</button>
             </div>
           ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

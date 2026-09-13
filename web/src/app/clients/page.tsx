@@ -1,34 +1,51 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Client, clientsStore, uid } from "@/lib/storage";
+import { Client, clientsStore } from "@/lib/storage";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [isCompany, setIsCompany] = useState(true);
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setClients(clientsStore.all());
+    clientsStore.all().then((c) => {
+      setClients(c);
+      setLoading(false);
+    });
   }, []);
 
-  function addClient(e: React.FormEvent) {
+  async function addClient(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    const next = [...clients, { id: uid(), name, isCompany, email, address }];
-    setClients(next);
-    clientsStore.save(next);
-    setName("");
-    setEmail("");
-    setAddress("");
+    setError(null);
+    setSaving(true);
+    try {
+      const created = await clientsStore.add({ name, isCompany, email, address });
+      setClients((prev) => [...prev, created]);
+      setName("");
+      setEmail("");
+      setAddress("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save client.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function removeClient(id: string) {
-    const next = clients.filter((c) => c.id !== id);
-    setClients(next);
-    clientsStore.save(next);
+  async function removeClient(id: string) {
+    setError(null);
+    try {
+      await clientsStore.remove(id);
+      setClients((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove client.");
+    }
   }
 
   return (
@@ -40,7 +57,7 @@ export default function ClientsPage() {
         </p>
       </div>
 
-      <form onSubmit={addClient} className="space-y-3 rounded-xl border bg-white p-5 shadow-sm">
+      <form onSubmit={addClient} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" checked={isCompany} onChange={() => setIsCompany(true)} />
@@ -69,29 +86,34 @@ export default function ClientsPage() {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
         />
-        <button className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-          Save client
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {saving ? "Saving…" : "Save client"}
         </button>
       </form>
 
-      <div className="space-y-3">
-        {clients.length === 0 && (
-          <p className="text-sm text-neutral-500">No clients saved yet.</p>
-        )}
-        {clients.map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm">
-            <div>
-              <div className="font-medium">{c.name}</div>
-              <div className="text-sm text-neutral-500">
-                {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}
+      {loading ? (
+        <p className="text-sm text-neutral-500">Loading…</p>
+      ) : (
+        <div className="space-y-3">
+          {clients.length === 0 && (
+            <p className="text-sm text-neutral-500">No clients saved yet.</p>
+          )}
+          {clients.map((c) => (
+            <div key={c.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <div>
+                <div className="font-medium">{c.name}</div>
+                <div className="text-sm text-neutral-500">
+                  {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}
+                </div>
               </div>
+              <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
+                Remove
+              </button>
             </div>
-            <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
-              Remove
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
