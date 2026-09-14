@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, InvoiceItem, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category } from "@/lib/categories";
 import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
+import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 type Confidence = "high" | "low";
 
@@ -34,12 +35,14 @@ function FieldFlag({ confidence }: { confidence: Confidence | null }) {
 
 export default function ScanPage() {
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState("");
 
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  // Starts true so the camera opens the instant this page mounts -- no
+  // button to tap first. Only set false once something's been captured.
+  const [showCapture, setShowCapture] = useState(true);
+  const [capturedFile, setCapturedFile] = useState<CapturedFile | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [documentType, setDocumentType] = useState<string | null>(null);
@@ -68,24 +71,16 @@ export default function ScanPage() {
 
   const suppliers = clients.filter((c) => c.kind === "supplier");
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setScanError(null);
-    const reader = new FileReader();
-    reader.onload = () => setImageDataUrl(reader.result as string);
-    reader.readAsDataURL(file);
-  }
-
-  async function scan() {
-    if (!imageDataUrl) return;
+  async function onDocumentCaptured(file: CapturedFile) {
+    setCapturedFile(file);
+    setShowCapture(false);
     setScanning(true);
     setScanError(null);
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageDataUrl }),
+        body: JSON.stringify({ image: file.dataUrl }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Scan failed.");
@@ -144,21 +139,20 @@ export default function ScanPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const created = await receiptsStore.add({
+      await receiptsStore.add({
         clientId,
         date,
         vendor,
         category: category || "Other",
         amount: parseFloat(amount) || 0,
         vatAmount: parseFloat(vatAmount) || 0,
-        imageDataUrl,
+        imageDataUrl: capturedFile?.mediaType.startsWith("image/") ? capturedFile.dataUrl : null,
         notes,
         starred: false,
         warrantyMonths: null,
         tags: [],
       });
       router.push("/receipts");
-      return created;
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -166,25 +160,45 @@ export default function ScanPage() {
     }
   }
 
+  if (showCapture) {
+    return <DocumentCapture onCapture={onDocumentCaptured} onClose={() => router.push("/")} />;
+  }
+
+  const isPdf = capturedFile?.mediaType === "application/pdf";
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Scan</h1>
         <p className="mt-1 text-neutral-600">
-          Scan a receipt, invoice, or other document — Claude reads it and fills in the details for you.
+          Claude reads the document and fills in the details below for you.
         </p>
       </div>
 
       <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <div className="flex gap-2 text-sm">
-          <span className="rounded-lg bg-neutral-900 px-3 py-1.5 font-medium text-white">Document</span>
-          <span
-            className="cursor-not-allowed rounded-lg border px-3 py-1.5 font-medium text-neutral-400"
-            title="Coming soon — needs a separate OK to add the barcode library"
+        <div className="flex items-center gap-3">
+          {isPdf ? (
+            <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border bg-neutral-50 text-xs text-neutral-500">
+              <span className="text-2xl">📄</span>
+              PDF
+            </div>
+          ) : capturedFile ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={capturedFile.dataUrl} alt="Document preview" className="h-20 w-20 rounded-lg border object-cover" />
+          ) : null}
+          <button
+            onClick={() => setShowCapture(true)}
+            disabled={scanning}
+            className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
           >
-            Barcode (soon)
-          </span>
+            {scanning ? "Reading document…" : "Scan a different document"}
+          </button>
         </div>
+
+        {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+        {documentType && (
+          <p className="text-sm text-neutral-500">Recognized as: <span className="font-medium text-neutral-700">{documentType.replace("_", " ")}</span></p>
+        )}
 
         <select
           className="w-full rounded-lg border px-3 py-2"
@@ -196,34 +210,6 @@ export default function ScanPage() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onFile}
-          className="block text-sm"
-        />
-
-        {imageDataUrl && (
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageDataUrl} alt="Document preview" className="h-32 rounded-lg border object-cover" />
-            <button
-              onClick={scan}
-              disabled={scanning}
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {scanning ? "Reading document…" : "Scan with AI"}
-            </button>
-          </div>
-        )}
-
-        {scanError && <p className="text-sm text-red-600">{scanError}</p>}
-        {documentType && (
-          <p className="text-sm text-neutral-500">Recognized as: <span className="font-medium text-neutral-700">{documentType.replace("_", " ")}</span></p>
-        )}
 
         <div>
           <button
