@@ -42,6 +42,11 @@ type ScanResult = {
   vatAmountConfidence: "high" | "low";
   category: string | null;
   lineItems: ScanLineItem[];
+  // Only populated when documentType is "business_card" -- a name and
+  // email to prefill a new client/supplier record with, since that's a
+  // different save path from the rest (no amount involved at all).
+  contactPerson: string | null;
+  contactEmail: string | null;
   notes: string | null;
 };
 
@@ -110,6 +115,14 @@ function buildExtractionTool(categories: string[]) {
           required: ["description", "quantity", "unitPrice", "category"],
         },
       },
+      contactPerson: {
+        type: ["string", "null"],
+        description: "Only for documentType business_card: the named individual's full name, if shown.",
+      },
+      contactEmail: {
+        type: ["string", "null"],
+        description: "Only for documentType business_card: an email address, if shown.",
+      },
       notes: { type: ["string", "null"], description: "Anything else worth flagging to the user." },
     },
     required: [
@@ -124,6 +137,8 @@ function buildExtractionTool(categories: string[]) {
       "vatAmountConfidence",
       "category",
       "lineItems",
+      "contactPerson",
+      "contactEmail",
       "notes",
     ],
   },
@@ -214,7 +229,9 @@ export async function POST(req: Request) {
                 "some Groceries items and some Household items) -- only fall back to null on a line item " +
                 "when it's genuinely unclear. Only suggest categories from the given list, and only when " +
                 "reasonably confident -- do not guess who the client or supplier is, that is always chosen " +
-                "by the person reviewing this.",
+                "by the person reviewing this. If documentType is business_card, also fill in contactPerson " +
+                "and contactEmail when they're shown (vendor should be the company name); leave both null " +
+                "for every other document type.",
             },
           ],
         },

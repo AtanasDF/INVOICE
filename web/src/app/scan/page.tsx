@@ -21,8 +21,20 @@ type ScanApiResult = {
   vatAmountConfidence: Confidence;
   category: Category | null;
   lineItems: ReceiptLineItem[];
+  contactPerson: string | null;
+  contactEmail: string | null;
   notes: string | null;
 };
+
+// business_card is a different save path entirely (create a supplier, no
+// amount involved). bank_statement/contract/barcode aren't a single
+// financial transaction, so amount there is optional rather than
+// required -- everything else keeps the normal receipt-style form.
+function modeFor(documentType: string | null): "contact" | "archival" | "transactional" {
+  if (documentType === "business_card") return "contact";
+  if (documentType === "bank_statement" || documentType === "contract" || documentType === "barcode") return "archival";
+  return "transactional";
+}
 
 function FieldFlag({ confidence }: { confidence: Confidence | null }) {
   if (confidence !== "low") return null;
@@ -58,6 +70,11 @@ export default function ScanPage() {
   const [vatAmount, setVatAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<ReceiptLineItem[]>([]);
+  const [contactPerson, setContactPerson] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [modeOverride, setModeOverride] = useState<"transactional" | null>(null);
+  const [supplierSaved, setSupplierSaved] = useState(false);
+  const [supplierDuplicate, setSupplierDuplicate] = useState(false);
 
   const [vendorConf, setVendorConf] = useState<Confidence | null>(null);
   const [dateConf, setDateConf] = useState<Confidence | null>(null);
@@ -88,6 +105,9 @@ export default function ScanPage() {
     setShowCapture(false);
     setScanning(true);
     setScanError(null);
+    setModeOverride(null);
+    setSupplierSaved(false);
+    setSupplierDuplicate(false);
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -106,6 +126,8 @@ export default function ScanPage() {
       if (result.vatAmount !== null) setVatAmount(String(result.vatAmount));
       if (result.notes) setNotes(result.notes);
       if (result.lineItems?.length) setLineItems(result.lineItems);
+      setContactPerson(result.contactPerson || "");
+      setContactEmail(result.contactEmail || "");
       setVendorConf(result.vendorConfidence);
       setDateConf(result.dateConfidence);
       setTotalAmountConf(result.totalAmountConfidence);
@@ -152,8 +174,44 @@ export default function ScanPage() {
     return clients.find((c) => c.id === id)?.name || "";
   }
 
+  const mode = modeOverride ?? modeFor(documentType);
+
+  async function saveAsSupplier() {
+    if (!vendor.trim()) {
+      setSaveError("Enter a company name before saving.");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const existing = clients.find(
+        (c) => c.kind === "supplier" && c.name.trim().toLowerCase() === vendor.trim().toLowerCase()
+      );
+      if (existing) {
+        setSupplierDuplicate(true);
+        return;
+      }
+      await clientsStore.add({
+        name: vendor,
+        isCompany: true,
+        email: contactEmail,
+        address: "",
+        kind: "supplier",
+        vatNumber: "",
+        paymentTerms: "",
+        defaultCurrency: "",
+        contactPerson,
+      });
+      setSupplierSaved(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function save() {
-    if (!totalAmount) {
+    if (mode === "transactional" && !totalAmount) {
       setSaveError("Enter a total before saving.");
       return;
     }
@@ -221,9 +279,66 @@ export default function ScanPage() {
 
         {scanError && <p className="text-sm text-red-600">{scanError}</p>}
         {documentType && (
-          <p className="text-sm text-neutral-500">Recognized as: <span className="font-medium text-neutral-700">{documentType.replace("_", " ")}</span></p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-neutral-500">Recognized as: <span className="font-medium text-neutral-700">{documentType.replace("_", " ")}</span></p>
+            {mode !== "transactional" && !modeOverride && (
+              <button type="button" onClick={() => setModeOverride("transactional")} className="text-xs font-medium text-blue-600">
+                Not right? Log as a normal receipt instead
+              </button>
+            )}
+          </div>
         )}
 
+        {mode === "archival" && documentType === "barcode" && notes && (
+          <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+            Barcode value: <span className="font-mono font-medium">{notes}</span>
+          </p>
+        )}
+
+        {mode === "contact" ? (
+          <>
+            <div>
+              <input
+                className="w-full rounded-lg border px-3 py-2"
+                placeholder="Company name"
+                value={vendor}
+                onChange={(e) => setVendor(e.target.value)}
+              />
+              <FieldFlag confidence={vendorConf} />
+            </div>
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder="Contact person (optional)"
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+            />
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder="Email (optional)"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+            />
+            <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+            {supplierDuplicate && (
+              <p className="text-sm text-amber-700">
+                Already have a supplier named &quot;{vendor}&quot; — didn&apos;t create a duplicate.{" "}
+                <a href="/clients" className="font-medium underline">View suppliers</a>
+              </p>
+            )}
+            {supplierSaved && <p className="text-sm text-green-700">Saved as a new supplier.</p>}
+            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+
+            <button
+              onClick={saveAsSupplier}
+              disabled={saving || supplierSaved}
+              className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {saving ? "Saving…" : supplierSaved ? "Saved" : "Save as new supplier"}
+            </button>
+          </>
+        ) : (
+        <>
         <select
           className="w-full rounded-lg border px-3 py-2"
           value={clientId}
@@ -270,7 +385,13 @@ export default function ScanPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <input className="w-full rounded-lg border px-3 py-2" placeholder="Total paid (£, incl. VAT)" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} inputMode="decimal" />
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder={mode === "archival" ? "Total paid (£, optional)" : "Total paid (£, incl. VAT)"}
+              value={totalAmount}
+              onChange={(e) => setTotalAmount(e.target.value)}
+              inputMode="decimal"
+            />
             <FieldFlag confidence={totalAmountConf} />
           </div>
           <div>
@@ -278,6 +399,11 @@ export default function ScanPage() {
             <FieldFlag confidence={vatConf} />
           </div>
         </div>
+        {mode === "archival" && (
+          <p className="text-xs text-neutral-500">
+            {documentType?.replace("_", " ")}s aren&apos;t usually a single expense — leave the total blank to just file this away.
+          </p>
+        )}
         {totalAmount && vatAmount && (
           <p className="text-xs text-neutral-500">
             → £{Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(vatAmount) || 0)).toFixed(2)} excl. VAT, recorded automatically.
@@ -332,8 +458,10 @@ export default function ScanPage() {
           disabled={saving}
           className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save as receipt"}
+          {saving ? "Saving…" : mode === "archival" ? "Save to your files" : "Save as receipt"}
         </button>
+        </>
+        )}
       </div>
     </div>
   );
