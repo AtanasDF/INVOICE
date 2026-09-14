@@ -31,12 +31,28 @@ export const CURRENCIES = [
 
 export type CurrencyCode = (typeof CURRENCIES)[number];
 
+const FETCH_TIMEOUT_MS = 5000;
+
 /** Rate such that `amount in "from" * rate = amount in "to"`. */
 export async function getFxRate(from: string, to: string = "GBP"): Promise<number> {
   if (from === to) return 1;
-  const res = await fetch(`https://api.frankfurter.dev/v2/rate/${encodeURIComponent(from)}/${encodeURIComponent(to)}`);
-  if (!res.ok) throw new Error(`No exchange rate available for ${from} -> ${to}.`);
-  const data = await res.json();
-  if (typeof data?.rate !== "number") throw new Error(`No exchange rate available for ${from} -> ${to}.`);
-  return data.rate;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(
+      `https://api.frankfurter.dev/v2/rate/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
+      { signal: controller.signal }
+    );
+    if (!res.ok) throw new Error(`No exchange rate available for ${from} -> ${to}.`);
+    const data = await res.json();
+    if (typeof data?.rate !== "number") throw new Error(`No exchange rate available for ${from} -> ${to}.`);
+    return data.rate;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Exchange rate lookup timed out -- enter it manually.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
