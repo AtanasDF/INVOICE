@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Client, clientsStore } from "@/lib/storage";
+import { downloadCsv } from "@/lib/exportCsv";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -48,13 +49,32 @@ export default function ClientsPage() {
     }
   }
 
+  function exportClients() {
+    downloadCsv(
+      `clients-${new Date().toISOString().slice(0, 10)}.csv`,
+      clients.map((c) => ({
+        name: c.name,
+        type: c.isCompany ? "Company" : "Individual",
+        email: c.email,
+        address: c.address,
+      }))
+    );
+  }
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Clients & companies</h1>
-        <p className="mt-1 text-neutral-600">
-          Save the companies or people you invoice, so their details are ready next time.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Clients & companies</h1>
+          <p className="mt-1 text-neutral-600">
+            Save the companies or people you invoice, so their details are ready next time.
+          </p>
+        </div>
+        {clients.length > 0 && (
+          <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
+            Export CSV
+          </button>
+        )}
       </div>
 
       <form onSubmit={addClient} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

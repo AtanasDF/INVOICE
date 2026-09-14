@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Client, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 
@@ -14,6 +14,12 @@ export default function InvoicesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [filterClientId, setFilterClientId] = useState("");
+  const [filterMinTotal, setFilterMinTotal] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
 
   useEffect(() => {
     Promise.all([invoicesStore.all(), clientsStore.all()]).then(([inv, c]) => {
@@ -37,10 +43,23 @@ export default function InvoicesPage() {
     }
   }
 
+  const filteredInvoices = useMemo(() => {
+    const minTotal = parseFloat(filterMinTotal);
+    const search = filterSearch.trim().toLowerCase();
+    return invoices.filter((inv) => {
+      if (filterFrom && inv.date < filterFrom) return false;
+      if (filterTo && inv.date > filterTo) return false;
+      if (filterClientId && inv.clientId !== filterClientId) return false;
+      if (!isNaN(minTotal) && total(inv) < minTotal) return false;
+      if (search && !inv.number.toLowerCase().includes(search)) return false;
+      return true;
+    });
+  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch]);
+
   function exportInvoices() {
     downloadCsv(
       `invoices-${new Date().toISOString().slice(0, 10)}.csv`,
-      invoices.map((inv) => ({
+      filteredInvoices.map((inv) => ({
         number: inv.number,
         date: inv.date,
         client: clientName(inv.clientId),
@@ -49,6 +68,8 @@ export default function InvoicesPage() {
       }))
     );
   }
+
+  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch;
 
   return (
     <div className="space-y-8">
@@ -71,12 +92,49 @@ export default function InvoicesPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
+        <summary className="cursor-pointer text-sm font-medium">Filter</summary>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <input
+            className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
+            placeholder="Search invoice #"
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+          />
+          <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
+          <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+          <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
+            <option value="">All clients</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <input
+            className="rounded-lg border px-3 py-2 text-sm"
+            placeholder="Min total (£)"
+            value={filterMinTotal}
+            onChange={(e) => setFilterMinTotal(e.target.value)}
+            inputMode="decimal"
+          />
+        </div>
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); }}
+            className="mt-2 text-sm text-blue-600"
+          >
+            Clear filters
+          </button>
+        )}
+      </details>
+
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {invoices.length === 0 && <p className="text-sm text-neutral-500">No invoices yet.</p>}
-          {invoices.map((inv) => (
+          {filteredInvoices.length === 0 && (
+            <p className="text-sm text-neutral-500">
+              {hasActiveFilters ? "No invoices match these filters." : "No invoices yet."}
+            </p>
+          )}
+          {filteredInvoices.map((inv) => (
             <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
               <div>
                 <div className="font-medium">#{inv.number} · {clientName(inv.clientId)}</div>
