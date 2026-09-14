@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Client, ClientKind, clientsStore } from "@/lib/storage";
+import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
+
+function invoiceTotal(inv: Invoice) {
+  return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+}
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<ClientKind>("client");
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [isCompany, setIsCompany] = useState(true);
@@ -21,11 +27,26 @@ export default function ClientsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    clientsStore.all().then((c) => {
+    Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
       setClients(c);
+      setInvoices(inv);
       setLoading(false);
     });
   }, []);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  function invoicesForClient(clientId: string) {
+    return invoices
+      .filter((inv) => inv.clientId === clientId)
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
+  function statusFor(inv: Invoice): "paid" | "overdue" | "unpaid" {
+    if (inv.paid) return "paid";
+    if (inv.dueDate && inv.dueDate < today) return "overdue";
+    return "unpaid";
+  }
 
   const visibleClients = useMemo(() => clients.filter((c) => c.kind === tab), [clients, tab]);
 
@@ -172,19 +193,58 @@ export default function ClientsPage() {
           {visibleClients.length === 0 && (
             <p className="text-sm text-neutral-500">No {tab}s saved yet.</p>
           )}
-          {visibleClients.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-              <div>
-                <div className="font-medium">{c.name}</div>
-                <div className="text-sm text-neutral-500">
-                  {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
+          {visibleClients.map((c) => {
+            const clientInvoices = tab === "client" ? invoicesForClient(c.id) : [];
+            const expanded = expandedClientId === c.id;
+            return (
+              <div key={c.id} className="rounded-xl border bg-white text-neutral-900 shadow-sm">
+                <div className="flex items-center justify-between p-4">
+                  <div>
+                    <div className="font-medium">{c.name}</div>
+                    <div className="text-sm text-neutral-500">
+                      {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {tab === "client" && clientInvoices.length > 0 && (
+                      <button
+                        onClick={() => setExpandedClientId(expanded ? null : c.id)}
+                        className="text-sm font-medium text-blue-600"
+                      >
+                        {expanded ? "Hide" : "Payment history"}
+                      </button>
+                    )}
+                    <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
+                      Remove
+                    </button>
+                  </div>
                 </div>
+                {expanded && (
+                  <div className="space-y-2 border-t p-4">
+                    {clientInvoices.map((inv) => {
+                      const status = statusFor(inv);
+                      return (
+                        <div key={inv.id} className="flex items-center justify-between text-sm">
+                          <span>#{inv.number} · {inv.date} · £{invoiceTotal(inv).toFixed(2)}</span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              status === "paid"
+                                ? "bg-green-100 text-green-800"
+                                : status === "overdue"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-neutral-100 text-neutral-600"
+                            }`}
+                          >
+                            {status === "paid" ? "Paid" : status === "overdue" ? "Overdue" : "Unpaid"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
-                Remove
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
