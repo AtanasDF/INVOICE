@@ -78,10 +78,31 @@ export default function ExpensesPage() {
   const byCategory = useMemo(() => {
     const map = new Map<string, { total: number; vat: number }>();
     for (const r of periodReceipts) {
-      const entry = map.get(r.category) || { total: 0, vat: 0 };
-      entry.total += r.amount;
-      entry.vat += r.vatAmount;
-      map.set(r.category, entry);
+      const itemsTotal = r.lineItems.reduce((s, li) => s + li.quantity * li.unitPrice, 0);
+      if (r.lineItems.length === 0 || itemsTotal <= 0) {
+        const entry = map.get(r.category) || { total: 0, vat: 0 };
+        entry.total += r.amount;
+        entry.vat += r.vatAmount;
+        map.set(r.category, entry);
+        continue;
+      }
+      // Split the receipt across each item's own category (uncategorized
+      // items fall back to the receipt's overall category), scaling each
+      // share proportionally so the categories always sum back to exactly
+      // r.amount / r.vatAmount even if the item totals don't quite match
+      // the receipt total (rounding, an AI misread, etc).
+      const perCategoryAmount = new Map<string, number>();
+      for (const li of r.lineItems) {
+        const cat = li.category || r.category;
+        perCategoryAmount.set(cat, (perCategoryAmount.get(cat) ?? 0) + li.quantity * li.unitPrice);
+      }
+      for (const [cat, amt] of perCategoryAmount) {
+        const share = amt / itemsTotal;
+        const entry = map.get(cat) || { total: 0, vat: 0 };
+        entry.total += r.amount * share;
+        entry.vat += r.vatAmount * share;
+        map.set(cat, entry);
+      }
     }
     return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
   }, [periodReceipts]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, InvoiceItem, clientsStore, receiptsStore } from "@/lib/storage";
+import { Client, ReceiptLineItem, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, mostUsedCategory } from "@/lib/categories";
 import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
@@ -20,7 +20,7 @@ type ScanApiResult = {
   vatAmount: number | null;
   vatAmountConfidence: Confidence;
   category: Category | null;
-  lineItems: InvoiceItem[];
+  lineItems: ReceiptLineItem[];
   notes: string | null;
 };
 
@@ -53,6 +53,7 @@ export default function ScanPage() {
   const [amount, setAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [lineItems, setLineItems] = useState<ReceiptLineItem[]>([]);
 
   const [vendorConf, setVendorConf] = useState<Confidence | null>(null);
   const [dateConf, setDateConf] = useState<Confidence | null>(null);
@@ -97,6 +98,7 @@ export default function ScanPage() {
       if (result.amount !== null) setAmount(String(result.amount));
       if (result.vatAmount !== null) setVatAmount(String(result.vatAmount));
       if (result.notes) setNotes(result.notes);
+      if (result.lineItems?.length) setLineItems(result.lineItems);
       setVendorConf(result.vendorConfidence);
       setDateConf(result.dateConfidence);
       setAmountConf(result.amountConfidence);
@@ -106,6 +108,14 @@ export default function ScanPage() {
     } finally {
       setScanning(false);
     }
+  }
+
+  function updateLineItem(idx: number, patch: Partial<ReceiptLineItem>) {
+    setLineItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function removeLineItem(idx: number) {
+    setLineItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
   async function useLocation() {
@@ -155,6 +165,7 @@ export default function ScanPage() {
         starred: false,
         warrantyMonths: null,
         tags: [],
+        lineItems,
       });
       router.push("/receipts");
     } catch (err) {
@@ -233,7 +244,7 @@ export default function ScanPage() {
             <FieldFlag confidence={dateConf} />
           </div>
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            <option value="">Category…</option>
+            <option value="">Overall category…</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
@@ -258,6 +269,44 @@ export default function ScanPage() {
             <FieldFlag confidence={vatConf} />
           </div>
         </div>
+
+        {lineItems.length > 0 && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <p className="text-xs font-medium text-neutral-500">
+              Items — give each its own category to split this receipt across categories (e.g. Groceries + Household).
+            </p>
+            {lineItems.map((it, idx) => (
+              <div key={idx} className="grid grid-cols-12 items-center gap-2 text-sm">
+                <input
+                  className="col-span-4 rounded-lg border px-2 py-1.5"
+                  value={it.description}
+                  onChange={(e) => updateLineItem(idx, { description: e.target.value })}
+                />
+                <input
+                  className="col-span-2 rounded-lg border px-2 py-1.5"
+                  placeholder="Qty"
+                  value={it.quantity}
+                  onChange={(e) => updateLineItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                />
+                <input
+                  className="col-span-2 rounded-lg border px-2 py-1.5"
+                  placeholder="Price"
+                  value={it.unitPrice}
+                  onChange={(e) => updateLineItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+                />
+                <select
+                  className="col-span-3 rounded-lg border px-2 py-1.5"
+                  value={it.category ?? ""}
+                  onChange={(e) => updateLineItem(idx, { category: e.target.value || null })}
+                >
+                  <option value="">No category</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <button onClick={() => removeLineItem(idx)} className="col-span-1 text-red-600">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
 

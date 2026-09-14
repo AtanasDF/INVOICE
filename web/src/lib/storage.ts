@@ -15,6 +15,13 @@ export type Client = {
   contactPerson: string;
 };
 
+export type ReceiptLineItem = {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  category: string | null;
+};
+
 export type Receipt = {
   id: string;
   clientId: string;
@@ -28,6 +35,7 @@ export type Receipt = {
   starred: boolean;
   warrantyMonths: number | null;
   tags: string[];
+  lineItems: ReceiptLineItem[];
 };
 
 export type InvoiceItem = {
@@ -138,6 +146,7 @@ type ReceiptRow = {
   starred: boolean | null;
   warranty_months: number | null;
   tags: string[] | null;
+  line_items: ReceiptLineItem[] | null;
 };
 
 function receiptFromRow(r: ReceiptRow): Receipt {
@@ -154,6 +163,7 @@ function receiptFromRow(r: ReceiptRow): Receipt {
     starred: r.starred ?? false,
     warrantyMonths: r.warranty_months,
     tags: r.tags ?? [],
+    lineItems: r.line_items ?? [],
   };
 }
 
@@ -180,18 +190,20 @@ export const receiptsStore = {
         starred: input.starred,
         warranty_months: input.warrantyMonths,
         tags: input.tags,
+        line_items: input.lineItems,
       })
       .select()
       .single();
     if (error) throw error;
     return receiptFromRow(data as ReceiptRow);
   },
-  async update(id: string, patch: Partial<Pick<Receipt, "starred" | "notes" | "warrantyMonths" | "tags">>): Promise<void> {
+  async update(id: string, patch: Partial<Pick<Receipt, "starred" | "notes" | "warrantyMonths" | "tags" | "lineItems">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.starred !== undefined) dbPatch.starred = patch.starred;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     if (patch.warrantyMonths !== undefined) dbPatch.warranty_months = patch.warrantyMonths;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
+    if (patch.lineItems !== undefined) dbPatch.line_items = patch.lineItems;
     const { error } = await supabase.from("receipts").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
