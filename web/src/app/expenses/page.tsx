@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Invoice, Receipt, invoicesStore, receiptsStore } from "@/lib/storage";
 
 function monthKey(dateStr: string) {
@@ -62,6 +63,7 @@ export default function ExpensesPage() {
   );
   const income = periodInvoices.reduce((s, inv) => s + invoiceTotal(inv), 0);
   const expensesInclVat = totals.total + totals.vat;
+  const chartData = byCategory.map(([category, v]) => ({ category, spend: Number((v.total + v.vat).toFixed(2)) }));
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
@@ -151,6 +153,22 @@ export default function ExpensesPage() {
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">By category</h2>
         {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this {periodMode}.</p>}
+        {chartData.length > 0 && (
+          <div className="mt-4 h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+                <XAxis dataKey="category" tick={{ fontSize: 12, fill: "#737373" }} axisLine={{ stroke: "#e5e5e5" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#737373" }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `£${v}`} />
+                <Tooltip
+                  formatter={(value) => [`£${Number(value).toFixed(2)}`, "Spend incl. VAT"]}
+                  contentStyle={{ borderRadius: 8, borderColor: "#e5e5e5", fontSize: 13 }}
+                />
+                <Bar dataKey="spend" fill="#171717" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
         <div className="mt-3 space-y-2">
           {byCategory.map(([cat, v]) => (
             <div key={cat} className="flex items-center justify-between border-b pb-2 text-sm">
