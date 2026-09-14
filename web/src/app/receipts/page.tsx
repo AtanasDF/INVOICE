@@ -95,6 +95,7 @@ export default function ReceiptsPage() {
         starred: false,
         warrantyMonths: warrantyMonths ? parseInt(warrantyMonths, 10) : null,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+        lineItems: [],
       });
       setReceipts((prev) => [created, ...prev]);
       setVendor("");
@@ -356,6 +357,16 @@ export default function ReceiptsPage() {
                         <span key={t} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{t}</span>
                       ))}
                     </div>
+                  )}
+                  {r.lineItems.length > 0 && (
+                    <ul className="mt-1 space-y-0.5 text-xs text-neutral-500">
+                      {r.lineItems.map((li, i) => (
+                        <li key={i}>
+                          {li.description} — £{(li.quantity * li.unitPrice).toFixed(2)}
+                          {li.category ? ` (${li.category})` : ""}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               </div>
