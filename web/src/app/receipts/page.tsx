@@ -385,7 +385,10 @@ export default function ReceiptsPage() {
 }
 
 function addMonths(dateStr: string, months: number): string {
+  // UTC methods throughout -- mixing a UTC-parsed date with local
+  // setMonth/getMonth before an toISOString round-trip shifts the result
+  // by a day whenever the viewer's timezone offset isn't zero.
   const d = new Date(dateStr);
-  d.setMonth(d.getMonth() + months);
+  d.setUTCMonth(d.getUTCMonth() + months);
   return d.toISOString().slice(0, 10);
 }
