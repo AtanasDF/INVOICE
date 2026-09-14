@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, ReceiptLineItem, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category, mostUsedCategory } from "@/lib/categories";
+import { Client, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
@@ -38,6 +38,7 @@ export default function ScanPage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState("");
+  const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
 
   // Starts true so the camera opens the instant this page mounts -- no
   // button to tap first. Only set false once something's been captured.
@@ -72,6 +73,9 @@ export default function ScanPage() {
       const usual = mostUsedCategory(r.map((receipt) => receipt.category));
       if (usual) setCategory((prev) => prev || usual);
     });
+    businessProfileStore.get().then((profile) => {
+      setCategories(effectiveCategories(profile.customCategories));
+    });
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier");
@@ -85,7 +89,7 @@ export default function ScanPage() {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: file.dataUrl }),
+        body: JSON.stringify({ image: file.dataUrl, categories }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Scan failed.");
@@ -245,7 +249,7 @@ export default function ScanPage() {
           </div>
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             <option value="">Overall category…</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
@@ -300,7 +304,7 @@ export default function ScanPage() {
                   onChange={(e) => updateLineItem(idx, { category: e.target.value || null })}
                 >
                   <option value="">No category</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <button onClick={() => removeLineItem(idx)} className="col-span-1 text-red-600">✕</button>
               </div>
