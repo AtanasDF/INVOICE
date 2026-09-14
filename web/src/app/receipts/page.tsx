@@ -5,6 +5,7 @@ import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } fr
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
+import { CURRENCIES, getFxRate } from "@/lib/fx";
 
 function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
@@ -26,6 +27,16 @@ export default function ReceiptsPage() {
   // printed total, silently overstating every expense by the VAT amount.
   const [totalAmount, setTotalAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
+  // When currency is GBP (the default), totalAmount/vatAmount above are
+  // the figures actually stored, same as always. Anything else is a
+  // foreign-currency purchase: totalAmount/vatAmount are then in THAT
+  // currency, fxRateInput converts 1 unit of it to GBP, and the GBP
+  // equivalent (what everywhere else in the app reads) is computed at
+  // save time -- never stored as a raw foreign number.
+  const [currency, setCurrency] = useState("GBP");
+  const [fxRateInput, setFxRateInput] = useState("");
+  const [fxLoading, setFxLoading] = useState(false);
+  const [fxError, setFxError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [warrantyMonths, setWarrantyMonths] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -65,14 +76,56 @@ export default function ReceiptsPage() {
     reader.readAsDataURL(file);
   }
 
-  function findDuplicate(): Receipt | null {
+  async function onCurrencyChange(next: string) {
+    setCurrency(next);
+    setFxError(null);
+    if (next === "GBP") {
+      setFxRateInput("");
+      return;
+    }
+    setFxLoading(true);
+    try {
+      const rate = await getFxRate(next, "GBP");
+      setFxRateInput(String(rate));
+    } catch (err) {
+      setFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
+    } finally {
+      setFxLoading(false);
+    }
+  }
+
+  // GBP-equivalent net/VAT for whatever's currently in the form, plus the
+  // original-currency figures to store alongside for reference. This is
+  // the one place the currency conversion actually happens -- both the
+  // duplicate check and the save itself read from here, so they can never
+  // disagree with each other.
+  function gbpAmounts() {
     const total = parseFloat(totalAmount) || 0;
+    const vat = parseFloat(vatAmount) || 0;
+    if (currency === "GBP") {
+      return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
+    }
+    const rate = parseFloat(fxRateInput) || 0;
+    const totalGbp = total * rate;
+    const vatGbp = vat * rate;
+    return {
+      netGbp: Math.max(0, totalGbp - vatGbp),
+      vatGbp,
+      originalAmount: total,
+      originalVatAmount: vat,
+      originalCurrency: currency,
+      fxRate: rate,
+    };
+  }
+
+  function findDuplicate(): Receipt | null {
+    const { netGbp, vatGbp } = gbpAmounts();
     return (
       receipts.find(
         (r) =>
           r.vendor.trim().toLowerCase() === vendor.trim().toLowerCase() &&
           vendor.trim() !== "" &&
-          Math.abs(r.amount + r.vatAmount - total) < 0.01 &&
+          Math.abs(r.amount + r.vatAmount - (netGbp + vatGbp)) < 0.01 &&
           daysBetween(r.date, date) <= 3
       ) || null
     );
@@ -81,6 +134,10 @@ export default function ReceiptsPage() {
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
     if (!totalAmount) return;
+    if (currency !== "GBP" && !fxRateInput) {
+      setError("Enter an exchange rate before saving (or wait for it to load).");
+      return;
+    }
 
     if (!confirmedDuplicate) {
       const dup = findDuplicate();
@@ -93,15 +150,18 @@ export default function ReceiptsPage() {
     setError(null);
     setSaving(true);
     try {
-      const total = parseFloat(totalAmount) || 0;
-      const vat = parseFloat(vatAmount) || 0;
+      const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
       const created = await receiptsStore.add({
         clientId,
         date,
         vendor,
         category,
-        amount: Math.max(0, total - vat),
-        vatAmount: vat,
+        amount: netGbp,
+        vatAmount: vatGbp,
+        originalAmount,
+        originalVatAmount,
+        originalCurrency,
+        fxRate,
         imageDataUrl,
         notes,
         starred: false,
@@ -113,6 +173,8 @@ export default function ReceiptsPage() {
       setVendor("");
       setTotalAmount("");
       setVatAmount("");
+      setCurrency("GBP");
+      setFxRateInput("");
       setNotes("");
       setWarrantyMonths("");
       setTagsInput("");
@@ -249,10 +311,10 @@ export default function ReceiptsPage() {
             setPossibleDuplicate(null);
           }}
         />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <input
-            className="rounded-lg border px-3 py-2"
-            placeholder="Total paid (£, incl. VAT)"
+            className="col-span-2 rounded-lg border px-3 py-2"
+            placeholder={`Total paid (${currency}, incl. VAT)`}
             value={totalAmount}
             onChange={(e) => {
               setTotalAmount(e.target.value);
@@ -261,11 +323,28 @@ export default function ReceiptsPage() {
             }}
             inputMode="decimal"
           />
-          <input className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+          <select className="rounded-lg border px-3 py-2" value={currency} onChange={(e) => onCurrencyChange(e.target.value)}>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
-        {totalAmount && vatAmount && (
+        <input className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+        {currency !== "GBP" && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>
+            <input
+              className="w-28 rounded-lg border px-2 py-1.5 text-sm"
+              value={fxRateInput}
+              onChange={(e) => setFxRateInput(e.target.value)}
+              inputMode="decimal"
+              placeholder={fxLoading ? "Loading…" : "rate"}
+            />
+            <span className="text-xs text-neutral-500">GBP {fxLoading && "(fetching today's rate…)"}</span>
+          </div>
+        )}
+        {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
+        {totalAmount && (
           <p className="text-xs text-neutral-500">
-            → £{Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(vatAmount) || 0)).toFixed(2)} excl. VAT, recorded automatically.
+            → £{gbpAmounts().netGbp.toFixed(2)} excl. VAT{currency !== "GBP" ? `, £${gbpAmounts().vatGbp.toFixed(2)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.
           </p>
         )}
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -364,6 +443,11 @@ export default function ReceiptsPage() {
                   <div className="font-medium">{r.vendor || r.category}</div>
                   <div className="text-sm text-neutral-600">
                     £{r.amount.toFixed(2)} excl. VAT · £{(r.amount + r.vatAmount).toFixed(2)} incl. VAT
+                    {r.originalCurrency && r.originalAmount != null && (
+                      <span className="text-neutral-400">
+                        {" "}(from {r.originalCurrency} {r.originalAmount.toFixed(2)} @ {r.fxRate?.toFixed(4)})
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-neutral-500">{r.date} · {r.category} · {clientName(r.clientId)}</div>
                   {r.notes && <div className="mt-1 text-sm text-neutral-500 italic">{r.notes}</div>}
