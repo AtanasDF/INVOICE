@@ -12,7 +12,7 @@ type ScanLineItem = {
   description: string;
   quantity: number;
   unitPrice: number;
-  category: (typeof CATEGORIES)[number] | null;
+  category: string | null;
 };
 
 type ScanResult = {
@@ -34,12 +34,18 @@ type ScanResult = {
   amountConfidence: "high" | "low";
   vatAmount: number | null;
   vatAmountConfidence: "high" | "low";
-  category: (typeof CATEGORIES)[number] | null;
+  category: string | null;
   lineItems: ScanLineItem[];
   notes: string | null;
 };
 
-const EXTRACTION_TOOL = {
+// The tool schema's category enum is built per-request from whichever
+// category list the caller sends (their customized list, if they have
+// one) so the model only ever suggests categories that actually appear in
+// their dropdown -- falling back to the built-in defaults for a caller
+// that doesn't send one.
+function buildExtractionTool(categories: string[]) {
+  return {
   name: "record_document",
   description:
     "Records the structured data read off a scanned business document (receipt, invoice, or similar).",
@@ -71,7 +77,7 @@ const EXTRACTION_TOOL = {
       vatAmountConfidence: { type: "string", enum: ["high", "low"] },
       category: {
         type: ["string", "null"],
-        enum: [...CATEGORIES, null],
+        enum: [...categories, null],
         description:
           "Best-guess overall expense category, or null if unclear / if line items span multiple categories.",
       },
@@ -86,7 +92,7 @@ const EXTRACTION_TOOL = {
             unitPrice: { type: "number" },
             category: {
               type: ["string", "null"],
-              enum: [...CATEGORIES, null],
+              enum: [...categories, null],
               description: "Best-guess category for this specific item, or null if unclear.",
             },
           },
@@ -110,7 +116,8 @@ const EXTRACTION_TOOL = {
       "notes",
     ],
   },
-};
+  };
+}
 
 function parseDataUrl(dataUrl: string): { mediaType: string; base64: string } | null {
   const match = /^data:([^;]+);base64,([\s\S]+)$/.exec(dataUrl);
@@ -127,7 +134,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { image?: string };
+  let body: { image?: string; categories?: string[] };
   try {
     body = await req.json();
   } catch {
@@ -137,6 +144,8 @@ export async function POST(req: Request) {
   if (!body.image) {
     return NextResponse.json({ error: "No file was provided." }, { status: 400 });
   }
+
+  const categories = body.categories?.length ? body.categories : [...CATEGORIES];
 
   const parsed = parseDataUrl(body.image);
   if (!parsed) {
@@ -160,7 +169,7 @@ export async function POST(req: Request) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 2048,
-      tools: [EXTRACTION_TOOL],
+      tools: [buildExtractionTool(categories)],
       tool_choice: { type: "tool", name: "record_document" },
       messages: [
         {

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category, mostUsedCategory } from "@/lib/categories";
+import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 
@@ -17,6 +17,7 @@ export default function ReceiptsPage() {
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [vendor, setVendor] = useState("");
+  const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
@@ -39,9 +40,10 @@ export default function ReceiptsPage() {
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), receiptsStore.all()]).then(([c, r]) => {
+    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]).then(([c, r, profile]) => {
       setClients(c);
       setReceipts(r);
+      setCategories(effectiveCategories(profile.customCategories));
       setLoading(false);
       const usual = mostUsedCategory(r.map((receipt) => receipt.category));
       if (usual) setCategory(usual);
@@ -227,7 +229,7 @@ export default function ReceiptsPage() {
             }}
           />
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <input
@@ -297,7 +299,7 @@ export default function ReceiptsPage() {
           <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="To" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
           <select className="rounded-lg border px-3 py-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
             <option value="">All categories</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
             <option value="">All suppliers</option>

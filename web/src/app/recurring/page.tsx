@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Client, RecurringExpense, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
-import { CATEGORIES, Category } from "@/lib/categories";
+import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
+import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
 
 // UTC methods throughout below -- constructing a Date from local fields
 // (or a "T00:00:00" local-time string) and then converting back with
@@ -29,6 +29,7 @@ function nextDueFromDay(dayOfMonth: number): string {
 export default function RecurringExpensesPage() {
   const [items, setItems] = useState<RecurringExpense[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,9 +42,12 @@ export default function RecurringExpensesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([recurringExpensesStore.all(), clientsStore.all()]).then(([r, c]) => {
+    Promise.all([recurringExpensesStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([r, c, profile]) => {
       setItems(r);
       setClients(c);
+      const active = effectiveCategories(profile.customCategories);
+      setCategories(active);
+      setCategory(active[0]);
       setLoading(false);
     });
   }, []);
@@ -153,7 +157,7 @@ export default function RecurringExpensesPage() {
         </select>
         <div className="grid grid-cols-3 gap-3">
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <input className="rounded-lg border px-3 py-2" placeholder="Amount excl. VAT (£)" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
           <input className="rounded-lg border px-3 py-2" placeholder="VAT (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />

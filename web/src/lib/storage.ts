@@ -349,6 +349,7 @@ export type BusinessProfile = {
   address: string;
   logoUrl: string | null;
   showOverdueReminders: boolean;
+  customCategories: string[] | null;
 };
 
 type BusinessProfileRow = {
@@ -357,6 +358,7 @@ type BusinessProfileRow = {
   address: string | null;
   logo_url: string | null;
   show_overdue_reminders: boolean | null;
+  custom_categories: string[] | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -366,6 +368,7 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     address: r.address ?? "",
     logoUrl: r.logo_url,
     showOverdueReminders: r.show_overdue_reminders ?? true,
+    customCategories: r.custom_categories ?? null,
   };
 }
 
@@ -375,6 +378,7 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   address: "",
   logoUrl: null,
   showOverdueReminders: true,
+  customCategories: null,
 };
 
 export const businessProfileStore = {
@@ -392,6 +396,7 @@ export const businessProfileStore = {
       address: input.address || null,
       logo_url: input.logoUrl,
       show_overdue_reminders: input.showOverdueReminders,
+      custom_categories: input.customCategories,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;

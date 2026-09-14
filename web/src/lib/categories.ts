@@ -1,6 +1,8 @@
-// Order matters only for the dropdown UI -- existing receipts reference
-// these strings directly, so entries are only ever appended or reworded
-// in place, never removed or renamed (that would orphan saved data).
+// The built-in defaults, used until someone customizes their category list
+// in Settings. Order matters only for the dropdown UI -- existing receipts
+// reference these strings directly, so entries are only ever appended or
+// reworded in place here, never removed or renamed (that would orphan
+// saved data).
 export const CATEGORIES = [
   "Fuel",
   "Transport & Taxis",
@@ -15,7 +17,15 @@ export const CATEGORIES = [
   "Other",
 ] as const;
 
-export type Category = (typeof CATEGORIES)[number];
+// A category is just a label a receipt/expense stores as plain text, so
+// once someone can rename or add their own, it's no longer one of a fixed
+// set of literals -- it's any string they've chosen.
+export type Category = string;
+
+/** The active category list: the account's customized list if they have one, otherwise the defaults. */
+export function effectiveCategories(customCategories: string[] | null | undefined): string[] {
+  return customCategories && customCategories.length > 0 ? customCategories : [...CATEGORIES];
+}
 
 /** Most frequent category across a set of past receipts, for defaulting new entries. */
 export function mostUsedCategory(categories: string[]): Category | null {
@@ -30,5 +40,5 @@ export function mostUsedCategory(categories: string[]): Category | null {
       bestCount = n;
     }
   }
-  return best && (CATEGORIES as readonly string[]).includes(best) ? (best as Category) : null;
+  return best;
 }
