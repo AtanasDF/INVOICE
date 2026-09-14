@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
+import { Client, Invoice, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 function addDays(dateStr: string, days: number): string {
@@ -21,6 +21,7 @@ type ScanApiResult = {
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
+  const [pastInvoices, setPastInvoices] = useState<Invoice[]>([]);
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => addDays(new Date().toISOString().slice(0, 10), 30));
@@ -38,15 +39,53 @@ export default function NewInvoicePage() {
   const [scanError, setScanError] = useState<string | null>(null);
 
   useEffect(() => {
-    clientsStore.all().then(setClients);
+    Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
+      setClients(c);
+      setPastInvoices(inv);
+    });
   }, []);
 
   const billableClients = clients.filter((c) => c.kind === "client");
+
+  const suggestedItems = useMemo(() => {
+    if (!clientId) return [];
+    const byDescription = new Map<string, { unitPrice: number; count: number; lastDate: string }>();
+    for (const inv of pastInvoices) {
+      if (inv.clientId !== clientId) continue;
+      for (const item of inv.items) {
+        if (!item.description.trim()) continue;
+        const existing = byDescription.get(item.description);
+        if (!existing || inv.date > existing.lastDate) {
+          byDescription.set(item.description, {
+            unitPrice: item.unitPrice,
+            count: (existing?.count ?? 0) + 1,
+            lastDate: inv.date,
+          });
+        } else {
+          existing.count += 1;
+        }
+      }
+    }
+    return Array.from(byDescription.entries())
+      .map(([description, v]) => ({ description, unitPrice: v.unitPrice, count: v.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [clientId, pastInvoices]);
 
   function onClientChange(id: string) {
     setClientId(id);
     const client = clients.find((c) => c.id === id);
     if (client?.paymentTerms && !paymentTerms) setPaymentTerms(client.paymentTerms);
+  }
+
+  function addSuggestedItem(description: string, unitPrice: number) {
+    setItems((prev) => {
+      const emptyIdx = prev.findIndex((it) => !it.description.trim());
+      if (emptyIdx >= 0) {
+        return prev.map((it, i) => (i === emptyIdx ? { description, quantity: 1, unitPrice } : it));
+      }
+      return [...prev, { description, quantity: 1, unitPrice }];
+    });
   }
 
   function onDateChange(value: string) {
@@ -146,6 +185,25 @@ export default function NewInvoicePage() {
           <option value="">Select a client or company</option>
           {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+
+        {suggestedItems.length > 0 && (
+          <div>
+            <p className="text-xs text-neutral-500">Used before for this client — tap to add a line:</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {suggestedItems.map((s) => (
+                <button
+                  key={s.description}
+                  type="button"
+                  onClick={() => addSuggestedItem(s.description, s.unitPrice)}
+                  className="rounded-full border px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  + {s.description} (£{s.unitPrice.toFixed(2)})
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-neutral-500">Invoice date</label>
