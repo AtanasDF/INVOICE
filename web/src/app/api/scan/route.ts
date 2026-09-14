@@ -30,8 +30,14 @@ type ScanResult = {
   vendorConfidence: "high" | "low";
   date: string | null;
   dateConfidence: "high" | "low";
-  amount: number | null;
-  amountConfidence: "high" | "low";
+  // The grand total actually paid/charged, INCLUDING VAT -- i.e. whatever
+  // is printed as the final total, not a subtotal. Deliberately not "net"
+  // here: asking the model to read a total straight off the document
+  // (something that's actually printed) is far more reliable than asking
+  // it to compute a net figure that often isn't printed anywhere. Net is
+  // derived app-side as totalAmount - vatAmount.
+  totalAmount: number | null;
+  totalAmountConfidence: "high" | "low";
   vatAmount: number | null;
   vatAmountConfidence: "high" | "low";
   category: string | null;
@@ -71,8 +77,13 @@ function buildExtractionTool(categories: string[]) {
       vendorConfidence: { type: "string", enum: ["high", "low"] },
       date: { type: ["string", "null"], description: "Document date as YYYY-MM-DD." },
       dateConfidence: { type: "string", enum: ["high", "low"] },
-      amount: { type: ["number", "null"], description: "Total amount EXCLUDING VAT/tax." },
-      amountConfidence: { type: "string", enum: ["high", "low"] },
+      totalAmount: {
+        type: ["number", "null"],
+        description:
+          "The grand total actually paid/charged, INCLUDING VAT/tax -- read this directly off whatever is " +
+          "printed as the final total. Do NOT subtract VAT yourself and do NOT report a subtotal here.",
+      },
+      totalAmountConfidence: { type: "string", enum: ["high", "low"] },
       vatAmount: { type: ["number", "null"], description: "VAT/tax portion only, not the total." },
       vatAmountConfidence: { type: "string", enum: ["high", "low"] },
       category: {
@@ -107,8 +118,8 @@ function buildExtractionTool(categories: string[]) {
       "vendorConfidence",
       "date",
       "dateConfidence",
-      "amount",
-      "amountConfidence",
+      "totalAmount",
+      "totalAmountConfidence",
       "vatAmount",
       "vatAmountConfidence",
       "category",
@@ -196,7 +207,9 @@ export async function POST(req: Request) {
                 "document), set documentType to \"barcode\" and put the decoded-looking value in notes. " +
                 "Mark a field's confidence as \"low\" whenever the source is smudged, cropped, ambiguous, " +
                 "or you're genuinely guessing -- never mark something \"high\" just to fill the field in. " +
-                "amount is the total EXCLUDING VAT/tax; vatAmount is the tax portion alone. " +
+                "totalAmount is the grand total actually paid, INCLUDING VAT/tax -- read it directly off " +
+                "whatever is printed as the final total, never a subtotal. vatAmount is the VAT/tax portion " +
+                "alone, read directly if it's printed on the document. " +
                 "Give every line item its own best-guess category (e.g. a supermarket receipt might have " +
                 "some Groceries items and some Household items) -- only fall back to null on a line item " +
                 "when it's genuinely unclear. Only suggest categories from the given list, and only when " +

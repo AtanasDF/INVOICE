@@ -35,7 +35,10 @@ export default function RecurringExpensesPage() {
 
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
-  const [amount, setAmount] = useState("");
+  // Total paid (VAT included, matching what's on the bill) -- net is
+  // derived from total - VAT below, never typed directly. See the same
+  // fix on the Receipts page for why.
+  const [totalAmount, setTotalAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [dayOfMonth, setDayOfMonth] = useState("1");
@@ -61,16 +64,18 @@ export default function RecurringExpensesPage() {
 
   async function addRecurring(e: React.FormEvent) {
     e.preventDefault();
-    if (!description.trim() || !amount) return;
+    if (!description.trim() || !totalAmount) return;
     setError(null);
     setSaving(true);
     try {
       const day = Math.min(28, Math.max(1, parseInt(dayOfMonth, 10) || 1));
+      const total = parseFloat(totalAmount) || 0;
+      const vat = parseFloat(vatAmount) || 0;
       const created = await recurringExpensesStore.add({
         description,
         category,
-        amount: parseFloat(amount) || 0,
-        vatAmount: parseFloat(vatAmount) || 0,
+        amount: Math.max(0, total - vat),
+        vatAmount: vat,
         supplierId,
         dayOfMonth: day,
         nextDueDate: nextDueFromDay(day),
@@ -78,7 +83,7 @@ export default function RecurringExpensesPage() {
       });
       setItems((prev) => [...prev, created].sort((a, b) => (a.nextDueDate < b.nextDueDate ? -1 : 1)));
       setDescription("");
-      setAmount("");
+      setTotalAmount("");
       setVatAmount("");
       setSupplierId("");
       setDayOfMonth("1");
@@ -159,8 +164,8 @@ export default function RecurringExpensesPage() {
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input className="rounded-lg border px-3 py-2" placeholder="Amount excl. VAT (£)" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-          <input className="rounded-lg border px-3 py-2" placeholder="VAT (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+          <input className="rounded-lg border px-3 py-2" placeholder="Total (£, incl. VAT)" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} inputMode="decimal" />
+          <input className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
         <div>
           <label className="text-xs text-neutral-500">Day of month it&apos;s due (1-28)</label>
@@ -193,7 +198,7 @@ export default function RecurringExpensesPage() {
                     {item.description}
                   </div>
                   <div className="text-sm text-neutral-500">
-                    £{item.amount.toFixed(2)} · {item.category}{item.supplierId ? ` · ${supplierName(item.supplierId)}` : ""}
+                    £{(item.amount + item.vatAmount).toFixed(2)} · {item.category}{item.supplierId ? ` · ${supplierName(item.supplierId)}` : ""}
                     {" · "}
                     {item.active ? (due ? <span className="font-medium text-amber-700">Due {item.nextDueDate}</span> : `Next: ${item.nextDueDate}`) : "Paused"}
                   </div>

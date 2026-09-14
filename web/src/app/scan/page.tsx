@@ -15,8 +15,8 @@ type ScanApiResult = {
   vendorConfidence: Confidence;
   date: string | null;
   dateConfidence: Confidence;
-  amount: number | null;
-  amountConfidence: Confidence;
+  totalAmount: number | null;
+  totalAmountConfidence: Confidence;
   vatAmount: number | null;
   vatAmountConfidence: Confidence;
   category: Category | null;
@@ -51,14 +51,17 @@ export default function ScanPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [vendor, setVendor] = useState("");
   const [category, setCategory] = useState<Category | "">("");
-  const [amount, setAmount] = useState("");
+  // Total paid, VAT included -- what's actually printed as the receipt's
+  // final total. Net is derived from total - VAT at save time, never
+  // stored or edited directly, same fix as the manual Receipts form.
+  const [totalAmount, setTotalAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<ReceiptLineItem[]>([]);
 
   const [vendorConf, setVendorConf] = useState<Confidence | null>(null);
   const [dateConf, setDateConf] = useState<Confidence | null>(null);
-  const [amountConf, setAmountConf] = useState<Confidence | null>(null);
+  const [totalAmountConf, setTotalAmountConf] = useState<Confidence | null>(null);
   const [vatConf, setVatConf] = useState<Confidence | null>(null);
 
   const [locating, setLocating] = useState(false);
@@ -99,13 +102,13 @@ export default function ScanPage() {
       if (result.date) setDate(result.date);
       if (result.vendor) setVendor(result.vendor);
       if (result.category) setCategory(result.category);
-      if (result.amount !== null) setAmount(String(result.amount));
+      if (result.totalAmount !== null) setTotalAmount(String(result.totalAmount));
       if (result.vatAmount !== null) setVatAmount(String(result.vatAmount));
       if (result.notes) setNotes(result.notes);
       if (result.lineItems?.length) setLineItems(result.lineItems);
       setVendorConf(result.vendorConfidence);
       setDateConf(result.dateConfidence);
-      setAmountConf(result.amountConfidence);
+      setTotalAmountConf(result.totalAmountConfidence);
       setVatConf(result.vatAmountConfidence);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Scan failed.");
@@ -150,20 +153,22 @@ export default function ScanPage() {
   }
 
   async function save() {
-    if (!amount) {
-      setSaveError("Enter an amount before saving.");
+    if (!totalAmount) {
+      setSaveError("Enter a total before saving.");
       return;
     }
     setSaving(true);
     setSaveError(null);
     try {
+      const total = parseFloat(totalAmount) || 0;
+      const vat = parseFloat(vatAmount) || 0;
       await receiptsStore.add({
         clientId,
         date,
         vendor,
         category: category || "Other",
-        amount: parseFloat(amount) || 0,
-        vatAmount: parseFloat(vatAmount) || 0,
+        amount: Math.max(0, total - vat),
+        vatAmount: vat,
         imageDataUrl: capturedFile?.dataUrl ?? null,
         notes,
         starred: false,
@@ -265,14 +270,19 @@ export default function ScanPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <input className="w-full rounded-lg border px-3 py-2" placeholder="Amount excl. VAT (£)" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-            <FieldFlag confidence={amountConf} />
+            <input className="w-full rounded-lg border px-3 py-2" placeholder="Total paid (£, incl. VAT)" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} inputMode="decimal" />
+            <FieldFlag confidence={totalAmountConf} />
           </div>
           <div>
-            <input className="w-full rounded-lg border px-3 py-2" placeholder="VAT amount (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+            <input className="w-full rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
             <FieldFlag confidence={vatConf} />
           </div>
         </div>
+        {totalAmount && vatAmount && (
+          <p className="text-xs text-neutral-500">
+            → £{Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(vatAmount) || 0)).toFixed(2)} excl. VAT, recorded automatically.
+          </p>
+        )}
 
         {lineItems.length > 0 && (
           <div className="space-y-2 rounded-lg border p-3">

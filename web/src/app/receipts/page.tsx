@@ -19,7 +19,12 @@ export default function ReceiptsPage() {
   const [vendor, setVendor] = useState("");
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
-  const [amount, setAmount] = useState("");
+  // What the user actually types is the TOTAL paid (what's printed on the
+  // receipt, VAT included) -- net is derived from total - VAT below, never
+  // typed directly. The old plain "Amount (£)" field was ambiguous and
+  // getting treated as net-of-VAT while people typed in the receipt's
+  // printed total, silently overstating every expense by the VAT amount.
+  const [totalAmount, setTotalAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [warrantyMonths, setWarrantyMonths] = useState("");
@@ -61,13 +66,13 @@ export default function ReceiptsPage() {
   }
 
   function findDuplicate(): Receipt | null {
-    const amt = parseFloat(amount) || 0;
+    const total = parseFloat(totalAmount) || 0;
     return (
       receipts.find(
         (r) =>
           r.vendor.trim().toLowerCase() === vendor.trim().toLowerCase() &&
           vendor.trim() !== "" &&
-          Math.abs(r.amount - amt) < 0.01 &&
+          Math.abs(r.amount + r.vatAmount - total) < 0.01 &&
           daysBetween(r.date, date) <= 3
       ) || null
     );
@@ -75,7 +80,7 @@ export default function ReceiptsPage() {
 
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
-    if (!amount) return;
+    if (!totalAmount) return;
 
     if (!confirmedDuplicate) {
       const dup = findDuplicate();
@@ -88,13 +93,15 @@ export default function ReceiptsPage() {
     setError(null);
     setSaving(true);
     try {
+      const total = parseFloat(totalAmount) || 0;
+      const vat = parseFloat(vatAmount) || 0;
       const created = await receiptsStore.add({
         clientId,
         date,
         vendor,
         category,
-        amount: parseFloat(amount) || 0,
-        vatAmount: parseFloat(vatAmount) || 0,
+        amount: Math.max(0, total - vat),
+        vatAmount: vat,
         imageDataUrl,
         notes,
         starred: false,
@@ -104,7 +111,7 @@ export default function ReceiptsPage() {
       });
       setReceipts((prev) => [created, ...prev]);
       setVendor("");
-      setAmount("");
+      setTotalAmount("");
       setVatAmount("");
       setNotes("");
       setWarrantyMonths("");
@@ -245,17 +252,22 @@ export default function ReceiptsPage() {
         <div className="grid grid-cols-2 gap-3">
           <input
             className="rounded-lg border px-3 py-2"
-            placeholder="Amount (£)"
-            value={amount}
+            placeholder="Total paid (£, incl. VAT)"
+            value={totalAmount}
             onChange={(e) => {
-              setAmount(e.target.value);
+              setTotalAmount(e.target.value);
               setConfirmedDuplicate(false);
               setPossibleDuplicate(null);
             }}
             inputMode="decimal"
           />
-          <input className="rounded-lg border px-3 py-2" placeholder="VAT amount (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+          <input className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
+        {totalAmount && vatAmount && (
+          <p className="text-xs text-neutral-500">
+            → £{Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(vatAmount) || 0)).toFixed(2)} excl. VAT, recorded automatically.
+          </p>
+        )}
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <input
           className="w-full rounded-lg border px-3 py-2"
@@ -274,7 +286,7 @@ export default function ReceiptsPage() {
         {possibleDuplicate && (
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             This looks like it might already be saved — {possibleDuplicate.vendor || possibleDuplicate.category}, £
-            {possibleDuplicate.amount.toFixed(2)} on {possibleDuplicate.date}.
+            {(possibleDuplicate.amount + possibleDuplicate.vatAmount).toFixed(2)} on {possibleDuplicate.date}.
             <button
               type="button"
               onClick={() => {
