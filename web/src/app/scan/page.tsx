@@ -66,6 +66,8 @@ export default function ScanPage() {
     clientsStore.all().then(setClients);
   }, []);
 
+  const suppliers = clients.filter((c) => c.kind === "supplier");
+
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,6 +152,10 @@ export default function ScanPage() {
         amount: parseFloat(amount) || 0,
         vatAmount: parseFloat(vatAmount) || 0,
         imageDataUrl,
+        notes,
+        starred: false,
+        warrantyMonths: null,
+        tags: [],
       });
       router.push("/receipts");
       return created;
@@ -185,8 +191,8 @@ export default function ScanPage() {
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
         >
-          <option value="">No client / general expense</option>
-          {clients.map((c) => (
+          <option value="">No supplier / general expense</option>
+          {suppliers.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>

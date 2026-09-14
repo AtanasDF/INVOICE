@@ -19,6 +19,8 @@ export default function ReceiptsPage() {
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
+  const [notes, setNotes] = useState("");
+  const [warrantyMonths, setWarrantyMonths] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -31,6 +33,7 @@ export default function ReceiptsPage() {
   const [filterTo, setFilterTo] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterClientId, setFilterClientId] = useState("");
+  const [filterStarredOnly, setFilterStarredOnly] = useState(false);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), receiptsStore.all()]).then(([c, r]) => {
@@ -39,6 +42,8 @@ export default function ReceiptsPage() {
       setLoading(false);
     });
   }, []);
+
+  const suppliers = useMemo(() => clients.filter((c) => c.kind === "supplier"), [clients]);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -84,11 +89,17 @@ export default function ReceiptsPage() {
         amount: parseFloat(amount) || 0,
         vatAmount: parseFloat(vatAmount) || 0,
         imageDataUrl,
+        notes,
+        starred: false,
+        warrantyMonths: warrantyMonths ? parseInt(warrantyMonths, 10) : null,
+        tags: [],
       });
       setReceipts((prev) => [created, ...prev]);
       setVendor("");
       setAmount("");
       setVatAmount("");
+      setNotes("");
+      setWarrantyMonths("");
       setImageDataUrl(null);
       setPossibleDuplicate(null);
       setConfirmedDuplicate(false);
@@ -110,8 +121,19 @@ export default function ReceiptsPage() {
     }
   }
 
+  async function toggleStar(r: Receipt) {
+    const next = !r.starred;
+    setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, starred: next } : x)));
+    try {
+      await receiptsStore.update(r.id, { starred: next });
+    } catch (err) {
+      setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, starred: !next } : x)));
+      setError(err instanceof Error ? err.message : "Could not update receipt.");
+    }
+  }
+
   function clientName(id: string) {
-    return clients.find((c) => c.id === id)?.name || "No client";
+    return clients.find((c) => c.id === id)?.name || "No supplier";
   }
 
   const filteredReceipts = useMemo(() => {
@@ -120,9 +142,10 @@ export default function ReceiptsPage() {
       if (filterTo && r.date > filterTo) return false;
       if (filterCategory && r.category !== filterCategory) return false;
       if (filterClientId && r.clientId !== filterClientId) return false;
+      if (filterStarredOnly && !r.starred) return false;
       return true;
     });
-  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId]);
+  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId, filterStarredOnly]);
 
   function exportReceipts() {
     downloadCsv(
@@ -130,16 +153,17 @@ export default function ReceiptsPage() {
       filteredReceipts.map((r) => ({
         date: r.date,
         vendor: r.vendor,
-        client: clientName(r.clientId),
+        supplier: clientName(r.clientId),
         category: r.category,
         amount_excl_vat: r.amount.toFixed(2),
         vat: r.vatAmount.toFixed(2),
         amount_incl_vat: (r.amount + r.vatAmount).toFixed(2),
+        notes: r.notes,
       }))
     );
   }
 
-  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId;
+  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly;
 
   return (
     <div className="space-y-8">
@@ -147,7 +171,7 @@ export default function ReceiptsPage() {
         <div>
           <h1 className="text-2xl font-bold">Receipts</h1>
           <p className="mt-1 text-neutral-600">
-            Scan or upload a receipt, tag it with a client and category, and it is saved for later.
+            Scan or upload a receipt, tag it with a supplier and category, and it is saved for later.
           </p>
         </div>
         {receipts.length > 0 && (
@@ -171,8 +195,8 @@ export default function ReceiptsPage() {
           <img src={imageDataUrl} alt="Receipt preview" className="h-32 rounded-lg border object-cover" />
         )}
         <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">No client / general expense</option>
-          {clients.map((c) => (
+          <option value="">No supplier / general expense</option>
+          {suppliers.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
@@ -215,6 +239,14 @@ export default function ReceiptsPage() {
           />
           <input className="rounded-lg border px-3 py-2" placeholder="VAT amount (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
+        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <input
+          className="w-full rounded-lg border px-3 py-2"
+          placeholder="Warranty length in months (optional, e.g. 24)"
+          value={warrantyMonths}
+          onChange={(e) => setWarrantyMonths(e.target.value)}
+          inputMode="numeric"
+        />
         {error && <p className="text-sm text-red-600">{error}</p>}
         {possibleDuplicate && (
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
@@ -247,13 +279,17 @@ export default function ReceiptsPage() {
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
-            <option value="">All clients</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <option value="">All suppliers</option>
+            {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={filterStarredOnly} onChange={(e) => setFilterStarredOnly(e.target.checked)} />
+          Starred only
+        </label>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); }}
             className="mt-2 text-sm text-blue-600"
           >
             Clear filters
@@ -283,13 +319,34 @@ export default function ReceiptsPage() {
                     £{r.amount.toFixed(2)} excl. VAT · £{(r.amount + r.vatAmount).toFixed(2)} incl. VAT
                   </div>
                   <div className="text-sm text-neutral-500">{r.date} · {r.category} · {clientName(r.clientId)}</div>
+                  {r.notes && <div className="mt-1 text-sm text-neutral-500 italic">{r.notes}</div>}
+                  {r.warrantyMonths != null && (
+                    <div className="mt-1 text-xs text-neutral-400">
+                      Warranty: {r.warrantyMonths} months (until {addMonths(r.date, r.warrantyMonths)})
+                    </div>
+                  )}
                 </div>
               </div>
-              <button onClick={() => removeReceipt(r.id)} className="text-sm text-red-600">Remove</button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => toggleStar(r)}
+                  aria-label={r.starred ? "Unstar" : "Star"}
+                  className={`text-lg ${r.starred ? "text-amber-500" : "text-neutral-300"}`}
+                >
+                  ★
+                </button>
+                <button onClick={() => removeReceipt(r.id)} className="text-sm text-red-600">Remove</button>
+              </div>
             </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function addMonths(dateStr: string, months: number): string {
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
 }

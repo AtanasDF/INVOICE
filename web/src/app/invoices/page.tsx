@@ -9,6 +9,8 @@ function total(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -20,6 +22,7 @@ export default function InvoicesPage() {
   const [filterClientId, setFilterClientId] = useState("");
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
+  const [filterPaid, setFilterPaid] = useState<"" | "paid" | "unpaid">("");
 
   useEffect(() => {
     Promise.all([invoicesStore.all(), clientsStore.all()]).then(([inv, c]) => {
@@ -28,6 +31,8 @@ export default function InvoicesPage() {
       setLoading(false);
     });
   }, []);
+
+  const billableClients = useMemo(() => clients.filter((c) => c.kind === "client"), [clients]);
 
   function clientName(id: string) {
     return clients.find((c) => c.id === id)?.name || "No client";
@@ -43,6 +48,17 @@ export default function InvoicesPage() {
     }
   }
 
+  async function togglePaid(inv: Invoice) {
+    const next = !inv.paid;
+    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, paid: next } : i)));
+    try {
+      await invoicesStore.update(inv.id, { paid: next });
+    } catch (err) {
+      setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, paid: !next } : i)));
+      setError(err instanceof Error ? err.message : "Could not update invoice.");
+    }
+  }
+
   const filteredInvoices = useMemo(() => {
     const minTotal = parseFloat(filterMinTotal);
     const search = filterSearch.trim().toLowerCase();
@@ -52,9 +68,11 @@ export default function InvoicesPage() {
       if (filterClientId && inv.clientId !== filterClientId) return false;
       if (!isNaN(minTotal) && total(inv) < minTotal) return false;
       if (search && !inv.number.toLowerCase().includes(search)) return false;
+      if (filterPaid === "paid" && !inv.paid) return false;
+      if (filterPaid === "unpaid" && inv.paid) return false;
       return true;
     });
-  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch]);
+  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterPaid]);
 
   function exportInvoices() {
     downloadCsv(
@@ -62,14 +80,16 @@ export default function InvoicesPage() {
       filteredInvoices.map((inv) => ({
         number: inv.number,
         date: inv.date,
+        due_date: inv.dueDate ?? "",
         client: clientName(inv.clientId),
         total: total(inv).toFixed(2),
+        paid: inv.paid ? "yes" : "no",
         notes: inv.notes,
       }))
     );
   }
 
-  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch;
+  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterPaid;
 
   return (
     <div className="space-y-8">
@@ -94,7 +114,7 @@ export default function InvoicesPage() {
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-6">
           <input
             className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
             placeholder="Search invoice #"
@@ -105,7 +125,12 @@ export default function InvoicesPage() {
           <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
           <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
             <option value="">All clients</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select className="rounded-lg border px-3 py-2 text-sm" value={filterPaid} onChange={(e) => setFilterPaid(e.target.value as "" | "paid" | "unpaid")}>
+            <option value="">Paid or unpaid</option>
+            <option value="paid">Paid only</option>
+            <option value="unpaid">Unpaid only</option>
           </select>
           <input
             className="rounded-lg border px-3 py-2 text-sm"
@@ -117,7 +142,7 @@ export default function InvoicesPage() {
         </div>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterPaid(""); }}
             className="mt-2 text-sm text-blue-600"
           >
             Clear filters
@@ -134,18 +159,34 @@ export default function InvoicesPage() {
               {hasActiveFilters ? "No invoices match these filters." : "No invoices yet."}
             </p>
           )}
-          {filteredInvoices.map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-              <div>
-                <div className="font-medium">#{inv.number} · {clientName(inv.clientId)}</div>
-                <div className="text-sm text-neutral-500">{inv.date} · £{total(inv).toFixed(2)}</div>
+          {filteredInvoices.map((inv) => {
+            const overdue = !inv.paid && inv.dueDate && inv.dueDate < today();
+            return (
+              <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    #{inv.number} · {clientName(inv.clientId)}
+                    <button
+                      onClick={() => togglePaid(inv)}
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        inv.paid ? "bg-green-100 text-green-800" : overdue ? "bg-red-100 text-red-800" : "bg-neutral-100 text-neutral-600"
+                      }`}
+                    >
+                      {inv.paid ? "Paid" : overdue ? "Overdue" : "Unpaid"}
+                    </button>
+                  </div>
+                  <div className="text-sm text-neutral-500">
+                    {inv.date} · £{total(inv).toFixed(2)}
+                    {inv.dueDate && ` · due ${inv.dueDate}`}
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">View / print</Link>
+                  <button onClick={() => removeInvoice(inv.id)} className="text-sm text-red-600">Remove</button>
+                </div>
               </div>
-              <div className="flex gap-3">
-                <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">View / print</Link>
-                <button onClick={() => removeInvoice(inv.id)} className="text-sm text-red-600">Remove</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
