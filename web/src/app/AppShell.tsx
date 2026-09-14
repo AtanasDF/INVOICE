@@ -16,6 +16,7 @@ function Header() {
         </Link>
         {user && (
           <nav className="flex items-center gap-4 text-sm font-medium text-neutral-600">
+            <Link href="/">Home</Link>
             <Link href="/clients">Clients</Link>
             <Link href="/receipts">Receipts</Link>
             <Link href="/invoices">Invoices</Link>

@@ -51,14 +51,18 @@ export default function ExpensesPage() {
         <input type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="text-2xl font-bold">£{totals.total.toFixed(2)}</div>
-          <div className="text-sm text-neutral-600">Total business costs</div>
+          <div className="text-sm text-neutral-600">Total excl. VAT</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="text-2xl font-bold">£{totals.vat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">VAT to keep for review</div>
+        </div>
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="text-2xl font-bold">£{(totals.total + totals.vat).toFixed(2)}</div>
+          <div className="text-sm text-neutral-600">Total incl. VAT</div>
         </div>
       </div>
 
@@ -69,7 +73,9 @@ export default function ExpensesPage() {
           {byCategory.map(([cat, v]) => (
             <div key={cat} className="flex items-center justify-between border-b pb-2 text-sm">
               <span>{cat}</span>
-              <span className="text-neutral-600">£{v.total.toFixed(2)} · VAT £{v.vat.toFixed(2)}</span>
+              <span className="text-neutral-600">
+                £{v.total.toFixed(2)} excl. VAT · £{(v.total + v.vat).toFixed(2)} incl. VAT
+              </span>
             </div>
           ))}
         </div>

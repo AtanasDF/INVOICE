@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
-
-const CATEGORIES = ["Fuel", "Supplies", "Equipment", "Travel", "Meals", "Other"];
+import { CATEGORIES, Category } from "@/lib/categories";
 
 export default function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -12,7 +11,7 @@ export default function ReceiptsPage() {
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [vendor, setVendor] = useState("");
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState<Category>(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
@@ -108,7 +107,7 @@ export default function ReceiptsPage() {
         </select>
         <div className="grid grid-cols-2 gap-3">
           <input type="date" className="rounded-lg border px-3 py-2" value={date} onChange={(e) => setDate(e.target.value)} />
-          <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
@@ -136,7 +135,10 @@ export default function ReceiptsPage() {
                   <img src={r.imageDataUrl} alt="" className="h-12 w-12 rounded object-cover" />
                 )}
                 <div>
-                  <div className="font-medium">{r.vendor || r.category} · £{r.amount.toFixed(2)}</div>
+                  <div className="font-medium">{r.vendor || r.category}</div>
+                  <div className="text-sm text-neutral-600">
+                    £{r.amount.toFixed(2)} excl. VAT · £{(r.amount + r.vatAmount).toFixed(2)} incl. VAT
+                  </div>
                   <div className="text-sm text-neutral-500">{r.date} · {r.category} · {clientName(r.clientId)}</div>
                 </div>
               </div>

@@ -56,6 +56,17 @@ export default function Dashboard() {
         </p>
       </div>
 
+      <Link
+        href="/scan"
+        className="flex items-center justify-between rounded-xl border-2 border-neutral-900 bg-neutral-900 p-6 text-white shadow-sm transition hover:bg-neutral-800"
+      >
+        <div>
+          <div className="text-lg font-semibold">What do you want to scan or add?</div>
+          <div className="mt-1 text-sm text-neutral-300">Point your camera at a receipt, invoice, or document.</div>
+        </div>
+        <span className="text-2xl">&rarr;</span>
+      </Link>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((c) => (
           <Link
@@ -71,14 +82,18 @@ export default function Dashboard() {
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
-        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-3 gap-4">
           <div>
             <div className="text-2xl font-bold">£{counts.monthTotal.toFixed(2)}</div>
-            <div className="text-sm text-neutral-600">Total spent</div>
+            <div className="text-sm text-neutral-600">Spent excl. VAT</div>
           </div>
           <div>
             <div className="text-2xl font-bold">£{counts.monthVat.toFixed(2)}</div>
             <div className="text-sm text-neutral-600">VAT on those costs</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold">£{(counts.monthTotal + counts.monthVat).toFixed(2)}</div>
+            <div className="text-sm text-neutral-600">Spent incl. VAT</div>
           </div>
         </div>
         <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-blue-600">
@@ -87,8 +102,8 @@ export default function Dashboard() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/receipts" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-          + Scan a receipt
+        <Link href="/receipts" className="rounded-lg border px-4 py-2 text-sm font-medium">
+          + Add a receipt manually
         </Link>
         <Link href="/invoices/new" className="rounded-lg border px-4 py-2 text-sm font-medium">
           + Create an invoice

@@ -1,0 +1,186 @@
+import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { CATEGORIES } from "@/lib/categories";
+
+export const runtime = "nodejs";
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB, generous for a phone photo
+const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+
+type ScanResult = {
+  documentType:
+    | "receipt"
+    | "invoice"
+    | "bank_statement"
+    | "business_card"
+    | "delivery_note"
+    | "contract"
+    | "handwritten_note"
+    | "other";
+  vendor: string | null;
+  vendorConfidence: "high" | "low";
+  date: string | null;
+  dateConfidence: "high" | "low";
+  amount: number | null;
+  amountConfidence: "high" | "low";
+  vatAmount: number | null;
+  vatAmountConfidence: "high" | "low";
+  category: (typeof CATEGORIES)[number] | null;
+  lineItems: { description: string; quantity: number; unitPrice: number }[];
+  notes: string | null;
+};
+
+const EXTRACTION_TOOL = {
+  name: "record_document",
+  description:
+    "Records the structured data read off a scanned business document (receipt, invoice, or similar).",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      documentType: {
+        type: "string",
+        enum: [
+          "receipt",
+          "invoice",
+          "bank_statement",
+          "business_card",
+          "delivery_note",
+          "contract",
+          "handwritten_note",
+          "other",
+        ],
+        description: "What kind of document this is.",
+      },
+      vendor: { type: ["string", "null"], description: "Merchant or company name." },
+      vendorConfidence: { type: "string", enum: ["high", "low"] },
+      date: { type: ["string", "null"], description: "Document date as YYYY-MM-DD." },
+      dateConfidence: { type: "string", enum: ["high", "low"] },
+      amount: { type: ["number", "null"], description: "Total amount EXCLUDING VAT/tax." },
+      amountConfidence: { type: "string", enum: ["high", "low"] },
+      vatAmount: { type: ["number", "null"], description: "VAT/tax portion only, not the total." },
+      vatAmountConfidence: { type: "string", enum: ["high", "low"] },
+      category: {
+        type: ["string", "null"],
+        enum: [...CATEGORIES, null],
+        description: "Best-guess expense category, or null if unclear. Never guess a client/supplier match.",
+      },
+      lineItems: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            description: { type: "string" },
+            quantity: { type: "number" },
+            unitPrice: { type: "number" },
+          },
+          required: ["description", "quantity", "unitPrice"],
+        },
+      },
+      notes: { type: ["string", "null"], description: "Anything else worth flagging to the user." },
+    },
+    required: [
+      "documentType",
+      "vendor",
+      "vendorConfidence",
+      "date",
+      "dateConfidence",
+      "amount",
+      "amountConfidence",
+      "vatAmount",
+      "vatAmountConfidence",
+      "category",
+      "lineItems",
+      "notes",
+    ],
+  },
+};
+
+function parseDataUrl(dataUrl: string): { mediaType: string; base64: string } | null {
+  const match = /^data:([^;]+);base64,([\s\S]+)$/.exec(dataUrl);
+  if (!match) return null;
+  return { mediaType: match[1], base64: match[2] };
+}
+
+export async function POST(req: Request) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Scanning isn't configured yet: ANTHROPIC_API_KEY is missing on the server." },
+      { status: 500 }
+    );
+  }
+
+  let body: { image?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Expected a JSON body with an `image` field." }, { status: 400 });
+  }
+
+  if (!body.image) {
+    return NextResponse.json({ error: "No image was provided." }, { status: 400 });
+  }
+
+  const parsed = parseDataUrl(body.image);
+  if (!parsed) {
+    return NextResponse.json({ error: "The image wasn't a valid data URL." }, { status: 400 });
+  }
+  if (!ALLOWED_MEDIA_TYPES.includes(parsed.mediaType as (typeof ALLOWED_MEDIA_TYPES)[number])) {
+    return NextResponse.json(
+      { error: `Unsupported image type: ${parsed.mediaType}. Use JPEG, PNG, WEBP, or GIF.` },
+      { status: 400 }
+    );
+  }
+  const approxBytes = (parsed.base64.length * 3) / 4;
+  if (approxBytes > MAX_IMAGE_BYTES) {
+    return NextResponse.json({ error: "That image is too large (10MB max)." }, { status: 400 });
+  }
+
+  const anthropic = new Anthropic({ apiKey });
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 1536,
+      tools: [EXTRACTION_TOOL],
+      tool_choice: { type: "tool", name: "record_document" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: parsed.mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+                data: parsed.base64,
+              },
+            },
+            {
+              type: "text",
+              text:
+                "Read this scanned document and record its details with the record_document tool. " +
+                "Mark a field's confidence as \"low\" whenever the source is smudged, cropped, ambiguous, " +
+                "or you're genuinely guessing -- never mark something \"high\" just to fill the field in. " +
+                "amount is the total EXCLUDING VAT/tax; vatAmount is the tax portion alone. " +
+                "Only suggest a category from the given list, and only when reasonably confident -- " +
+                "do not guess who the client or supplier is, that is always chosen by the person reviewing this.",
+            },
+          ],
+        },
+      ],
+    });
+
+    const toolUse = response.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+    );
+    if (!toolUse) {
+      return NextResponse.json({ error: "The model didn't return structured data. Try again." }, { status: 502 });
+    }
+
+    return NextResponse.json({ result: toolUse.input as ScanResult });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error while scanning.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
+}
