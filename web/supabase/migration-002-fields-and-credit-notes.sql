@@ -79,12 +79,14 @@ create table if not exists public.business_profile (
   vat_number text,
   address text,
   logo_url text,
+  show_overdue_reminders boolean not null default true,
   updated_at timestamptz not null default now()
 );
 alter table public.business_profile add column if not exists business_name text;
 alter table public.business_profile add column if not exists vat_number text;
 alter table public.business_profile add column if not exists address text;
 alter table public.business_profile add column if not exists logo_url text;
+alter table public.business_profile add column if not exists show_overdue_reminders boolean not null default true;
 alter table public.business_profile add column if not exists updated_at timestamptz default now();
 
 alter table public.business_profile enable row level security;

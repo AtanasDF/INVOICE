@@ -95,6 +95,13 @@ export default function InvoiceViewPage() {
   const netTotal = rawTotal - creditNoteTotal;
   const overdue = !invoice.paid && invoice.dueDate && invoice.dueDate < new Date().toISOString().slice(0, 10);
 
+  const shareText =
+    `Invoice ${invoice.number}${client?.name ? ` for ${client.name}` : ""} — £${netTotal.toFixed(2)}` +
+    (invoice.dueDate ? `, due ${invoice.dueDate}` : "") +
+    `. (Attach the PDF from "Print / save as PDF" — this message doesn't include it automatically.)`;
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const emailHref = `mailto:${client?.email || ""}?subject=${encodeURIComponent(`Invoice ${invoice.number}`)}&body=${encodeURIComponent(shareText)}`;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between print:hidden">
@@ -106,9 +113,17 @@ export default function InvoiceViewPage() {
         >
           {invoice.paid ? "Paid — click to mark unpaid" : overdue ? "Overdue — click to mark paid" : "Unpaid — click to mark paid"}
         </button>
-        <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-          Print / save as PDF
-        </button>
+        <div className="flex gap-2">
+          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+            Share via WhatsApp
+          </a>
+          <a href={emailHref} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+            Share via Email
+          </a>
+          <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+            Print / save as PDF
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">

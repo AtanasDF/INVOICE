@@ -336,6 +336,7 @@ export type BusinessProfile = {
   vatNumber: string;
   address: string;
   logoUrl: string | null;
+  showOverdueReminders: boolean;
 };
 
 type BusinessProfileRow = {
@@ -343,6 +344,7 @@ type BusinessProfileRow = {
   vat_number: string | null;
   address: string | null;
   logo_url: string | null;
+  show_overdue_reminders: boolean | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -351,10 +353,17 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     vatNumber: r.vat_number ?? "",
     address: r.address ?? "",
     logoUrl: r.logo_url,
+    showOverdueReminders: r.show_overdue_reminders ?? true,
   };
 }
 
-const EMPTY_BUSINESS_PROFILE: BusinessProfile = { businessName: "", vatNumber: "", address: "", logoUrl: null };
+const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
+  businessName: "",
+  vatNumber: "",
+  address: "",
+  logoUrl: null,
+  showOverdueReminders: true,
+};
 
 export const businessProfileStore = {
   async get(): Promise<BusinessProfile> {
@@ -370,6 +379,7 @@ export const businessProfileStore = {
       vat_number: input.vatNumber || null,
       address: input.address || null,
       logo_url: input.logoUrl,
+      show_overdue_reminders: input.showOverdueReminders,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;

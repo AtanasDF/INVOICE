@@ -7,6 +7,7 @@ export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [vatNumber, setVatNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [showOverdueReminders, setShowOverdueReminders] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +18,7 @@ export default function SettingsPage() {
       setBusinessName(p.businessName);
       setVatNumber(p.vatNumber);
       setAddress(p.address);
+      setShowOverdueReminders(p.showOverdueReminders);
       setLoading(false);
     });
   }, []);
@@ -27,7 +29,7 @@ export default function SettingsPage() {
     setSaved(false);
     setSaving(true);
     try {
-      await businessProfileStore.save({ businessName, vatNumber, address, logoUrl: null });
+      await businessProfileStore.save({ businessName, vatNumber, address, logoUrl: null, showOverdueReminders });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your profile.");
@@ -69,6 +71,12 @@ export default function SettingsPage() {
         <p className="text-xs text-neutral-500">
           A logo can go here too once file storage is set up — not yet, so this is text-only for now.
         </p>
+
+        <label className="flex items-center gap-2 border-t pt-3 text-sm">
+          <input type="checkbox" checked={showOverdueReminders} onChange={(e) => setShowOverdueReminders(e.target.checked)} />
+          Gently remind me on the dashboard about overdue invoices
+        </label>
+
         {error && <p className="text-sm text-red-600">{error}</p>}
         {saved && <p className="text-sm text-green-700">Saved.</p>}
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
