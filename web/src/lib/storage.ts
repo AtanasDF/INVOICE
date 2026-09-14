@@ -543,3 +543,29 @@ export const recurringExpensesStore = {
     if (error) throw error;
   },
 };
+
+export const pushSubscriptionsStore = {
+  async isSubscribed(endpoint: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from("push_subscriptions")
+      .select("id")
+      .eq("endpoint", endpoint)
+      .maybeSingle();
+    if (error) throw error;
+    return data !== null;
+  },
+  async subscribe(sub: { endpoint: string; p256dh: string; authKey: string }): Promise<void> {
+    const user_id = await currentUserId();
+    const { error } = await supabase
+      .from("push_subscriptions")
+      .upsert(
+        { user_id, endpoint: sub.endpoint, p256dh: sub.p256dh, auth_key: sub.authKey },
+        { onConflict: "endpoint" }
+      );
+    if (error) throw error;
+  },
+  async unsubscribe(endpoint: string): Promise<void> {
+    const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    if (error) throw error;
+  },
+};
