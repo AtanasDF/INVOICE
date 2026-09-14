@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
+import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+type ScanLineItem = { description: string; quantity: number; unitPrice: number };
+type ScanApiResult = {
+  date: string | null;
+  lineItems: ScanLineItem[];
+  notes: string | null;
+};
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -24,6 +32,10 @@ export default function NewInvoicePage() {
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [showCapture, setShowCapture] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   useEffect(() => {
     clientsStore.all().then(setClients);
@@ -54,6 +66,32 @@ export default function NewInvoicePage() {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  async function onDocumentCaptured(file: CapturedFile) {
+    setShowCapture(false);
+    setScanning(true);
+    setScanError(null);
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: file.dataUrl }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Scan failed.");
+      const result = body.result as ScanApiResult;
+
+      if (result.date) onDateChange(result.date);
+      if (result.notes) setNotes((prev) => prev || result.notes || "");
+      if (result.lineItems?.length) {
+        setItems(result.lineItems.map((li) => ({ description: li.description, quantity: li.quantity, unitPrice: li.unitPrice })));
+      }
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : "Scan failed.");
+    } finally {
+      setScanning(false);
+    }
+  }
+
   const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
   async function save() {
@@ -80,7 +118,28 @@ export default function NewInvoicePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">New invoice</h1>
+      {showCapture && (
+        <DocumentCapture
+          onCapture={onDocumentCaptured}
+          onClose={() => setShowCapture(false)}
+        />
+      )}
+
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">New invoice</h1>
+        <button
+          onClick={() => setShowCapture(true)}
+          disabled={scanning}
+          className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
+        >
+          {scanning ? "Reading document…" : "📷 Scan or attach a document"}
+        </button>
+      </div>
+      {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+      <p className="text-xs text-neutral-500 -mt-4">
+        Scanning fills in the date, line items, and notes from a source document (a timesheet, delivery note,
+        etc.) — the client is always your own choice below, never guessed.
+      </p>
 
       <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => onClientChange(e.target.value)}>
