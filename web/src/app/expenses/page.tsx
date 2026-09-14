@@ -1,44 +1,67 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Receipt, receiptsStore } from "@/lib/storage";
+import { Invoice, Receipt, invoicesStore, receiptsStore } from "@/lib/storage";
 
 function monthKey(dateStr: string) {
   return dateStr.slice(0, 7);
 }
+function yearKey(dateStr: string) {
+  return dateStr.slice(0, 4);
+}
+function invoiceTotal(inv: Invoice) {
+  return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+}
 
 export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [periodMode, setPeriodMode] = useState<"month" | "year">("month");
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [year, setYear] = useState(() => String(new Date().getFullYear()));
+  const [viewMode, setViewMode] = useState<"expenses" | "combined">("expenses");
 
   useEffect(() => {
-    receiptsStore.all().then((r) => {
+    Promise.all([receiptsStore.all(), invoicesStore.all()]).then(([r, i]) => {
       setReceipts(r);
+      setInvoices(i);
       setLoading(false);
     });
   }, []);
 
-  const monthReceipts = useMemo(
-    () => receipts.filter((r) => monthKey(r.date) === month),
-    [receipts, month]
+  const periodReceipts = useMemo(
+    () =>
+      receipts.filter((r) =>
+        periodMode === "month" ? monthKey(r.date) === month : yearKey(r.date) === year
+      ),
+    [receipts, periodMode, month, year]
+  );
+  const periodInvoices = useMemo(
+    () =>
+      invoices.filter((i) =>
+        periodMode === "month" ? monthKey(i.date) === month : yearKey(i.date) === year
+      ),
+    [invoices, periodMode, month, year]
   );
 
   const byCategory = useMemo(() => {
     const map = new Map<string, { total: number; vat: number }>();
-    for (const r of monthReceipts) {
+    for (const r of periodReceipts) {
       const entry = map.get(r.category) || { total: 0, vat: 0 };
       entry.total += r.amount;
       entry.vat += r.vatAmount;
       map.set(r.category, entry);
     }
     return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
-  }, [monthReceipts]);
+  }, [periodReceipts]);
 
-  const totals = monthReceipts.reduce(
+  const totals = periodReceipts.reduce(
     (acc, r) => ({ total: acc.total + r.amount, vat: acc.vat + r.vatAmount }),
     { total: 0, vat: 0 }
   );
+  const income = periodInvoices.reduce((s, inv) => s + invoiceTotal(inv), 0);
+  const expensesInclVat = totals.total + totals.vat;
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
@@ -46,9 +69,49 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Monthly expenses</h1>
-        <input type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">{periodMode === "month" ? "Monthly" : "Yearly"} expenses</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border text-sm">
+            <button
+              onClick={() => setPeriodMode("month")}
+              className={`px-3 py-1.5 ${periodMode === "month" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setPeriodMode("year")}
+              className={`px-3 py-1.5 ${periodMode === "year" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+            >
+              Year
+            </button>
+          </div>
+          {periodMode === "month" ? (
+            <input type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
+          ) : (
+            <input
+              type="number"
+              className="w-28 rounded-lg border px-3 py-2"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="flex rounded-lg border text-sm w-fit">
+        <button
+          onClick={() => setViewMode("expenses")}
+          className={`px-3 py-1.5 ${viewMode === "expenses" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+        >
+          Expenses only
+        </button>
+        <button
+          onClick={() => setViewMode("combined")}
+          className={`px-3 py-1.5 ${viewMode === "combined" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+        >
+          Combined with invoices
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -61,14 +124,33 @@ export default function ExpensesPage() {
           <div className="text-sm text-neutral-600">VAT to keep for review</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <div className="text-2xl font-bold">£{(totals.total + totals.vat).toFixed(2)}</div>
+          <div className="text-2xl font-bold">£{expensesInclVat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">Total incl. VAT</div>
         </div>
       </div>
 
+      {viewMode === "combined" && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+            <div className="text-2xl font-bold">£{income.toFixed(2)}</div>
+            <div className="text-sm text-neutral-600">Invoiced (income)</div>
+          </div>
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+            <div className="text-2xl font-bold">£{expensesInclVat.toFixed(2)}</div>
+            <div className="text-sm text-neutral-600">Spent (incl. VAT)</div>
+          </div>
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+            <div className={`text-2xl font-bold ${income - expensesInclVat < 0 ? "text-red-600" : ""}`}>
+              £{(income - expensesInclVat).toFixed(2)}
+            </div>
+            <div className="text-sm text-neutral-600">Net</div>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">By category</h2>
-        {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this month.</p>}
+        {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this {periodMode}.</p>}
         <div className="mt-3 space-y-2">
           {byCategory.map(([cat, v]) => (
             <div key={cat} className="flex items-center justify-between border-b pb-2 text-sm">

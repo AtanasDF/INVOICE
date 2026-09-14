@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category } from "@/lib/categories";
+import { downloadCsv } from "@/lib/exportCsv";
 
 export default function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -77,13 +78,35 @@ export default function ReceiptsPage() {
     return clients.find((c) => c.id === id)?.name || "No client";
   }
 
+  function exportReceipts() {
+    downloadCsv(
+      `receipts-${new Date().toISOString().slice(0, 10)}.csv`,
+      receipts.map((r) => ({
+        date: r.date,
+        vendor: r.vendor,
+        client: clientName(r.clientId),
+        category: r.category,
+        amount_excl_vat: r.amount.toFixed(2),
+        vat: r.vatAmount.toFixed(2),
+        amount_incl_vat: (r.amount + r.vatAmount).toFixed(2),
+      }))
+    );
+  }
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Receipts</h1>
-        <p className="mt-1 text-neutral-600">
-          Scan or upload a receipt, tag it with a client and category, and it is saved for later.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Receipts</h1>
+          <p className="mt-1 text-neutral-600">
+            Scan or upload a receipt, tag it with a client and category, and it is saved for later.
+          </p>
+        </div>
+        {receipts.length > 0 && (
+          <button onClick={exportReceipts} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
+            Export CSV
+          </button>
+        )}
       </div>
 
       <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
