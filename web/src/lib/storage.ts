@@ -441,3 +441,80 @@ export const feedbackStore = {
     return feedbackFromRow(data as FeedbackRow);
   },
 };
+
+export type RecurringExpense = {
+  id: string;
+  description: string;
+  category: string;
+  amount: number;
+  vatAmount: number;
+  supplierId: string;
+  dayOfMonth: number;
+  nextDueDate: string;
+  active: boolean;
+};
+
+type RecurringExpenseRow = {
+  id: string;
+  description: string;
+  category: string | null;
+  amount: number;
+  vat_amount: number;
+  supplier_id: string | null;
+  day_of_month: number;
+  next_due_date: string;
+  active: boolean;
+};
+
+function recurringExpenseFromRow(r: RecurringExpenseRow): RecurringExpense {
+  return {
+    id: r.id,
+    description: r.description,
+    category: r.category ?? "",
+    amount: Number(r.amount),
+    vatAmount: Number(r.vat_amount),
+    supplierId: r.supplier_id ?? "",
+    dayOfMonth: r.day_of_month,
+    nextDueDate: r.next_due_date,
+    active: r.active,
+  };
+}
+
+export const recurringExpensesStore = {
+  async all(): Promise<RecurringExpense[]> {
+    const { data, error } = await supabase.from("recurring_expenses").select("*").order("next_due_date");
+    if (error) throw error;
+    return (data as RecurringExpenseRow[]).map(recurringExpenseFromRow);
+  },
+  async add(input: Omit<RecurringExpense, "id">): Promise<RecurringExpense> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("recurring_expenses")
+      .insert({
+        user_id,
+        description: input.description,
+        category: input.category || null,
+        amount: input.amount,
+        vat_amount: input.vatAmount,
+        supplier_id: input.supplierId || null,
+        day_of_month: input.dayOfMonth,
+        next_due_date: input.nextDueDate,
+        active: input.active,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return recurringExpenseFromRow(data as RecurringExpenseRow);
+  },
+  async update(id: string, patch: Partial<Pick<RecurringExpense, "nextDueDate" | "active">>): Promise<void> {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.nextDueDate !== undefined) dbPatch.next_due_date = patch.nextDueDate;
+    if (patch.active !== undefined) dbPatch.active = patch.active;
+    const { error } = await supabase.from("recurring_expenses").update(dbPatch).eq("id", id);
+    if (error) throw error;
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from("recurring_expenses").delete().eq("id", id);
+    if (error) throw error;
+  },
+};

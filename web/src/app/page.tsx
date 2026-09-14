@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { businessProfileStore, clientsStore, receiptsStore, invoicesStore } from "@/lib/storage";
+import { businessProfileStore, clientsStore, receiptsStore, invoicesStore, recurringExpensesStore } from "@/lib/storage";
 
 function ScanIcon() {
   return (
@@ -18,16 +18,19 @@ export default function Dashboard() {
   const [overdueCount, setOverdueCount] = useState(0);
   const [showOverdueBanner, setShowOverdueBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [dueRecurringCount, setDueRecurringCount] = useState(0);
+  const [recurringBannerDismissed, setRecurringBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [clients, receipts, invoices, profile] = await Promise.all([
+      const [clients, receipts, invoices, profile, recurring] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
         invoicesStore.all(),
         businessProfileStore.get(),
+        recurringExpensesStore.all(),
       ]);
       if (cancelled) return;
       const today = new Date().toISOString().slice(0, 10);
@@ -47,6 +50,7 @@ export default function Dashboard() {
       const overdue = invoices.filter((i) => !i.paid && i.dueDate && i.dueDate < today);
       setOverdueCount(overdue.length);
       setShowOverdueBanner(profile.showOverdueReminders && overdue.length > 0);
+      setDueRecurringCount(recurring.filter((r) => r.active && r.nextDueDate <= today).length);
       setLoading(false);
     }
     load();
@@ -82,6 +86,18 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <Link href="/invoices" className="font-medium underline">Review</Link>
             <button onClick={() => setBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+      )}
+
+      {dueRecurringCount > 0 && !recurringBannerDismissed && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <span>
+            {dueRecurringCount} recurring {dueRecurringCount === 1 ? "expense is" : "expenses are"} due — log {dueRecurringCount === 1 ? "it" : "them"} so they&apos;re not forgotten.
+          </span>
+          <div className="flex items-center gap-3">
+            <Link href="/recurring" className="font-medium underline">Review</Link>
+            <button onClick={() => setRecurringBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
           </div>
         </div>
       )}
@@ -123,9 +139,14 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <Link href="/files" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
-        📁 Browse your file library &rarr;
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link href="/files" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+          📁 Browse your file library &rarr;
+        </Link>
+        <Link href="/recurring" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+          🔁 Recurring expenses &rarr;
+        </Link>
+      </div>
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
