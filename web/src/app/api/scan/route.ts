@@ -4,8 +4,16 @@ import { CATEGORIES } from "@/lib/categories";
 
 export const runtime = "nodejs";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB, generous for a phone photo
-const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB, generous for a phone photo or PDF
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, "application/pdf"] as const;
+
+type ScanLineItem = {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  category: (typeof CATEGORIES)[number] | null;
+};
 
 type ScanResult = {
   documentType:
@@ -16,6 +24,7 @@ type ScanResult = {
     | "delivery_note"
     | "contract"
     | "handwritten_note"
+    | "barcode"
     | "other";
   vendor: string | null;
   vendorConfidence: "high" | "low";
@@ -26,7 +35,7 @@ type ScanResult = {
   vatAmount: number | null;
   vatAmountConfidence: "high" | "low";
   category: (typeof CATEGORIES)[number] | null;
-  lineItems: { description: string; quantity: number; unitPrice: number }[];
+  lineItems: ScanLineItem[];
   notes: string | null;
 };
 
@@ -47,6 +56,7 @@ const EXTRACTION_TOOL = {
           "delivery_note",
           "contract",
           "handwritten_note",
+          "barcode",
           "other",
         ],
         description: "What kind of document this is.",
@@ -62,18 +72,25 @@ const EXTRACTION_TOOL = {
       category: {
         type: ["string", "null"],
         enum: [...CATEGORIES, null],
-        description: "Best-guess expense category, or null if unclear. Never guess a client/supplier match.",
+        description:
+          "Best-guess overall expense category, or null if unclear / if line items span multiple categories.",
       },
       lineItems: {
         type: "array",
+        description: "Every distinct item/line on the document, each with its own best-guess category.",
         items: {
           type: "object",
           properties: {
             description: { type: "string" },
             quantity: { type: "number" },
             unitPrice: { type: "number" },
+            category: {
+              type: ["string", "null"],
+              enum: [...CATEGORIES, null],
+              description: "Best-guess category for this specific item, or null if unclear.",
+            },
           },
-          required: ["description", "quantity", "unitPrice"],
+          required: ["description", "quantity", "unitPrice", "category"],
         },
       },
       notes: { type: ["string", "null"], description: "Anything else worth flagging to the user." },
@@ -118,53 +135,64 @@ export async function POST(req: Request) {
   }
 
   if (!body.image) {
-    return NextResponse.json({ error: "No image was provided." }, { status: 400 });
+    return NextResponse.json({ error: "No file was provided." }, { status: 400 });
   }
 
   const parsed = parseDataUrl(body.image);
   if (!parsed) {
-    return NextResponse.json({ error: "The image wasn't a valid data URL." }, { status: 400 });
+    return NextResponse.json({ error: "The file wasn't a valid data URL." }, { status: 400 });
   }
-  if (!ALLOWED_MEDIA_TYPES.includes(parsed.mediaType as (typeof ALLOWED_MEDIA_TYPES)[number])) {
+  if (!ALLOWED_TYPES.includes(parsed.mediaType as (typeof ALLOWED_TYPES)[number])) {
     return NextResponse.json(
-      { error: `Unsupported image type: ${parsed.mediaType}. Use JPEG, PNG, WEBP, or GIF.` },
+      { error: `Unsupported file type: ${parsed.mediaType}. Use JPEG, PNG, WEBP, GIF, or PDF.` },
       { status: 400 }
     );
   }
   const approxBytes = (parsed.base64.length * 3) / 4;
-  if (approxBytes > MAX_IMAGE_BYTES) {
-    return NextResponse.json({ error: "That image is too large (10MB max)." }, { status: 400 });
+  if (approxBytes > MAX_FILE_BYTES) {
+    return NextResponse.json({ error: "That file is too large (10MB max)." }, { status: 400 });
   }
 
   const anthropic = new Anthropic({ apiKey });
+  const isPdf = parsed.mediaType === "application/pdf";
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 1536,
+      max_tokens: 2048,
       tools: [EXTRACTION_TOOL],
       tool_choice: { type: "tool", name: "record_document" },
       messages: [
         {
           role: "user",
           content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: parsed.mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
-                data: parsed.base64,
-              },
-            },
+            isPdf
+              ? {
+                  type: "document",
+                  source: { type: "base64", media_type: "application/pdf", data: parsed.base64 },
+                }
+              : {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: parsed.mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+                    data: parsed.base64,
+                  },
+                },
             {
               type: "text",
               text:
                 "Read this scanned document and record its details with the record_document tool. " +
+                "If it's a barcode (product barcode/UPC/QR code and nothing else readable as a business " +
+                "document), set documentType to \"barcode\" and put the decoded-looking value in notes. " +
                 "Mark a field's confidence as \"low\" whenever the source is smudged, cropped, ambiguous, " +
                 "or you're genuinely guessing -- never mark something \"high\" just to fill the field in. " +
                 "amount is the total EXCLUDING VAT/tax; vatAmount is the tax portion alone. " +
-                "Only suggest a category from the given list, and only when reasonably confident -- " +
-                "do not guess who the client or supplier is, that is always chosen by the person reviewing this.",
+                "Give every line item its own best-guess category (e.g. a supermarket receipt might have " +
+                "some Groceries items and some Household items) -- only fall back to null on a line item " +
+                "when it's genuinely unclear. Only suggest categories from the given list, and only when " +
+                "reasonably confident -- do not guess who the client or supplier is, that is always chosen " +
+                "by the person reviewing this.",
             },
           ],
         },
