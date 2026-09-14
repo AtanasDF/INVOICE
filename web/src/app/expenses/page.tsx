@@ -10,6 +10,21 @@ function monthKey(dateStr: string) {
 function yearKey(dateStr: string) {
   return dateStr.slice(0, 4);
 }
+// <input type="week"> isn't supported on Safari (desktop or iOS), so weeks
+// are picked via a plain date input -- whatever day you pick, we show the
+// Mon-Sun week it falls in.
+function startOfWeek(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+function endOfWeek(dateStr: string): string {
+  const d = new Date(startOfWeek(dateStr) + "T00:00:00");
+  d.setDate(d.getDate() + 6);
+  return d.toISOString().slice(0, 10);
+}
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 }
@@ -18,7 +33,8 @@ export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [periodMode, setPeriodMode] = useState<"month" | "year">("month");
+  const [periodMode, setPeriodMode] = useState<"week" | "month" | "year">("month");
+  const [weekAnchor, setWeekAnchor] = useState(() => new Date().toISOString().slice(0, 10));
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [year, setYear] = useState(() => String(new Date().getFullYear()));
   const [viewMode, setViewMode] = useState<"expenses" | "combined">("expenses");
@@ -31,19 +47,26 @@ export default function ExpensesPage() {
     });
   }, []);
 
+  const weekStart = periodMode === "week" ? startOfWeek(weekAnchor) : "";
+  const weekEnd = periodMode === "week" ? endOfWeek(weekAnchor) : "";
+
   const periodReceipts = useMemo(
     () =>
-      receipts.filter((r) =>
-        periodMode === "month" ? monthKey(r.date) === month : yearKey(r.date) === year
-      ),
-    [receipts, periodMode, month, year]
+      receipts.filter((r) => {
+        if (periodMode === "week") return r.date >= weekStart && r.date <= weekEnd;
+        if (periodMode === "month") return monthKey(r.date) === month;
+        return yearKey(r.date) === year;
+      }),
+    [receipts, periodMode, month, year, weekStart, weekEnd]
   );
   const periodInvoices = useMemo(
     () =>
-      invoices.filter((i) =>
-        periodMode === "month" ? monthKey(i.date) === month : yearKey(i.date) === year
-      ),
-    [invoices, periodMode, month, year]
+      invoices.filter((i) => {
+        if (periodMode === "week") return i.date >= weekStart && i.date <= weekEnd;
+        if (periodMode === "month") return monthKey(i.date) === month;
+        return yearKey(i.date) === year;
+      }),
+    [invoices, periodMode, month, year, weekStart, weekEnd]
   );
 
   const byCategory = useMemo(() => {
@@ -69,14 +92,22 @@ export default function ExpensesPage() {
     return <p className="text-sm text-neutral-500">Loading…</p>;
   }
 
-  const periodLabel = periodMode === "month" ? month : year;
+  const periodLabel =
+    periodMode === "week" ? `${startOfWeek(weekAnchor)} to ${endOfWeek(weekAnchor)}` : periodMode === "month" ? month : year;
+  const periodTitle = periodMode === "week" ? "Weekly" : periodMode === "month" ? "Monthly" : "Yearly";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <h1 className="text-2xl font-bold">{periodMode === "month" ? "Monthly" : "Yearly"} expenses</h1>
+        <h1 className="text-2xl font-bold">{periodTitle} expenses</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border text-sm">
+            <button
+              onClick={() => setPeriodMode("week")}
+              className={`px-3 py-1.5 ${periodMode === "week" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+            >
+              Week
+            </button>
             <button
               onClick={() => setPeriodMode("month")}
               className={`px-3 py-1.5 ${periodMode === "month" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
@@ -90,7 +121,9 @@ export default function ExpensesPage() {
               Year
             </button>
           </div>
-          {periodMode === "month" ? (
+          {periodMode === "week" ? (
+            <input type="date" className="rounded-lg border px-3 py-2" value={weekAnchor} onChange={(e) => setWeekAnchor(e.target.value)} />
+          ) : periodMode === "month" ? (
             <input type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
           ) : (
             <input
