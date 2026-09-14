@@ -23,6 +23,7 @@ export default function InvoicesPage() {
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
   const [filterPaid, setFilterPaid] = useState<"" | "paid" | "unpaid">("");
+  const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
     Promise.all([invoicesStore.all(), clientsStore.all()]).then(([inv, c]) => {
@@ -59,6 +60,12 @@ export default function InvoicesPage() {
     }
   }
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const inv of invoices) for (const t of inv.tags) set.add(t);
+    return Array.from(set).sort();
+  }, [invoices]);
+
   const filteredInvoices = useMemo(() => {
     const minTotal = parseFloat(filterMinTotal);
     const search = filterSearch.trim().toLowerCase();
@@ -70,9 +77,10 @@ export default function InvoicesPage() {
       if (search && !inv.number.toLowerCase().includes(search)) return false;
       if (filterPaid === "paid" && !inv.paid) return false;
       if (filterPaid === "unpaid" && inv.paid) return false;
+      if (filterTag && !inv.tags.includes(filterTag)) return false;
       return true;
     });
-  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterPaid]);
+  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterPaid, filterTag]);
 
   function exportInvoices() {
     downloadCsv(
@@ -89,7 +97,7 @@ export default function InvoicesPage() {
     );
   }
 
-  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterPaid;
+  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterPaid || filterTag;
 
   return (
     <div className="space-y-8">
@@ -139,10 +147,16 @@ export default function InvoicesPage() {
             onChange={(e) => setFilterMinTotal(e.target.value)}
             inputMode="decimal"
           />
+          {allTags.length > 0 && (
+            <select className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+              <option value="">All tags</option>
+              {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
         </div>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterPaid(""); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterPaid(""); setFilterTag(""); }}
             className="mt-2 text-sm text-blue-600"
           >
             Clear filters
@@ -179,6 +193,13 @@ export default function InvoicesPage() {
                     {inv.date} · £{total(inv).toFixed(2)}
                     {inv.dueDate && ` · due ${inv.dueDate}`}
                   </div>
+                  {inv.tags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {inv.tags.map((t) => (
+                        <span key={t} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{t}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-3">
                   <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">View / print</Link>

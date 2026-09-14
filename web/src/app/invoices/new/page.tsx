@@ -21,6 +21,7 @@ export default function NewInvoicePage() {
   const [number, setNumber] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
   const [items, setItems] = useState<InvoiceItem[]>([{ description: "", quantity: 1, unitPrice: 0 }]);
   const [notes, setNotes] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +69,7 @@ export default function NewInvoicePage() {
         dueDate: dueDate || null,
         paymentTerms,
         paid: false,
-        tags: [],
+        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
@@ -137,6 +138,12 @@ export default function NewInvoicePage() {
         </div>
 
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (payment details, etc.)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <input
+          className="w-full rounded-lg border px-3 py-2"
+          placeholder="Tags, comma separated (optional, e.g. Site A, Q3 job)"
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+        />
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
