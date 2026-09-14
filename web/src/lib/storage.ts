@@ -385,3 +385,47 @@ export const businessProfileStore = {
     if (error) throw error;
   },
 };
+
+export type Feedback = {
+  id: string;
+  message: string;
+  category: string;
+  page: string;
+  createdAt: string;
+};
+
+type FeedbackRow = {
+  id: string;
+  message: string;
+  category: string | null;
+  page: string | null;
+  created_at: string;
+};
+
+function feedbackFromRow(r: FeedbackRow): Feedback {
+  return {
+    id: r.id,
+    message: r.message,
+    category: r.category ?? "",
+    page: r.page ?? "",
+    createdAt: r.created_at,
+  };
+}
+
+export const feedbackStore = {
+  async all(): Promise<Feedback[]> {
+    const { data, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data as FeedbackRow[]).map(feedbackFromRow);
+  },
+  async add(input: { message: string; category: string; page: string }): Promise<Feedback> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("feedback")
+      .insert({ user_id, message: input.message, category: input.category || null, page: input.page || null })
+      .select()
+      .single();
+    if (error) throw error;
+    return feedbackFromRow(data as FeedbackRow);
+  },
+};
