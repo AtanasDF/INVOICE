@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
+
+function daysBetween(a: string, b: string): number {
+  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
+}
 
 export default function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -19,6 +23,14 @@ export default function ReceiptsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [possibleDuplicate, setPossibleDuplicate] = useState<Receipt | null>(null);
+  const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
+
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterClientId, setFilterClientId] = useState("");
 
   useEffect(() => {
     Promise.all([clientsStore.all(), receiptsStore.all()]).then(([c, r]) => {
@@ -36,9 +48,31 @@ export default function ReceiptsPage() {
     reader.readAsDataURL(file);
   }
 
+  function findDuplicate(): Receipt | null {
+    const amt = parseFloat(amount) || 0;
+    return (
+      receipts.find(
+        (r) =>
+          r.vendor.trim().toLowerCase() === vendor.trim().toLowerCase() &&
+          vendor.trim() !== "" &&
+          Math.abs(r.amount - amt) < 0.01 &&
+          daysBetween(r.date, date) <= 3
+      ) || null
+    );
+  }
+
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
     if (!amount) return;
+
+    if (!confirmedDuplicate) {
+      const dup = findDuplicate();
+      if (dup) {
+        setPossibleDuplicate(dup);
+        return;
+      }
+    }
+
     setError(null);
     setSaving(true);
     try {
@@ -56,6 +90,8 @@ export default function ReceiptsPage() {
       setAmount("");
       setVatAmount("");
       setImageDataUrl(null);
+      setPossibleDuplicate(null);
+      setConfirmedDuplicate(false);
       if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save receipt.");
@@ -78,10 +114,20 @@ export default function ReceiptsPage() {
     return clients.find((c) => c.id === id)?.name || "No client";
   }
 
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter((r) => {
+      if (filterFrom && r.date < filterFrom) return false;
+      if (filterTo && r.date > filterTo) return false;
+      if (filterCategory && r.category !== filterCategory) return false;
+      if (filterClientId && r.clientId !== filterClientId) return false;
+      return true;
+    });
+  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId]);
+
   function exportReceipts() {
     downloadCsv(
       `receipts-${new Date().toISOString().slice(0, 10)}.csv`,
-      receipts.map((r) => ({
+      filteredReceipts.map((r) => ({
         date: r.date,
         vendor: r.vendor,
         client: clientName(r.clientId),
@@ -92,6 +138,8 @@ export default function ReceiptsPage() {
       }))
     );
   }
+
+  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId;
 
   return (
     <div className="space-y-8">
@@ -129,28 +177,100 @@ export default function ReceiptsPage() {
           ))}
         </select>
         <div className="grid grid-cols-2 gap-3">
-          <input type="date" className="rounded-lg border px-3 py-2" value={date} onChange={(e) => setDate(e.target.value)} />
+          <input
+            type="date"
+            className="rounded-lg border px-3 py-2"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setConfirmedDuplicate(false);
+              setPossibleDuplicate(null);
+            }}
+          />
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <input className="w-full rounded-lg border px-3 py-2" placeholder="Vendor / shop name" value={vendor} onChange={(e) => setVendor(e.target.value)} />
+        <input
+          className="w-full rounded-lg border px-3 py-2"
+          placeholder="Vendor / shop name"
+          value={vendor}
+          onChange={(e) => {
+            setVendor(e.target.value);
+            setConfirmedDuplicate(false);
+            setPossibleDuplicate(null);
+          }}
+        />
         <div className="grid grid-cols-2 gap-3">
-          <input className="rounded-lg border px-3 py-2" placeholder="Amount (£)" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+          <input
+            className="rounded-lg border px-3 py-2"
+            placeholder="Amount (£)"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setConfirmedDuplicate(false);
+              setPossibleDuplicate(null);
+            }}
+            inputMode="decimal"
+          />
           <input className="rounded-lg border px-3 py-2" placeholder="VAT amount (£)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {possibleDuplicate && (
+          <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+            This looks like it might already be saved — {possibleDuplicate.vendor || possibleDuplicate.category}, £
+            {possibleDuplicate.amount.toFixed(2)} on {possibleDuplicate.date}.
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmedDuplicate(true);
+                setPossibleDuplicate(null);
+              }}
+              className="ml-2 font-medium underline"
+            >
+              Save it anyway
+            </button>
+          </div>
+        )}
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : "Save receipt"}
         </button>
       </form>
 
+      <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
+        <summary className="cursor-pointer text-sm font-medium">Filter</summary>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="From" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
+          <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="To" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+          <select className="rounded-lg border px-3 py-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+            <option value="">All categories</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
+            <option value="">All clients</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); }}
+            className="mt-2 text-sm text-blue-600"
+          >
+            Clear filters
+          </button>
+        )}
+      </details>
+
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {receipts.length === 0 && <p className="text-sm text-neutral-500">No receipts saved yet.</p>}
-          {receipts.map((r) => (
+          {filteredReceipts.length === 0 && (
+            <p className="text-sm text-neutral-500">
+              {hasActiveFilters ? "No receipts match these filters." : "No receipts saved yet."}
+            </p>
+          )}
+          {filteredReceipts.map((r) => (
             <div key={r.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
               <div className="flex items-center gap-3">
                 {r.imageDataUrl && (
