@@ -69,9 +69,11 @@ export default function ExpensesPage() {
     return <p className="text-sm text-neutral-500">Loading…</p>;
   }
 
+  const periodLabel = periodMode === "month" ? month : year;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <h1 className="text-2xl font-bold">{periodMode === "month" ? "Monthly" : "Yearly"} expenses</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border text-sm">
@@ -98,10 +100,18 @@ export default function ExpensesPage() {
               onChange={(e) => setYear(e.target.value)}
             />
           )}
+          <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+            Print / save as PDF
+          </button>
         </div>
       </div>
 
-      <div className="flex rounded-lg border text-sm w-fit">
+      <div className="hidden print:block">
+        <h1 className="text-2xl font-bold">Expense summary — {periodLabel}</h1>
+        <p className="text-sm text-neutral-500">{viewMode === "combined" ? "Combined with invoices" : "Expenses only"}</p>
+      </div>
+
+      <div className="flex rounded-lg border text-sm w-fit print:hidden">
         <button
           onClick={() => setViewMode("expenses")}
           className={`px-3 py-1.5 ${viewMode === "expenses" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
@@ -117,15 +127,15 @@ export default function ExpensesPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-2xl font-bold">£{totals.total.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">Total excl. VAT</div>
         </div>
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-2xl font-bold">£{totals.vat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">VAT to keep for review</div>
         </div>
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-2xl font-bold">£{expensesInclVat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">Total incl. VAT</div>
         </div>
@@ -133,15 +143,15 @@ export default function ExpensesPage() {
 
       {viewMode === "combined" && (
         <div className="grid grid-cols-3 gap-4">
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className="text-2xl font-bold">£{income.toFixed(2)}</div>
             <div className="text-sm text-neutral-600">Invoiced (income)</div>
           </div>
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className="text-2xl font-bold">£{expensesInclVat.toFixed(2)}</div>
             <div className="text-sm text-neutral-600">Spent (incl. VAT)</div>
           </div>
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className={`text-2xl font-bold ${income - expensesInclVat < 0 ? "text-red-600" : ""}`}>
               £{(income - expensesInclVat).toFixed(2)}
             </div>
@@ -150,7 +160,7 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
         <h2 className="font-semibold">By category</h2>
         {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this {periodMode}.</p>}
         {chartData.length > 0 && (
