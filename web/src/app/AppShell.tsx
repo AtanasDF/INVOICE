@@ -64,6 +64,20 @@ function Gate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function FeedbackButton() {
+  const { user } = useAuth();
+  const pathname = usePathname();
+  if (!user || pathname === "/feedback") return null;
+  return (
+    <Link
+      href="/feedback"
+      className="fixed bottom-5 right-5 z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden"
+    >
+      Feedback
+    </Link>
+  );
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
@@ -71,6 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
         <Gate>{children}</Gate>
       </main>
+      <FeedbackButton />
     </AuthProvider>
   );
 }
