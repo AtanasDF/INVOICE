@@ -10,8 +10,9 @@
 --
 -- Adds: the Clients/Suppliers split, the rest of each client's profile
 -- fields, receipt notes/starred/warranty/tags, invoice due
--- date/terms/paid status/tags, and a credit_notes table linked back to
--- invoices.
+-- date/terms/paid status/tags, a credit_notes table linked back to
+-- invoices, and a business_profile table (one row per user) with an
+-- overdue-reminder on/off preference.
 
 -- CLIENTS: split into clients vs. suppliers, plus their own profile fields
 alter table public.clients add column if not exists kind text not null default 'client';
