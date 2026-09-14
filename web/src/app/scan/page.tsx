@@ -146,7 +146,7 @@ export default function ScanPage() {
         category: category || "Other",
         amount: parseFloat(amount) || 0,
         vatAmount: parseFloat(vatAmount) || 0,
-        imageDataUrl: capturedFile?.mediaType.startsWith("image/") ? capturedFile.dataUrl : null,
+        imageDataUrl: capturedFile?.dataUrl ?? null,
         notes,
         starred: false,
         warrantyMonths: null,

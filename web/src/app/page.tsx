@@ -122,6 +122,10 @@ export default function Dashboard() {
         ))}
       </div>
 
+      <Link href="/files" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+        📁 Browse your file library &rarr;
+      </Link>
+
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
         <div className="mt-3 grid grid-cols-3 gap-4">

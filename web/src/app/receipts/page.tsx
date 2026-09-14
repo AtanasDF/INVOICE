@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
+import { isPdfDataUrl } from "@/lib/fileType";
 
 function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
@@ -335,8 +336,12 @@ export default function ReceiptsPage() {
             <div key={r.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
               <div className="flex items-center gap-3">
                 {r.imageDataUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.imageDataUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                  isPdfDataUrl(r.imageDataUrl) ? (
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-xl">📄</div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.imageDataUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                  )
                 )}
                 <div>
                   <div className="font-medium">{r.vendor || r.category}</div>
