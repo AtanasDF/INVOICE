@@ -13,16 +13,22 @@ function yearKey(dateStr: string) {
 // <input type="week"> isn't supported on Safari (desktop or iOS), so weeks
 // are picked via a plain date input -- whatever day you pick, we show the
 // Mon-Sun week it falls in.
+//
+// UTC methods throughout: parsing "T00:00:00" (or the (y,m,d) constructor)
+// builds LOCAL midnight, and converting that back with toISOString() (UTC)
+// shifts the result by a day whenever the viewer's timezone offset isn't
+// zero -- confirmed this breaks in both directions depending on the
+// offset, not just for far-flung timezones, so every step here stays UTC.
 function startOfWeek(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  const day = d.getDay();
+  const d = new Date(dateStr);
+  const day = d.getUTCDay();
   const diff = (day === 0 ? -6 : 1) - day;
-  d.setDate(d.getDate() + diff);
+  d.setUTCDate(d.getUTCDate() + diff);
   return d.toISOString().slice(0, 10);
 }
 function endOfWeek(dateStr: string): string {
-  const d = new Date(startOfWeek(dateStr) + "T00:00:00");
-  d.setDate(d.getDate() + 6);
+  const d = new Date(startOfWeek(dateStr));
+  d.setUTCDate(d.getUTCDate() + 6);
   return d.toISOString().slice(0, 10);
 }
 function invoiceTotal(inv: Invoice) {

@@ -6,8 +6,12 @@ import { Client, Invoice, InvoiceItem, clientsStore, invoicesStore } from "@/lib
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 function addDays(dateStr: string, days: number): string {
+  // UTC methods throughout -- see the comment on the equivalent helper in
+  // expenses/page.tsx for why: mixing UTC parsing with local getDate/setDate
+  // before a toISOString round-trip is a real off-by-one-day bug depending
+  // on the viewer's timezone offset, confirmed to break in either direction.
   const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 

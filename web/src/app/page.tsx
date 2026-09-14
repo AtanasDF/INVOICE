@@ -30,11 +30,13 @@ export default function Dashboard() {
         businessProfileStore.get(),
       ]);
       if (cancelled) return;
-      const now = new Date();
-      const monthReceipts = receipts.filter((r) => {
-        const d = new Date(r.date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
+      const today = new Date().toISOString().slice(0, 10);
+      // Compare "YYYY-MM" string prefixes rather than Date object fields --
+      // constructing a Date from a bare date string and reading local
+      // month/year back out is a real source of off-by-one-day bugs
+      // whenever the viewer's timezone offset isn't exactly zero.
+      const thisMonth = today.slice(0, 7);
+      const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth);
       setCounts({
         clients: clients.length,
         receipts: receipts.length,
@@ -42,7 +44,6 @@ export default function Dashboard() {
         monthTotal: monthReceipts.reduce((s, r) => s + r.amount, 0),
         monthVat: monthReceipts.reduce((s, r) => s + r.vatAmount, 0),
       });
-      const today = now.toISOString().slice(0, 10);
       const overdue = invoices.filter((i) => !i.paid && i.dueDate && i.dueDate < today);
       setOverdueCount(overdue.length);
       setShowOverdueBanner(profile.showOverdueReminders && overdue.length > 0);
