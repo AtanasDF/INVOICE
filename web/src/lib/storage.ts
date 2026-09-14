@@ -28,8 +28,16 @@ export type Receipt = {
   date: string;
   vendor: string;
   category: string;
+  // amount/vatAmount are always GBP, converted at entry time if the
+  // original purchase was in another currency -- every existing report,
+  // total, and export reads these two fields and stays correct without
+  // any changes. original* below is provenance only, never read for math.
   amount: number;
   vatAmount: number;
+  originalAmount: number | null;
+  originalVatAmount: number | null;
+  originalCurrency: string | null;
+  fxRate: number | null;
   imageDataUrl: string | null;
   notes: string;
   starred: boolean;
@@ -141,6 +149,10 @@ type ReceiptRow = {
   category: string | null;
   amount: number;
   vat_amount: number;
+  original_amount: number | null;
+  original_vat_amount: number | null;
+  original_currency: string | null;
+  fx_rate: number | null;
   image_data_url: string | null;
   notes: string | null;
   starred: boolean | null;
@@ -158,6 +170,10 @@ function receiptFromRow(r: ReceiptRow): Receipt {
     category: r.category ?? "",
     amount: Number(r.amount),
     vatAmount: Number(r.vat_amount),
+    originalAmount: r.original_amount === null ? null : Number(r.original_amount),
+    originalVatAmount: r.original_vat_amount === null ? null : Number(r.original_vat_amount),
+    originalCurrency: r.original_currency,
+    fxRate: r.fx_rate === null ? null : Number(r.fx_rate),
     imageDataUrl: r.image_data_url,
     notes: r.notes ?? "",
     starred: r.starred ?? false,
@@ -185,6 +201,10 @@ export const receiptsStore = {
         category: input.category || null,
         amount: input.amount,
         vat_amount: input.vatAmount,
+        original_amount: input.originalAmount,
+        original_vat_amount: input.originalVatAmount,
+        original_currency: input.originalCurrency,
+        fx_rate: input.fxRate,
         image_data_url: input.imageDataUrl,
         notes: input.notes || null,
         starred: input.starred,

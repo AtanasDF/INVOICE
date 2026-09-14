@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Client, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
+import { CURRENCIES, getFxRate } from "@/lib/fx";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 type Confidence = "high" | "low";
@@ -17,6 +18,7 @@ type ScanApiResult = {
   dateConfidence: Confidence;
   totalAmount: number | null;
   totalAmountConfidence: Confidence;
+  currency: string | null;
   vatAmount: number | null;
   vatAmountConfidence: Confidence;
   category: Category | null;
@@ -68,6 +70,10 @@ export default function ScanPage() {
   // stored or edited directly, same fix as the manual Receipts form.
   const [totalAmount, setTotalAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
+  const [currency, setCurrency] = useState("GBP");
+  const [fxRateInput, setFxRateInput] = useState("");
+  const [fxLoading, setFxLoading] = useState(false);
+  const [fxError, setFxError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<ReceiptLineItem[]>([]);
   const [contactPerson, setContactPerson] = useState("");
@@ -132,6 +138,13 @@ export default function ScanPage() {
       setDateConf(result.dateConfidence);
       setTotalAmountConf(result.totalAmountConfidence);
       setVatConf(result.vatAmountConfidence);
+      if (result.currency && result.currency !== "GBP") {
+        onCurrencyChange(result.currency);
+      } else {
+        setCurrency("GBP");
+        setFxRateInput("");
+        setFxError(null);
+      }
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Scan failed.");
     } finally {
@@ -176,6 +189,46 @@ export default function ScanPage() {
 
   const mode = modeOverride ?? modeFor(documentType);
 
+  async function onCurrencyChange(next: string) {
+    setCurrency(next);
+    setFxError(null);
+    if (next === "GBP") {
+      setFxRateInput("");
+      return;
+    }
+    setFxLoading(true);
+    try {
+      const rate = await getFxRate(next, "GBP");
+      setFxRateInput(String(rate));
+    } catch (err) {
+      setFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
+    } finally {
+      setFxLoading(false);
+    }
+  }
+
+  // Same conversion pattern as the manual Receipts form: whatever's typed
+  // stays in `currency` until save time, when it's converted to GBP --
+  // never stored as a raw foreign number.
+  function gbpAmounts() {
+    const total = parseFloat(totalAmount) || 0;
+    const vat = parseFloat(vatAmount) || 0;
+    if (currency === "GBP") {
+      return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
+    }
+    const rate = parseFloat(fxRateInput) || 0;
+    const totalGbp = total * rate;
+    const vatGbp = vat * rate;
+    return {
+      netGbp: Math.max(0, totalGbp - vatGbp),
+      vatGbp,
+      originalAmount: total,
+      originalVatAmount: vat,
+      originalCurrency: currency,
+      fxRate: rate,
+    };
+  }
+
   async function saveAsSupplier() {
     if (!vendor.trim()) {
       setSaveError("Enter a company name before saving.");
@@ -215,18 +268,25 @@ export default function ScanPage() {
       setSaveError("Enter a total before saving.");
       return;
     }
+    if (currency !== "GBP" && !fxRateInput) {
+      setSaveError("Enter an exchange rate before saving (or wait for it to load).");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
-      const total = parseFloat(totalAmount) || 0;
-      const vat = parseFloat(vatAmount) || 0;
+      const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
       await receiptsStore.add({
         clientId,
         date,
         vendor,
         category: category || "Other",
-        amount: Math.max(0, total - vat),
-        vatAmount: vat,
+        amount: netGbp,
+        vatAmount: vatGbp,
+        originalAmount,
+        originalVatAmount,
+        originalCurrency,
+        fxRate,
         imageDataUrl: capturedFile?.dataUrl ?? null,
         notes,
         starred: false,
@@ -383,30 +443,47 @@ export default function ScanPage() {
           <FieldFlag confidence={vendorConf} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
             <input
               className="w-full rounded-lg border px-3 py-2"
-              placeholder={mode === "archival" ? "Total paid (£, optional)" : "Total paid (£, incl. VAT)"}
+              placeholder={mode === "archival" ? `Total paid (${currency}, optional)` : `Total paid (${currency}, incl. VAT)`}
               value={totalAmount}
               onChange={(e) => setTotalAmount(e.target.value)}
               inputMode="decimal"
             />
             <FieldFlag confidence={totalAmountConf} />
           </div>
-          <div>
-            <input className="w-full rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
-            <FieldFlag confidence={vatConf} />
-          </div>
+          <select className="rounded-lg border px-3 py-2" value={currency} onChange={(e) => onCurrencyChange(e.target.value)}>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
+        <div>
+          <input className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+          <FieldFlag confidence={vatConf} />
+        </div>
+        {currency !== "GBP" && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>
+            <input
+              className="w-28 rounded-lg border px-2 py-1.5 text-sm"
+              value={fxRateInput}
+              onChange={(e) => setFxRateInput(e.target.value)}
+              inputMode="decimal"
+              placeholder={fxLoading ? "Loading…" : "rate"}
+            />
+            <span className="text-xs text-neutral-500">GBP {fxLoading && "(fetching today's rate…)"}</span>
+          </div>
+        )}
+        {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
         {mode === "archival" && (
           <p className="text-xs text-neutral-500">
             {documentType?.replace("_", " ")}s aren&apos;t usually a single expense — leave the total blank to just file this away.
           </p>
         )}
-        {totalAmount && vatAmount && (
+        {totalAmount && (
           <p className="text-xs text-neutral-500">
-            → £{Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(vatAmount) || 0)).toFixed(2)} excl. VAT, recorded automatically.
+            → £{gbpAmounts().netGbp.toFixed(2)} excl. VAT{currency !== "GBP" ? `, £${gbpAmounts().vatGbp.toFixed(2)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.
           </p>
         )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES } from "@/lib/categories";
+import { CURRENCIES } from "@/lib/fx";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,11 @@ type ScanResult = {
   // derived app-side as totalAmount - vatAmount.
   totalAmount: number | null;
   totalAmountConfidence: "high" | "low";
+  // The currency totalAmount/vatAmount are actually denominated in, e.g.
+  // "USD" -- null if it's GBP (the default/unmarked case on a UK receipt)
+  // or genuinely unclear. The app converts to GBP itself; this is never
+  // asked to guess an exchange rate.
+  currency: string | null;
   vatAmount: number | null;
   vatAmountConfidence: "high" | "low";
   category: string | null;
@@ -89,6 +95,15 @@ function buildExtractionTool(categories: string[]) {
           "printed as the final total. Do NOT subtract VAT yourself and do NOT report a subtotal here.",
       },
       totalAmountConfidence: { type: "string", enum: ["high", "low"] },
+      currency: {
+        type: ["string", "null"],
+        enum: [...CURRENCIES, null],
+        description:
+          "The currency totalAmount/vatAmount are actually in, from its symbol or code on the document " +
+          "(e.g. \"$\" or \"USD\" -> USD). Null if it's GBP (£, or no currency marked at all -- the default " +
+          "assumption for a UK document) or if you genuinely can't tell which currency a symbol like \"$\" " +
+          "refers to.",
+      },
       vatAmount: { type: ["number", "null"], description: "VAT/tax portion only, not the total." },
       vatAmountConfidence: { type: "string", enum: ["high", "low"] },
       category: {
@@ -133,6 +148,7 @@ function buildExtractionTool(categories: string[]) {
       "dateConfidence",
       "totalAmount",
       "totalAmountConfidence",
+      "currency",
       "vatAmount",
       "vatAmountConfidence",
       "category",
@@ -224,7 +240,9 @@ export async function POST(req: Request) {
                 "or you're genuinely guessing -- never mark something \"high\" just to fill the field in. " +
                 "totalAmount is the grand total actually paid, INCLUDING VAT/tax -- read it directly off " +
                 "whatever is printed as the final total, never a subtotal. vatAmount is the VAT/tax portion " +
-                "alone, read directly if it's printed on the document. " +
+                "alone, read directly if it's printed on the document. Set currency only when totalAmount is " +
+                "genuinely NOT in GBP -- leave it null for a plain UK document (£, or no symbol at all). " +
+                "Never guess an exchange rate yourself, only the currency it's in. " +
                 "Give every line item its own best-guess category (e.g. a supermarket receipt might have " +
                 "some Groceries items and some Household items) -- only fall back to null on a line item " +
                 "when it's genuinely unclear. Only suggest categories from the given list, and only when " +
