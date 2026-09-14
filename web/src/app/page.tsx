@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { clientsStore, receiptsStore, invoicesStore } from "@/lib/storage";
+import { businessProfileStore, clientsStore, receiptsStore, invoicesStore } from "@/lib/storage";
 
 export default function Dashboard() {
   const [counts, setCounts] = useState({ clients: 0, receipts: 0, invoices: 0, monthTotal: 0, monthVat: 0 });
+  const [overdueCount, setOverdueCount] = useState(0);
+  const [showOverdueBanner, setShowOverdueBanner] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [clients, receipts, invoices] = await Promise.all([
+      const [clients, receipts, invoices, profile] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
         invoicesStore.all(),
+        businessProfileStore.get(),
       ]);
       if (cancelled) return;
       const now = new Date();
@@ -29,6 +33,10 @@ export default function Dashboard() {
         monthTotal: monthReceipts.reduce((s, r) => s + r.amount, 0),
         monthVat: monthReceipts.reduce((s, r) => s + r.vatAmount, 0),
       });
+      const today = now.toISOString().slice(0, 10);
+      const overdue = invoices.filter((i) => !i.paid && i.dueDate && i.dueDate < today);
+      setOverdueCount(overdue.length);
+      setShowOverdueBanner(profile.showOverdueReminders && overdue.length > 0);
       setLoading(false);
     }
     load();
@@ -55,6 +63,18 @@ export default function Dashboard() {
           Scan receipts, create invoices and see your monthly costs at a glance.
         </p>
       </div>
+
+      {showOverdueBanner && !bannerDismissed && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <span>
+            You have {overdueCount} overdue {overdueCount === 1 ? "invoice" : "invoices"} — worth checking if they&apos;ve been paid.
+          </span>
+          <div className="flex items-center gap-3">
+            <Link href="/invoices" className="font-medium underline">Review</Link>
+            <button onClick={() => setBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+      )}
 
       <Link
         href="/scan"

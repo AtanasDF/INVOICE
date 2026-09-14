@@ -21,6 +21,7 @@ function Header() {
             <Link href="/receipts">Receipts</Link>
             <Link href="/invoices">Invoices</Link>
             <Link href="/expenses">Expenses</Link>
+            <Link href="/settings">Settings</Link>
             <button
               onClick={() => supabase.auth.signOut()}
               className="text-neutral-500 hover:text-neutral-900"

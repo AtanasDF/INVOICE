@@ -4,11 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
 
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(() => addDays(new Date().toISOString().slice(0, 10), 30));
+  const [dueDateManual, setDueDateManual] = useState(false);
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [number, setNumber] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
   const [items, setItems] = useState<InvoiceItem[]>([{ description: "", quantity: 1, unitPrice: 0 }]);
   const [notes, setNotes] = useState("");
@@ -18,6 +27,19 @@ export default function NewInvoicePage() {
   useEffect(() => {
     clientsStore.all().then(setClients);
   }, []);
+
+  const billableClients = clients.filter((c) => c.kind === "client");
+
+  function onClientChange(id: string) {
+    setClientId(id);
+    const client = clients.find((c) => c.id === id);
+    if (client?.paymentTerms && !paymentTerms) setPaymentTerms(client.paymentTerms);
+  }
+
+  function onDateChange(value: string) {
+    setDate(value);
+    if (!dueDateManual) setDueDate(addDays(value, 30));
+  }
 
   function updateItem(idx: number, patch: Partial<InvoiceItem>) {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -37,7 +59,17 @@ export default function NewInvoicePage() {
     setError(null);
     setSaving(true);
     try {
-      const inv = await invoicesStore.add({ clientId, date, number, items, notes });
+      const inv = await invoicesStore.add({
+        clientId,
+        date,
+        number,
+        items,
+        notes,
+        dueDate: dueDate || null,
+        paymentTerms,
+        paid: false,
+        tags: [],
+      });
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save invoice.");
@@ -50,13 +82,31 @@ export default function NewInvoicePage() {
       <h1 className="text-2xl font-bold">New invoice</h1>
 
       <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => onClientChange(e.target.value)}>
           <option value="">Select a client or company</option>
-          {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <div className="grid grid-cols-2 gap-3">
-          <input type="date" className="rounded-lg border px-3 py-2" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div>
+            <label className="text-xs text-neutral-500">Invoice date</label>
+            <input type="date" className="w-full rounded-lg border px-3 py-2" value={date} onChange={(e) => onDateChange(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">Due date</label>
+            <input
+              type="date"
+              className="w-full rounded-lg border px-3 py-2"
+              value={dueDate}
+              onChange={(e) => {
+                setDueDate(e.target.value);
+                setDueDateManual(true);
+              }}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <input className="rounded-lg border px-3 py-2" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Invoice number" />
+          <input className="rounded-lg border px-3 py-2" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
         </div>
 
         <div className="space-y-2">
