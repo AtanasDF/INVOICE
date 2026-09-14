@@ -40,17 +40,24 @@ function Gate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/login";
+  // A password-reset email link logs the visitor in via a recovery
+  // session, so this page must stay reachable both signed out (still
+  // establishing that session) and signed in (about to set a new
+  // password) -- unlike /login, being authenticated here must NOT
+  // bounce them away before they finish.
+  const isResetPasswordPage = pathname === "/reset-password";
+  const isPublicPage = isLoginPage || isResetPasswordPage;
 
   useEffect(() => {
     if (loading) return;
-    if (!user && !isLoginPage) router.replace("/login");
+    if (!user && !isPublicPage) router.replace("/login");
     if (user && isLoginPage) router.replace("/");
-  }, [loading, user, isLoginPage, router]);
+  }, [loading, user, isLoginPage, isPublicPage, router]);
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
   }
-  if ((!user && !isLoginPage) || (user && isLoginPage)) {
+  if ((!user && !isPublicPage) || (user && isLoginPage)) {
     return null;
   }
 
