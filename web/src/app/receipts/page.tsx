@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category } from "@/lib/categories";
+import { CATEGORIES, Category, mostUsedCategory } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 
@@ -43,6 +43,8 @@ export default function ReceiptsPage() {
       setClients(c);
       setReceipts(r);
       setLoading(false);
+      const usual = mostUsedCategory(r.map((receipt) => receipt.category));
+      if (usual) setCategory(usual);
     });
   }, []);
 

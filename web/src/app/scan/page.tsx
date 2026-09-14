@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, InvoiceItem, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category } from "@/lib/categories";
+import { CATEGORIES, Category, mostUsedCategory } from "@/lib/categories";
 import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
@@ -67,6 +67,10 @@ export default function ScanPage() {
 
   useEffect(() => {
     clientsStore.all().then(setClients);
+    receiptsStore.all().then((r) => {
+      const usual = mostUsedCategory(r.map((receipt) => receipt.category));
+      if (usual) setCategory((prev) => prev || usual);
+    });
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier");
