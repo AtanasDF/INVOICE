@@ -4,6 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { businessProfileStore, clientsStore, receiptsStore, invoicesStore } from "@/lib/storage";
 
+function ScanIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-8 w-8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2" />
+      <circle cx="12" cy="12" r="3.25" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function Dashboard() {
   const [counts, setCounts] = useState({ clients: 0, receipts: 0, invoices: 0, monthTotal: 0, monthVat: 0 });
   const [overdueCount, setOverdueCount] = useState(0);
@@ -78,14 +87,27 @@ export default function Dashboard() {
 
       <Link
         href="/scan"
-        className="flex items-center justify-between rounded-xl border-2 border-neutral-900 bg-neutral-900 p-6 text-white shadow-sm transition hover:bg-neutral-800"
+        className="flex items-center gap-4 rounded-xl border-2 border-neutral-900 bg-neutral-900 p-6 text-white shadow-sm transition hover:bg-neutral-800"
       >
-        <div>
+        <ScanIcon />
+        <div className="flex-1">
           <div className="text-lg font-semibold">What do you want to scan or add?</div>
           <div className="mt-1 text-sm text-neutral-300">Point your camera at a receipt, invoice, or document.</div>
         </div>
         <span className="text-2xl">&rarr;</span>
       </Link>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Link href="/receipts" className="rounded-lg border bg-white px-4 py-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+          + Add a receipt manually
+        </Link>
+        <Link href="/invoices/new" className="rounded-lg border bg-white px-4 py-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+          + Create an invoice
+        </Link>
+        <Link href="/clients" className="rounded-lg border bg-white px-4 py-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+          + Add a client or company
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((c) => (
@@ -118,18 +140,6 @@ export default function Dashboard() {
         </div>
         <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-blue-600">
           View full expense summary &rarr;
-        </Link>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Link href="/receipts" className="rounded-lg border px-4 py-2 text-sm font-medium">
-          + Add a receipt manually
-        </Link>
-        <Link href="/invoices/new" className="rounded-lg border px-4 py-2 text-sm font-medium">
-          + Create an invoice
-        </Link>
-        <Link href="/clients" className="rounded-lg border px-4 py-2 text-sm font-medium">
-          + Add a client or company
         </Link>
       </div>
     </div>
