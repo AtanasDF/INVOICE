@@ -46,5 +46,10 @@ returning *;
 -- description of the original three test rows didn't specify which.
 -- If either of these returns nothing, everything was already caught by
 -- the blocks above and there's nothing more to do.
-delete from public.invoices where number = 'TEST-001' returning *;
-delete from public.receipts where vendor ilike '%northlight%' and amount = 240 returning *;
+--
+-- Scoped to the account's own user_id (not auth.uid(), since this runs
+-- from the SQL editor rather than an authenticated client session) so
+-- these two broader, less-specific matches can't touch another user's
+-- rows.
+delete from public.invoices where number = 'TEST-001' and user_id = 'dfb4ce76-ddb9-4580-9646-cc3626abee98' returning *;
+delete from public.receipts where vendor ilike '%northlight%' and amount = 240 and user_id = 'dfb4ce76-ddb9-4580-9646-cc3626abee98' returning *;
