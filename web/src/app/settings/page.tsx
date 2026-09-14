@@ -1,8 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { businessProfileStore } from "@/lib/storage";
+import {
+  businessProfileStore,
+  clientsStore,
+  creditNotesStore,
+  feedbackStore,
+  invoicesStore,
+  receiptsStore,
+  recurringExpensesStore,
+} from "@/lib/storage";
 import { CATEGORIES, effectiveCategories } from "@/lib/categories";
+import { downloadJson } from "@/lib/exportJson";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -15,6 +24,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     businessProfileStore.get().then((p) => {
@@ -76,6 +87,36 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Could not save your profile.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function exportData() {
+    setExportError(null);
+    setExporting(true);
+    try {
+      const [clients, receipts, invoices, creditNotes, feedback, recurringExpenses, profile] = await Promise.all([
+        clientsStore.all(),
+        receiptsStore.all(),
+        invoicesStore.all(),
+        creditNotesStore.all(),
+        feedbackStore.all(),
+        recurringExpensesStore.all(),
+        businessProfileStore.get(),
+      ]);
+      downloadJson(`my-data-export-${new Date().toISOString().slice(0, 10)}.json`, {
+        exportedAt: new Date().toISOString(),
+        businessProfile: profile,
+        clients,
+        receipts,
+        invoices,
+        creditNotes,
+        recurringExpenses,
+        feedback,
+      });
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Could not export your data.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -190,6 +231,25 @@ export default function SettingsPage() {
           {saving ? "Saving…" : "Save"}
         </button>
       </form>
+
+      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div>
+          <h2 className="font-semibold">Your data</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Download everything you&apos;ve stored — clients, receipts, invoices, credit notes, recurring expenses,
+            and feedback — as a single JSON file, including any scanned images and PDFs attached to your receipts.
+          </p>
+        </div>
+        {exportError && <p className="text-sm text-red-600">{exportError}</p>}
+        <button
+          type="button"
+          onClick={exportData}
+          disabled={exporting}
+          className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+        >
+          {exporting ? "Preparing your download…" : "Download all my data"}
+        </button>
+      </div>
     </div>
   );
 }
