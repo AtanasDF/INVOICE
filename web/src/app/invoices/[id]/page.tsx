@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Client, CreditNote, Invoice, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
+import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [cnDate, setCnDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -25,10 +26,15 @@ export default function InvoiceViewPage() {
       if (cancelled) return;
       setInvoice(inv);
       if (inv) {
-        const [clients, notes] = await Promise.all([clientsStore.all(), creditNotesStore.forInvoice(inv.id)]);
+        const [clients, notes, biz] = await Promise.all([
+          clientsStore.all(),
+          creditNotesStore.forInvoice(inv.id),
+          businessProfileStore.get(),
+        ]);
         if (cancelled) return;
         setClient(clients.find((c) => c.id === inv.clientId) || null);
         setCreditNotes(notes);
+        setProfile(biz);
       }
       setLoading(false);
     }
@@ -113,6 +119,13 @@ export default function InvoiceViewPage() {
             {invoice.dueDate && <p className="text-sm text-neutral-500">Due: {invoice.dueDate}</p>}
             {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
           </div>
+          {profile?.businessName && (
+            <div className="text-right">
+              <p className="font-medium">{profile.businessName}</p>
+              {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
+              {profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
+            </div>
+          )}
         </div>
 
         <div className="mt-6">

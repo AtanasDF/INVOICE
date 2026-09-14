@@ -71,3 +71,31 @@ begin
       for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
   end if;
 end $$;
+
+-- BUSINESS PROFILE: one row per user, auto-fills onto invoices
+create table if not exists public.business_profile (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  business_name text,
+  vat_number text,
+  address text,
+  logo_url text,
+  updated_at timestamptz not null default now()
+);
+alter table public.business_profile add column if not exists business_name text;
+alter table public.business_profile add column if not exists vat_number text;
+alter table public.business_profile add column if not exists address text;
+alter table public.business_profile add column if not exists logo_url text;
+alter table public.business_profile add column if not exists updated_at timestamptz default now();
+
+alter table public.business_profile enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'business_profile' and policyname = 'business_profile_owner_all'
+  ) then
+    create policy "business_profile_owner_all" on public.business_profile
+      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+end $$;

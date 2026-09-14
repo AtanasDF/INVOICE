@@ -330,3 +330,48 @@ export const creditNotesStore = {
     if (error) throw error;
   },
 };
+
+export type BusinessProfile = {
+  businessName: string;
+  vatNumber: string;
+  address: string;
+  logoUrl: string | null;
+};
+
+type BusinessProfileRow = {
+  business_name: string | null;
+  vat_number: string | null;
+  address: string | null;
+  logo_url: string | null;
+};
+
+function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
+  return {
+    businessName: r.business_name ?? "",
+    vatNumber: r.vat_number ?? "",
+    address: r.address ?? "",
+    logoUrl: r.logo_url,
+  };
+}
+
+const EMPTY_BUSINESS_PROFILE: BusinessProfile = { businessName: "", vatNumber: "", address: "", logoUrl: null };
+
+export const businessProfileStore = {
+  async get(): Promise<BusinessProfile> {
+    const { data, error } = await supabase.from("business_profile").select("*").maybeSingle();
+    if (error) throw error;
+    return data ? businessProfileFromRow(data as BusinessProfileRow) : EMPTY_BUSINESS_PROFILE;
+  },
+  async save(input: BusinessProfile): Promise<void> {
+    const user_id = await currentUserId();
+    const { error } = await supabase.from("business_profile").upsert({
+      user_id,
+      business_name: input.businessName || null,
+      vat_number: input.vatNumber || null,
+      address: input.address || null,
+      logo_url: input.logoUrl,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  },
+};
