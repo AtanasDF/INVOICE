@@ -1,4 +1,6 @@
--- Run this in the Supabase SQL Editor after schema.sql.
+-- FIRST run 000-backup-before-migration.sql in this same folder — it
+-- snapshots your current data so there's something to restore from if
+-- anything here ever needs undoing. Then run this file.
 -- https://supabase.com/dashboard/project/wecfwjxzyzzrcwbwnwpo/sql/new
 --
 -- Non-destructive, same as schema.sql: only ADD COLUMN IF NOT EXISTS,
