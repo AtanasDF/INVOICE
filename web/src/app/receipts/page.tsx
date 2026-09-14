@@ -21,6 +21,7 @@ export default function ReceiptsPage() {
   const [vatAmount, setVatAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [warrantyMonths, setWarrantyMonths] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -34,6 +35,7 @@ export default function ReceiptsPage() {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterClientId, setFilterClientId] = useState("");
   const [filterStarredOnly, setFilterStarredOnly] = useState(false);
+  const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
     Promise.all([clientsStore.all(), receiptsStore.all()]).then(([c, r]) => {
@@ -92,7 +94,7 @@ export default function ReceiptsPage() {
         notes,
         starred: false,
         warrantyMonths: warrantyMonths ? parseInt(warrantyMonths, 10) : null,
-        tags: [],
+        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
       setReceipts((prev) => [created, ...prev]);
       setVendor("");
@@ -100,6 +102,7 @@ export default function ReceiptsPage() {
       setVatAmount("");
       setNotes("");
       setWarrantyMonths("");
+      setTagsInput("");
       setImageDataUrl(null);
       setPossibleDuplicate(null);
       setConfirmedDuplicate(false);
@@ -136,6 +139,12 @@ export default function ReceiptsPage() {
     return clients.find((c) => c.id === id)?.name || "No supplier";
   }
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of receipts) for (const t of r.tags) set.add(t);
+    return Array.from(set).sort();
+  }, [receipts]);
+
   const filteredReceipts = useMemo(() => {
     return receipts.filter((r) => {
       if (filterFrom && r.date < filterFrom) return false;
@@ -143,9 +152,10 @@ export default function ReceiptsPage() {
       if (filterCategory && r.category !== filterCategory) return false;
       if (filterClientId && r.clientId !== filterClientId) return false;
       if (filterStarredOnly && !r.starred) return false;
+      if (filterTag && !r.tags.includes(filterTag)) return false;
       return true;
     });
-  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId, filterStarredOnly]);
+  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId, filterStarredOnly, filterTag]);
 
   function exportReceipts() {
     downloadCsv(
@@ -159,11 +169,12 @@ export default function ReceiptsPage() {
         vat: r.vatAmount.toFixed(2),
         amount_incl_vat: (r.amount + r.vatAmount).toFixed(2),
         notes: r.notes,
+        tags: r.tags.join("; "),
       }))
     );
   }
 
-  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly;
+  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly || filterTag;
 
   return (
     <div className="space-y-8">
@@ -247,6 +258,12 @@ export default function ReceiptsPage() {
           onChange={(e) => setWarrantyMonths(e.target.value)}
           inputMode="numeric"
         />
+        <input
+          className="w-full rounded-lg border px-3 py-2"
+          placeholder="Tags, comma separated (optional, e.g. Site A, Q3 job)"
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+        />
         {error && <p className="text-sm text-red-600">{error}</p>}
         {possibleDuplicate && (
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
@@ -283,13 +300,21 @@ export default function ReceiptsPage() {
             {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <label className="mt-3 flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={filterStarredOnly} onChange={(e) => setFilterStarredOnly(e.target.checked)} />
-          Starred only
-        </label>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={filterStarredOnly} onChange={(e) => setFilterStarredOnly(e.target.checked)} />
+            Starred only
+          </label>
+          {allTags.length > 0 && (
+            <select className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+              <option value="">All tags</option>
+              {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+        </div>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); setFilterTag(""); }}
             className="mt-2 text-sm text-blue-600"
           >
             Clear filters
@@ -323,6 +348,13 @@ export default function ReceiptsPage() {
                   {r.warrantyMonths != null && (
                     <div className="mt-1 text-xs text-neutral-400">
                       Warranty: {r.warrantyMonths} months (until {addMonths(r.date, r.warrantyMonths)})
+                    </div>
+                  )}
+                  {r.tags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {r.tags.map((t) => (
+                        <span key={t} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{t}</span>
+                      ))}
                     </div>
                   )}
                 </div>
