@@ -10,13 +10,23 @@ let cvPromise: Promise<CVModule> | null = null;
  */
 export function loadOpenCV(): Promise<CVModule> {
   if (!cvPromise) {
-    cvPromise = import("@techstark/opencv-js").then((mod) => {
-      const cv = (mod as unknown as { default?: CVModule }).default ?? (mod as unknown as CVModule);
-      if (cv.Mat) return cv;
-      return new Promise<CVModule>((resolve) => {
-        cv.onRuntimeInitialized = () => resolve(cv);
+    cvPromise = import("@techstark/opencv-js")
+      .then((mod) => {
+        const cv = (mod as unknown as { default?: CVModule }).default ?? (mod as unknown as CVModule);
+        if (cv.Mat) return cv;
+        return new Promise<CVModule>((resolve) => {
+          cv.onRuntimeInitialized = () => resolve(cv);
+        });
+      })
+      .catch((err) => {
+        // A failed load (network failure, unsupported WASM, etc.) would
+        // otherwise cache the rejection forever -- every later call site
+        // re-awaiting this same promise would keep re-throwing the exact
+        // same failure with no chance to recover, even after "Try again".
+        // Clearing it lets the next call attempt a fresh import instead.
+        cvPromise = null;
+        throw err;
       });
-    });
   }
   return cvPromise;
 }

@@ -100,6 +100,7 @@ export default function FilesPage() {
       {preview && (
         <div
           className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4"
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
           onClick={() => setPreview(null)}
         >
           <div className="flex items-center justify-between text-white">
