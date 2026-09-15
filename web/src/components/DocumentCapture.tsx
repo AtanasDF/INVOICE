@@ -449,18 +449,37 @@ export default function DocumentCapture({
             Take a clear, well-lit photo of the whole document.
           </p>
         </div>
-        <div className="p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+        <div className="space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
           <button
             onClick={() => nativeInputRef.current?.click()}
             className="w-full rounded-lg bg-white px-5 py-3 text-center text-sm font-medium text-neutral-900"
           >
             Take a photo
           </button>
+          {/* capture="environment" forces straight to the camera on iOS
+              Safari, which is exactly what the button above wants -- but
+              it also makes the photo library and PDFs unreachable. This
+              is the same accept as the non-iOS "Upload instead" input
+              below, just without capture, so both are actually usable
+              here: an existing photo, or a PDF invoice from email. */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full rounded-lg border border-white/30 px-5 py-3 text-center text-sm font-medium text-white"
+          >
+            Upload instead
+          </button>
           <input
             ref={nativeInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            onChange={onFileChosen}
+            className="hidden"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf"
             onChange={onFileChosen}
             className="hidden"
           />
