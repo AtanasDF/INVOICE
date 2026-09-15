@@ -170,7 +170,17 @@ export const clientsStore = {
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("clients").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      // 23503 = foreign_key_violation -- migration-014 changed
+      // receipts.client_id/invoices.client_id from ON DELETE SET NULL to
+      // ON DELETE RESTRICT, since silently detaching a financial record
+      // from who it was billed to or bought from is a real integrity
+      // problem, not a convenience.
+      if (error.code === "23503") {
+        throw new Error("Can't remove this client — it still has receipts or invoices linked to it. Update or remove those first, or edit this client's details instead of deleting it.");
+      }
+      throw error;
+    }
   },
 };
 

@@ -272,7 +272,7 @@ export default function ExpensesPage() {
                   formatter={(value) => [`£${Number(value).toFixed(2)}`, "Spend incl. VAT"]}
                   contentStyle={{ borderRadius: 8, borderColor: "#e5e5e5", fontSize: 13 }}
                 />
-                <Bar dataKey="spend" fill="#171717" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="spend" fill="#171717" radius={[4, 4, 0, 0]} maxBarSize={80} />
               </BarChart>
             </ResponsiveContainer>
           </div>
