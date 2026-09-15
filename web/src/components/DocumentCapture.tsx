@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { loadOpenCV } from "@/lib/opencv";
 
 type Point = { x: number; y: number };
-type Status = "starting" | "live" | "denied" | "unsupported" | "review";
+type Status = "starting" | "live" | "denied" | "timeout" | "unsupported" | "review";
 
 export type CapturedFile = { dataUrl: string; mediaType: string };
 
@@ -14,6 +14,12 @@ type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDete
 
 const DETECT_INTERVAL_MS = 200;
 const WORK_WIDTH = 480;
+// getUserMedia can hang indefinitely rather than reject in some real
+// browser/OS blocking states (camera access blocked at the OS level for
+// the whole browser, not just this site, is the most common one) -- with
+// no timeout, that's exactly the "stuck on Starting camera... forever,
+// no error, no prompt" dead end. This bounds it.
+const CAMERA_TIMEOUT_MS = 8000;
 
 function orderPoints(pts: Point[]): [Point, Point, Point, Point] {
   const sums = pts.map((p) => p.x + p.y);
@@ -50,6 +56,7 @@ export default function DocumentCapture({
   const [reviewImage, setReviewImage] = useState<string | null>(null);
   const [barcodeValue, setBarcodeValue] = useState<string | null>(null);
   const [hasQuad, setHasQuad] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const stopStream = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -57,6 +64,11 @@ export default function DocumentCapture({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
+
+  function retry() {
+    setStatus("starting");
+    setRetryKey((k) => k + 1);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -75,10 +87,37 @@ export default function DocumentCapture({
         if (!cancelled) setStatus("unsupported");
         return;
       }
+
+      // Where supported (Chrome/Edge; Safari and Firefox don't implement
+      // the Permissions API for camera), check the existing grant first.
+      // If it's already denied, calling getUserMedia again wouldn't show
+      // a prompt at all -- going straight to the "denied" explanation
+      // avoids relying on getUserMedia to reject promptly (or at all) in
+      // that state.
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-        });
+        const perm = await navigator.permissions?.query({ name: "camera" as PermissionName });
+        if (perm?.state === "denied") {
+          if (!cancelled) setStatus("denied");
+          return;
+        }
+      } catch {
+        // Permissions API unsupported or "camera" not a recognized name
+        // on this browser -- fall through and just try getUserMedia.
+      }
+
+      let timedOut = false;
+      const timeout = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          timedOut = true;
+          reject(new Error("timeout"));
+        }, CAMERA_TIMEOUT_MS);
+      });
+
+      try {
+        const stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } }),
+          timeout,
+        ]);
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -91,7 +130,8 @@ export default function DocumentCapture({
         setStatus("live");
         rafRef.current = requestAnimationFrame(loop);
       } catch {
-        if (!cancelled) setStatus("denied");
+        if (cancelled) return;
+        setStatus(timedOut ? "timeout" : "denied");
       }
     }
 
@@ -217,7 +257,9 @@ export default function DocumentCapture({
       cancelled = true;
       stopStream();
     };
-  }, [stopStream]);
+    // retryKey is intentionally a dependency purely to let retry() force
+    // this whole effect (and therefore start()) to run again.
+  }, [stopStream, retryKey]);
 
   function capture() {
     const video = videoRef.current;
@@ -324,12 +366,37 @@ export default function DocumentCapture({
           <div className="relative flex-1 overflow-hidden">
             <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
             <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 h-full w-full" />
+
+            {/* Always visible, regardless of status -- the old bottom-bar
+                "Cancel" text was easy to miss entirely while stuck on a
+                black screen with no other affordance. */}
+            <button
+              onClick={close}
+              aria-label="Back"
+              className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
             {status === "starting" && (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-white">Starting camera…</div>
             )}
+            {status === "timeout" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-white">
+                <p>The camera didn&apos;t respond. This usually means access is blocked somewhere your browser won&apos;t report directly (an OS-level camera privacy setting is the most common one) — check there, or upload a photo or PDF instead.</p>
+                <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
+                  Try again
+                </button>
+              </div>
+            )}
             {status === "denied" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-white">
-                <p>Camera access was denied or isn&apos;t available. You can still upload a photo or PDF instead.</p>
+                <p>Camera access was denied. You can allow it from your browser&apos;s site settings, or upload a photo or PDF instead.</p>
+                <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
+                  Try again
+                </button>
               </div>
             )}
             {status === "unsupported" && (
@@ -350,20 +417,33 @@ export default function DocumentCapture({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-4 bg-black p-4">
-            <button onClick={close} className="text-sm font-medium text-white/70">Cancel</button>
-            <button
-              onClick={capture}
-              disabled={status !== "live"}
-              className="h-16 w-16 rounded-full border-4 border-white bg-white/20 disabled:opacity-30"
-              aria-label="Capture"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="text-sm font-medium text-white/70"
-            >
-              Upload
-            </button>
+          <div className="flex items-center justify-center gap-4 bg-black p-4">
+            {status === "live" ? (
+              <>
+                <button
+                  onClick={capture}
+                  className="h-16 w-16 rounded-full border-4 border-white bg-white/20"
+                  aria-label="Capture"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-lg border border-white/30 px-5 py-3 text-sm font-medium text-white"
+                >
+                  Upload instead
+                </button>
+              </>
+            ) : (
+              // Camera isn't usable right now (still starting, denied,
+              // timed out, unsupported) -- Upload is the only thing that
+              // actually works, so it gets the primary button, not the
+              // smallest text on the page.
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full max-w-xs rounded-lg bg-white px-5 py-3 text-center text-sm font-medium text-neutral-900"
+              >
+                Upload a photo or PDF
+              </button>
+            )}
             <input
               ref={fileInputRef}
               type="file"
