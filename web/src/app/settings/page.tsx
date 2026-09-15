@@ -14,6 +14,7 @@ import {
 import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
+import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -31,6 +32,11 @@ export default function SettingsPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [inboxToken, setInboxToken] = useState<string | null>(null);
+  const [inboxBusy, setInboxBusy] = useState(false);
+  const [inboxError, setInboxError] = useState<string | null>(null);
+  const [inboxCopied, setInboxCopied] = useState(false);
+  const [inboxRevealed, setInboxRevealed] = useState(false);
 
   useEffect(() => {
     businessProfileStore.get().then((p) => {
@@ -39,10 +45,35 @@ export default function SettingsPage() {
       setAddress(p.address);
       setShowOverdueReminders(p.showOverdueReminders);
       setCategories(effectiveCategories(p.customCategories));
+      setInboxToken(p.inboxToken);
       setLoading(false);
     });
     getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
   }, []);
+
+  async function regenerateInboxToken() {
+    setInboxError(null);
+    setInboxBusy(true);
+    try {
+      const profile = await businessProfileStore.get();
+      const token = generateInboxToken();
+      await businessProfileStore.save({ ...profile, inboxToken: token });
+      setInboxToken(token);
+      setInboxRevealed(false);
+    } catch (err) {
+      setInboxError(err instanceof Error ? err.message : "Could not generate an import address.");
+    } finally {
+      setInboxBusy(false);
+    }
+  }
+
+  function copyInboxAddress() {
+    if (!inboxToken) return;
+    navigator.clipboard.writeText(inboxAddress(inboxToken)).then(() => {
+      setInboxCopied(true);
+      setTimeout(() => setInboxCopied(false), 2000);
+    });
+  }
 
   async function togglePush() {
     setPushError(null);
@@ -107,6 +138,7 @@ export default function SettingsPage() {
         logoUrl: null,
         showOverdueReminders,
         customCategories: categories,
+        inboxToken,
       });
       setSaved(true);
     } catch (err) {
@@ -305,6 +337,64 @@ export default function SettingsPage() {
               {pushBusy ? "Working…" : pushEnabled ? "Turn off notifications" : "Turn on notifications"}
             </button>
           </>
+        )}
+      </div>
+
+      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div>
+          <h2 className="font-semibold">Email import</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Forward a receipt to your own address below and it&apos;ll show up under{" "}
+            <a href="/receipts/review" className="underline">Needs review</a> for you to check before it becomes a
+            real receipt — nobody&apos;s watching the way you are on the scan screen, so nothing from email goes
+            straight in unchecked.
+          </p>
+        </div>
+        {inboxError && <p className="text-sm text-red-600">{inboxError}</p>}
+        {inboxToken ? (
+          <>
+            <p className="text-xs font-medium text-amber-700">
+              Treat this address like a password. Anyone who has it can send mail that creates receipts in your
+              account — don&apos;t post it publicly, and regenerate it below if it ever ends up somewhere it
+              shouldn&apos;t.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
+                {inboxRevealed ? inboxAddress(inboxToken) : `u-${"•".repeat(32)}@invoiceover.com`}
+              </code>
+              <button
+                type="button"
+                onClick={() => setInboxRevealed((v) => !v)}
+                className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700"
+              >
+                {inboxRevealed ? "Hide" : "Reveal"}
+              </button>
+              <button type="button" onClick={copyInboxAddress} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
+                {inboxCopied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={regenerateInboxToken}
+              disabled={inboxBusy}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
+            >
+              {inboxBusy ? "Working…" : "Regenerate address"}
+            </button>
+            <p className="text-xs text-neutral-500">
+              Regenerating immediately stops the old address from working — use this if it ever ends up somewhere
+              you didn&apos;t intend.
+            </p>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={regenerateInboxToken}
+            disabled={inboxBusy}
+            className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+          >
+            {inboxBusy ? "Generating…" : "Get my import address"}
+          </button>
         )}
       </div>
     </div>

@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [dueRecurringCount, setDueRecurringCount] = useState(0);
   const [recurringBannerDismissed, setRecurringBannerDismissed] = useState(false);
+  const [needsReviewCount, setNeedsReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +40,10 @@ export default function Dashboard() {
       // month/year back out is a real source of off-by-one-day bugs
       // whenever the viewer's timezone offset isn't exactly zero.
       const thisMonth = today.slice(0, 7);
-      const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth);
+      // Excludes anything still needing review -- an emailed-in receipt
+      // nobody's confirmed yet shouldn't silently skew these totals
+      // before it's actually been checked.
+      const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth && !r.needsReview);
       setCounts({
         clients: clients.length,
         receipts: receipts.length,
@@ -51,6 +55,7 @@ export default function Dashboard() {
       setOverdueCount(overdue.length);
       setShowOverdueBanner(profile.showOverdueReminders && overdue.length > 0);
       setDueRecurringCount(recurring.filter((r) => r.active && r.nextDueDate <= today).length);
+      setNeedsReviewCount(receipts.filter((r) => r.needsReview).length);
       setLoading(false);
     }
     load();
@@ -99,6 +104,15 @@ export default function Dashboard() {
             <Link href="/recurring" className="font-medium underline">Review</Link>
             <button onClick={() => setRecurringBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
           </div>
+        </div>
+      )}
+
+      {needsReviewCount > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          <span>
+            {needsReviewCount} emailed {needsReviewCount === 1 ? "receipt is" : "receipts are"} waiting on review before {needsReviewCount === 1 ? "it counts" : "they count"} toward your totals.
+          </span>
+          <Link href="/receipts/review" className="font-medium underline">Review</Link>
         </div>
       )}
 

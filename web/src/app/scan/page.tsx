@@ -290,6 +290,7 @@ export default function ScanPage() {
         imageDataUrl: capturedFile?.dataUrl ?? null,
         notes,
         starred: false,
+        needsReview: false,
         warrantyMonths: null,
         tags: [],
         lineItems,

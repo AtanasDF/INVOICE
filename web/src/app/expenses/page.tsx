@@ -59,6 +59,10 @@ export default function ExpensesPage() {
   const periodReceipts = useMemo(
     () =>
       receipts.filter((r) => {
+        // Excludes anything still needing review -- an emailed-in receipt
+        // nobody's confirmed yet shouldn't count toward these figures
+        // until it's actually been checked.
+        if (r.needsReview) return false;
         if (periodMode === "week") return r.date >= weekStart && r.date <= weekEnd;
         if (periodMode === "month") return monthKey(r.date) === month;
         return yearKey(r.date) === year;

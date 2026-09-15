@@ -44,6 +44,11 @@ export type Receipt = {
   warrantyMonths: number | null;
   tags: string[];
   lineItems: ReceiptLineItem[];
+  // true for a receipt created from an emailed-in document, until the
+  // account holder confirms the AI's extraction was correct. Nobody's
+  // watching a live screen the way they are for a scan, so these don't
+  // silently become "real" data until someone's actually checked them.
+  needsReview: boolean;
 };
 
 export type InvoiceItem = {
@@ -159,6 +164,7 @@ type ReceiptRow = {
   warranty_months: number | null;
   tags: string[] | null;
   line_items: ReceiptLineItem[] | null;
+  needs_review: boolean | null;
 };
 
 function receiptFromRow(r: ReceiptRow): Receipt {
@@ -180,6 +186,7 @@ function receiptFromRow(r: ReceiptRow): Receipt {
     warrantyMonths: r.warranty_months,
     tags: r.tags ?? [],
     lineItems: r.line_items ?? [],
+    needsReview: r.needs_review ?? false,
   };
 }
 
@@ -211,19 +218,34 @@ export const receiptsStore = {
         warranty_months: input.warrantyMonths,
         tags: input.tags,
         line_items: input.lineItems,
+        needs_review: input.needsReview,
       })
       .select()
       .single();
     if (error) throw error;
     return receiptFromRow(data as ReceiptRow);
   },
-  async update(id: string, patch: Partial<Pick<Receipt, "starred" | "notes" | "warrantyMonths" | "tags" | "lineItems">>): Promise<void> {
+  async update(
+    id: string,
+    patch: Partial<
+      Pick<
+        Receipt,
+        "starred" | "notes" | "warrantyMonths" | "tags" | "lineItems" | "vendor" | "date" | "category" | "amount" | "vatAmount" | "needsReview"
+      >
+    >
+  ): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.starred !== undefined) dbPatch.starred = patch.starred;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     if (patch.warrantyMonths !== undefined) dbPatch.warranty_months = patch.warrantyMonths;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
     if (patch.lineItems !== undefined) dbPatch.line_items = patch.lineItems;
+    if (patch.vendor !== undefined) dbPatch.vendor = patch.vendor || null;
+    if (patch.date !== undefined) dbPatch.date = patch.date;
+    if (patch.category !== undefined) dbPatch.category = patch.category || null;
+    if (patch.amount !== undefined) dbPatch.amount = patch.amount;
+    if (patch.vatAmount !== undefined) dbPatch.vat_amount = patch.vatAmount;
+    if (patch.needsReview !== undefined) dbPatch.needs_review = patch.needsReview;
     const { error } = await supabase.from("receipts").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
@@ -370,6 +392,13 @@ export type BusinessProfile = {
   logoUrl: string | null;
   showOverdueReminders: boolean;
   customCategories: string[] | null;
+  // The <token> in u-<token>@invoiceover.com -- an opaque, unguessable
+  // per-account address for the email inbox-import feature. Null until
+  // generated. This token IS the entire security boundary for that
+  // feature (anyone who knows it can address mail to this account), so
+  // it's generated client-side via the Web Crypto API (generateInboxToken
+  // in lib/inboxToken.ts), never anything guessable.
+  inboxToken: string | null;
 };
 
 type BusinessProfileRow = {
@@ -379,6 +408,7 @@ type BusinessProfileRow = {
   logo_url: string | null;
   show_overdue_reminders: boolean | null;
   custom_categories: string[] | null;
+  inbox_token: string | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -389,6 +419,7 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     logoUrl: r.logo_url,
     showOverdueReminders: r.show_overdue_reminders ?? true,
     customCategories: r.custom_categories ?? null,
+    inboxToken: r.inbox_token,
   };
 }
 
@@ -399,6 +430,7 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   logoUrl: null,
   showOverdueReminders: true,
   customCategories: null,
+  inboxToken: null,
 };
 
 export const businessProfileStore = {
@@ -417,6 +449,7 @@ export const businessProfileStore = {
       logo_url: input.logoUrl,
       show_overdue_reminders: input.showOverdueReminders,
       custom_categories: input.customCategories,
+      inbox_token: input.inboxToken,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;

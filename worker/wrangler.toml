@@ -1,0 +1,10 @@
+name = "invoice-inbox-worker"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Not a secret -- just where to POST parsed emails. INBOX_WEBHOOK_SECRET
+# (the actual credential) is set separately via:
+#   wrangler secret put INBOX_WEBHOOK_SECRET
+# so it never ends up in this file or in git.
+[vars]
+APP_INGEST_URL = "https://invoice-omega-rust.vercel.app/api/inbox/ingest"
