@@ -313,9 +313,14 @@ function invoiceFromRow(r: InvoiceRow): Invoice {
     clientId: r.client_id ?? "",
     date: r.date,
     number: r.number,
-    // Existing invoices predate vatRate -- default those items to
-    // standard rather than leaving it undefined.
-    items: (r.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "standard" })),
+    // A missing vatRate means this item predates VAT tracking entirely --
+    // the app never charged or displayed VAT before this feature existed,
+    // so "no rate recorded" reliably means "no VAT was ever part of this
+    // invoice", not "assume standard". Defaulting to standard here would
+    // make a historical invoice silently start showing 20% VAT it never
+    // actually had, the moment VAT registration gets turned on -- exactly
+    // the kind of thing an invoice, locked once issued, should never do.
+    items: (r.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" })),
     notes: r.notes ?? "",
     dueDate: r.due_date,
     paymentTerms: r.payment_terms ?? "",
