@@ -407,24 +407,35 @@ export const invoicesStore = {
   // "changing what was billed" problem update() deliberately can't do.
   async updateDraft(
     id: string,
-    patch: Partial<Pick<Invoice, "clientId" | "date" | "number" | "items" | "dueDate" | "paymentTerms" | "notes" | "tags">>
+    patch: Partial<Pick<Invoice, "clientId" | "date" | "items" | "dueDate" | "paymentTerms" | "notes" | "tags">>
   ): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
     if (patch.date !== undefined) dbPatch.date = patch.date;
-    if (patch.number !== undefined) dbPatch.number = patch.number;
     if (patch.items !== undefined) dbPatch.items = patch.items;
     if (patch.dueDate !== undefined) dbPatch.due_date = patch.dueDate || null;
     if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
     const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
+    if (error) throw error;
+  },
+  // Atomically assigns the real invoice number, advances the account's
+  // number counter, and flips status to sent -- one Postgres transaction
+  // (assign_invoice_number, migration-012) rather than separate
+  // round-trips, so a dropped connection mid-call can never advance the
+  // counter without the invoice actually ending up marked sent (or vice
+  // versa). This is the only way a draft's number is ever set -- there's
+  // no manual override.
+  async markSentWithNumber(id: string): Promise<string> {
+    const { data, error } = await supabase.rpc("assign_invoice_number", { p_invoice_id: id });
     if (error) {
       if (error.code === "23505") {
-        throw new Error(`Invoice number "${patch.number}" is already in use.`);
+        throw new Error("The next invoice number is already in use — check Settings → Invoice numbering and adjust the next number.");
       }
       throw error;
     }
+    return data as string;
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("invoices").delete().eq("id", id);

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
-import { draftPlaceholderNumber, parseSequenceNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
+import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
 function addDays(dateStr: string, days: number): string {
@@ -64,14 +64,14 @@ export default function InvoiceViewPage() {
   const [draftTagsInput, setDraftTagsInput] = useState("");
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [pastInvoices, setPastInvoices] = useState<Invoice[]>([]);
 
-  // "Mark as sent" is a two-step action: first reveals this small panel
-  // to assign the real invoice number (defaulting to the suggested next
-  // one, editable, with the same duplicate/gap check as New Invoice),
-  // then confirming saves everything and flips the status.
+  // "Mark as sent" is a two-step action: this panel confirms the invoice
+  // number that's about to be assigned (a preview only -- the real value
+  // is computed and written atomically by confirmSend, never typed in
+  // here; there's no manual override any more, since that was the one
+  // remaining way to write a gap into the sequence on purpose).
   const [sendPanelOpen, setSendPanelOpen] = useState(false);
-  const [sendNumber, setSendNumber] = useState("");
+  const [sendPreviewNumber, setSendPreviewNumber] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -82,17 +82,15 @@ export default function InvoiceViewPage() {
       if (cancelled) return;
       setInvoice(inv);
       if (inv) {
-        const [allClients, notes, biz, allInvoices] = await Promise.all([
+        const [allClients, notes, biz] = await Promise.all([
           clientsStore.all(),
           creditNotesStore.forInvoice(inv.id),
           businessProfileStore.get(),
-          invoicesStore.all(),
         ]);
         if (cancelled) return;
         setClients(allClients);
         setCreditNotes(notes);
         setProfile(biz);
-        setPastInvoices(allInvoices);
         setEditDueDate(inv.dueDate ?? "");
         setEditPaymentTerms(inv.paymentTerms);
         setEditNotes(inv.notes);
@@ -165,21 +163,6 @@ export default function InvoiceViewPage() {
     setDraftItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  const sendNumberWarning = (() => {
-    const trimmed = sendNumber.trim();
-    if (!trimmed || !invoice) return null;
-    if (pastInvoices.some((inv) => inv.id !== invoice.id && inv.number === trimmed)) {
-      return `"${trimmed}" is already used by another invoice.`;
-    }
-    if (profile) {
-      const seq = parseSequenceNumber(trimmed, profile.invoicePrefix);
-      if (seq !== null && seq > profile.invoiceNextNumber) {
-        return `This skips ahead of the expected next number (${suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber)}) — you'll leave a gap in the sequence.`;
-      }
-    }
-    return null;
-  })();
-
   async function saveDraftOnly() {
     if (!invoice) return;
     setDraftError(null);
@@ -206,18 +189,25 @@ export default function InvoiceViewPage() {
 
   function openSendPanel() {
     if (!profile) return;
-    setSendNumber(suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber));
+    // Preview only -- purely informational. If someone else on this
+    // account sends another invoice between opening this panel and
+    // confirming, this could be stale by the time confirmSend runs;
+    // assign_invoice_number() always computes and returns the real,
+    // correct number at write time regardless of what was shown here.
+    setSendPreviewNumber(suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber));
     setSendError(null);
     setSendPanelOpen(true);
   }
 
-  // The one point a draft's number is actually assigned -- saves any
-  // pending edits, writes the real number, flips status to sent, and
-  // advances the counter, same "advances regardless of override"
-  // behaviour New Invoice always had, just triggered here instead of at
-  // creation.
+  // The one point a draft's number is actually assigned. Saves any
+  // pending draft edits first (harmless to retry -- it's still a draft
+  // either way if this part fails), then calls assign_invoice_number()
+  // (migration-012), which assigns the number, advances the counter, and
+  // flips status to sent as a single atomic transaction -- so a dropped
+  // connection here can never advance the counter without the invoice
+  // actually ending up sent, or the reverse.
   async function confirmSend() {
-    if (!invoice || !profile) return;
+    if (!invoice) return;
     setSendError(null);
     setSendBusy(true);
     try {
@@ -225,15 +215,13 @@ export default function InvoiceViewPage() {
       await invoicesStore.updateDraft(invoice.id, {
         clientId: draftClientId,
         date: draftDate,
-        number: sendNumber,
         items: draftItems,
         dueDate: draftDueDate || null,
         paymentTerms: draftPaymentTerms,
         notes: draftNotes,
         tags,
       });
-      await invoicesStore.update(invoice.id, { status: "sent" });
-      await businessProfileStore.save({ ...profile, invoiceNextNumber: profile.invoiceNextNumber + 1 });
+      await invoicesStore.markSentWithNumber(invoice.id);
       const fresh = await invoicesStore.get(invoice.id);
       setInvoice(fresh);
       if (fresh) {
@@ -436,15 +424,12 @@ export default function InvoiceViewPage() {
         {sendPanelOpen && (
           <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
             <div>
-              <h2 className="font-semibold">Assign an invoice number to send this</h2>
+              <h2 className="font-semibold">Mark as sent</h2>
               <p className="mt-1 text-sm text-neutral-600">
-                This is the point the number is actually assigned — still editable below, same as before, but once
-                confirmed the invoice locks and the due-date clock starts.
+                This assigns invoice number <span className="font-medium text-neutral-900">{sendPreviewNumber}</span>,
+                locks the invoice in, and starts the due-date clock. There&apos;s no way to type a different number
+                here — it&apos;s assigned automatically to keep the sequence gap-free.
               </p>
-            </div>
-            <div>
-              <input className="w-full rounded-lg border px-3 py-2" value={sendNumber} onChange={(e) => setSendNumber(e.target.value)} placeholder="Invoice number" />
-              {sendNumberWarning && <p className="mt-1 text-xs text-amber-700">{sendNumberWarning}</p>}
             </div>
             {sendError && <p className="text-sm text-red-600">{sendError}</p>}
             <div className="flex gap-2">
