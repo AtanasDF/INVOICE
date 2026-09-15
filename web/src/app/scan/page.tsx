@@ -8,6 +8,7 @@ import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import { DocumentIcon, PinIcon } from "@/components/icons";
+import { takeScanCapture } from "@/lib/scanHandoff";
 
 type Confidence = "high" | "low";
 
@@ -56,7 +57,10 @@ export default function ScanPage() {
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
 
   // Starts true so the camera opens the instant this page mounts -- no
-  // button to tap first. Only set false once something's been captured.
+  // button to tap first. Only set false once something's been captured
+  // (including a handoff capture from the dashboard's iOS Scan button,
+  // read on mount below -- in that case this page never actually shows
+  // the capture screen at all).
   const [showCapture, setShowCapture] = useState(true);
   const [capturedFile, setCapturedFile] = useState<CapturedFile | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -95,19 +99,39 @@ export default function ScanPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    clientsStore.all().then(setClients);
-    receiptsStore.all().then((r) => {
+    // A handoff capture (the dashboard's iOS Scan button) can be read
+    // synchronously -- do that first, before anything async, so the
+    // capture screen never has a chance to render for it at all. Only
+    // the actual extraction request has to wait for categories to load.
+    const handoff = takeScanCapture();
+    if (handoff) beginScan(handoff);
+
+    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]).then(([c, r, profile]) => {
+      setClients(c);
       const usual = mostUsedCategory(r.map((receipt) => receipt.category));
       if (usual) setCategory((prev) => prev || usual);
+      const activeCategories = effectiveCategories(profile.customCategories);
+      setCategories(activeCategories);
+
+      // categories is passed explicitly rather than letting
+      // runExtraction close over the categories state -- this callback
+      // has just set it, but that update isn't visible in THIS closure
+      // until the next render, so reading the state var here would still
+      // see the stale default.
+      if (handoff) runExtraction(handoff, activeCategories);
     });
-    businessProfileStore.get().then((profile) => {
-      setCategories(effectiveCategories(profile.customCategories));
-    });
+    // Deliberately empty -- this only ever needs to run once, on mount.
+    // beginScan/runExtraction aren't stable across renders (plain
+    // function declarations, not memoized), so exhaustive-deps wants
+    // them listed, but doing so would just make this effect's identity
+    // churn on every render for no benefit -- nothing here should ever
+    // re-fire once mounted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
 
-  async function onDocumentCaptured(file: CapturedFile) {
+  function beginScan(file: CapturedFile) {
     setCapturedFile(file);
     setShowCapture(false);
     setScanning(true);
@@ -115,11 +139,14 @@ export default function ScanPage() {
     setModeOverride(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
+  }
+
+  async function runExtraction(file: CapturedFile, categoriesForRequest: string[]) {
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: file.dataUrl, categories }),
+        body: JSON.stringify({ image: file.dataUrl, categories: categoriesForRequest }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Scan failed.");
@@ -151,6 +178,16 @@ export default function ScanPage() {
     } finally {
       setScanning(false);
     }
+  }
+
+  // The normal path, when DocumentCapture's own capture screen was
+  // actually shown -- by now the page has been mounted long enough that
+  // categories has almost certainly already loaded, so reading it from
+  // state here (rather than needing it passed in, like runExtraction
+  // does for the handoff path above) is safe.
+  async function onDocumentCaptured(file: CapturedFile) {
+    beginScan(file);
+    await runExtraction(file, categories);
   }
 
   function updateLineItem(idx: number, patch: Partial<ReceiptLineItem>) {
