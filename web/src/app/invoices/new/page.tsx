@@ -218,7 +218,7 @@ export default function NewInvoicePage() {
         notes,
         dueDate: dueDate || null,
         paymentTerms,
-        paid: false,
+        status: "draft",
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
       // Advances regardless of what number actually got saved -- an
@@ -387,9 +387,12 @@ export default function NewInvoicePage() {
           <div className="flex items-center justify-between pt-1">
             <div className="text-lg font-bold">Total: £{totals.total.toFixed(2)}</div>
             <button onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {saving ? "Saving…" : "Save invoice"}
+              {saving ? "Saving…" : "Save draft"}
             </button>
           </div>
+          <p className="text-right text-xs text-neutral-500">
+            Saves as a draft — fully editable until you mark it sent, which is what locks it in and starts the due-date clock.
+          </p>
         </div>
       </div>
     </div>

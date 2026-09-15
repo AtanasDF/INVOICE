@@ -42,7 +42,9 @@ export async function GET(req: Request) {
     const today = todayStr();
 
     const [{ data: overdueInvoices, error: invErr }, { data: dueRecurring, error: recErr }] = await Promise.all([
-      admin.from("invoices").select("user_id").eq("paid", false).lt("due_date", today),
+      // "sent" or "partial" only -- a draft was never issued so it can't
+      // be overdue, and a paid invoice is done regardless of due date.
+      admin.from("invoices").select("user_id").in("status", ["sent", "partial"]).lt("due_date", today),
       admin.from("recurring_expenses").select("user_id").eq("active", true).lte("next_due_date", today),
     ]);
     if (invErr || recErr) {

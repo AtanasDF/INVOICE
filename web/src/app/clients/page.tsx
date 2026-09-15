@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
+import { invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -19,6 +20,7 @@ type ClientDraft = {
   paymentTerms: string;
   defaultCurrency: string;
   contactPerson: string;
+  remindersEnabled: boolean;
 };
 
 function draftFor(c: Client): ClientDraft {
@@ -31,6 +33,7 @@ function draftFor(c: Client): ClientDraft {
     paymentTerms: c.paymentTerms,
     defaultCurrency: c.defaultCurrency,
     contactPerson: c.contactPerson,
+    remindersEnabled: c.remindersEnabled,
   };
 }
 
@@ -54,18 +57,10 @@ export default function ClientsPage() {
     });
   }, []);
 
-  const today = new Date().toISOString().slice(0, 10);
-
   function invoicesForClient(clientId: string) {
     return invoices
       .filter((inv) => inv.clientId === clientId)
       .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }
-
-  function statusFor(inv: Invoice): "paid" | "overdue" | "unpaid" {
-    if (inv.paid) return "paid";
-    if (inv.dueDate && inv.dueDate < today) return "overdue";
-    return "unpaid";
   }
 
   const visibleClients = useMemo(() => clients.filter((c) => c.kind === tab), [clients, tab]);
@@ -212,6 +207,16 @@ export default function ClientsPage() {
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency" value={draft.defaultCurrency} onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })} />
                     </div>
+                    {tab === "client" && (
+                      <label className="flex items-center gap-2 text-sm text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={draft.remindersEnabled}
+                          onChange={(e) => setDraft({ ...draft, remindersEnabled: e.target.checked })}
+                        />
+                        Send automatic payment reminders to this client
+                      </label>
+                    )}
                     <div className="flex gap-3">
                       <button
                         onClick={() => saveEdit(c.id)}
@@ -231,6 +236,7 @@ export default function ClientsPage() {
                       <div className="font-medium">{c.name}</div>
                       <div className="text-sm text-neutral-500">
                         {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
+                        {tab === "client" && !c.remindersEnabled && " · Reminders off"}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -254,20 +260,12 @@ export default function ClientsPage() {
                 {expanded && !editing && (
                   <div className="space-y-2 border-t p-4">
                     {clientInvoices.map((inv) => {
-                      const status = statusFor(inv);
+                      const overdue = isOverdue(inv.status, inv.dueDate);
                       return (
                         <div key={inv.id} className="flex items-center justify-between text-sm">
                           <span>#{inv.number} · {inv.date} · £{invoiceTotal(inv).toFixed(2)}</span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              status === "paid"
-                                ? "bg-green-100 text-green-800"
-                                : status === "overdue"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-neutral-100 text-neutral-600"
-                            }`}
-                          >
-                            {status === "paid" ? "Paid" : status === "overdue" ? "Overdue" : "Unpaid"}
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
+                            {invoiceStatusLabel(inv.status, overdue)}
                           </span>
                         </div>
                       );

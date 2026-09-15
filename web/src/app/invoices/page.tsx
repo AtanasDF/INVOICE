@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, Invoice, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
+import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -20,7 +21,7 @@ export default function InvoicesPage() {
   const [filterClientId, setFilterClientId] = useState("");
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
-  const [filterPaid, setFilterPaid] = useState<"" | "paid" | "unpaid">("");
+  const [filterStatus, setFilterStatus] = useState<"" | InvoiceStatus | "overdue">("");
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
