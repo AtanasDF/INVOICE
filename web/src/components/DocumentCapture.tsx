@@ -1,28 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadOpenCV } from "@/lib/opencv";
-import { isIOS } from "@/lib/platform";
+import { useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
-
-// isIOS() can only be answered on the client (no navigator during SSR),
-// but computing it in an effect and setState-ing the result triggers an
-// avoidable extra render pass (and the lint rule for it). useSyncExternalStore's
-// getServerSnapshot is the built-in escape hatch for exactly this "value
-// differs between server and client" case: React renders once with the
-// server snapshot (false, matching SSR) to hydrate cleanly, then
-// immediately re-renders with the real client snapshot -- no effect, no
-// extra setState. subscribe is a no-op since isIOS() can't change during
-// a session.
-function subscribeNever() {
-  return () => {};
-}
-function getIOSSnapshot(): boolean {
-  return isIOS();
-}
-function getIOSServerSnapshot(): boolean {
-  return false;
-}
 
 type Point = { x: number; y: number };
 type Status = "starting" | "live" | "denied" | "timeout" | "unsupported" | "review";
@@ -89,10 +70,7 @@ export default function DocumentCapture({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nativeInputRef = useRef<HTMLInputElement>(null);
 
-  // false on the server and through the client's first (hydrating)
-  // render, then corrected to the real value immediately after --
-  // see getIOSServerSnapshot above for why.
-  const iOSMode = useSyncExternalStore(subscribeNever, getIOSSnapshot, getIOSServerSnapshot);
+  const iOSMode = useIsIOS();
 
   const [status, setStatus] = useState<Status>("starting");
   const [reviewImage, setReviewImage] = useState<string | null>(null);

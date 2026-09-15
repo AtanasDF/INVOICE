@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 // Standard (if inescapably UA-sniffing) iOS detection -- there's no
 // reliable feature-detection alternative, since Apple's App Store policy
 // forces every iOS browser onto WebKit, so they share the same
@@ -9,4 +11,25 @@ export function isIOS(): boolean {
   const ua = navigator.userAgent;
   if (/iPad|iPhone|iPod/.test(ua)) return true;
   return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
+function subscribeNever() {
+  return () => {};
+}
+function getIOSSnapshot(): boolean {
+  return isIOS();
+}
+function getIOSServerSnapshot(): boolean {
+  return false;
+}
+
+// false on the server and through the client's first (hydrating) render,
+// then corrected to the real value immediately after -- isIOS() can only
+// be answered on the client (no navigator during SSR), and
+// useSyncExternalStore's getServerSnapshot is the built-in way to read a
+// value like that without a hydration mismatch, and without the extra
+// render pass a useEffect + setState would cost (subscribe is a no-op
+// since isIOS() can't change mid-session).
+export function useIsIOS(): boolean {
+  return useSyncExternalStore(subscribeNever, getIOSSnapshot, getIOSServerSnapshot);
 }

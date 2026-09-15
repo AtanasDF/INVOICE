@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   businessProfileStore,
   clientsStore,
@@ -14,6 +15,9 @@ import {
 import { computeInvoiceTotals } from "@/lib/vat";
 import { isOverdue } from "@/lib/invoiceStatus";
 import { FolderIcon, RepeatIcon } from "@/components/icons";
+import { useIsIOS } from "@/lib/platform";
+import { downscaleImageDataUrl } from "@/lib/imageDownscale";
+import { stashScanCapture } from "@/lib/scanHandoff";
 
 function ScanIcon() {
   return (
@@ -33,6 +37,10 @@ const AGING_BUCKETS = [
 ];
 
 export default function Dashboard() {
+  const router = useRouter();
+  const isIOS = useIsIOS();
+  const [scanHandoffBusy, setScanHandoffBusy] = useState(false);
+
   const [outstandingInvoices, setOutstandingInvoices] = useState<{ invoice: Invoice; amountDue: number; clientName: string }[]>([]);
   const [monthTotal, setMonthTotal] = useState(0);
   const [monthVat, setMonthVat] = useState(0);
@@ -42,6 +50,37 @@ export default function Dashboard() {
   const [recurringBannerDismissed, setRecurringBannerDismissed] = useState(false);
   const [needsReviewCount, setNeedsReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // The dashboard's Scan tap is the one real user gesture available --
+  // spending it on navigation to /scan and only opening the camera once
+  // that page mounts (via a second tap on "Take a photo") is one tap
+  // more than iOS actually needs. A label-wrapped file input fires from
+  // this same gesture, so the camera opens immediately; the captured
+  // photo is downscaled and handed to /scan via sessionStorage
+  // (scanHandoff) rather than a route param, then that page reads it on
+  // mount and skips straight to extraction instead of showing its own
+  // capture screen. Non-iOS keeps the plain Link -- the in-page camera
+  // there already opens instantly on /scan with no extra tap, so there's
+  // nothing to save.
+  async function onIOSScanCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanHandoffBusy(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const dataUrl = await downscaleImageDataUrl(reader.result as string);
+        stashScanCapture({ dataUrl, mediaType: "image/jpeg" });
+      } catch {
+        // Downscaling failed -- fall through to a plain /scan visit
+        // rather than losing the capture; its own capture screen (with
+        // its own upload option) still works from there.
+      }
+      router.push("/scan");
+    };
+    reader.onerror = () => router.push("/scan");
+    reader.readAsDataURL(file);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -173,14 +212,33 @@ export default function Dashboard() {
       )}
 
       <div className="flex gap-3">
-        <Link
-          href="/scan"
-          aria-label="Scan a document"
-          className="flex aspect-square w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-neutral-800 sm:w-28"
-        >
-          <ScanIcon />
-          <span className="text-xs font-medium">Scan</span>
-        </Link>
+        {isIOS ? (
+          <label
+            aria-label="Scan a document"
+            aria-disabled={scanHandoffBusy}
+            className="flex aspect-square w-24 flex-shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-neutral-800 sm:w-28"
+          >
+            <ScanIcon />
+            <span className="text-xs font-medium">{scanHandoffBusy ? "Preparing…" : "Scan"}</span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onIOSScanCapture}
+              disabled={scanHandoffBusy}
+              className="hidden"
+            />
+          </label>
+        ) : (
+          <Link
+            href="/scan"
+            aria-label="Scan a document"
+            className="flex aspect-square w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-neutral-800 sm:w-28"
+          >
+            <ScanIcon />
+            <span className="text-xs font-medium">Scan</span>
+          </Link>
+        )}
         <div className="grid flex-1 grid-cols-1 gap-2">
           <Link href="/receipts/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
             + Add a receipt manually
