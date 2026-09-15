@@ -114,7 +114,7 @@ export default function ClientsPage() {
     const next = !c.archived;
     setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: next } : x)));
     try {
-      await clientsStore.update(c.id, { archived: next });
+      await (next ? clientsStore.archive(c.id) : clientsStore.unarchive(c.id));
     } catch (err) {
       setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: !next } : x)));
       setError(err instanceof Error ? err.message : "Could not update.");

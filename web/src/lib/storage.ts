@@ -162,7 +162,12 @@ export const clientsStore = {
     if (error) throw error;
     return clientFromRow(data as ClientRow);
   },
-  async update(id: string, patch: Partial<Omit<Client, "id">>): Promise<void> {
+  // archived deliberately excluded -- it only ever changes through
+  // archive()/unarchive() below, which carry a required side effect
+  // (archive() also stops this client's recurring invoices and this
+  // supplier's recurring expenses). A generic patch path that could set
+  // it directly would be a way to skip that.
+  async update(id: string, patch: Partial<Omit<Client, "id" | "archived">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.name !== undefined) dbPatch.name = patch.name;
     if (patch.isCompany !== undefined) dbPatch.is_company = patch.isCompany;
@@ -174,8 +179,34 @@ export const clientsStore = {
     if (patch.defaultCurrency !== undefined) dbPatch.default_currency = patch.defaultCurrency || null;
     if (patch.contactPerson !== undefined) dbPatch.contact_person = patch.contactPerson || null;
     if (patch.remindersEnabled !== undefined) dbPatch.reminders_enabled = patch.remindersEnabled;
-    if (patch.archived !== undefined) dbPatch.archived = patch.archived;
     const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
+    if (error) throw error;
+  },
+  // Hides this client/supplier from pickers on new records and, since
+  // that's specifically what makes Remove impossible for a client with
+  // real history, also deactivates its recurring invoices (if it's a
+  // client) and recurring expenses (if it's a supplier) -- otherwise
+  // "archived" would be a lie the UI tells while the account keeps
+  // generating that client's invoice every month regardless.
+  // generate_recurring_invoice() (migration-016) also skips an archived
+  // client's row directly, so this isn't the only thing stopping it,
+  // but leaving the Recurring page showing "active" for something that
+  // was just archived would be its own kind of wrong.
+  async archive(id: string): Promise<void> {
+    const { error } = await supabase.from("clients").update({ archived: true }).eq("id", id);
+    if (error) throw error;
+    await Promise.all([
+      supabase.from("recurring_invoices").update({ active: false }).eq("client_id", id),
+      supabase.from("recurring_expenses").update({ active: false }).eq("supplier_id", id),
+    ]);
+  },
+  // Deliberately does NOT reactivate anything archive() paused --
+  // un-archiving is "let me reference this again" (fixing a mistake,
+  // bringing a client back into the picker list), not "resume billing
+  // them automatically." Resuming a specific recurring invoice or
+  // expense stays a deliberate action on its own page.
+  async unarchive(id: string): Promise<void> {
+    const { error } = await supabase.from("clients").update({ archived: false }).eq("id", id);
     if (error) throw error;
   },
   async remove(id: string): Promise<void> {
