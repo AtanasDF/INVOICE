@@ -31,78 +31,86 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Push notifications aren't fully configured on this deployment." }, { status: 500 });
   }
 
-  webpush.setVapidDetails("https://invoice-omega-rust.vercel.app", vapidPublicKey, vapidPrivateKey);
-  const admin = createClient(supabaseUrl, serviceRoleKey);
+  // Everything below can throw synchronously (setVapidDetails validates
+  // key format and rejects malformed keys immediately) or reject -- none
+  // of that was caught before, so a bad key or a Supabase client error
+  // surfaced as a bare, bodyless 500 with no indication of what broke.
+  try {
+    webpush.setVapidDetails("https://invoice-omega-rust.vercel.app", vapidPublicKey, vapidPrivateKey);
+    const admin = createClient(supabaseUrl, serviceRoleKey);
 
-  const today = todayStr();
+    const today = todayStr();
 
-  const [{ data: overdueInvoices, error: invErr }, { data: dueRecurring, error: recErr }] = await Promise.all([
-    admin.from("invoices").select("user_id").eq("paid", false).lt("due_date", today),
-    admin.from("recurring_expenses").select("user_id").eq("active", true).lte("next_due_date", today),
-  ]);
-  if (invErr || recErr) {
-    return NextResponse.json({ error: (invErr ?? recErr)?.message }, { status: 500 });
-  }
+    const [{ data: overdueInvoices, error: invErr }, { data: dueRecurring, error: recErr }] = await Promise.all([
+      admin.from("invoices").select("user_id").eq("paid", false).lt("due_date", today),
+      admin.from("recurring_expenses").select("user_id").eq("active", true).lte("next_due_date", today),
+    ]);
+    if (invErr || recErr) {
+      return NextResponse.json({ error: (invErr ?? recErr)?.message }, { status: 500 });
+    }
 
-  const dueByUser = new Map<string, DueCounts>();
-  for (const row of overdueInvoices ?? []) {
-    const entry = dueByUser.get(row.user_id) ?? { overdueInvoices: 0, dueRecurring: 0 };
-    entry.overdueInvoices += 1;
-    dueByUser.set(row.user_id, entry);
-  }
-  for (const row of dueRecurring ?? []) {
-    const entry = dueByUser.get(row.user_id) ?? { overdueInvoices: 0, dueRecurring: 0 };
-    entry.dueRecurring += 1;
-    dueByUser.set(row.user_id, entry);
-  }
+    const dueByUser = new Map<string, DueCounts>();
+    for (const row of overdueInvoices ?? []) {
+      const entry = dueByUser.get(row.user_id) ?? { overdueInvoices: 0, dueRecurring: 0 };
+      entry.overdueInvoices += 1;
+      dueByUser.set(row.user_id, entry);
+    }
+    for (const row of dueRecurring ?? []) {
+      const entry = dueByUser.get(row.user_id) ?? { overdueInvoices: 0, dueRecurring: 0 };
+      entry.dueRecurring += 1;
+      dueByUser.set(row.user_id, entry);
+    }
 
-  if (dueByUser.size === 0) {
-    return NextResponse.json({ notified: 0, checked: 0, usersWithReminders: 0 });
-  }
+    if (dueByUser.size === 0) {
+      return NextResponse.json({ notified: 0, checked: 0, usersWithReminders: 0 });
+    }
 
-  const { data: subs, error: subsErr } = await admin
-    .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth_key")
-    .in("user_id", Array.from(dueByUser.keys()));
-  if (subsErr) {
-    return NextResponse.json({ error: subsErr.message }, { status: 500 });
-  }
+    const { data: subs, error: subsErr } = await admin
+      .from("push_subscriptions")
+      .select("id, user_id, endpoint, p256dh, auth_key")
+      .in("user_id", Array.from(dueByUser.keys()));
+    if (subsErr) {
+      return NextResponse.json({ error: subsErr.message }, { status: 500 });
+    }
 
-  let notified = 0;
-  const staleIds: string[] = [];
+    let notified = 0;
+    const staleIds: string[] = [];
 
-  await Promise.all(
-    (subs ?? []).map(async (sub) => {
-      const due = dueByUser.get(sub.user_id);
-      if (!due) return;
-      const parts: string[] = [];
-      if (due.overdueInvoices > 0) {
-        parts.push(`${due.overdueInvoices} overdue ${due.overdueInvoices === 1 ? "invoice" : "invoices"}`);
-      }
-      if (due.dueRecurring > 0) {
-        parts.push(`${due.dueRecurring} recurring ${due.dueRecurring === 1 ? "expense" : "expenses"} due`);
-      }
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-          JSON.stringify({ title: "Invoice & Expenses", body: parts.join(" and "), url: "/" })
-        );
-        notified += 1;
-      } catch (err) {
-        // 404/410 means the push service has invalidated this subscription
-        // (uninstalled, permission revoked, etc.) -- clean it up rather
-        // than retrying it forever.
-        const statusCode = (err as { statusCode?: number })?.statusCode;
-        if (statusCode === 404 || statusCode === 410) {
-          staleIds.push(sub.id);
+    await Promise.all(
+      (subs ?? []).map(async (sub) => {
+        const due = dueByUser.get(sub.user_id);
+        if (!due) return;
+        const parts: string[] = [];
+        if (due.overdueInvoices > 0) {
+          parts.push(`${due.overdueInvoices} overdue ${due.overdueInvoices === 1 ? "invoice" : "invoices"}`);
         }
-      }
-    })
-  );
+        if (due.dueRecurring > 0) {
+          parts.push(`${due.dueRecurring} recurring ${due.dueRecurring === 1 ? "expense" : "expenses"} due`);
+        }
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
+            JSON.stringify({ title: "Invoice & Expenses", body: parts.join(" and "), url: "/" })
+          );
+          notified += 1;
+        } catch (err) {
+          // 404/410 means the push service has invalidated this subscription
+          // (uninstalled, permission revoked, etc.) -- clean it up rather
+          // than retrying it forever.
+          const statusCode = (err as { statusCode?: number })?.statusCode;
+          if (statusCode === 404 || statusCode === 410) {
+            staleIds.push(sub.id);
+          }
+        }
+      })
+    );
 
-  if (staleIds.length > 0) {
-    await admin.from("push_subscriptions").delete().in("id", staleIds);
+    if (staleIds.length > 0) {
+      await admin.from("push_subscriptions").delete().in("id", staleIds);
+    }
+
+    return NextResponse.json({ notified, checked: subs?.length ?? 0, usersWithReminders: dueByUser.size, staleRemoved: staleIds.length });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error." }, { status: 500 });
   }
-
-  return NextResponse.json({ notified, checked: subs?.length ?? 0, usersWithReminders: dueByUser.size, staleRemoved: staleIds.length });
 }
