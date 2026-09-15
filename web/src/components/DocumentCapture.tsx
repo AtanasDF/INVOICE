@@ -1,7 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { loadOpenCV } from "@/lib/opencv";
+import { isIOS } from "@/lib/platform";
+import { downscaleImageDataUrl } from "@/lib/imageDownscale";
+
+// isIOS() can only be answered on the client (no navigator during SSR),
+// but computing it in an effect and setState-ing the result triggers an
+// avoidable extra render pass (and the lint rule for it). useSyncExternalStore's
+// getServerSnapshot is the built-in escape hatch for exactly this "value
+// differs between server and client" case: React renders once with the
+// server snapshot (false, matching SSR) to hydrate cleanly, then
+// immediately re-renders with the real client snapshot -- no effect, no
+// extra setState. subscribe is a no-op since isIOS() can't change during
+// a session.
+function subscribeNever() {
+  return () => {};
+}
+function getIOSSnapshot(): boolean {
+  return isIOS();
+}
+function getIOSServerSnapshot(): boolean {
+  return false;
+}
 
 type Point = { x: number; y: number };
 type Status = "starting" | "live" | "denied" | "timeout" | "unsupported" | "review";
@@ -35,6 +56,21 @@ function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Back"
+      className="absolute left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
+      style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+  );
+}
+
 export default function DocumentCapture({
   onCapture,
   onClose,
@@ -51,12 +87,31 @@ export default function DocumentCapture({
   const quadRef = useRef<[Point, Point, Point, Point] | null>(null);
   const barcodeDetectorRef = useRef<BarcodeDetectorInstance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nativeInputRef = useRef<HTMLInputElement>(null);
+
+  // false on the server and through the client's first (hydrating)
+  // render, then corrected to the real value immediately after --
+  // see getIOSServerSnapshot above for why.
+  const iOSMode = useSyncExternalStore(subscribeNever, getIOSSnapshot, getIOSServerSnapshot);
 
   const [status, setStatus] = useState<Status>("starting");
   const [reviewImage, setReviewImage] = useState<string | null>(null);
   const [barcodeValue, setBarcodeValue] = useState<string | null>(null);
   const [hasQuad, setHasQuad] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  // Distinguishes "OpenCV itself never loaded" (WASM/network failure --
+  // detection can never work this session) from the ordinary per-frame
+  // "no document currently in view" -- previously both looked identical:
+  // the overlay just never appeared, silently, forever. Only meaningful
+  // on the non-iOS path below, which is the only one that loads OpenCV.
+  const [cvUnavailable, setCvUnavailable] = useState(false);
+  // processFrame lives inside a long-lived effect that only re-runs on
+  // [stopStream, retryKey, iOSMode] -- it closes over cvUnavailable as it
+  // was AT EFFECT-SETUP TIME, so a plain state read there would never
+  // observe setCvUnavailable(true) happening mid-effect. The ref is what
+  // processFrame actually checks; the state exists only to re-render the
+  // hint text below.
+  const cvUnavailableRef = useRef(false);
 
   const stopStream = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -67,10 +122,17 @@ export default function DocumentCapture({
 
   function retry() {
     setStatus("starting");
+    cvUnavailableRef.current = false;
+    setCvUnavailable(false);
     setRetryKey((k) => k + 1);
   }
 
   useEffect(() => {
+    // Skip entirely on iOS -- native camera instead, see the early
+    // return in the render below. Re-runs if iOSMode's post-hydration
+    // correction flips it (iOSMode is a dependency).
+    if (iOSMode) return;
+
     let cancelled = false;
 
     async function start() {
@@ -156,7 +218,9 @@ export default function DocumentCapture({
       if (!octx) return;
       octx.clearRect(0, 0, overlay.width, overlay.height);
 
-      // Barcode check runs on the live video frame directly -- cheap, native.
+      // Barcode check runs on the live video frame directly -- cheap,
+      // native, and independent of OpenCV, so it still runs even if
+      // OpenCV itself failed to load.
       if (barcodeDetectorRef.current) {
         try {
           const codes = await barcodeDetectorRef.current.detect(video);
@@ -167,6 +231,8 @@ export default function DocumentCapture({
           // detector can throw on a transient bad frame; ignore and keep going
         }
       }
+
+      if (cvUnavailableRef.current) return;
 
       const scale = WORK_WIDTH / video.videoWidth;
       const workW = WORK_WIDTH;
@@ -179,8 +245,20 @@ export default function DocumentCapture({
       if (!wctx) return;
       wctx.drawImage(video, 0, 0, workW, workH);
 
+      let cv;
       try {
-        const cv = await loadOpenCV();
+        cv = await loadOpenCV();
+      } catch {
+        // OpenCV itself never loaded (WASM/network failure) -- distinct
+        // from a single bad frame below, and not going to fix itself on
+        // the next tick, so stop retrying it every 200ms and let the
+        // camera keep working as manual-capture-only.
+        cvUnavailableRef.current = true;
+        if (!cancelled) setCvUnavailable(true);
+        return;
+      }
+
+      try {
         const src = cv.imread(work);
         const gray = new cv.Mat();
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
@@ -258,8 +336,11 @@ export default function DocumentCapture({
       stopStream();
     };
     // retryKey is intentionally a dependency purely to let retry() force
-    // this whole effect (and therefore start()) to run again.
-  }, [stopStream, retryKey]);
+    // this whole effect (and therefore start()) to run again. cvUnavailable
+    // (the state) is deliberately not listed -- processFrame reads
+    // cvUnavailableRef instead precisely so setting it mid-effect doesn't
+    // need to restart the camera stream just to skip detection.
+  }, [stopStream, retryKey, iOSMode]);
 
   function capture() {
     const video = videoRef.current;
@@ -322,26 +403,89 @@ export default function DocumentCapture({
     setStatus("live");
   }
 
-  function confirmCapture() {
+  async function confirmCapture() {
     if (!reviewImage) return;
     stopStream();
-    onCapture({ dataUrl: reviewImage, mediaType: "image/jpeg" });
+    const dataUrl = await downscaleImageDataUrl(reviewImage);
+    onCapture({ dataUrl, mediaType: "image/jpeg" });
+  }
+
+  async function readAndCapture(file: File) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      stopStream();
+      const dataUrl = await downscaleImageDataUrl(reader.result as string);
+      onCapture({ dataUrl, mediaType: file.type.startsWith("image/") ? "image/jpeg" : file.type });
+    };
+    reader.readAsDataURL(file);
   }
 
   function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      stopStream();
-      onCapture({ dataUrl: reader.result as string, mediaType: file.type });
-    };
-    reader.readAsDataURL(file);
+    if (file) readAndCapture(file);
   }
 
   function close() {
     stopStream();
     onClose();
+  }
+
+  // iOS: the in-page live-detection camera fundamentally can't win here.
+  // getUserMedia on iOS Safari returns a low-resolution, fixed-focus
+  // stream with no way to request otherwise -- soft images no OCR does
+  // well with. And the contour detector needs the whole document inside
+  // the frame with margin to find a closed quadrilateral, which is
+  // incompatible with holding the phone close enough to keep text
+  // legible. The native camera app has neither problem: full sensor
+  // resolution, real autofocus, and no quad requirement since there's no
+  // live crop to compute. It's also faster to open, since it skips the
+  // multi-MB OpenCV WASM download entirely.
+  if (iOSMode) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-black">
+        <div className="relative flex flex-1 items-center justify-center">
+          <BackButton onClick={close} />
+          <p className="px-8 text-center text-sm text-white/70">
+            Take a clear, well-lit photo of the whole document.
+          </p>
+        </div>
+        <div className="space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+          <button
+            onClick={() => nativeInputRef.current?.click()}
+            className="w-full rounded-lg bg-white px-5 py-3 text-center text-sm font-medium text-neutral-900"
+          >
+            Take a photo
+          </button>
+          {/* capture="environment" forces straight to the camera on iOS
+              Safari, which is exactly what the button above wants -- but
+              it also makes the photo library and PDFs unreachable. This
+              is the same accept as the non-iOS "Upload instead" input
+              below, just without capture, so both are actually usable
+              here: an existing photo, or a PDF invoice from email. */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full rounded-lg border border-white/30 px-5 py-3 text-center text-sm font-medium text-white"
+          >
+            Upload instead
+          </button>
+          <input
+            ref={nativeInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onFileChosen}
+            className="hidden"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={onFileChosen}
+            className="hidden"
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -352,7 +496,7 @@ export default function DocumentCapture({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={reviewImage} alt="Captured document" className="max-h-full max-w-full rounded-lg object-contain" />
           </div>
-          <div className="flex gap-3 p-4">
+          <div className="flex gap-3 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
             <button onClick={retake} className="flex-1 rounded-lg border border-white/30 px-4 py-3 text-sm font-medium text-white">
               Retake
             </button>
@@ -370,15 +514,7 @@ export default function DocumentCapture({
             {/* Always visible, regardless of status -- the old bottom-bar
                 "Cancel" text was easy to miss entirely while stuck on a
                 black screen with no other affordance. */}
-            <button
-              onClick={close}
-              aria-label="Back"
-              className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+            <BackButton onClick={close} />
 
             {status === "starting" && (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-white">Starting camera…</div>
@@ -405,19 +541,25 @@ export default function DocumentCapture({
               </div>
             )}
             {barcodeValue && (
-              <div className="absolute inset-x-4 top-4 rounded-lg bg-white/95 p-3 text-sm text-neutral-900 shadow">
+              <div
+                className="absolute inset-x-4 rounded-lg bg-white/95 p-3 text-sm text-neutral-900 shadow"
+                style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+              >
                 <div className="font-medium">Barcode detected: {barcodeValue}</div>
                 <button onClick={() => setBarcodeValue(null)} className="mt-1 text-xs text-blue-600">Dismiss</button>
               </div>
             )}
             {status === "live" && !barcodeValue && (
-              <div className="absolute inset-x-4 top-4 rounded-lg bg-black/50 p-2 text-center text-xs text-white">
-                {hasQuad ? "Document detected — tap to capture" : "Line up the document in view"}
+              <div
+                className="absolute inset-x-4 rounded-lg bg-black/50 p-2 text-center text-xs text-white"
+                style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+              >
+                {cvUnavailable ? "Line it up and tap to capture" : hasQuad ? "Document detected — tap to capture" : "Line up the document in view"}
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-center gap-4 bg-black p-4">
+          <div className="flex items-center justify-center gap-4 bg-black p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
             {status === "live" ? (
               <>
                 <button

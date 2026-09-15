@@ -6,6 +6,7 @@ import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, r
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { DocumentIcon } from "@/components/icons";
+import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 
 function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
@@ -64,7 +65,9 @@ export default function NewReceiptPage() {
 
   function handleFile(file: File) {
     const reader = new FileReader();
-    reader.onload = () => setImageDataUrl(reader.result as string);
+    reader.onload = async () => {
+      setImageDataUrl(await downscaleImageDataUrl(reader.result as string));
+    };
     reader.readAsDataURL(file);
   }
 

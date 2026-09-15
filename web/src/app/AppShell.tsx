@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 function Header() {
   const { user } = useAuth();
   return (
-    <header className="border-b bg-white text-neutral-900">
+    <header className="border-b bg-white text-neutral-900" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
         <Link href="/" className="text-lg font-semibold">
           Invoicer
@@ -71,7 +71,8 @@ function FeedbackButton() {
   return (
     <Link
       href="/feedback"
-      className="fixed bottom-5 right-5 z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden"
+      className="fixed right-5 z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden"
+      style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
     >
       Feedback
     </Link>
