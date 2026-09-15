@@ -127,7 +127,7 @@ export default function Dashboard() {
           <span className="text-xs font-medium">Scan</span>
         </Link>
         <div className="grid flex-1 grid-cols-1 gap-2">
-          <Link href="/receipts" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+          <Link href="/receipts/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
             + Add a receipt manually
           </Link>
           <Link href="/invoices/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
