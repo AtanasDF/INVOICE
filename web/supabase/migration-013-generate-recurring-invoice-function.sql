@@ -1,5 +1,25 @@
 -- https://supabase.com/dashboard/project/wecfwjxzyzzrcwbwnwpo/sql/new
 --
+-- Revised. The first run of this file (still live in the DB as of this
+-- edit -- repo and DB are in sync, both still have the broken version)
+-- had two defects caught in review before anything real touched it:
+--   1. The insert passed tags as `'{}'::text[]`; the column is jsonb, so
+--      the INSERT raised "column tags is of type jsonb but expression
+--      is of type text[]" on every call -- PL/pgSQL doesn't plan an
+--      INSERT until first execution, so CREATE FUNCTION itself
+--      succeeded and this would only have surfaced on the first real
+--      cron run. Fixed to `'[]'::jsonb`.
+--   2. No idempotency guard against a duplicate call on the same row --
+--      FOR UPDATE prevents a lost update between concurrent callers, not
+--      a duplicate insert, since a second caller unblocks after the
+--      first commits and re-evaluates the same WHERE against the
+--      already-advanced row. Fixed by moving the next_due_date <=
+--      current_date check from the route's SELECT into this function's
+--      own WHERE, so a retried or overlapping call raises instead of
+--      writing a second draft.
+-- Safe to re-run in full -- CREATE OR REPLACE FUNCTION and the
+-- REVOKE/GRANT lines below are all idempotent.
+--
 -- No backup file -- only creates a function, touches no table's data.
 -- Same precedent as migration-008 and migration-012. Rollback is
 -- `drop function public.generate_recurring_invoice(uuid);`.
@@ -35,13 +55,19 @@ declare
   v_row public.recurring_invoices%rowtype;
   v_invoice_id uuid;
 begin
+  -- next_due_date <= current_date is checked here too, not just in the
+  -- route's SELECT -- otherwise a second call on the same id (a retried
+  -- or overlapping cron invocation) blocks on FOR UPDATE, then re-checks
+  -- this WHERE against the row this function's own first call already
+  -- advanced, still matches on id/active alone, and inserts a duplicate.
+  -- The lock alone only prevents a lost update, not a duplicate insert.
   select * into v_row
   from public.recurring_invoices
-  where id = p_recurring_invoice_id and active = true
+  where id = p_recurring_invoice_id and active = true and next_due_date <= current_date
   for update;
 
   if not found then
-    raise exception 'Recurring invoice % not found or not active.', p_recurring_invoice_id;
+    raise exception 'Recurring invoice % not found, not active, or not yet due.', p_recurring_invoice_id;
   end if;
 
   insert into public.invoices (user_id, client_id, date, number, items, notes, due_date, payment_terms, status, tags)
@@ -55,7 +81,7 @@ begin
     (current_date + interval '30 days')::date,
     v_row.payment_terms,
     'draft',
-    '{}'::text[]
+    '[]'::jsonb
   )
   returning id into v_invoice_id;
 
