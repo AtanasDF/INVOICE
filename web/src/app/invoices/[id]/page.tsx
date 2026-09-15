@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
-import { parseSequenceNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
+import { draftPlaceholderNumber, parseSequenceNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
 function addDays(dateStr: string, days: number): string {
@@ -52,18 +52,28 @@ export default function InvoiceViewPage() {
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   // Draft editing -- everything is fair game, mirroring the New Invoice
-  // form, since nothing's been issued to the client yet.
+  // form, since nothing's been issued to the client yet. There's no
+  // number field here -- a draft has no real invoice number until it's
+  // marked sent, which is a separate step below (see sendPanelOpen).
   const [draftClientId, setDraftClientId] = useState("");
   const [draftDate, setDraftDate] = useState("");
   const [draftDueDate, setDraftDueDate] = useState("");
-  const [draftNumber, setDraftNumber] = useState("");
   const [draftPaymentTerms, setDraftPaymentTerms] = useState("");
   const [draftItems, setDraftItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
   const [draftNotes, setDraftNotes] = useState("");
   const [draftTagsInput, setDraftTagsInput] = useState("");
-  const [draftSaving, setDraftSaving] = useState<"" | "save" | "send">("");
+  const [draftSaving, setDraftSaving] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [pastInvoices, setPastInvoices] = useState<Invoice[]>([]);
+
+  // "Mark as sent" is a two-step action: first reveals this small panel
+  // to assign the real invoice number (defaulting to the suggested next
+  // one, editable, with the same duplicate/gap check as New Invoice),
+  // then confirming saves everything and flips the status.
+  const [sendPanelOpen, setSendPanelOpen] = useState(false);
+  const [sendNumber, setSendNumber] = useState("");
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,7 +100,6 @@ export default function InvoiceViewPage() {
         setDraftClientId(inv.clientId);
         setDraftDate(inv.date);
         setDraftDueDate(inv.dueDate ?? "");
-        setDraftNumber(inv.number);
         setDraftPaymentTerms(inv.paymentTerms);
         setDraftItems(inv.items.length ? inv.items : [{ ...BLANK_ITEM }]);
         setDraftNotes(inv.notes);
@@ -156,8 +165,8 @@ export default function InvoiceViewPage() {
     setDraftItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  const draftNumberWarning = (() => {
-    const trimmed = draftNumber.trim();
+  const sendNumberWarning = (() => {
+    const trimmed = sendNumber.trim();
     if (!trimmed || !invoice) return null;
     if (pastInvoices.some((inv) => inv.id !== invoice.id && inv.number === trimmed)) {
       return `"${trimmed}" is already used by another invoice.`;
@@ -171,37 +180,76 @@ export default function InvoiceViewPage() {
     return null;
   })();
 
-  async function saveDraft(andMarkSent: boolean) {
+  async function saveDraftOnly() {
     if (!invoice) return;
     setDraftError(null);
-    setDraftSaving(andMarkSent ? "send" : "save");
+    setDraftSaving(true);
     try {
       const tags = draftTagsInput.split(",").map((t) => t.trim()).filter(Boolean);
       await invoicesStore.updateDraft(invoice.id, {
         clientId: draftClientId,
         date: draftDate,
-        number: draftNumber,
         items: draftItems,
         dueDate: draftDueDate || null,
         paymentTerms: draftPaymentTerms,
         notes: draftNotes,
         tags,
       });
-      if (andMarkSent) {
-        await invoicesStore.update(invoice.id, { status: "sent" });
-      }
+      const fresh = await invoicesStore.get(invoice.id);
+      setInvoice(fresh);
+    } catch (err) {
+      setDraftError(err instanceof Error ? err.message : "Could not save this draft.");
+    } finally {
+      setDraftSaving(false);
+    }
+  }
+
+  function openSendPanel() {
+    if (!profile) return;
+    setSendNumber(suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber));
+    setSendError(null);
+    setSendPanelOpen(true);
+  }
+
+  // The one point a draft's number is actually assigned -- saves any
+  // pending edits, writes the real number, flips status to sent, and
+  // advances the counter, same "advances regardless of override"
+  // behaviour New Invoice always had, just triggered here instead of at
+  // creation.
+  async function confirmSend() {
+    if (!invoice || !profile) return;
+    setSendError(null);
+    setSendBusy(true);
+    try {
+      const tags = draftTagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+      await invoicesStore.updateDraft(invoice.id, {
+        clientId: draftClientId,
+        date: draftDate,
+        number: sendNumber,
+        items: draftItems,
+        dueDate: draftDueDate || null,
+        paymentTerms: draftPaymentTerms,
+        notes: draftNotes,
+        tags,
+      });
+      await invoicesStore.update(invoice.id, { status: "sent" });
+      await businessProfileStore.save({ ...profile, invoiceNextNumber: profile.invoiceNextNumber + 1 });
       const fresh = await invoicesStore.get(invoice.id);
       setInvoice(fresh);
       if (fresh) {
+        // Keeps the (non-draft) admin edit panel's fields in sync with
+        // what was just saved -- it was only ever populated once, back
+        // when the page first loaded as a draft.
         setEditDueDate(fresh.dueDate ?? "");
         setEditPaymentTerms(fresh.paymentTerms);
         setEditNotes(fresh.notes);
         setEditTagsInput(fresh.tags.join(", "));
       }
+      setSendPanelOpen(false);
     } catch (err) {
-      setDraftError(err instanceof Error ? err.message : "Could not save this draft.");
+      setSendError(err instanceof Error ? err.message : "Could not mark this invoice sent.");
     } finally {
-      setDraftSaving("");
+      setSendBusy(false);
     }
   }
 
@@ -210,12 +258,13 @@ export default function InvoiceViewPage() {
     setDuplicateError(null);
     setDuplicating(true);
     try {
-      const biz = await businessProfileStore.get();
       const today = new Date().toISOString().slice(0, 10);
+      // Creates a new draft, same as New Invoice -- no real number and
+      // no counter advance until it's marked sent.
       const created = await invoicesStore.add({
         clientId: invoice.clientId,
         date: today,
-        number: suggestedInvoiceNumber(biz.invoicePrefix, biz.invoiceNextNumber),
+        number: draftPlaceholderNumber(),
         items: invoice.items,
         notes: invoice.notes,
         dueDate: addDays(today, 30),
@@ -223,9 +272,6 @@ export default function InvoiceViewPage() {
         status: "draft",
         tags: invoice.tags,
       });
-      // Advances the counter the same way New Invoice does -- this
-      // duplicate counts as an invoice actually created, same as any other.
-      await businessProfileStore.save({ ...biz, invoiceNextNumber: biz.invoiceNextNumber + 1 });
       router.push(`/invoices/${created.id}`);
     } catch (err) {
       setDuplicateError(err instanceof Error ? err.message : "Could not duplicate this invoice.");
@@ -302,13 +348,7 @@ export default function InvoiceViewPage() {
               <input type="date" className="w-full rounded-lg border px-3 py-2" value={draftDueDate} onChange={(e) => setDraftDueDate(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <input className="w-full rounded-lg border px-3 py-2" value={draftNumber} onChange={(e) => setDraftNumber(e.target.value)} placeholder="Invoice number" />
-              {draftNumberWarning && <p className="mt-1 text-xs text-amber-700">{draftNumberWarning}</p>}
-            </div>
-            <input className="rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
-          </div>
+          <input className="w-full rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
 
           <div className="space-y-2">
             <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
@@ -375,23 +415,48 @@ export default function InvoiceViewPage() {
               <div className="text-lg font-bold">Total: £{draftTotals.total.toFixed(2)}</div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => saveDraft(false)}
-                  disabled={draftSaving !== ""}
+                  onClick={saveDraftOnly}
+                  disabled={draftSaving || sendPanelOpen}
                   className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
                 >
-                  {draftSaving === "save" ? "Saving…" : "Save draft"}
+                  {draftSaving ? "Saving…" : "Save draft"}
                 </button>
                 <button
-                  onClick={() => saveDraft(true)}
-                  disabled={draftSaving !== ""}
+                  onClick={openSendPanel}
+                  disabled={draftSaving || sendPanelOpen}
                   className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
-                  {draftSaving === "send" ? "Sending…" : "Mark as sent"}
+                  Mark as sent
                 </button>
               </div>
             </div>
           </div>
         </div>
+
+        {sendPanelOpen && (
+          <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+            <div>
+              <h2 className="font-semibold">Assign an invoice number to send this</h2>
+              <p className="mt-1 text-sm text-neutral-600">
+                This is the point the number is actually assigned — still editable below, same as before, but once
+                confirmed the invoice locks and the due-date clock starts.
+              </p>
+            </div>
+            <div>
+              <input className="w-full rounded-lg border px-3 py-2" value={sendNumber} onChange={(e) => setSendNumber(e.target.value)} placeholder="Invoice number" />
+              {sendNumberWarning && <p className="mt-1 text-xs text-amber-700">{sendNumberWarning}</p>}
+            </div>
+            {sendError && <p className="text-sm text-red-600">{sendError}</p>}
+            <div className="flex gap-2">
+              <button onClick={confirmSend} disabled={sendBusy} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {sendBusy ? "Sending…" : "Confirm & mark as sent"}
+              </button>
+              <button onClick={() => setSendPanelOpen(false)} disabled={sendBusy} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

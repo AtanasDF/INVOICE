@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
 // Triggered daily by vercel.json's cron config -- same mechanism and same
 // CRON_SECRET as /api/notifications/check. For every active recurring
-// invoice whose next_due_date has arrived, generates a real draft invoice
-// (never sent automatically -- the account holder reviews and sends it
-// like any other draft) using that row's client/items/terms, advances
-// the account's invoice-number counter the same way a manually-created
-// invoice does, and rolls the recurring invoice's next_due_date forward
-// a month.
+// invoice whose next_due_date has arrived, generates a real draft
+// invoice (never sent automatically -- the account holder reviews and
+// sends it like any other draft) using that row's client/items/terms,
+// and rolls the recurring invoice's next_due_date forward a month.
 //
-// Rows for the same account are processed one at a time, not in
-// parallel -- they share one invoice-number counter, and issuing two
-// numbers from the same starting point at once would hand out a
-// duplicate.
+// A generated invoice gets a placeholder number, same as any other
+// draft -- the real invoice number and the account's number counter are
+// only touched when a draft is actually marked sent (see
+// invoices/[id]/page.tsx's confirmSend), not at creation. That also
+// means rows can be processed independently here: there's no shared
+// counter to serialize against any more.
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
@@ -54,38 +55,17 @@ export async function GET(req: Request) {
     if (dueErr) return NextResponse.json({ error: dueErr.message }, { status: 500 });
     if (!due || due.length === 0) return NextResponse.json({ generated: 0, checked: 0 });
 
-    // Cache each account's counter locally so several due rows for the
-    // same user in one run consume consecutive numbers correctly,
-    // without re-reading business_profile between every insert.
-    const profileCache = new Map<string, { invoicePrefix: string; invoiceNextNumber: number }>();
     let generated = 0;
     const failures: string[] = [];
 
-    for (const row of due) {
-      try {
-        let profile = profileCache.get(row.user_id);
-        if (!profile) {
-          const { data: p, error: pErr } = await admin
-            .from("business_profile")
-            .select("invoice_prefix, invoice_next_number")
-            .eq("user_id", row.user_id)
-            .maybeSingle();
-          if (pErr) throw pErr;
-          profile = { invoicePrefix: p?.invoice_prefix ?? "INV-", invoiceNextNumber: p?.invoice_next_number ?? 1 };
-          profileCache.set(row.user_id, profile);
-        }
-
-        // Retries on a number collision (23505) by trying the next
-        // integer, same as a person hand-typing around a taken number --
-        // capped so a genuinely broken counter can't loop forever.
-        let created = false;
-        for (let attempt = 0; attempt < 5 && !created; attempt++) {
-          const number = `${profile.invoicePrefix}${profile.invoiceNextNumber}`;
+    await Promise.all(
+      due.map(async (row) => {
+        try {
           const { error: insErr } = await admin.from("invoices").insert({
             user_id: row.user_id,
             client_id: row.client_id,
             date: today,
-            number,
+            number: `DRAFT-${randomUUID()}`,
             items: row.items,
             notes: row.notes,
             due_date: addDays(today, 30),
@@ -93,29 +73,18 @@ export async function GET(req: Request) {
             status: "draft",
             tags: [],
           });
-          if (!insErr) {
-            created = true;
-            break;
-          }
-          if (insErr.code !== "23505") throw insErr;
-          profile.invoiceNextNumber += 1;
+          if (insErr) throw insErr;
+
+          const nextDue = addMonths(row.next_due_date, 1);
+          const { error: updErr } = await admin.from("recurring_invoices").update({ next_due_date: nextDue }).eq("id", row.id);
+          if (updErr) throw updErr;
+
+          generated += 1;
+        } catch (err) {
+          failures.push(`${row.id}: ${err instanceof Error ? err.message : "unknown error"}`);
         }
-        if (!created) {
-          failures.push(`${row.id}: could not find a free invoice number after 5 attempts`);
-          continue;
-        }
-
-        profile.invoiceNextNumber += 1;
-        await admin.from("business_profile").update({ invoice_next_number: profile.invoiceNextNumber }).eq("user_id", row.user_id);
-
-        const nextDue = addMonths(row.next_due_date, 1);
-        await admin.from("recurring_invoices").update({ next_due_date: nextDue }).eq("id", row.id);
-
-        generated += 1;
-      } catch (err) {
-        failures.push(`${row.id}: ${err instanceof Error ? err.message : "unknown error"}`);
-      }
-    }
+      })
+    );
 
     return NextResponse.json({ generated, checked: due.length, failures: failures.length ? failures : undefined });
   } catch (err) {

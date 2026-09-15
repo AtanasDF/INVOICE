@@ -14,7 +14,7 @@ import {
 } from "@/lib/storage";
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
-import { suggestedInvoiceNumber } from "@/lib/invoiceNumber";
+import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 
 function RecurringTabs() {
   return (
@@ -101,17 +101,17 @@ export default function RecurringInvoicesPage() {
 
   // Generates a real draft invoice right now, using this recurring
   // invoice's client/items/terms -- same thing the daily cron does when
-  // this falls due, just triggered by hand instead of waiting for it.
+  // this falls due, just triggered by hand instead of waiting for it. No
+  // real invoice number or counter advance yet -- same as any other
+  // draft, that happens when it's marked sent.
   async function generateNow(item: RecurringInvoice) {
     setError(null);
     setGeneratingId(item.id);
     try {
-      const biz = await businessProfileStore.get();
-      const number = suggestedInvoiceNumber(biz.invoicePrefix, biz.invoiceNextNumber);
       await invoicesStore.add({
         clientId: item.clientId,
         date: today,
-        number,
+        number: draftPlaceholderNumber(),
         items: item.items,
         notes: item.notes,
         dueDate: null,
@@ -119,8 +119,6 @@ export default function RecurringInvoicesPage() {
         status: "draft",
         tags: [],
       });
-      await businessProfileStore.save({ ...biz, invoiceNextNumber: biz.invoiceNextNumber + 1 });
-      setProfile(biz);
       const next = addMonths(item.nextDueDate, 1);
       await recurringInvoicesStore.update(item.id, { nextDueDate: next });
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));

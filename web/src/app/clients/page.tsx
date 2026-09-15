@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
-import { invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
+import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -263,7 +263,7 @@ export default function ClientsPage() {
                       const overdue = isOverdue(inv.status, inv.dueDate);
                       return (
                         <div key={inv.id} className="flex items-center justify-between text-sm">
-                          <span>#{inv.number} · {inv.date} · £{invoiceTotal(inv).toFixed(2)}</span>
+                          <span>{displayInvoiceNumber(inv)} · {inv.date} · £{invoiceTotal(inv).toFixed(2)}</span>
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                             {invoiceStatusLabel(inv.status, overdue)}
                           </span>

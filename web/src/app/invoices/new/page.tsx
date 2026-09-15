@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
-import { parseSequenceNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
+import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { CameraIcon } from "@/components/icons";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
@@ -37,8 +37,6 @@ export default function NewInvoicePage() {
   const [dueDate, setDueDate] = useState(() => addDays(new Date().toISOString().slice(0, 10), 30));
   const [dueDateManual, setDueDateManual] = useState(false);
   const [paymentTerms, setPaymentTerms] = useState("");
-  const [number, setNumber] = useState("");
-  const [numberTouched, setNumberTouched] = useState(false);
   const [items, setItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
   const [notes, setNotes] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -54,12 +52,7 @@ export default function NewInvoicePage() {
       setClients(c);
       setPastInvoices(inv);
       setProfile(biz);
-      if (!numberTouched) setNumber(suggestedInvoiceNumber(biz.invoicePrefix, biz.invoiceNextNumber));
     });
-    // numberTouched deliberately excluded -- this only runs once on mount,
-    // the check above just guards against a slow load racing ahead of
-    // something the user already typed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const billableClients = clients.filter((c) => c.kind === "client");
@@ -107,21 +100,6 @@ export default function NewInvoicePage() {
     }
     return best?.vatRate ?? "standard";
   }
-
-  const numberWarning = useMemo(() => {
-    const trimmed = number.trim();
-    if (!trimmed) return null;
-    if (pastInvoices.some((inv) => inv.number === trimmed)) {
-      return `"${trimmed}" is already used by another invoice.`;
-    }
-    if (profile) {
-      const seq = parseSequenceNumber(trimmed, profile.invoicePrefix);
-      if (seq !== null && seq > profile.invoiceNextNumber) {
-        return `This skips ahead of the expected next number (${suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber)}) — you'll leave a gap in the sequence.`;
-      }
-    }
-    return null;
-  }, [number, pastInvoices, profile]);
 
   function onClientChange(id: string) {
     setClientId(id);
@@ -210,10 +188,12 @@ export default function NewInvoicePage() {
     setError(null);
     setSaving(true);
     try {
+      // No real invoice number yet -- that's assigned when this is
+      // marked sent, not now. See draftPlaceholderNumber for why.
       const inv = await invoicesStore.add({
         clientId,
         date,
-        number,
+        number: draftPlaceholderNumber(),
         items,
         notes,
         dueDate: dueDate || null,
@@ -221,13 +201,6 @@ export default function NewInvoicePage() {
         status: "draft",
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
-      // Advances regardless of what number actually got saved -- an
-      // override doesn't stall the counter, it just means this account's
-      // own numbers and the suggested series have diverged, which is
-      // their call to make.
-      if (profile) {
-        await businessProfileStore.save({ ...profile, invoiceNextNumber: profile.invoiceNextNumber + 1 });
-      }
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save invoice.");
@@ -302,21 +275,7 @@ export default function NewInvoicePage() {
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={number}
-              onChange={(e) => {
-                setNumber(e.target.value);
-                setNumberTouched(true);
-              }}
-              placeholder="Invoice number"
-            />
-            {numberWarning && <p className="mt-1 text-xs text-amber-700">{numberWarning}</p>}
-          </div>
-          <input className="rounded-lg border px-3 py-2" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
-        </div>
+        <input className="w-full rounded-lg border px-3 py-2" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
 
         <div className="space-y-2">
           <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
@@ -391,7 +350,7 @@ export default function NewInvoicePage() {
             </button>
           </div>
           <p className="text-right text-xs text-neutral-500">
-            Saves as a draft — fully editable until you mark it sent, which is what locks it in and starts the due-date clock.
+            Saves as a draft — fully editable until you mark it sent, which is what assigns its invoice number, locks the rest in, and starts the due-date clock.
           </p>
         </div>
       </div>

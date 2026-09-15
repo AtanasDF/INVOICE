@@ -37,3 +37,11 @@ export function invoiceStatusLabel(status: InvoiceStatus, overdue: boolean): str
   if (overdue) return "Overdue";
   return INVOICE_STATUS_LABELS[status];
 }
+
+// A draft's number field only holds a placeholder (see
+// draftPlaceholderNumber in lib/invoiceNumber.ts) until it's marked
+// sent -- never show that placeholder anywhere a real invoice number
+// would normally appear.
+export function displayInvoiceNumber(inv: { status: InvoiceStatus; number: string }): string {
+  return inv.status === "draft" ? "New invoice" : `#${inv.number}`;
+}

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, Invoice, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
-import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
+import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -54,16 +54,14 @@ export default function InvoicesPage() {
     }
   }
 
-  // A single quick action per row, contextual to the current status --
-  // the one transition that's actually common from the list view. Any
-  // other transition (reverting, marking partial) happens on the
-  // invoice's own page, which has room to be deliberate about it.
-  async function quickAdvance(inv: Invoice) {
-    const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
-    if (!next) return;
-    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: next } : i)));
+  // "Mark as sent" isn't a quick inline action any more -- it now
+  // assigns the real invoice number, which needs the confirmation panel
+  // on the invoice's own page, not a one-tap flip from the list.
+  // "Mark as paid" from sent has no such requirement, so it stays quick.
+  async function quickMarkPaid(inv: Invoice) {
+    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
     try {
-      await invoicesStore.update(inv.id, { status: next });
+      await invoicesStore.update(inv.id, { status: "paid" });
     } catch (err) {
       setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: inv.status } : i)));
       setError(err instanceof Error ? err.message : "Could not update invoice.");
@@ -97,7 +95,7 @@ export default function InvoicesPage() {
     downloadCsv(
       `invoices-${new Date().toISOString().slice(0, 10)}.csv`,
       filteredInvoices.map((inv) => ({
-        number: inv.number,
+        number: inv.status === "draft" ? "" : inv.number,
         date: inv.date,
         due_date: inv.dueDate ?? "",
         client: clientName(inv.clientId),
@@ -190,18 +188,17 @@ export default function InvoicesPage() {
           )}
           {filteredInvoices.map((inv) => {
             const overdue = isOverdue(inv.status, inv.dueDate);
-            const quickLabel = inv.status === "draft" ? "Mark as sent" : inv.status === "sent" ? "Mark as paid" : null;
             return (
               <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    #{inv.number} · {clientName(inv.clientId)}
+                    {displayInvoiceNumber(inv)} · {clientName(inv.clientId)}
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                       {invoiceStatusLabel(inv.status, overdue)}
                     </span>
-                    {quickLabel && (
-                      <button onClick={() => quickAdvance(inv)} className="text-xs font-medium text-blue-600 underline">
-                        {quickLabel}
+                    {inv.status === "sent" && (
+                      <button onClick={() => quickMarkPaid(inv)} className="text-xs font-medium text-blue-600 underline">
+                        Mark as paid
                       </button>
                     )}
                   </div>
@@ -218,7 +215,9 @@ export default function InvoicesPage() {
                   )}
                 </div>
                 <div className="flex gap-3">
-                  <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">View / print</Link>
+                  <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">
+                    {inv.status === "draft" ? "Continue draft" : "View / print"}
+                  </Link>
                   <button onClick={() => removeInvoice(inv.id)} className="text-sm text-red-600">Remove</button>
                 </div>
               </div>
