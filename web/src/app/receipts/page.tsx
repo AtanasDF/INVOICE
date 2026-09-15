@@ -165,6 +165,7 @@ export default function ReceiptsPage() {
         imageDataUrl,
         notes,
         starred: false,
+        needsReview: false,
         warrantyMonths: warrantyMonths ? parseInt(warrantyMonths, 10) : null,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         lineItems: [],
@@ -440,7 +441,14 @@ export default function ReceiptsPage() {
                   )
                 )}
                 <div>
-                  <div className="font-medium">{r.vendor || r.category}</div>
+                  <div className="font-medium">
+                    {r.vendor || r.category}
+                    {r.needsReview && (
+                      <a href="/receipts/review" className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 no-underline">
+                        Needs review
+                      </a>
+                    )}
+                  </div>
                   <div className="text-sm text-neutral-600">
                     £{r.amount.toFixed(2)} excl. VAT · £{(r.amount + r.vatAmount).toFixed(2)} incl. VAT
                     {r.originalCurrency && r.originalAmount != null && (

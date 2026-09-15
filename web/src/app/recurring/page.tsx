@@ -111,6 +111,7 @@ export default function RecurringExpensesPage() {
         imageDataUrl: null,
         notes: "Logged from a recurring expense reminder.",
         starred: false,
+        needsReview: false,
         warrantyMonths: null,
         tags: [],
         lineItems: [],
