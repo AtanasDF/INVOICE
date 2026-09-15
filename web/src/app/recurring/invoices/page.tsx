@@ -51,7 +51,7 @@ export default function RecurringInvoicesPage() {
     });
   }, []);
 
-  const billableClients = clients.filter((c) => c.kind === "client");
+  const billableClients = clients.filter((c) => c.kind === "client" && !c.archived);
   const today = new Date().toISOString().slice(0, 10);
 
   function clientName(id: string) {

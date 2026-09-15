@@ -19,6 +19,12 @@ export type Client = {
   // go out for this client unless turned off here. Only meaningful for
   // kind "client" -- suppliers are never invoiced, so it's ignored for them.
   remindersEnabled: boolean;
+  // Hides this client/supplier from every client/supplier picker used
+  // when creating a new record, without touching any of its existing
+  // history -- the alternative to Remove once it would otherwise fail
+  // (migration-015 made every FK referencing clients RESTRICT). Never
+  // set at creation, so it's excluded from clientsStore.add()'s input.
+  archived: boolean;
 };
 
 export type ReceiptLineItem = {
@@ -107,6 +113,7 @@ type ClientRow = {
   default_currency: string | null;
   contact_person: string | null;
   reminders_enabled: boolean | null;
+  archived: boolean | null;
 };
 
 function clientFromRow(r: ClientRow): Client {
@@ -122,6 +129,7 @@ function clientFromRow(r: ClientRow): Client {
     defaultCurrency: r.default_currency ?? "",
     contactPerson: r.contact_person ?? "",
     remindersEnabled: r.reminders_enabled ?? true,
+    archived: r.archived ?? false,
   };
 }
 
@@ -131,7 +139,7 @@ export const clientsStore = {
     if (error) throw error;
     return (data as ClientRow[]).map(clientFromRow);
   },
-  async add(input: Omit<Client, "id">): Promise<Client> {
+  async add(input: Omit<Client, "id" | "archived">): Promise<Client> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("clients")
@@ -147,6 +155,7 @@ export const clientsStore = {
         default_currency: input.defaultCurrency || null,
         contact_person: input.contactPerson || null,
         reminders_enabled: input.remindersEnabled,
+        archived: false,
       })
       .select()
       .single();
@@ -165,19 +174,22 @@ export const clientsStore = {
     if (patch.defaultCurrency !== undefined) dbPatch.default_currency = patch.defaultCurrency || null;
     if (patch.contactPerson !== undefined) dbPatch.contact_person = patch.contactPerson || null;
     if (patch.remindersEnabled !== undefined) dbPatch.reminders_enabled = patch.remindersEnabled;
+    if (patch.archived !== undefined) dbPatch.archived = patch.archived;
     const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) {
-      // 23503 = foreign_key_violation -- migration-014 changed
-      // receipts.client_id/invoices.client_id from ON DELETE SET NULL to
-      // ON DELETE RESTRICT, since silently detaching a financial record
+      // 23503 = foreign_key_violation -- migrations 014/015 changed
+      // every FK referencing clients (receipts.client_id,
+      // invoices.client_id, recurring_invoices.client_id,
+      // recurring_expenses.supplier_id) from ON DELETE SET NULL to ON
+      // DELETE RESTRICT, since silently detaching a financial record
       // from who it was billed to or bought from is a real integrity
       // problem, not a convenience.
       if (error.code === "23503") {
-        throw new Error("Can't remove this client — it still has receipts or invoices linked to it. Update or remove those first, or edit this client's details instead of deleting it.");
+        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
       }
       throw error;
     }

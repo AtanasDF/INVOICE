@@ -60,7 +60,7 @@ export default function NewReceiptPage() {
     });
   }, []);
 
-  const suppliers = clients.filter((c) => c.kind === "supplier");
+  const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
 
   function handleFile(file: File) {
     const reader = new FileReader();

@@ -87,7 +87,16 @@ export default function ReceiptsPage() {
     });
   }, []);
 
+  // All suppliers, including archived ones -- used for filtering, where
+  // an archived supplier's old receipts should still be findable.
   const suppliers = useMemo(() => clients.filter((c) => c.kind === "supplier"), [clients]);
+  // Archived suppliers dropped from the edit form's picker (new
+  // assignments shouldn't point at one), except the one already on the
+  // receipt being edited, so its current value doesn't just vanish.
+  const pickableSuppliers = useMemo(
+    () => suppliers.filter((c) => !c.archived || c.id === editDraft?.clientId),
+    [suppliers, editDraft?.clientId]
+  );
 
   async function removeReceipt(id: string) {
     setError(null);
@@ -312,7 +321,7 @@ export default function ReceiptsPage() {
                   onChange={(e) => setEditDraft({ ...editDraft, clientId: e.target.value })}
                 >
                   <option value="">No supplier / general expense</option>
-                  {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {pickableSuppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <div className="grid grid-cols-2 gap-3">
                   <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />

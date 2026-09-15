@@ -105,7 +105,7 @@ export default function ScanPage() {
     });
   }, []);
 
-  const suppliers = clients.filter((c) => c.kind === "supplier");
+  const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
 
   async function onDocumentCaptured(file: CapturedFile) {
     setCapturedFile(file);

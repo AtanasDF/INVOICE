@@ -44,7 +44,7 @@ export default function RecurringExpensesPage() {
     });
   }, []);
 
-  const suppliers = clients.filter((c) => c.kind === "supplier");
+  const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
   const today = new Date().toISOString().slice(0, 10);
 
   function supplierName(id: string) {
