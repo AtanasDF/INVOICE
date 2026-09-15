@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
+import { DocumentIcon } from "@/components/icons";
 
 function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
@@ -41,6 +42,7 @@ export default function NewReceiptPage() {
   const [warrantyMonths, setWarrantyMonths] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -60,12 +62,22 @@ export default function NewReceiptPage() {
 
   const suppliers = clients.filter((c) => c.kind === "supplier");
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleFile(file: File) {
     const reader = new FileReader();
     reader.onload = () => setImageDataUrl(reader.result as string);
     reader.readAsDataURL(file);
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
   }
 
   async function onCurrencyChange(next: string) {
@@ -191,18 +203,49 @@ export default function NewReceiptPage() {
       </div>
 
       <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onFile}
-          className="block text-sm"
-        />
-        {imageDataUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageDataUrl} alt="Receipt preview" className="h-32 rounded-lg border object-cover" />
-        )}
+        <div
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition ${
+            dragOver ? "border-neutral-900 bg-neutral-50" : "border-neutral-300 hover:border-neutral-400"
+          }`}
+        >
+          {imageDataUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageDataUrl} alt="Receipt preview" className="h-32 rounded-lg border object-cover" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setImageDataUrl(null);
+                  if (fileRef.current) fileRef.current.value = "";
+                }}
+                className="text-xs font-medium text-red-600"
+              >
+                Remove photo
+              </button>
+            </>
+          ) : (
+            <>
+              <DocumentIcon className="h-8 w-8 text-neutral-400" />
+              <p className="text-sm text-neutral-600">Drop a photo here, or click to browse</p>
+            </>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onFile}
+            className="hidden"
+          />
+        </div>
         <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">No supplier / general expense</option>
           {suppliers.map((c) => (

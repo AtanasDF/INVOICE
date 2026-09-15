@@ -170,7 +170,11 @@ export default function InvoicesPage() {
         <div className="space-y-3">
           {filteredInvoices.length === 0 && (
             <p className="text-sm text-neutral-500">
-              {hasActiveFilters ? "No invoices match these filters." : "No invoices yet."}
+              {hasActiveFilters ? (
+                "No invoices match these filters."
+              ) : (
+                <>No invoices yet. <Link href="/invoices/new" className="text-blue-600 underline">Create one</Link>.</>
+              )}
             </p>
           )}
           {filteredInvoices.map((inv) => {

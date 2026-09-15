@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
@@ -69,7 +70,11 @@ export default function FilesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : files.length === 0 ? (
         <p className="text-sm text-neutral-500">
-          {hasActiveFilters ? "No files match these filters." : "No scanned or uploaded documents yet."}
+          {hasActiveFilters ? (
+            "No files match these filters."
+          ) : (
+            <>No scanned or uploaded documents yet. <Link href="/scan" className="text-blue-600 underline">Scan one</Link>.</>
+          )}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
