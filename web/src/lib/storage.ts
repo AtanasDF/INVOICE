@@ -19,6 +19,12 @@ export type Client = {
   // go out for this client unless turned off here. Only meaningful for
   // kind "client" -- suppliers are never invoiced, so it's ignored for them.
   remindersEnabled: boolean;
+  // Hides this client/supplier from every client/supplier picker used
+  // when creating a new record, without touching any of its existing
+  // history -- the alternative to Remove once it would otherwise fail
+  // (migration-015 made every FK referencing clients RESTRICT). Never
+  // set at creation, so it's excluded from clientsStore.add()'s input.
+  archived: boolean;
 };
 
 export type ReceiptLineItem = {
@@ -107,6 +113,7 @@ type ClientRow = {
   default_currency: string | null;
   contact_person: string | null;
   reminders_enabled: boolean | null;
+  archived: boolean | null;
 };
 
 function clientFromRow(r: ClientRow): Client {
@@ -122,6 +129,7 @@ function clientFromRow(r: ClientRow): Client {
     defaultCurrency: r.default_currency ?? "",
     contactPerson: r.contact_person ?? "",
     remindersEnabled: r.reminders_enabled ?? true,
+    archived: r.archived ?? false,
   };
 }
 
@@ -131,7 +139,7 @@ export const clientsStore = {
     if (error) throw error;
     return (data as ClientRow[]).map(clientFromRow);
   },
-  async add(input: Omit<Client, "id">): Promise<Client> {
+  async add(input: Omit<Client, "id" | "archived">): Promise<Client> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("clients")
@@ -147,13 +155,19 @@ export const clientsStore = {
         default_currency: input.defaultCurrency || null,
         contact_person: input.contactPerson || null,
         reminders_enabled: input.remindersEnabled,
+        archived: false,
       })
       .select()
       .single();
     if (error) throw error;
     return clientFromRow(data as ClientRow);
   },
-  async update(id: string, patch: Partial<Omit<Client, "id">>): Promise<void> {
+  // archived deliberately excluded -- it only ever changes through
+  // archive()/unarchive() below, which carry a required side effect
+  // (archive() also stops this client's recurring invoices and this
+  // supplier's recurring expenses). A generic patch path that could set
+  // it directly would be a way to skip that.
+  async update(id: string, patch: Partial<Omit<Client, "id" | "archived">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.name !== undefined) dbPatch.name = patch.name;
     if (patch.isCompany !== undefined) dbPatch.is_company = patch.isCompany;
@@ -168,9 +182,48 @@ export const clientsStore = {
     const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
+  // Hides this client/supplier from pickers on new records and, since
+  // that's specifically what makes Remove impossible for a client with
+  // real history, also deactivates its recurring invoices (if it's a
+  // client) and recurring expenses (if it's a supplier) -- otherwise
+  // "archived" would be a lie the UI tells while the account keeps
+  // generating that client's invoice every month regardless.
+  // generate_recurring_invoice() (migration-016) also skips an archived
+  // client's row directly, so this isn't the only thing stopping it,
+  // but leaving the Recurring page showing "active" for something that
+  // was just archived would be its own kind of wrong.
+  async archive(id: string): Promise<void> {
+    const { error } = await supabase.from("clients").update({ archived: true }).eq("id", id);
+    if (error) throw error;
+    await Promise.all([
+      supabase.from("recurring_invoices").update({ active: false }).eq("client_id", id),
+      supabase.from("recurring_expenses").update({ active: false }).eq("supplier_id", id),
+    ]);
+  },
+  // Deliberately does NOT reactivate anything archive() paused --
+  // un-archiving is "let me reference this again" (fixing a mistake,
+  // bringing a client back into the picker list), not "resume billing
+  // them automatically." Resuming a specific recurring invoice or
+  // expense stays a deliberate action on its own page.
+  async unarchive(id: string): Promise<void> {
+    const { error } = await supabase.from("clients").update({ archived: false }).eq("id", id);
+    if (error) throw error;
+  },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("clients").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      // 23503 = foreign_key_violation -- migrations 014/015 changed
+      // every FK referencing clients (receipts.client_id,
+      // invoices.client_id, recurring_invoices.client_id,
+      // recurring_expenses.supplier_id) from ON DELETE SET NULL to ON
+      // DELETE RESTRICT, since silently detaching a financial record
+      // from who it was billed to or bought from is a real integrity
+      // problem, not a convenience.
+      if (error.code === "23503") {
+        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
+      }
+      throw error;
+    }
   },
 };
 

@@ -48,6 +48,7 @@ export default function ClientsPage() {
   const [draft, setDraft] = useState<ClientDraft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
@@ -63,7 +64,10 @@ export default function ClientsPage() {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   }
 
-  const visibleClients = useMemo(() => clients.filter((c) => c.kind === tab), [clients, tab]);
+  const visibleClients = useMemo(
+    () => clients.filter((c) => c.kind === tab && (showArchived || !c.archived)),
+    [clients, tab, showArchived]
+  );
 
   function startEdit(c: Client) {
     setEditingId(c.id);
@@ -99,6 +103,21 @@ export default function ClientsPage() {
       setClients((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not remove client.");
+    }
+  }
+
+  // The escape hatch Remove can't be, once it has any real history --
+  // hides it from client/supplier pickers on new records without
+  // touching anything it's already linked to.
+  async function toggleArchived(c: Client) {
+    setError(null);
+    const next = !c.archived;
+    setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: next } : x)));
+    try {
+      await (next ? clientsStore.archive(c.id) : clientsStore.unarchive(c.id));
+    } catch (err) {
+      setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: !next } : x)));
+      setError(err instanceof Error ? err.message : "Could not update.");
     }
   }
 
@@ -139,19 +158,25 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      <div className="flex rounded-lg border text-sm w-fit">
-        <button
-          onClick={() => setTab("client")}
-          className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
-        >
-          Clients
-        </button>
-        <button
-          onClick={() => setTab("supplier")}
-          className={`px-4 py-1.5 ${tab === "supplier" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
-        >
-          Suppliers
-        </button>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex rounded-lg border text-sm w-fit">
+          <button
+            onClick={() => setTab("client")}
+            className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+          >
+            Clients
+          </button>
+          <button
+            onClick={() => setTab("supplier")}
+            className={`px-4 py-1.5 ${tab === "supplier" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+          >
+            Suppliers
+          </button>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-neutral-600">
+          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+          Show archived
+        </label>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -233,7 +258,12 @@ export default function ClientsPage() {
                 ) : (
                   <div className="flex items-center justify-between p-4">
                     <div>
-                      <div className="font-medium">{c.name}</div>
+                      <div className="flex items-center gap-2 font-medium">
+                        {c.name}
+                        {c.archived && (
+                          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">Archived</span>
+                        )}
+                      </div>
                       <div className="text-sm text-neutral-500">
                         {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
                         {tab === "client" && !c.remindersEnabled && " · Reminders off"}
@@ -250,6 +280,9 @@ export default function ClientsPage() {
                       )}
                       <button onClick={() => startEdit(c)} className="text-sm font-medium text-blue-600">
                         Edit
+                      </button>
+                      <button onClick={() => toggleArchived(c)} className="text-sm font-medium text-neutral-600">
+                        {c.archived ? "Unarchive" : "Archive"}
                       </button>
                       <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
                         Remove

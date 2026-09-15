@@ -55,7 +55,7 @@ export default function NewInvoicePage() {
     });
   }, []);
 
-  const billableClients = clients.filter((c) => c.kind === "client");
+  const billableClients = clients.filter((c) => c.kind === "client" && !c.archived);
 
   const suggestedItems = useMemo(() => {
     if (!clientId) return [];

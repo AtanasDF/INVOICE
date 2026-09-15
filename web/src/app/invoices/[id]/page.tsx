@@ -112,7 +112,10 @@ export default function InvoiceViewPage() {
   }, [params.id]);
 
   const client = clients.find((c) => c.id === invoice?.clientId) || null;
-  const billableClients = clients.filter((c) => c.kind === "client");
+  // Archived clients dropped from the draft picker, except the one
+  // already assigned to this draft, so its current value doesn't vanish
+  // if it was archived after the draft was created.
+  const billableClients = clients.filter((c) => c.kind === "client" && (!c.archived || c.id === draftClientId));
 
   async function changeStatus(next: InvoiceStatus) {
     if (!invoice) return;
