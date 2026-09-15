@@ -19,6 +19,17 @@ export default function InvoiceViewPage() {
   const [cnError, setCnError] = useState<string | null>(null);
   const [showCnForm, setShowCnForm] = useState(false);
 
+  // Only administrative fields -- number/date/items/client are locked
+  // once an invoice exists, since it's what was actually issued. Credit
+  // notes are the correction route for anything financial.
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editPaymentTerms, setEditPaymentTerms] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editTagsInput, setEditTagsInput] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -35,6 +46,10 @@ export default function InvoiceViewPage() {
         setClient(clients.find((c) => c.id === inv.clientId) || null);
         setCreditNotes(notes);
         setProfile(biz);
+        setEditDueDate(inv.dueDate ?? "");
+        setEditPaymentTerms(inv.paymentTerms);
+        setEditNotes(inv.notes);
+        setEditTagsInput(inv.tags.join(", "));
       }
       setLoading(false);
     }
@@ -52,6 +67,27 @@ export default function InvoiceViewPage() {
       await invoicesStore.update(invoice.id, { paid: next });
     } catch {
       setInvoice({ ...invoice, paid: !next });
+    }
+  }
+
+  async function saveDetails() {
+    if (!invoice) return;
+    setEditError(null);
+    setEditSaving(true);
+    try {
+      const tags = editTagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+      await invoicesStore.update(invoice.id, {
+        dueDate: editDueDate || null,
+        paymentTerms: editPaymentTerms,
+        notes: editNotes,
+        tags,
+      });
+      setInvoice({ ...invoice, dueDate: editDueDate || null, paymentTerms: editPaymentTerms, notes: editNotes, tags });
+      setEditingDetails(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Could not save changes.");
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -114,6 +150,9 @@ export default function InvoiceViewPage() {
           {invoice.paid ? "Paid — click to mark unpaid" : overdue ? "Overdue — click to mark paid" : "Unpaid — click to mark paid"}
         </button>
         <div className="flex gap-2">
+          <button onClick={() => setEditingDetails((v) => !v)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+            {editingDetails ? "Cancel" : "Edit details"}
+          </button>
           <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             Share via WhatsApp
           </a>
@@ -125,6 +164,38 @@ export default function InvoiceViewPage() {
           </button>
         </div>
       </div>
+
+      {editingDetails && (
+        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+          <p className="text-sm text-neutral-600">
+            Only administrative details here — the invoice number, date, client, and line items are locked once an
+            invoice exists, since they&apos;re what was actually issued. Use a credit note below for anything that
+            needs a financial correction.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-neutral-500">Due date</label>
+              <input type="date" className="w-full rounded-lg border px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-neutral-500">Payment terms</label>
+              <input className="w-full rounded-lg border px-3 py-2 text-sm" value={editPaymentTerms} onChange={(e) => setEditPaymentTerms(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">Notes</label>
+            <textarea className="w-full rounded-lg border px-3 py-2 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">Tags, comma separated</label>
+            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={editTagsInput} onChange={(e) => setEditTagsInput(e.target.value)} />
+          </div>
+          {editError && <p className="text-sm text-red-600">{editError}</p>}
+          <button onClick={saveDetails} disabled={editSaving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {editSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      )}
 
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
         <div className="flex items-start justify-between">

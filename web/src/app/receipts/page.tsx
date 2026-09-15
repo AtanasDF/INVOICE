@@ -11,6 +11,54 @@ function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
 }
 
+type ReceiptDraft = {
+  clientId: string;
+  vendor: string;
+  date: string;
+  category: string;
+  totalAmount: string;
+  vatAmount: string;
+  currency: string;
+  fxRateInput: string;
+  notes: string;
+};
+
+function draftForReceipt(r: Receipt): ReceiptDraft {
+  return {
+    clientId: r.clientId,
+    vendor: r.vendor,
+    date: r.date,
+    category: r.category,
+    totalAmount: (r.amount + r.vatAmount).toFixed(2),
+    vatAmount: r.vatAmount.toFixed(2),
+    currency: r.originalCurrency ?? "GBP",
+    fxRateInput: r.fxRate != null ? String(r.fxRate) : "",
+    notes: r.notes,
+  };
+}
+
+// Same total-incl-VAT convention as everywhere else in the app -- what's
+// typed is the total actually paid, converted to GBP at save time, never
+// a raw net figure typed directly.
+function draftGbpAmounts(draft: ReceiptDraft) {
+  const total = parseFloat(draft.totalAmount) || 0;
+  const vat = parseFloat(draft.vatAmount) || 0;
+  if (draft.currency === "GBP") {
+    return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
+  }
+  const rate = parseFloat(draft.fxRateInput) || 0;
+  const totalGbp = total * rate;
+  const vatGbp = vat * rate;
+  return {
+    netGbp: Math.max(0, totalGbp - vatGbp),
+    vatGbp,
+    originalAmount: total,
+    originalVatAmount: vat,
+    originalCurrency: draft.currency,
+    fxRate: rate,
+  };
+}
+
 export default function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -55,6 +103,13 @@ export default function ReceiptsPage() {
   const [filterClientId, setFilterClientId] = useState("");
   const [filterStarredOnly, setFilterStarredOnly] = useState(false);
   const [filterTag, setFilterTag] = useState("");
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<ReceiptDraft | null>(null);
+  const [editFxLoading, setEditFxLoading] = useState(false);
+  const [editFxError, setEditFxError] = useState<string | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]).then(([c, r, profile]) => {
@@ -222,6 +277,86 @@ export default function ReceiptsPage() {
     } catch (err) {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, starred: !next } : x)));
       setError(err instanceof Error ? err.message : "Could not update receipt.");
+    }
+  }
+
+  function startEditReceipt(r: Receipt) {
+    setEditingId(r.id);
+    setEditDraft(draftForReceipt(r));
+    setEditError(null);
+    setEditFxError(null);
+  }
+
+  function cancelEditReceipt() {
+    setEditingId(null);
+    setEditDraft(null);
+  }
+
+  async function onEditCurrencyChange(next: string) {
+    if (!editDraft) return;
+    setEditDraft({ ...editDraft, currency: next, fxRateInput: next === "GBP" ? "" : editDraft.fxRateInput });
+    setEditFxError(null);
+    if (next === "GBP") return;
+    setEditFxLoading(true);
+    try {
+      const rate = await getFxRate(next, "GBP");
+      setEditDraft((prev) => (prev ? { ...prev, fxRateInput: String(rate) } : prev));
+    } catch (err) {
+      setEditFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
+    } finally {
+      setEditFxLoading(false);
+    }
+  }
+
+  async function saveEditReceipt(id: string) {
+    if (!editDraft) return;
+    if (editDraft.currency !== "GBP" && !editDraft.fxRateInput) {
+      setEditError("Enter an exchange rate before saving (or wait for it to load).");
+      return;
+    }
+    setEditError(null);
+    setEditBusy(true);
+    try {
+      const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = draftGbpAmounts(editDraft);
+      await receiptsStore.update(id, {
+        clientId: editDraft.clientId,
+        vendor: editDraft.vendor,
+        date: editDraft.date,
+        category: editDraft.category,
+        amount: netGbp,
+        vatAmount: vatGbp,
+        originalAmount,
+        originalVatAmount,
+        originalCurrency,
+        fxRate,
+        notes: editDraft.notes,
+      });
+      setReceipts((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                clientId: editDraft.clientId,
+                vendor: editDraft.vendor,
+                date: editDraft.date,
+                category: editDraft.category,
+                amount: netGbp,
+                vatAmount: vatGbp,
+                originalAmount,
+                originalVatAmount,
+                originalCurrency,
+                fxRate,
+                notes: editDraft.notes,
+              }
+            : r
+        )
+      );
+      setEditingId(null);
+      setEditDraft(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Could not save changes.");
+    } finally {
+      setEditBusy(false);
     }
   }
 
@@ -486,7 +621,83 @@ export default function ReceiptsPage() {
               {hasActiveFilters ? "No receipts match these filters." : "No receipts saved yet."}
             </p>
           )}
-          {filteredReceipts.map((r) => (
+          {filteredReceipts.map((r) =>
+            editingId === r.id && editDraft ? (
+              <div key={r.id} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+                <select
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  value={editDraft.clientId}
+                  onChange={(e) => setEditDraft({ ...editDraft, clientId: e.target.value })}
+                >
+                  <option value="">No supplier / general expense</option>
+                  {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
+                  <select className="rounded-lg border px-3 py-2 text-sm" value={editDraft.category} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
+                    {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <input
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  placeholder="Vendor / shop name"
+                  value={editDraft.vendor}
+                  onChange={(e) => setEditDraft({ ...editDraft, vendor: e.target.value })}
+                />
+                <div className="grid grid-cols-3 gap-3">
+                  <input
+                    className="col-span-2 rounded-lg border px-3 py-2 text-sm"
+                    placeholder={`Total (${editDraft.currency}, incl. VAT)`}
+                    value={editDraft.totalAmount}
+                    onChange={(e) => setEditDraft({ ...editDraft, totalAmount: e.target.value })}
+                    inputMode="decimal"
+                  />
+                  <select className="rounded-lg border px-3 py-2 text-sm" value={editDraft.currency} onChange={(e) => onEditCurrencyChange(e.target.value)}>
+                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <input
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  placeholder={`Of which VAT (${editDraft.currency})`}
+                  value={editDraft.vatAmount}
+                  onChange={(e) => setEditDraft({ ...editDraft, vatAmount: e.target.value })}
+                  inputMode="decimal"
+                />
+                {editDraft.currency !== "GBP" && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-neutral-500 whitespace-nowrap">1 {editDraft.currency} =</label>
+                    <input
+                      className="w-28 rounded-lg border px-2 py-1.5 text-sm"
+                      value={editDraft.fxRateInput}
+                      onChange={(e) => setEditDraft({ ...editDraft, fxRateInput: e.target.value })}
+                      inputMode="decimal"
+                      placeholder={editFxLoading ? "Loading…" : "rate"}
+                    />
+                    <span className="text-xs text-neutral-500">GBP {editFxLoading && "(fetching today's rate…)"}</span>
+                  </div>
+                )}
+                {editFxError && <p className="text-xs text-amber-700">{editFxError}</p>}
+                <textarea
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  placeholder="Notes"
+                  value={editDraft.notes}
+                  onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
+                />
+                {editError && <p className="text-sm text-red-600">{editError}</p>}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => saveEditReceipt(r.id)}
+                    disabled={editBusy}
+                    className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  >
+                    {editBusy ? "Saving…" : "Save"}
+                  </button>
+                  <button onClick={cancelEditReceipt} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div key={r.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
               <div className="flex items-center gap-3">
                 {r.imageDataUrl && (
@@ -548,10 +759,12 @@ export default function ReceiptsPage() {
                 >
                   ★
                 </button>
+                <button onClick={() => startEditReceipt(r)} className="text-sm font-medium text-blue-600">Edit</button>
                 <button onClick={() => removeReceipt(r.id)} className="text-sm text-red-600">Remove</button>
               </div>
             </div>
-          ))}
+            )
+          )}
         </div>
       )}
     </div>

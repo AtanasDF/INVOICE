@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 
@@ -8,23 +10,41 @@ function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 }
 
+type ClientDraft = {
+  name: string;
+  isCompany: boolean;
+  email: string;
+  address: string;
+  vatNumber: string;
+  paymentTerms: string;
+  defaultCurrency: string;
+  contactPerson: string;
+};
+
+function draftFor(c: Client): ClientDraft {
+  return {
+    name: c.name,
+    isCompany: c.isCompany,
+    email: c.email,
+    address: c.address,
+    vatNumber: c.vatNumber,
+    paymentTerms: c.paymentTerms,
+    defaultCurrency: c.defaultCurrency,
+    contactPerson: c.contactPerson,
+  };
+}
+
 export default function ClientsPage() {
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<ClientKind>("client");
+  const [tab, setTab] = useState<ClientKind>(searchParams.get("tab") === "supplier" ? "supplier" : "client");
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
-
-  const [name, setName] = useState("");
-  const [isCompany, setIsCompany] = useState(true);
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [vatNumber, setVatNumber] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState("");
-  const [defaultCurrency, setDefaultCurrency] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ClientDraft | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
@@ -50,35 +70,30 @@ export default function ClientsPage() {
 
   const visibleClients = useMemo(() => clients.filter((c) => c.kind === tab), [clients, tab]);
 
-  async function addClient(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
+  function startEdit(c: Client) {
+    setEditingId(c.id);
+    setDraft(draftFor(c));
     setError(null);
-    setSaving(true);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setDraft(null);
+  }
+
+  async function saveEdit(id: string) {
+    if (!draft) return;
+    setError(null);
+    setBusyId(id);
     try {
-      const created = await clientsStore.add({
-        name,
-        isCompany,
-        email,
-        address,
-        kind: tab,
-        vatNumber,
-        paymentTerms,
-        defaultCurrency,
-        contactPerson,
-      });
-      setClients((prev) => [...prev, created]);
-      setName("");
-      setEmail("");
-      setAddress("");
-      setVatNumber("");
-      setPaymentTerms("");
-      setDefaultCurrency("");
-      setContactPerson("");
+      await clientsStore.update(id, draft);
+      setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...draft } : c)));
+      setEditingId(null);
+      setDraft(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save client.");
+      setError(err instanceof Error ? err.message : "Could not save changes.");
     } finally {
-      setSaving(false);
+      setBusyId(null);
     }
   }
 
@@ -117,11 +132,16 @@ export default function ClientsPage() {
             Clients are who you invoice. Suppliers are who invoices or receipts come from.
           </p>
         </div>
-        {visibleClients.length > 0 && (
-          <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
-            Export CSV
-          </button>
-        )}
+        <div className="flex gap-2">
+          {visibleClients.length > 0 && (
+            <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
+              Export CSV
+            </button>
+          )}
+          <Link href={`/clients/new?kind=${tab}`} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+            + New {tab === "client" ? "client" : "supplier"}
+          </Link>
+        </div>
       </div>
 
       <div className="flex rounded-lg border text-sm w-fit">
@@ -139,87 +159,99 @@ export default function ClientsPage() {
         </button>
       </div>
 
-      <form onSubmit={addClient} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <p className="text-sm font-medium text-neutral-500">
-          Adding a new {tab === "client" ? "client" : "supplier"}
-        </p>
-        <div className="flex gap-4 text-sm">
-          <label className="flex items-center gap-2">
-            <input type="radio" checked={isCompany} onChange={() => setIsCompany(true)} />
-            Company
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="radio" checked={!isCompany} onChange={() => setIsCompany(false)} />
-            Individual
-          </label>
-        </div>
-        <input
-          className="w-full rounded-lg border px-3 py-2"
-          placeholder={isCompany ? "Company name" : "Full name"}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="w-full rounded-lg border px-3 py-2"
-          placeholder="Email (optional)"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <textarea
-          className="w-full rounded-lg border px-3 py-2"
-          placeholder="Billing address (optional)"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-        <details className="rounded-lg border p-3">
-          <summary className="cursor-pointer text-sm font-medium text-neutral-600">More details (optional)</summary>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency (e.g. GBP)" value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} />
-          </div>
-        </details>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? "Saving…" : `Save ${tab}`}
-        </button>
-      </form>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
           {visibleClients.length === 0 && (
-            <p className="text-sm text-neutral-500">No {tab}s saved yet.</p>
+            <p className="text-sm text-neutral-500">
+              No {tab}s saved yet. <Link href={`/clients/new?kind=${tab}`} className="text-blue-600 underline">Add one</Link>.
+            </p>
           )}
           {visibleClients.map((c) => {
             const clientInvoices = tab === "client" ? invoicesForClient(c.id) : [];
             const expanded = expandedClientId === c.id;
+            const editing = editingId === c.id;
             return (
               <div key={c.id} className="rounded-xl border bg-white text-neutral-900 shadow-sm">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-medium">{c.name}</div>
-                    <div className="text-sm text-neutral-500">
-                      {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
+                {editing && draft ? (
+                  <div className="space-y-3 p-4">
+                    <div className="flex gap-4 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input type="radio" checked={draft.isCompany} onChange={() => setDraft({ ...draft, isCompany: true })} />
+                        Company
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="radio" checked={!draft.isCompany} onChange={() => setDraft({ ...draft, isCompany: false })} />
+                        Individual
+                      </label>
+                    </div>
+                    <input
+                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      placeholder={draft.isCompany ? "Company name" : "Full name"}
+                      value={draft.name}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                    />
+                    <input
+                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      placeholder="Email"
+                      value={draft.email}
+                      onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                    />
+                    <textarea
+                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      placeholder="Billing address"
+                      value={draft.address}
+                      onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
+                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
+                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />
+                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency" value={draft.defaultCurrency} onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })} />
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => saveEdit(c.id)}
+                        disabled={busyId === c.id}
+                        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        {busyId === c.id ? "Saving…" : "Save"}
+                      </button>
+                      <button onClick={cancelEdit} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                        Cancel
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {tab === "client" && clientInvoices.length > 0 && (
-                      <button
-                        onClick={() => setExpandedClientId(expanded ? null : c.id)}
-                        className="text-sm font-medium text-blue-600"
-                      >
-                        {expanded ? "Hide" : "Payment history"}
+                ) : (
+                  <div className="flex items-center justify-between p-4">
+                    <div>
+                      <div className="font-medium">{c.name}</div>
+                      <div className="text-sm text-neutral-500">
+                        {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {tab === "client" && clientInvoices.length > 0 && (
+                        <button
+                          onClick={() => setExpandedClientId(expanded ? null : c.id)}
+                          className="text-sm font-medium text-blue-600"
+                        >
+                          {expanded ? "Hide" : "Payment history"}
+                        </button>
+                      )}
+                      <button onClick={() => startEdit(c)} className="text-sm font-medium text-blue-600">
+                        Edit
                       </button>
-                    )}
-                    <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
-                      Remove
-                    </button>
+                      <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                </div>
-                {expanded && (
+                )}
+                {expanded && !editing && (
                   <div className="space-y-2 border-t p-4">
                     {clientInvoices.map((inv) => {
                       const status = statusFor(inv);
