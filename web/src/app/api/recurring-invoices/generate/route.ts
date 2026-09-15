@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
@@ -11,24 +10,14 @@ export const runtime = "nodejs";
 // sends it like any other draft) using that row's client/items/terms,
 // and rolls the recurring invoice's next_due_date forward a month.
 //
-// A generated invoice gets a placeholder number, same as any other
-// draft -- the real invoice number and the account's number counter are
-// only touched when a draft is actually marked sent (see
-// invoices/[id]/page.tsx's confirmSend), not at creation. That also
-// means rows can be processed independently here: there's no shared
-// counter to serialize against any more.
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function addMonths(dateStr: string, months: number): string {
-  const d = new Date(dateStr);
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
+// The insert and the next_due_date advance happen inside
+// generate_recurring_invoice() (migration-013), one Postgres transaction
+// per row, rather than as two separate calls from here -- a dropped
+// connection between them used to be able to leave next_due_date in the
+// past with the invoice already created, which would regenerate the
+// same invoice every day after that with nobody watching to notice.
+// service_role-only function, not callable by authenticated or anon --
+// see the migration for why.
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -49,7 +38,7 @@ export async function GET(req: Request) {
 
     const { data: due, error: dueErr } = await admin
       .from("recurring_invoices")
-      .select("id, user_id, client_id, items, payment_terms, notes, next_due_date")
+      .select("id")
       .eq("active", true)
       .lte("next_due_date", today);
     if (dueErr) return NextResponse.json({ error: dueErr.message }, { status: 500 });
@@ -60,29 +49,12 @@ export async function GET(req: Request) {
 
     await Promise.all(
       due.map(async (row) => {
-        try {
-          const { error: insErr } = await admin.from("invoices").insert({
-            user_id: row.user_id,
-            client_id: row.client_id,
-            date: today,
-            number: `DRAFT-${randomUUID()}`,
-            items: row.items,
-            notes: row.notes,
-            due_date: addDays(today, 30),
-            payment_terms: row.payment_terms,
-            status: "draft",
-            tags: [],
-          });
-          if (insErr) throw insErr;
-
-          const nextDue = addMonths(row.next_due_date, 1);
-          const { error: updErr } = await admin.from("recurring_invoices").update({ next_due_date: nextDue }).eq("id", row.id);
-          if (updErr) throw updErr;
-
-          generated += 1;
-        } catch (err) {
-          failures.push(`${row.id}: ${err instanceof Error ? err.message : "unknown error"}`);
+        const { error } = await admin.rpc("generate_recurring_invoice", { p_recurring_invoice_id: row.id });
+        if (error) {
+          failures.push(`${row.id}: ${error.message}`);
+          return;
         }
+        generated += 1;
       })
     );
 
