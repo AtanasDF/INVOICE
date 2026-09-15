@@ -145,6 +145,20 @@ export const clientsStore = {
     if (error) throw error;
     return clientFromRow(data as ClientRow);
   },
+  async update(id: string, patch: Partial<Omit<Client, "id">>): Promise<void> {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.name !== undefined) dbPatch.name = patch.name;
+    if (patch.isCompany !== undefined) dbPatch.is_company = patch.isCompany;
+    if (patch.email !== undefined) dbPatch.email = patch.email || null;
+    if (patch.address !== undefined) dbPatch.address = patch.address || null;
+    if (patch.kind !== undefined) dbPatch.kind = patch.kind;
+    if (patch.vatNumber !== undefined) dbPatch.vat_number = patch.vatNumber || null;
+    if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
+    if (patch.defaultCurrency !== undefined) dbPatch.default_currency = patch.defaultCurrency || null;
+    if (patch.contactPerson !== undefined) dbPatch.contact_person = patch.contactPerson || null;
+    const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
+    if (error) throw error;
+  },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) throw error;
@@ -235,7 +249,22 @@ export const receiptsStore = {
     patch: Partial<
       Pick<
         Receipt,
-        "starred" | "notes" | "warrantyMonths" | "tags" | "lineItems" | "vendor" | "date" | "category" | "amount" | "vatAmount" | "needsReview"
+        | "starred"
+        | "notes"
+        | "warrantyMonths"
+        | "tags"
+        | "lineItems"
+        | "vendor"
+        | "date"
+        | "category"
+        | "amount"
+        | "vatAmount"
+        | "needsReview"
+        | "clientId"
+        | "originalAmount"
+        | "originalVatAmount"
+        | "originalCurrency"
+        | "fxRate"
       >
     >
   ): Promise<void> {
@@ -251,6 +280,11 @@ export const receiptsStore = {
     if (patch.amount !== undefined) dbPatch.amount = patch.amount;
     if (patch.vatAmount !== undefined) dbPatch.vat_amount = patch.vatAmount;
     if (patch.needsReview !== undefined) dbPatch.needs_review = patch.needsReview;
+    if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
+    if (patch.originalAmount !== undefined) dbPatch.original_amount = patch.originalAmount;
+    if (patch.originalVatAmount !== undefined) dbPatch.original_vat_amount = patch.originalVatAmount;
+    if (patch.originalCurrency !== undefined) dbPatch.original_currency = patch.originalCurrency;
+    if (patch.fxRate !== undefined) dbPatch.fx_rate = patch.fxRate;
     const { error } = await supabase.from("receipts").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
@@ -330,12 +364,17 @@ export const invoicesStore = {
     }
     return invoiceFromRow(data as InvoiceRow);
   },
-  async update(id: string, patch: Partial<Pick<Invoice, "paid" | "dueDate" | "paymentTerms" | "tags">>): Promise<void> {
+  // Deliberately excludes number/date/items/clientId -- once an invoice
+  // exists it's what was actually issued, and changing any of those after
+  // the fact is exactly the silent-mutation problem credit notes exist to
+  // avoid. Everything patchable here is administrative, not financial.
+  async update(id: string, patch: Partial<Pick<Invoice, "paid" | "dueDate" | "paymentTerms" | "tags" | "notes">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.paid !== undefined) dbPatch.paid = patch.paid;
     if (patch.dueDate !== undefined) dbPatch.due_date = patch.dueDate || null;
     if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
+    if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
     if (error) throw error;
   },

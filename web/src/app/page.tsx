@@ -116,28 +116,26 @@ export default function Dashboard() {
         </div>
       )}
 
-      <Link
-        href="/scan"
-        className="flex items-center gap-4 rounded-xl border-2 border-neutral-900 bg-neutral-900 p-6 text-white shadow-sm transition hover:bg-neutral-800"
-      >
-        <ScanIcon />
-        <div className="flex-1">
-          <div className="text-lg font-semibold">What do you want to scan or add?</div>
-          <div className="mt-1 text-sm text-neutral-300">Point your camera at a receipt, invoice, or document.</div>
+      <div className="flex gap-3">
+        <Link
+          href="/scan"
+          aria-label="Scan a document"
+          className="flex aspect-square w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-neutral-800 sm:w-28"
+        >
+          <ScanIcon />
+          <span className="text-xs font-medium">Scan</span>
+        </Link>
+        <div className="grid flex-1 grid-cols-1 gap-2">
+          <Link href="/receipts" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+            + Add a receipt manually
+          </Link>
+          <Link href="/invoices/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+            + Create an invoice
+          </Link>
+          <Link href="/clients" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
+            + Add a client or company
+          </Link>
         </div>
-        <span className="text-2xl">&rarr;</span>
-      </Link>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Link href="/receipts" className="rounded-lg border bg-white px-4 py-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
-          + Add a receipt manually
-        </Link>
-        <Link href="/invoices/new" className="rounded-lg border bg-white px-4 py-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
-          + Create an invoice
-        </Link>
-        <Link href="/clients" className="rounded-lg border bg-white px-4 py-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
-          + Add a client or company
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

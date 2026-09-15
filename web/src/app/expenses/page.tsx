@@ -43,10 +43,20 @@ export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [periodMode, setPeriodMode] = useState<"week" | "month" | "year">("month");
+  const [periodMode, setPeriodMode] = useState<"week" | "month" | "year" | "custom">("month");
   const [weekAnchor, setWeekAnchor] = useState(() => new Date().toISOString().slice(0, 10));
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [year, setYear] = useState(() => String(new Date().getFullYear()));
+  // Any arbitrary span -- three days, two weeks, a month and a half,
+  // whatever -- alongside the week/month/year presets, not instead of
+  // them. Defaults to the last 30 days so it starts on a sensible range
+  // rather than empty.
+  const [customFrom, setCustomFrom] = useState(() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [viewMode, setViewMode] = useState<"expenses" | "combined">("expenses");
 
   useEffect(() => {
@@ -69,18 +79,20 @@ export default function ExpensesPage() {
         if (r.needsReview) return false;
         if (periodMode === "week") return r.date >= weekStart && r.date <= weekEnd;
         if (periodMode === "month") return monthKey(r.date) === month;
-        return yearKey(r.date) === year;
+        if (periodMode === "year") return yearKey(r.date) === year;
+        return r.date >= customFrom && r.date <= customTo;
       }),
-    [receipts, periodMode, month, year, weekStart, weekEnd]
+    [receipts, periodMode, month, year, weekStart, weekEnd, customFrom, customTo]
   );
   const periodInvoices = useMemo(
     () =>
       invoices.filter((i) => {
         if (periodMode === "week") return i.date >= weekStart && i.date <= weekEnd;
         if (periodMode === "month") return monthKey(i.date) === month;
-        return yearKey(i.date) === year;
+        if (periodMode === "year") return yearKey(i.date) === year;
+        return i.date >= customFrom && i.date <= customTo;
       }),
-    [invoices, periodMode, month, year, weekStart, weekEnd]
+    [invoices, periodMode, month, year, weekStart, weekEnd, customFrom, customTo]
   );
 
   const byCategory = useMemo(() => {
@@ -128,8 +140,14 @@ export default function ExpensesPage() {
   }
 
   const periodLabel =
-    periodMode === "week" ? `${startOfWeek(weekAnchor)} to ${endOfWeek(weekAnchor)}` : periodMode === "month" ? month : year;
-  const periodTitle = periodMode === "week" ? "Weekly" : periodMode === "month" ? "Monthly" : "Yearly";
+    periodMode === "week"
+      ? `${startOfWeek(weekAnchor)} to ${endOfWeek(weekAnchor)}`
+      : periodMode === "month"
+        ? month
+        : periodMode === "year"
+          ? year
+          : `${customFrom} to ${customTo}`;
+  const periodTitle = periodMode === "week" ? "Weekly" : periodMode === "month" ? "Monthly" : periodMode === "year" ? "Yearly" : "Custom-range";
 
   return (
     <div className="space-y-6">
@@ -155,18 +173,30 @@ export default function ExpensesPage() {
             >
               Year
             </button>
+            <button
+              onClick={() => setPeriodMode("custom")}
+              className={`px-3 py-1.5 ${periodMode === "custom" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+            >
+              Custom
+            </button>
           </div>
           {periodMode === "week" ? (
             <input type="date" className="rounded-lg border px-3 py-2" value={weekAnchor} onChange={(e) => setWeekAnchor(e.target.value)} />
           ) : periodMode === "month" ? (
             <input type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
-          ) : (
+          ) : periodMode === "year" ? (
             <input
               type="number"
               className="w-28 rounded-lg border px-3 py-2"
               value={year}
               onChange={(e) => setYear(e.target.value)}
             />
+          ) : (
+            <div className="flex items-center gap-2">
+              <input type="date" className="rounded-lg border px-3 py-2" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              <span className="text-sm text-neutral-500">to</span>
+              <input type="date" className="rounded-lg border px-3 py-2" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+            </div>
           )}
           <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
             Print / save as PDF
