@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
+import { suggestedInvoiceNumber } from "@/lib/invoiceNumber";
+
+function addDays(dateStr: string, days: number): string {
+  // Same UTC-safe pattern as everywhere else in the app.
+  const d = new Date(dateStr);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
@@ -30,6 +39,9 @@ export default function InvoiceViewPage() {
   const [editTagsInput, setEditTagsInput] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +101,34 @@ export default function InvoiceViewPage() {
       setEditError(err instanceof Error ? err.message : "Could not save changes.");
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function duplicateInvoice() {
+    if (!invoice) return;
+    setDuplicateError(null);
+    setDuplicating(true);
+    try {
+      const biz = await businessProfileStore.get();
+      const today = new Date().toISOString().slice(0, 10);
+      const created = await invoicesStore.add({
+        clientId: invoice.clientId,
+        date: today,
+        number: suggestedInvoiceNumber(biz.invoicePrefix, biz.invoiceNextNumber),
+        items: invoice.items,
+        notes: invoice.notes,
+        dueDate: addDays(today, 30),
+        paymentTerms: invoice.paymentTerms,
+        paid: false,
+        tags: invoice.tags,
+      });
+      // Advances the counter the same way New Invoice does -- this
+      // duplicate counts as an invoice actually created, same as any other.
+      await businessProfileStore.save({ ...biz, invoiceNextNumber: biz.invoiceNextNumber + 1 });
+      router.push(`/invoices/${created.id}`);
+    } catch (err) {
+      setDuplicateError(err instanceof Error ? err.message : "Could not duplicate this invoice.");
+      setDuplicating(false);
     }
   }
 
@@ -156,6 +196,9 @@ export default function InvoiceViewPage() {
           <button onClick={() => setEditingDetails((v) => !v)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             {editingDetails ? "Cancel" : "Edit details"}
           </button>
+          <button onClick={duplicateInvoice} disabled={duplicating} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+            {duplicating ? "Duplicating…" : "Duplicate"}
+          </button>
           <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             Share via WhatsApp
           </a>
@@ -167,6 +210,7 @@ export default function InvoiceViewPage() {
           </button>
         </div>
       </div>
+      {duplicateError && <p className="text-sm text-red-600 print:hidden">{duplicateError}</p>}
 
       {editingDetails && (
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
