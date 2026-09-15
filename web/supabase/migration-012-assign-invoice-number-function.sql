@@ -60,5 +60,13 @@ $$;
 -- including anon) by default -- narrow that down. auth.uid() already
 -- returns null for an anon caller, so this fails harmlessly for one
 -- either way, but no reason to leave it callable at all.
+--
+-- revoke ... from public only removes the PUBLIC pseudo-role. Supabase
+-- also grants anon, authenticated, and service_role their own explicit
+-- EXECUTE privileges at creation time, and those survive the line above
+-- untouched -- confirmed via the actual ACL after running this the first
+-- time. anon needs its own explicit revoke; service_role is left alone
+-- on purpose (the cron routes use it).
 revoke all on function public.assign_invoice_number(uuid) from public;
 grant execute on function public.assign_invoice_number(uuid) to authenticated;
+revoke execute on function public.assign_invoice_number(uuid) from anon;

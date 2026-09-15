@@ -16,6 +16,7 @@ import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { DEFAULT_REMINDER_TEXT } from "@/lib/reminderTemplates";
+import { parseSequenceNumber } from "@/lib/invoiceNumber";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -45,9 +46,14 @@ export default function SettingsPage() {
   const [reminderTextBefore, setReminderTextBefore] = useState("");
   const [reminderTextDue, setReminderTextDue] = useState("");
   const [reminderTextAfter, setReminderTextAfter] = useState("");
+  // Highest sequence number already used among existing invoices sharing
+  // the current prefix -- lets the Next number field warn when it's set
+  // lower than that, which would make the series look like it went
+  // backwards rather than actually starting fresh.
+  const [highestExistingNumber, setHighestExistingNumber] = useState(0);
 
   useEffect(() => {
-    businessProfileStore.get().then((p) => {
+    Promise.all([businessProfileStore.get(), invoicesStore.all()]).then(([p, invoices]) => {
       setBusinessName(p.businessName);
       setVatNumber(p.vatNumber);
       setAddress(p.address);
@@ -61,6 +67,10 @@ export default function SettingsPage() {
       setReminderTextBefore(p.reminderTextBefore ?? "");
       setReminderTextDue(p.reminderTextDue ?? "");
       setReminderTextAfter(p.reminderTextAfter ?? "");
+      const sequenceNumbers = invoices
+        .map((inv) => parseSequenceNumber(inv.number, p.invoicePrefix))
+        .filter((n): n is number => n !== null);
+      setHighestExistingNumber(sequenceNumbers.length ? Math.max(...sequenceNumbers) : 0);
       setLoading(false);
     });
     getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
@@ -202,6 +212,8 @@ export default function SettingsPage() {
 
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
 
+  const nextNumberTooLow = (parseInt(invoiceNextNumber, 10) || 0) <= highestExistingNumber && highestExistingNumber > 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -265,9 +277,9 @@ export default function SettingsPage() {
           <div>
             <h2 className="font-semibold">Invoice numbering</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              A new invoice suggests {invoicePrefix}{invoiceNextNumber} — still editable per invoice, but this keeps
-              the series sequential the way HMRC expects rather than random. Advances by one every time an invoice
-              is actually created, whatever number you end up giving it.
+              The next invoice you mark as sent is assigned {invoicePrefix}{invoiceNextNumber} automatically — there&apos;s
+              no way to override that per invoice any more, so this is the only place that controls the sequence.
+              It advances by one every time an invoice is actually sent.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -285,6 +297,13 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+          {nextNumberTooLow && (
+            <p className="text-xs text-amber-700">
+              Your highest existing invoice number is {invoicePrefix}{highestExistingNumber} — setting the next one to{" "}
+              {invoicePrefix}{invoiceNextNumber || "0"} would make the series look like it went backwards. Set it to at
+              least {invoicePrefix}{highestExistingNumber + 1}, unless that&apos;s deliberate.
+            </p>
+          )}
         </div>
 
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
