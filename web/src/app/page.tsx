@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { businessProfileStore, clientsStore, receiptsStore, invoicesStore, recurringExpensesStore } from "@/lib/storage";
+import { FolderIcon, RepeatIcon } from "@/components/icons";
 
 function ScanIcon() {
   return (
@@ -152,11 +153,11 @@ export default function Dashboard() {
       </div>
 
       <div className="flex flex-wrap gap-4">
-        <Link href="/files" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
-          📁 Browse your file library &rarr;
+        <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
+          <FolderIcon /> Browse your file library &rarr;
         </Link>
-        <Link href="/recurring" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
-          🔁 Recurring expenses &rarr;
+        <Link href="/recurring" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
+          <RepeatIcon /> Recurring expenses &rarr;
         </Link>
       </div>
 

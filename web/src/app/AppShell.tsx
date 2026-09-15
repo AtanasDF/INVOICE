@@ -15,9 +15,9 @@ function Header() {
           Invoicer
         </Link>
         {user && (
-          <nav className="flex items-center gap-4 text-sm font-medium text-neutral-600">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
             <Link href="/">Home</Link>
-            <Link href="/clients">Clients</Link>
+            <Link href="/clients">Clients & suppliers</Link>
             <Link href="/receipts">Receipts</Link>
             <Link href="/invoices">Invoices</Link>
             <Link href="/expenses">Expenses</Link>

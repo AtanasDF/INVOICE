@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, Invoice, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
+import { CameraIcon } from "@/components/icons";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 function addDays(dateStr: string, days: number): string {
@@ -173,9 +174,9 @@ export default function NewInvoicePage() {
         <button
           onClick={() => setShowCapture(true)}
           disabled={scanning}
-          className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
         >
-          {scanning ? "Reading document…" : "📷 Scan or attach a document"}
+          {scanning ? "Reading document…" : (<><CameraIcon /> Scan or attach a document</>)}
         </button>
       </div>
       {scanError && <p className="text-sm text-red-600">{scanError}</p>}

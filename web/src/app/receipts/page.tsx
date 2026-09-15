@@ -6,6 +6,7 @@ import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/l
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
+import { DocumentIcon } from "@/components/icons";
 
 function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
@@ -702,7 +703,7 @@ export default function ReceiptsPage() {
               <div className="flex items-center gap-3">
                 {r.imageDataUrl && (
                   isPdfDataUrl(r.imageDataUrl) ? (
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-xl">📄</div>
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-neutral-500"><DocumentIcon className="h-6 w-6" /></div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.imageDataUrl} alt="" className="h-12 w-12 rounded object-cover" />

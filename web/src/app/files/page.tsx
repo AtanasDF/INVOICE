@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
 import { isPdfDataUrl } from "@/lib/fileType";
+import { DocumentIcon } from "@/components/icons";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -79,7 +80,7 @@ export default function FilesPage() {
               className="rounded-xl border bg-white p-2 text-left shadow-sm transition hover:shadow-md"
             >
               {isPdfDataUrl(r.imageDataUrl) ? (
-                <div className="flex aspect-square items-center justify-center rounded-lg bg-neutral-100 text-3xl">📄</div>
+                <div className="flex aspect-square items-center justify-center rounded-lg bg-neutral-100 text-neutral-500"><DocumentIcon className="h-8 w-8" /></div>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={r.imageDataUrl ?? undefined} alt="" className="aspect-square w-full rounded-lg object-cover" />

@@ -191,24 +191,30 @@ export default function SettingsPage() {
 
       <form onSubmit={save} className="space-y-6">
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <input
-            className="w-full rounded-lg border px-3 py-2"
-            placeholder="Business name"
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-          />
-          <input
-            className="w-full rounded-lg border px-3 py-2"
-            placeholder="VAT number (optional)"
-            value={vatNumber}
-            onChange={(e) => setVatNumber(e.target.value)}
-          />
-          <textarea
-            className="w-full rounded-lg border px-3 py-2"
-            placeholder="Business address (optional)"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
+          <div>
+            <label className="text-xs text-neutral-500">Business name</label>
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">VAT number (optional)</label>
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              value={vatNumber}
+              onChange={(e) => setVatNumber(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">Business address (optional)</label>
+            <textarea
+              className="w-full rounded-lg border px-3 py-2"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
           <p className="text-xs text-neutral-500">
             A logo can go here too once file storage is set up — not yet, so this is text-only for now.
           </p>

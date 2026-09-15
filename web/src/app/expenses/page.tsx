@@ -258,7 +258,7 @@ export default function ExpensesPage() {
         <h2 className="font-semibold">By category</h2>
         {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this {periodMode}.</p>}
         {chartData.length > 0 && (
-          <div className="mt-4 h-56">
+          <div className="mt-4 h-56 max-w-xl">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />

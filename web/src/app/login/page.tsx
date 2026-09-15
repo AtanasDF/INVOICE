@@ -108,7 +108,8 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="text-sm font-medium text-neutral-500">Invoicer — invoices, receipts, and expenses in one place.</p>
+        <h1 className="mt-3 text-2xl font-bold">{title}</h1>
         <p className="mt-1 text-neutral-600">{subtitle}</p>
       </div>
 

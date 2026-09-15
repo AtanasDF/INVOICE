@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { effectiveCategories } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
+import { DocumentIcon } from "@/components/icons";
 
 type DraftState = {
   vendor: string;
@@ -117,8 +118,8 @@ export default function ReviewQueuePage() {
                 <div className="flex items-start gap-4">
                   {r.imageDataUrl ? (
                     isPdf ? (
-                      <div className="flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center rounded-lg border bg-neutral-50 text-xs text-neutral-500">
-                        <span className="text-2xl">📄</span>
+                      <div className="flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500">
+                        <DocumentIcon className="h-6 w-6" />
                         PDF
                       </div>
                     ) : (

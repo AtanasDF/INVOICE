@@ -7,6 +7,7 @@ import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/l
 import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
+import { DocumentIcon, PinIcon } from "@/components/icons";
 
 type Confidence = "high" | "low";
 
@@ -321,8 +322,8 @@ export default function ScanPage() {
       <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <div className="flex items-center gap-3">
           {isPdf ? (
-            <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border bg-neutral-50 text-xs text-neutral-500">
-              <span className="text-2xl">📄</span>
+            <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500">
+              <DocumentIcon className="h-6 w-6" />
               PDF
             </div>
           ) : capturedFile ? (
@@ -416,9 +417,9 @@ export default function ScanPage() {
             type="button"
             onClick={useLocation}
             disabled={locating}
-            className="text-sm font-medium text-blue-600 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 disabled:opacity-50"
           >
-            {locating ? "Locating…" : "📍 Guess from my location"}
+            {locating ? "Locating…" : (<><PinIcon /> Guess from my location</>)}
           </button>
           {locateNote && <p className="mt-1 text-sm text-neutral-500">{locateNote}</p>}
         </div>
