@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { VatRateKind } from "./vat";
 
 export type ClientKind = "client" | "supplier";
 
@@ -55,6 +56,10 @@ export type InvoiceItem = {
   description: string;
   quantity: number;
   unitPrice: number;
+  // Defaults to "standard" for a vat-registered account; carried on every
+  // item even when the account isn't vat-registered (it's just ignored
+  // then) so nothing is lost if VAT registration gets switched on later.
+  vatRate: VatRateKind;
 };
 
 export type Invoice = {
@@ -274,7 +279,9 @@ function invoiceFromRow(r: InvoiceRow): Invoice {
     clientId: r.client_id ?? "",
     date: r.date,
     number: r.number,
-    items: r.items ?? [],
+    // Existing invoices predate vatRate -- default those items to
+    // standard rather than leaving it undefined.
+    items: (r.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "standard" })),
     notes: r.notes ?? "",
     dueDate: r.due_date,
     paymentTerms: r.payment_terms ?? "",
@@ -312,7 +319,15 @@ export const invoicesStore = {
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      // 23505 = unique_violation -- the DB-level backstop for
+      // (user_id, number) added in migration-010, since the field stays
+      // freely editable and a client-side check alone can't be trusted.
+      if (error.code === "23505") {
+        throw new Error(`Invoice number "${input.number}" is already in use.`);
+      }
+      throw error;
+    }
     return invoiceFromRow(data as InvoiceRow);
   },
   async update(id: string, patch: Partial<Pick<Invoice, "paid" | "dueDate" | "paymentTerms" | "tags">>): Promise<void> {
@@ -399,6 +414,21 @@ export type BusinessProfile = {
   // it's generated client-side via the Web Crypto API (generateInboxToken
   // in lib/inboxToken.ts), never anything guessable.
   inboxToken: string | null;
+  // Sequential invoice numbering: the next invoice defaults to
+  // `${invoicePrefix}${invoiceNextNumber}`, editable at save time same as
+  // before. invoiceNextNumber advances by one on every invoice actually
+  // created, regardless of what number ends up saved (an override doesn't
+  // stall the counter).
+  invoicePrefix: string;
+  invoiceNextNumber: number;
+  // Whether this account can charge VAT at all. Off hides the entire VAT
+  // block on new/existing invoices and suppresses the VAT number on the
+  // printed invoice, even if one happens to still be filled in below --
+  // deregistering shouldn't require also clearing that field.
+  vatRegistered: boolean;
+  // Free text, but its own field rather than folded into invoice notes --
+  // shown on the printed invoice as a dedicated "How to pay" block.
+  bankDetails: string;
 };
 
 type BusinessProfileRow = {
@@ -409,6 +439,10 @@ type BusinessProfileRow = {
   show_overdue_reminders: boolean | null;
   custom_categories: string[] | null;
   inbox_token: string | null;
+  invoice_prefix: string | null;
+  invoice_next_number: number | null;
+  vat_registered: boolean | null;
+  bank_details: string | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -420,6 +454,10 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     showOverdueReminders: r.show_overdue_reminders ?? true,
     customCategories: r.custom_categories ?? null,
     inboxToken: r.inbox_token,
+    invoicePrefix: r.invoice_prefix ?? "INV-",
+    invoiceNextNumber: r.invoice_next_number ?? 1,
+    vatRegistered: r.vat_registered ?? false,
+    bankDetails: r.bank_details ?? "",
   };
 }
 
@@ -431,6 +469,10 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   showOverdueReminders: true,
   customCategories: null,
   inboxToken: null,
+  invoicePrefix: "INV-",
+  invoiceNextNumber: 1,
+  vatRegistered: false,
+  bankDetails: "",
 };
 
 export const businessProfileStore = {
@@ -450,6 +492,10 @@ export const businessProfileStore = {
       show_overdue_reminders: input.showOverdueReminders,
       custom_categories: input.customCategories,
       inbox_token: input.inboxToken,
+      invoice_prefix: input.invoicePrefix || null,
+      invoice_next_number: input.invoiceNextNumber,
+      vat_registered: input.vatRegistered,
+      bank_details: input.bankDetails || null,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;

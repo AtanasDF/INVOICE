@@ -31,6 +31,10 @@ function endOfWeek(dateStr: string): string {
   d.setUTCDate(d.getUTCDate() + 6);
   return d.toISOString().slice(0, 10);
 }
+// Deliberately excl. VAT, unlike the invoices list/detail pages which
+// show the gross "amount due" -- VAT collected on an invoice isn't this
+// account's income, it's money held for HMRC, so it doesn't belong in a
+// profit/expenses figure.
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 }

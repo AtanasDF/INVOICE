@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, Invoice, InvoiceItem, clientsStore, invoicesStore } from "@/lib/storage";
+import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
+import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
+import { parseSequenceNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 function addDays(dateStr: string, days: number): string {
@@ -22,17 +24,21 @@ type ScanApiResult = {
   notes: string | null;
 };
 
+const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
+
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [pastInvoices, setPastInvoices] = useState<Invoice[]>([]);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => addDays(new Date().toISOString().slice(0, 10), 30));
   const [dueDateManual, setDueDateManual] = useState(false);
   const [paymentTerms, setPaymentTerms] = useState("");
-  const [number, setNumber] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
-  const [items, setItems] = useState<InvoiceItem[]>([{ description: "", quantity: 1, unitPrice: 0 }]);
+  const [number, setNumber] = useState("");
+  const [numberTouched, setNumberTouched] = useState(false);
+  const [items, setItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
   const [notes, setNotes] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,17 +49,23 @@ export default function NewInvoicePage() {
   const [scanError, setScanError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
+    Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
       setClients(c);
       setPastInvoices(inv);
+      setProfile(biz);
+      if (!numberTouched) setNumber(suggestedInvoiceNumber(biz.invoicePrefix, biz.invoiceNextNumber));
     });
+    // numberTouched deliberately excluded -- this only runs once on mount,
+    // the check above just guards against a slow load racing ahead of
+    // something the user already typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const billableClients = clients.filter((c) => c.kind === "client");
 
   const suggestedItems = useMemo(() => {
     if (!clientId) return [];
-    const byDescription = new Map<string, { unitPrice: number; count: number; lastDate: string }>();
+    const byDescription = new Map<string, { unitPrice: number; vatRate: VatRateKind; count: number; lastDate: string }>();
     for (const inv of pastInvoices) {
       if (inv.clientId !== clientId) continue;
       for (const item of inv.items) {
@@ -62,6 +74,7 @@ export default function NewInvoicePage() {
         if (!existing || inv.date > existing.lastDate) {
           byDescription.set(item.description, {
             unitPrice: item.unitPrice,
+            vatRate: item.vatRate,
             count: (existing?.count ?? 0) + 1,
             lastDate: inv.date,
           });
@@ -71,10 +84,43 @@ export default function NewInvoicePage() {
       }
     }
     return Array.from(byDescription.entries())
-      .map(([description, v]) => ({ description, unitPrice: v.unitPrice, count: v.count }))
+      .map(([description, v]) => ({ description, unitPrice: v.unitPrice, vatRate: v.vatRate, count: v.count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
   }, [clientId, pastInvoices]);
+
+  // The VAT rate this client's most recent invoice used for a line with
+  // this exact description -- scoped to (client, item), not the item
+  // globally, since the same description could mean something differently
+  // vat-treated for a different client. Falls back to standard-rated,
+  // since most things are.
+  function learnedVatRate(forClientId: string, description: string): VatRateKind {
+    if (!forClientId || !description.trim()) return "standard";
+    let best: { vatRate: VatRateKind; date: string } | null = null;
+    for (const inv of pastInvoices) {
+      if (inv.clientId !== forClientId) continue;
+      for (const item of inv.items) {
+        if (item.description !== description) continue;
+        if (!best || inv.date > best.date) best = { vatRate: item.vatRate, date: inv.date };
+      }
+    }
+    return best?.vatRate ?? "standard";
+  }
+
+  const numberWarning = useMemo(() => {
+    const trimmed = number.trim();
+    if (!trimmed) return null;
+    if (pastInvoices.some((inv) => inv.number === trimmed)) {
+      return `"${trimmed}" is already used by another invoice.`;
+    }
+    if (profile) {
+      const seq = parseSequenceNumber(trimmed, profile.invoicePrefix);
+      if (seq !== null && seq > profile.invoiceNextNumber) {
+        return `This skips ahead of the expected next number (${suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber)}) — you'll leave a gap in the sequence.`;
+      }
+    }
+    return null;
+  }, [number, pastInvoices, profile]);
 
   function onClientChange(id: string) {
     setClientId(id);
@@ -82,13 +128,13 @@ export default function NewInvoicePage() {
     if (client?.paymentTerms && !paymentTerms) setPaymentTerms(client.paymentTerms);
   }
 
-  function addSuggestedItem(description: string, unitPrice: number) {
+  function addSuggestedItem(description: string, unitPrice: number, vatRate: VatRateKind) {
     setItems((prev) => {
       const emptyIdx = prev.findIndex((it) => !it.description.trim());
       if (emptyIdx >= 0) {
-        return prev.map((it, i) => (i === emptyIdx ? { description, quantity: 1, unitPrice } : it));
+        return prev.map((it, i) => (i === emptyIdx ? { description, quantity: 1, unitPrice, vatRate } : it));
       }
-      return [...prev, { description, quantity: 1, unitPrice }];
+      return [...prev, { description, quantity: 1, unitPrice, vatRate }];
     });
   }
 
@@ -101,8 +147,23 @@ export default function NewInvoicePage() {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   }
 
+  // Fires once the description field loses focus rather than on every
+  // keystroke, so a manually-typed description gets the learned rate
+  // applied once it's actually complete, not on some half-typed prefix.
+  // Only applies when the line's rate is still at the "standard" default
+  // -- a rate already hand-picked from the dropdown is never silently
+  // overridden.
+  function onDescriptionBlur(idx: number) {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== idx || it.vatRate !== "standard" || !it.description.trim()) return it;
+        return { ...it, vatRate: learnedVatRate(clientId, it.description) };
+      })
+    );
+  }
+
   function addLine() {
-    setItems((prev) => [...prev, { description: "", quantity: 1, unitPrice: 0 }]);
+    setItems((prev) => [...prev, { ...BLANK_ITEM }]);
   }
 
   function removeLine(idx: number) {
@@ -126,7 +187,14 @@ export default function NewInvoicePage() {
       if (result.date) onDateChange(result.date);
       if (result.notes) setNotes((prev) => prev || result.notes || "");
       if (result.lineItems?.length) {
-        setItems(result.lineItems.map((li) => ({ description: li.description, quantity: li.quantity, unitPrice: li.unitPrice })));
+        setItems(
+          result.lineItems.map((li) => ({
+            description: li.description,
+            quantity: li.quantity,
+            unitPrice: li.unitPrice,
+            vatRate: learnedVatRate(clientId, li.description),
+          }))
+        );
       }
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Scan failed.");
@@ -135,7 +203,7 @@ export default function NewInvoicePage() {
     }
   }
 
-  const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const totals = computeInvoiceTotals(items, profile?.vatRegistered ?? false);
 
   async function save() {
     setError(null);
@@ -152,6 +220,13 @@ export default function NewInvoicePage() {
         paid: false,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
+      // Advances regardless of what number actually got saved -- an
+      // override doesn't stall the counter, it just means this account's
+      // own numbers and the suggested series have diverged, which is
+      // their call to make.
+      if (profile) {
+        await businessProfileStore.save({ ...profile, invoiceNextNumber: profile.invoiceNextNumber + 1 });
+      }
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save invoice.");
@@ -198,7 +273,7 @@ export default function NewInvoicePage() {
                 <button
                   key={s.description}
                   type="button"
-                  onClick={() => addSuggestedItem(s.description, s.unitPrice)}
+                  onClick={() => addSuggestedItem(s.description, s.unitPrice, s.vatRate)}
                   className="rounded-full border px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                 >
                   + {s.description} (£{s.unitPrice.toFixed(2)})
@@ -227,18 +302,36 @@ export default function NewInvoicePage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <input className="rounded-lg border px-3 py-2" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Invoice number" />
+          <div>
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              value={number}
+              onChange={(e) => {
+                setNumber(e.target.value);
+                setNumberTouched(true);
+              }}
+              placeholder="Invoice number"
+            />
+            {numberWarning && <p className="mt-1 text-xs text-amber-700">{numberWarning}</p>}
+          </div>
           <input className="rounded-lg border px-3 py-2" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
         </div>
 
         <div className="space-y-2">
+          <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
+            <span className={profile?.vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
+            <span className="col-span-2 text-right">Qty</span>
+            <span className="col-span-3 text-right">Unit price</span>
+            {profile?.vatRegistered && <span className="col-span-2">VAT</span>}
+          </div>
           {items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2">
               <input
-                className="col-span-6 rounded-lg border px-3 py-2"
+                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-6"} rounded-lg border px-3 py-2`}
                 placeholder="Description (e.g. Monthly work, 12-30 June)"
                 value={it.description}
                 onChange={(e) => updateItem(idx, { description: e.target.value })}
+                onBlur={() => onDescriptionBlur(idx)}
               />
               <input
                 className="col-span-2 rounded-lg border px-3 py-2"
@@ -252,13 +345,22 @@ export default function NewInvoicePage() {
                 value={it.unitPrice}
                 onChange={(e) => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
               />
+              {profile?.vatRegistered && (
+                <select
+                  className="col-span-2 rounded-lg border px-1 py-2 text-xs"
+                  value={it.vatRate}
+                  onChange={(e) => updateItem(idx, { vatRate: e.target.value as VatRateKind })}
+                >
+                  {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
+                </select>
+              )}
               <button onClick={() => removeLine(idx)} className="col-span-1 text-sm text-red-600">✕</button>
             </div>
           ))}
           <button onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>
         </div>
 
-        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (payment details, etc.)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <input
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Tags, comma separated (optional, e.g. Site A, Q3 job)"
@@ -268,11 +370,25 @@ export default function NewInvoicePage() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <div className="flex items-center justify-between border-t pt-3">
-          <div className="text-lg font-bold">Total: £{total.toFixed(2)}</div>
-          <button onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {saving ? "Saving…" : "Save invoice"}
-          </button>
+        <div className="space-y-1 border-t pt-3 text-sm">
+          {profile?.vatRegistered && (
+            <>
+              <div className="flex justify-end text-neutral-600">
+                <span>Subtotal: £{totals.subtotal.toFixed(2)}</span>
+              </div>
+              {totals.vatByRate.map((v) => (
+                <div key={v.kind} className="flex justify-end text-neutral-600">
+                  <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
+                </div>
+              ))}
+            </>
+          )}
+          <div className="flex items-center justify-between pt-1">
+            <div className="text-lg font-bold">Total: £{totals.total.toFixed(2)}</div>
+            <button onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {saving ? "Saving…" : "Save invoice"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

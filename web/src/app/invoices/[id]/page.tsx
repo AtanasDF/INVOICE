@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
+import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
 
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
@@ -90,9 +91,11 @@ export default function InvoiceViewPage() {
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
   if (!invoice) return <p className="text-sm text-neutral-500">Invoice not found.</p>;
 
-  const rawTotal = invoice.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const vatRegistered = profile?.vatRegistered ?? false;
+  const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const netTotal = rawTotal - creditNoteTotal;
+  const netTotal = totals.total - creditNoteTotal;
+  const amountDue = invoice.paid ? 0 : netTotal;
   const overdue = !invoice.paid && invoice.dueDate && invoice.dueDate < new Date().toISOString().slice(0, 10);
 
   const shareText =
@@ -128,19 +131,18 @@ export default function InvoiceViewPage() {
 
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
-            <p className="text-sm text-neutral-500">Date: {invoice.date}</p>
-            {invoice.dueDate && <p className="text-sm text-neutral-500">Due: {invoice.dueDate}</p>}
-            {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
-          </div>
           {profile?.businessName && (
-            <div className="text-right">
-              <p className="font-medium">{profile.businessName}</p>
+            <div>
+              <p className="text-lg font-bold">{profile.businessName}</p>
               {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
-              {profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
+              {vatRegistered && profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
             </div>
           )}
+          <div className="text-right">
+            <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
+            <p className="text-sm text-neutral-500">Date: {invoice.date}</p>
+            {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
+          </div>
         </div>
 
         <div className="mt-6">
@@ -157,6 +159,7 @@ export default function InvoiceViewPage() {
               <th className="py-2">Description</th>
               <th className="py-2 text-right">Qty</th>
               <th className="py-2 text-right">Unit price</th>
+              {vatRegistered && <th className="py-2 text-right">VAT</th>}
               <th className="py-2 text-right">Amount</th>
             </tr>
           </thead>
@@ -166,31 +169,55 @@ export default function InvoiceViewPage() {
                 <td className="py-2">{it.description}</td>
                 <td className="py-2 text-right">{it.quantity}</td>
                 <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
+                {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
                 <td className="py-2 text-right">£{(it.quantity * it.unitPrice).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {creditNotes.length > 0 && (
-          <div className="mt-4 space-y-1 text-sm">
-            <div className="flex justify-end text-neutral-500">
-              <span>Invoice total: £{rawTotal.toFixed(2)}</span>
-            </div>
-            {creditNotes.map((c) => (
-              <div key={c.id} className="flex justify-end text-neutral-500">
-                <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
+        <div className="mt-4 space-y-1 text-sm">
+          {vatRegistered && (
+            <>
+              <div className="flex justify-end text-neutral-600">
+                <span>Subtotal (excl. VAT): £{totals.subtotal.toFixed(2)}</span>
               </div>
-            ))}
-          </div>
-        )}
+              {totals.vatByRate.map((v) => (
+                <div key={v.kind} className="flex justify-end text-neutral-600">
+                  <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="flex justify-end text-neutral-600">
+                <span>Total: £{totals.total.toFixed(2)}</span>
+              </div>
+            </>
+          )}
+          {creditNotes.map((c) => (
+            <div key={c.id} className="flex justify-end text-neutral-500">
+              <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
 
         <div className="mt-4 flex justify-end">
-          <div className="text-lg font-bold">Total{creditNotes.length > 0 ? " due" : ""}: £{netTotal.toFixed(2)}</div>
+          <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
+            <div className="text-2xl font-extrabold">Amount due: £{amountDue.toFixed(2)}</div>
+            {invoice.dueDate && !invoice.paid && (
+              <div className="text-base font-bold text-neutral-700">Due: {invoice.dueDate}</div>
+            )}
+            {invoice.paid && <div className="text-base font-bold text-green-700">Paid</div>}
+          </div>
         </div>
 
         {invoice.notes && (
           <div className="mt-6 border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
+        )}
+
+        {profile?.bankDetails && (
+          <div className="mt-4 rounded-lg border bg-neutral-50 p-4 text-sm">
+            <p className="font-semibold">How to pay</p>
+            <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
+          </div>
         )}
       </div>
 
