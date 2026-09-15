@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Client, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
+import { BusinessProfile, Client, Invoice, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
-
-function total(inv: Invoice) {
-  return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-}
+import { computeInvoiceTotals } from "@/lib/vat";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,12 +24,20 @@ export default function InvoicesPage() {
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
-    Promise.all([invoicesStore.all(), clientsStore.all()]).then(([inv, c]) => {
+    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([inv, c, biz]) => {
       setInvoices(inv);
       setClients(c);
+      setProfile(biz);
       setLoading(false);
     });
   }, []);
+
+  // Gross (incl. VAT) -- what the client actually owes, matching the
+  // "Amount due" figure on the invoice itself, not just the line items'
+  // raw subtotal.
+  function total(inv: Invoice) {
+    return computeInvoiceTotals(inv.items, profile?.vatRegistered ?? false).total;
+  }
 
   const billableClients = useMemo(() => clients.filter((c) => c.kind === "client"), [clients]);
 
@@ -69,18 +75,19 @@ export default function InvoicesPage() {
   const filteredInvoices = useMemo(() => {
     const minTotal = parseFloat(filterMinTotal);
     const search = filterSearch.trim().toLowerCase();
+    const vatRegistered = profile?.vatRegistered ?? false;
     return invoices.filter((inv) => {
       if (filterFrom && inv.date < filterFrom) return false;
       if (filterTo && inv.date > filterTo) return false;
       if (filterClientId && inv.clientId !== filterClientId) return false;
-      if (!isNaN(minTotal) && total(inv) < minTotal) return false;
+      if (!isNaN(minTotal) && computeInvoiceTotals(inv.items, vatRegistered).total < minTotal) return false;
       if (search && !inv.number.toLowerCase().includes(search)) return false;
       if (filterPaid === "paid" && !inv.paid) return false;
       if (filterPaid === "unpaid" && inv.paid) return false;
       if (filterTag && !inv.tags.includes(filterTag)) return false;
       return true;
     });
-  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterPaid, filterTag]);
+  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterPaid, filterTag, profile]);
 
   function exportInvoices() {
     downloadCsv(

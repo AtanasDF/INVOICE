@@ -37,6 +37,10 @@ export default function SettingsPage() {
   const [inboxError, setInboxError] = useState<string | null>(null);
   const [inboxCopied, setInboxCopied] = useState(false);
   const [inboxRevealed, setInboxRevealed] = useState(false);
+  const [invoicePrefix, setInvoicePrefix] = useState("INV-");
+  const [invoiceNextNumber, setInvoiceNextNumber] = useState("1");
+  const [vatRegistered, setVatRegistered] = useState(false);
+  const [bankDetails, setBankDetails] = useState("");
 
   useEffect(() => {
     businessProfileStore.get().then((p) => {
@@ -46,6 +50,10 @@ export default function SettingsPage() {
       setShowOverdueReminders(p.showOverdueReminders);
       setCategories(effectiveCategories(p.customCategories));
       setInboxToken(p.inboxToken);
+      setInvoicePrefix(p.invoicePrefix);
+      setInvoiceNextNumber(String(p.invoiceNextNumber));
+      setVatRegistered(p.vatRegistered);
+      setBankDetails(p.bankDetails);
       setLoading(false);
     });
     getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
@@ -139,6 +147,10 @@ export default function SettingsPage() {
         showOverdueReminders,
         customCategories: categories,
         inboxToken,
+        invoicePrefix,
+        invoiceNextNumber: parseInt(invoiceNextNumber, 10) || 1,
+        vatRegistered,
+        bankDetails,
       });
       setSaved(true);
     } catch (err) {
@@ -200,14 +212,6 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-neutral-500">VAT number (optional)</label>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={vatNumber}
-              onChange={(e) => setVatNumber(e.target.value)}
-            />
-          </div>
-          <div>
             <label className="text-xs text-neutral-500">Business address (optional)</label>
             <textarea
               className="w-full rounded-lg border px-3 py-2"
@@ -223,6 +227,70 @@ export default function SettingsPage() {
             <input type="checkbox" checked={showOverdueReminders} onChange={(e) => setShowOverdueReminders(e.target.checked)} />
             Gently remind me on the dashboard about overdue invoices
           </label>
+        </div>
+
+        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div>
+            <h2 className="font-semibold">VAT</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              Off by default. When off, invoices show no VAT block at all and your VAT number is never printed,
+              even if it&apos;s filled in below — so deregistering doesn&apos;t mean you have to go blank that field too.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={vatRegistered} onChange={(e) => setVatRegistered(e.target.checked)} />
+            VAT registered
+          </label>
+          <div>
+            <label className="text-xs text-neutral-500">VAT number</label>
+            <input
+              className="w-full rounded-lg border px-3 py-2"
+              value={vatNumber}
+              onChange={(e) => setVatNumber(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div>
+            <h2 className="font-semibold">Invoice numbering</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              A new invoice suggests {invoicePrefix}{invoiceNextNumber} — still editable per invoice, but this keeps
+              the series sequential the way HMRC expects rather than random. Advances by one every time an invoice
+              is actually created, whatever number you end up giving it.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-neutral-500">Prefix</label>
+              <input className="w-full rounded-lg border px-3 py-2" value={invoicePrefix} onChange={(e) => setInvoicePrefix(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-neutral-500">Next number</label>
+              <input
+                type="number"
+                className="w-full rounded-lg border px-3 py-2"
+                value={invoiceNextNumber}
+                onChange={(e) => setInvoiceNextNumber(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div>
+            <h2 className="font-semibold">Bank details</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              Shown as a dedicated &quot;How to pay&quot; block on printed invoices, instead of buried in the notes.
+            </p>
+          </div>
+          <textarea
+            className="w-full rounded-lg border px-3 py-2"
+            placeholder="Account name, sort code, account number / IBAN, etc."
+            value={bankDetails}
+            onChange={(e) => setBankDetails(e.target.value)}
+            rows={3}
+          />
         </div>
 
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
