@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
@@ -38,6 +38,7 @@ export default function ReceiptsPage() {
   const [fxLoading, setFxLoading] = useState(false);
   const [fxError, setFxError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [lineItems, setLineItems] = useState<ReceiptLineItem[]>([]);
   const [warrantyMonths, setWarrantyMonths] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
@@ -118,6 +119,18 @@ export default function ReceiptsPage() {
     };
   }
 
+  function addReceiptLine() {
+    setLineItems((prev) => [...prev, { description: "", quantity: 1, unitPrice: 0, category: null }]);
+  }
+
+  function updateReceiptLine(idx: number, patch: Partial<ReceiptLineItem>) {
+    setLineItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function removeReceiptLine(idx: number) {
+    setLineItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   function findDuplicate(): Receipt | null {
     const { netGbp, vatGbp } = gbpAmounts();
     return (
@@ -168,7 +181,7 @@ export default function ReceiptsPage() {
         needsReview: false,
         warrantyMonths: warrantyMonths ? parseInt(warrantyMonths, 10) : null,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-        lineItems: [],
+        lineItems,
       });
       setReceipts((prev) => [created, ...prev]);
       setVendor("");
@@ -177,6 +190,7 @@ export default function ReceiptsPage() {
       setCurrency("GBP");
       setFxRateInput("");
       setNotes("");
+      setLineItems([]);
       setWarrantyMonths("");
       setTagsInput("");
       setImageDataUrl(null);
@@ -348,6 +362,49 @@ export default function ReceiptsPage() {
             → £{gbpAmounts().netGbp.toFixed(2)} excl. VAT{currency !== "GBP" ? `, £${gbpAmounts().vatGbp.toFixed(2)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.
           </p>
         )}
+
+        {lineItems.length > 0 && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <p className="text-xs font-medium text-neutral-500">
+              Items — give each its own category to split this receipt across categories (e.g. Groceries + Household).
+            </p>
+            {lineItems.map((it, idx) => (
+              <div key={idx} className="grid grid-cols-12 items-center gap-2 text-sm">
+                <input
+                  className="col-span-4 rounded-lg border px-2 py-1.5"
+                  placeholder="Item"
+                  value={it.description}
+                  onChange={(e) => updateReceiptLine(idx, { description: e.target.value })}
+                />
+                <input
+                  className="col-span-2 rounded-lg border px-2 py-1.5"
+                  placeholder="Qty"
+                  value={it.quantity}
+                  onChange={(e) => updateReceiptLine(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                />
+                <input
+                  className="col-span-2 rounded-lg border px-2 py-1.5"
+                  placeholder="Price"
+                  value={it.unitPrice}
+                  onChange={(e) => updateReceiptLine(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+                />
+                <select
+                  className="col-span-3 rounded-lg border px-2 py-1.5"
+                  value={it.category ?? ""}
+                  onChange={(e) => updateReceiptLine(idx, { category: e.target.value || null })}
+                >
+                  <option value="">No category</option>
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <button onClick={() => removeReceiptLine(idx)} className="col-span-1 text-red-600">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={addReceiptLine} className="text-sm font-medium text-blue-600">
+          + Split into multiple items
+        </button>
+
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <input
           className="w-full rounded-lg border px-3 py-2"
