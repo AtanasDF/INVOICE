@@ -5,6 +5,12 @@ import AppShell from "./AppShell";
 export const metadata: Metadata = {
   title: "Invoice & Expenses",
   description: "Invoices, receipts and expense tracking for the self-employed",
+  manifest: "/manifest.json",
+  // Needed for push notifications to work on iPhone at all -- Safari only
+  // supports web push for a site that's been "Added to Home Screen" as a
+  // standalone app, not a plain browser tab.
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Invoice" },
+  icons: { apple: "/icon-192.png" },
 };
 
 export default function RootLayout({

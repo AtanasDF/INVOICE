@@ -7,11 +7,13 @@ import {
   creditNotesStore,
   feedbackStore,
   invoicesStore,
+  pushSubscriptionsStore,
   receiptsStore,
   recurringExpensesStore,
 } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
+import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -26,6 +28,9 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   useEffect(() => {
     businessProfileStore.get().then((p) => {
@@ -36,7 +41,28 @@ export default function SettingsPage() {
       setCategories(effectiveCategories(p.customCategories));
       setLoading(false);
     });
+    getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
   }, []);
+
+  async function togglePush() {
+    setPushError(null);
+    setPushBusy(true);
+    try {
+      if (pushEnabled) {
+        const endpoint = await disablePush();
+        if (endpoint) await pushSubscriptionsStore.unsubscribe(endpoint);
+        setPushEnabled(false);
+      } else {
+        const sub = await enablePush();
+        await pushSubscriptionsStore.subscribe(subscriptionToRecord(sub));
+        setPushEnabled(true);
+      }
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : "Could not update notification settings.");
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   function moveCategory(index: number, direction: -1 | 1) {
     setCategories((prev) => {
@@ -249,6 +275,37 @@ export default function SettingsPage() {
         >
           {exporting ? "Preparing your download…" : "Download all my data"}
         </button>
+      </div>
+
+      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div>
+          <h2 className="font-semibold">Notifications</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Get a push notification (even when this app isn&apos;t open) when an invoice is overdue or a recurring
+            expense is due — a daily check, same conditions as the reminder banners on the dashboard.
+          </p>
+        </div>
+        {!pushSupported() ? (
+          <p className="text-sm text-neutral-500">This browser doesn&apos;t support push notifications.</p>
+        ) : isIosNotStandalone() ? (
+          <p className="text-sm text-neutral-500">
+            On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from
+            there and come back to this page to turn notifications on — Safari only delivers push notifications to
+            an installed app, not a browser tab.
+          </p>
+        ) : (
+          <>
+            {pushError && <p className="text-sm text-red-600">{pushError}</p>}
+            <button
+              type="button"
+              onClick={togglePush}
+              disabled={pushBusy}
+              className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+            >
+              {pushBusy ? "Working…" : pushEnabled ? "Turn off notifications" : "Turn on notifications"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
