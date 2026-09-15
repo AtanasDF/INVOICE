@@ -1,0 +1,284 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  BusinessProfile,
+  Client,
+  InvoiceItem,
+  RecurringInvoice,
+  businessProfileStore,
+  clientsStore,
+  invoicesStore,
+  recurringInvoicesStore,
+} from "@/lib/storage";
+import { addMonths, nextDueFromDay } from "@/lib/recurrence";
+import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
+import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
+
+function RecurringTabs() {
+  return (
+    <div className="flex rounded-lg border text-sm w-fit">
+      <Link href="/recurring" className="px-4 py-1.5 text-neutral-600">Expenses</Link>
+      <button className="px-4 py-1.5 bg-neutral-900 text-white">Invoices</button>
+    </div>
+  );
+}
+
+const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
+
+export default function RecurringInvoicesPage() {
+  const [items, setItems] = useState<RecurringInvoice[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+
+  const [clientId, setClientId] = useState("");
+  const [lineItems, setLineItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [notes, setNotes] = useState("");
+  const [dayOfMonth, setDayOfMonth] = useState("1");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([recurringInvoicesStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([r, c, biz]) => {
+      setItems(r);
+      setClients(c);
+      setProfile(biz);
+      setLoading(false);
+    });
+  }, []);
+
+  const billableClients = clients.filter((c) => c.kind === "client");
+  const today = new Date().toISOString().slice(0, 10);
+
+  function clientName(id: string) {
+    return clients.find((c) => c.id === id)?.name || "No client";
+  }
+
+  function updateLineItem(idx: number, patch: Partial<InvoiceItem>) {
+    setLineItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function addLine() {
+    setLineItems((prev) => [...prev, { ...BLANK_ITEM }]);
+  }
+
+  function removeLine(idx: number) {
+    setLineItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function addRecurring(e: React.FormEvent) {
+    e.preventDefault();
+    if (!clientId || lineItems.every((it) => !it.description.trim())) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const day = Math.min(28, Math.max(1, parseInt(dayOfMonth, 10) || 1));
+      const created = await recurringInvoicesStore.add({
+        clientId,
+        items: lineItems.filter((it) => it.description.trim()),
+        paymentTerms,
+        notes,
+        dayOfMonth: day,
+        nextDueDate: nextDueFromDay(day),
+        active: true,
+      });
+      setItems((prev) => [...prev, created].sort((a, b) => (a.nextDueDate < b.nextDueDate ? -1 : 1)));
+      setClientId("");
+      setLineItems([{ ...BLANK_ITEM }]);
+      setPaymentTerms("");
+      setNotes("");
+      setDayOfMonth("1");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Generates a real draft invoice right now, using this recurring
+  // invoice's client/items/terms -- same thing the daily cron does when
+  // this falls due, just triggered by hand instead of waiting for it. No
+  // real invoice number or counter advance yet -- same as any other
+  // draft, that happens when it's marked sent.
+  async function generateNow(item: RecurringInvoice) {
+    setError(null);
+    setGeneratingId(item.id);
+    try {
+      await invoicesStore.add({
+        clientId: item.clientId,
+        date: today,
+        number: draftPlaceholderNumber(),
+        items: item.items,
+        notes: item.notes,
+        dueDate: null,
+        paymentTerms: item.paymentTerms,
+        status: "draft",
+        tags: [],
+      });
+      const next = addMonths(item.nextDueDate, 1);
+      await recurringInvoicesStore.update(item.id, { nextDueDate: next });
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate this invoice.");
+    } finally {
+      setGeneratingId(null);
+    }
+  }
+
+  async function toggleActive(item: RecurringInvoice) {
+    const next = !item.active;
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, active: next } : i)));
+    try {
+      await recurringInvoicesStore.update(item.id, { active: next });
+    } catch (err) {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, active: !next } : i)));
+      setError(err instanceof Error ? err.message : "Could not update.");
+    }
+  }
+
+  async function removeRecurring(id: string) {
+    setError(null);
+    try {
+      await recurringInvoicesStore.remove(id);
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove.");
+    }
+  }
+
+  const totals = computeInvoiceTotals(lineItems, profile?.vatRegistered ?? false);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold">Recurring</h1>
+        <p className="mt-1 text-neutral-600">
+          Work that repeats on a schedule — generates a draft invoice automatically each month, for you to check
+          and send.
+        </p>
+      </div>
+
+      <RecurringTabs />
+
+      <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+          <option value="">Select a client or company</option>
+          {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+
+        <div className="space-y-2">
+          <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
+            <span className={profile?.vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
+            <span className="col-span-2 text-right">Qty</span>
+            <span className="col-span-3 text-right">Unit price</span>
+            {profile?.vatRegistered && <span className="col-span-2">VAT</span>}
+          </div>
+          {lineItems.map((it, idx) => (
+            <div key={idx} className="grid grid-cols-12 gap-2">
+              <input
+                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-6"} rounded-lg border px-3 py-2`}
+                placeholder="Description (e.g. Monthly retainer)"
+                value={it.description}
+                onChange={(e) => updateLineItem(idx, { description: e.target.value })}
+              />
+              <input
+                className="col-span-2 rounded-lg border px-3 py-2"
+                placeholder="Qty"
+                value={it.quantity}
+                onChange={(e) => updateLineItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
+              />
+              <input
+                className="col-span-3 rounded-lg border px-3 py-2"
+                placeholder="Unit price"
+                value={it.unitPrice}
+                onChange={(e) => updateLineItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+              />
+              {profile?.vatRegistered && (
+                <select
+                  className="col-span-2 rounded-lg border px-1 py-2 text-xs"
+                  value={it.vatRate}
+                  onChange={(e) => updateLineItem(idx, { vatRate: e.target.value as VatRateKind })}
+                >
+                  {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
+                </select>
+              )}
+              <button type="button" onClick={() => removeLine(idx)} className="col-span-1 text-sm text-red-600">✕</button>
+            </div>
+          ))}
+          <button type="button" onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <input className="rounded-lg border px-3 py-2" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+          <div>
+            <label className="text-xs text-neutral-500">Day of month it&apos;s generated (1-28)</label>
+            <input
+              type="number"
+              min={1}
+              max={28}
+              className="w-24 rounded-lg border px-3 py-2"
+              value={dayOfMonth}
+              onChange={(e) => setDayOfMonth(e.target.value)}
+            />
+          </div>
+        </div>
+        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional, carried onto each generated invoice)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+        {profile?.vatRegistered && (
+          <div className="text-right text-sm text-neutral-600">Subtotal: £{totals.subtotal.toFixed(2)}</div>
+        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {saving ? "Saving…" : "Add recurring invoice"}
+        </button>
+      </form>
+
+      {loading ? (
+        <p className="text-sm text-neutral-500">Loading…</p>
+      ) : (
+        <div className="space-y-3">
+          {items.length === 0 && <p className="text-sm text-neutral-500">No recurring invoices set up yet.</p>}
+          {items.map((item) => {
+            const due = item.nextDueDate <= today;
+            const total = computeInvoiceTotals(item.items, profile?.vatRegistered ?? false).total;
+            return (
+              <div key={item.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+                <div>
+                  <div className={`font-medium ${!item.active ? "text-neutral-400 line-through" : ""}`}>
+                    {clientName(item.clientId)}
+                  </div>
+                  <div className="text-sm text-neutral-500">
+                    £{total.toFixed(2)} · {item.items.length} {item.items.length === 1 ? "line" : "lines"}
+                    {" · "}
+                    {item.active ? (due ? <span className="font-medium text-amber-700">Due {item.nextDueDate}</span> : `Next: ${item.nextDueDate}`) : "Paused"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {item.active && due && (
+                    <button
+                      onClick={() => generateNow(item)}
+                      disabled={generatingId === item.id}
+                      className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      {generatingId === item.id ? "Generating…" : "Generate now"}
+                    </button>
+                  )}
+                  <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600">
+                    {item.active ? "Pause" : "Resume"}
+                  </button>
+                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-red-600">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

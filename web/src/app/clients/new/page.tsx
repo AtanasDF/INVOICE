@@ -17,6 +17,7 @@ export default function NewClientPage() {
   const [paymentTerms, setPaymentTerms] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -36,6 +37,7 @@ export default function NewClientPage() {
         paymentTerms,
         defaultCurrency,
         contactPerson,
+        remindersEnabled,
       });
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
@@ -91,6 +93,12 @@ export default function NewClientPage() {
             <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency (e.g. GBP)" value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} />
           </div>
         </details>
+        {kind === "client" && (
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input type="checkbox" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
+            Send automatic payment reminders to this client
+          </label>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : `Save ${kind}`}

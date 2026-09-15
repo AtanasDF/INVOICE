@@ -1,29 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
+import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 
-// UTC methods throughout below -- constructing a Date from local fields
-// (or a "T00:00:00" local-time string) and then converting back with
-// toISOString() shifts the result by a day whenever the viewer's timezone
-// offset isn't zero. Confirmed this breaks in either direction depending
-// on the offset (tested across several real timezones), not just for
-// unusual ones, so every step here stays anchored to UTC.
-function addMonths(dateStr: string, months: number): string {
-  const d = new Date(dateStr);
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
-function nextDueFromDay(dayOfMonth: number): string {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [y, m] = todayStr.split("-").map(Number);
-  const candidate = new Date(Date.UTC(y, m - 1, dayOfMonth));
-  if (candidate.toISOString().slice(0, 10) < todayStr) {
-    candidate.setUTCMonth(candidate.getUTCMonth() + 1);
-  }
-  return candidate.toISOString().slice(0, 10);
+function RecurringTabs() {
+  return (
+    <div className="flex rounded-lg border text-sm w-fit">
+      <button className="px-4 py-1.5 bg-neutral-900 text-white">Expenses</button>
+      <Link href="/recurring/invoices" className="px-4 py-1.5 text-neutral-600">Invoices</Link>
+    </div>
+  );
 }
 
 export default function RecurringExpensesPage() {
@@ -148,11 +137,13 @@ export default function RecurringExpensesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Recurring expenses</h1>
+        <h1 className="text-2xl font-bold">Recurring</h1>
         <p className="mt-1 text-neutral-600">
           Things like monthly insurance or subscriptions — a reminder so they don&apos;t get forgotten.
         </p>
       </div>
+
+      <RecurringTabs />
 
       <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <input

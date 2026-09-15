@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { VatRateKind } from "./vat";
+import { InvoiceStatus } from "./invoiceStatus";
 
 export type ClientKind = "client" | "supplier";
 
@@ -14,6 +15,10 @@ export type Client = {
   paymentTerms: string;
   defaultCurrency: string;
   contactPerson: string;
+  // Payment reminders (3 days before due / on due date / 7 days after)
+  // go out for this client unless turned off here. Only meaningful for
+  // kind "client" -- suppliers are never invoiced, so it's ignored for them.
+  remindersEnabled: boolean;
 };
 
 export type ReceiptLineItem = {
@@ -71,7 +76,7 @@ export type Invoice = {
   notes: string;
   dueDate: string | null;
   paymentTerms: string;
-  paid: boolean;
+  status: InvoiceStatus;
   tags: string[];
 };
 
@@ -101,6 +106,7 @@ type ClientRow = {
   payment_terms: string | null;
   default_currency: string | null;
   contact_person: string | null;
+  reminders_enabled: boolean | null;
 };
 
 function clientFromRow(r: ClientRow): Client {
@@ -115,6 +121,7 @@ function clientFromRow(r: ClientRow): Client {
     paymentTerms: r.payment_terms ?? "",
     defaultCurrency: r.default_currency ?? "",
     contactPerson: r.contact_person ?? "",
+    remindersEnabled: r.reminders_enabled ?? true,
   };
 }
 
@@ -139,6 +146,7 @@ export const clientsStore = {
         payment_terms: input.paymentTerms || null,
         default_currency: input.defaultCurrency || null,
         contact_person: input.contactPerson || null,
+        reminders_enabled: input.remindersEnabled,
       })
       .select()
       .single();
@@ -156,6 +164,7 @@ export const clientsStore = {
     if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
     if (patch.defaultCurrency !== undefined) dbPatch.default_currency = patch.defaultCurrency || null;
     if (patch.contactPerson !== undefined) dbPatch.contact_person = patch.contactPerson || null;
+    if (patch.remindersEnabled !== undefined) dbPatch.reminders_enabled = patch.remindersEnabled;
     const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
@@ -303,7 +312,7 @@ type InvoiceRow = {
   notes: string | null;
   due_date: string | null;
   payment_terms: string | null;
-  paid: boolean | null;
+  status: InvoiceStatus | null;
   tags: string[] | null;
 };
 
@@ -324,7 +333,11 @@ function invoiceFromRow(r: InvoiceRow): Invoice {
     notes: r.notes ?? "",
     dueDate: r.due_date,
     paymentTerms: r.payment_terms ?? "",
-    paid: r.paid ?? false,
+    // Migration-011 backfills every pre-existing row, so this should
+    // never actually be null -- "sent" (not "draft") is the safe fallback
+    // if it somehow is, since only a genuinely new invoice should ever
+    // start as an editable draft.
+    status: r.status ?? "sent",
     tags: r.tags ?? [],
   };
 }
@@ -353,7 +366,7 @@ export const invoicesStore = {
         notes: input.notes || null,
         due_date: input.dueDate || null,
         payment_terms: input.paymentTerms || null,
-        paid: input.paid,
+        status: input.status,
         tags: input.tags,
       })
       .select()
@@ -370,18 +383,59 @@ export const invoicesStore = {
     return invoiceFromRow(data as InvoiceRow);
   },
   // Deliberately excludes number/date/items/clientId -- once an invoice
-  // exists it's what was actually issued, and changing any of those after
-  // the fact is exactly the silent-mutation problem credit notes exist to
-  // avoid. Everything patchable here is administrative, not financial.
-  async update(id: string, patch: Partial<Pick<Invoice, "paid" | "dueDate" | "paymentTerms" | "tags" | "notes">>): Promise<void> {
+  // has been sent it's what was actually issued, and changing any of
+  // those after the fact is exactly the silent-mutation problem credit
+  // notes exist to avoid. Everything patchable here is administrative,
+  // not financial. status IS allowed here -- moving through
+  // draft/sent/partial/paid is an administrative transition, not a
+  // change to what was billed. Use updateDraft() instead while status
+  // is still "draft", when the financial content itself is still fair
+  // game to edit.
+  async update(id: string, patch: Partial<Pick<Invoice, "status" | "dueDate" | "paymentTerms" | "tags" | "notes">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
-    if (patch.paid !== undefined) dbPatch.paid = patch.paid;
+    if (patch.status !== undefined) dbPatch.status = patch.status;
     if (patch.dueDate !== undefined) dbPatch.due_date = patch.dueDate || null;
     if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
     if (error) throw error;
+  },
+  // Full-content edit, only ever valid while status is still "draft" --
+  // callers are responsible for that check, same as the UI only showing
+  // this form for a draft. Once marked sent, this becomes exactly the
+  // "changing what was billed" problem update() deliberately can't do.
+  async updateDraft(
+    id: string,
+    patch: Partial<Pick<Invoice, "clientId" | "date" | "items" | "dueDate" | "paymentTerms" | "notes" | "tags">>
+  ): Promise<void> {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
+    if (patch.date !== undefined) dbPatch.date = patch.date;
+    if (patch.items !== undefined) dbPatch.items = patch.items;
+    if (patch.dueDate !== undefined) dbPatch.due_date = patch.dueDate || null;
+    if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
+    if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
+    if (patch.tags !== undefined) dbPatch.tags = patch.tags;
+    const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
+    if (error) throw error;
+  },
+  // Atomically assigns the real invoice number, advances the account's
+  // number counter, and flips status to sent -- one Postgres transaction
+  // (assign_invoice_number, migration-012) rather than separate
+  // round-trips, so a dropped connection mid-call can never advance the
+  // counter without the invoice actually ending up marked sent (or vice
+  // versa). This is the only way a draft's number is ever set -- there's
+  // no manual override.
+  async markSentWithNumber(id: string): Promise<string> {
+    const { data, error } = await supabase.rpc("assign_invoice_number", { p_invoice_id: id });
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("The next invoice number is already in use — check Settings → Invoice numbering and adjust the next number.");
+      }
+      throw error;
+    }
+    return data as string;
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("invoices").delete().eq("id", id);
@@ -473,6 +527,12 @@ export type BusinessProfile = {
   // Free text, but its own field rather than folded into invoice notes --
   // shown on the printed invoice as a dedicated "How to pay" block.
   bankDetails: string;
+  // Editable wording for the three fixed payment-reminder slots (3 days
+  // before due / on due date / 7 days after). Null means "use the app's
+  // built-in default text" -- these only hold an override.
+  reminderTextBefore: string | null;
+  reminderTextDue: string | null;
+  reminderTextAfter: string | null;
 };
 
 type BusinessProfileRow = {
@@ -487,6 +547,9 @@ type BusinessProfileRow = {
   invoice_next_number: number | null;
   vat_registered: boolean | null;
   bank_details: string | null;
+  reminder_text_before: string | null;
+  reminder_text_due: string | null;
+  reminder_text_after: string | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -502,6 +565,9 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     invoiceNextNumber: r.invoice_next_number ?? 1,
     vatRegistered: r.vat_registered ?? false,
     bankDetails: r.bank_details ?? "",
+    reminderTextBefore: r.reminder_text_before,
+    reminderTextDue: r.reminder_text_due,
+    reminderTextAfter: r.reminder_text_after,
   };
 }
 
@@ -517,6 +583,9 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   invoiceNextNumber: 1,
   vatRegistered: false,
   bankDetails: "",
+  reminderTextBefore: null,
+  reminderTextDue: null,
+  reminderTextAfter: null,
 };
 
 export const businessProfileStore = {
@@ -540,6 +609,9 @@ export const businessProfileStore = {
       invoice_next_number: input.invoiceNextNumber,
       vat_registered: input.vatRegistered,
       bank_details: input.bankDetails || null,
+      reminder_text_before: input.reminderTextBefore || null,
+      reminder_text_due: input.reminderTextDue || null,
+      reminder_text_after: input.reminderTextAfter || null,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
@@ -663,6 +735,79 @@ export const recurringExpensesStore = {
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("recurring_expenses").delete().eq("id", id);
+    if (error) throw error;
+  },
+};
+
+export type RecurringInvoice = {
+  id: string;
+  clientId: string;
+  items: InvoiceItem[];
+  paymentTerms: string;
+  notes: string;
+  dayOfMonth: number;
+  nextDueDate: string;
+  active: boolean;
+};
+
+type RecurringInvoiceRow = {
+  id: string;
+  client_id: string | null;
+  items: InvoiceItem[] | null;
+  payment_terms: string | null;
+  notes: string | null;
+  day_of_month: number;
+  next_due_date: string;
+  active: boolean;
+};
+
+function recurringInvoiceFromRow(r: RecurringInvoiceRow): RecurringInvoice {
+  return {
+    id: r.id,
+    clientId: r.client_id ?? "",
+    items: (r.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" })),
+    paymentTerms: r.payment_terms ?? "",
+    notes: r.notes ?? "",
+    dayOfMonth: r.day_of_month,
+    nextDueDate: r.next_due_date,
+    active: r.active,
+  };
+}
+
+export const recurringInvoicesStore = {
+  async all(): Promise<RecurringInvoice[]> {
+    const { data, error } = await supabase.from("recurring_invoices").select("*").order("next_due_date");
+    if (error) throw error;
+    return (data as RecurringInvoiceRow[]).map(recurringInvoiceFromRow);
+  },
+  async add(input: Omit<RecurringInvoice, "id">): Promise<RecurringInvoice> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("recurring_invoices")
+      .insert({
+        user_id,
+        client_id: input.clientId || null,
+        items: input.items,
+        payment_terms: input.paymentTerms || null,
+        notes: input.notes || null,
+        day_of_month: input.dayOfMonth,
+        next_due_date: input.nextDueDate,
+        active: input.active,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return recurringInvoiceFromRow(data as RecurringInvoiceRow);
+  },
+  async update(id: string, patch: Partial<Pick<RecurringInvoice, "nextDueDate" | "active">>): Promise<void> {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.nextDueDate !== undefined) dbPatch.next_due_date = patch.nextDueDate;
+    if (patch.active !== undefined) dbPatch.active = patch.active;
+    const { error } = await supabase.from("recurring_invoices").update(dbPatch).eq("id", id);
+    if (error) throw error;
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from("recurring_invoices").delete().eq("id", id);
     if (error) throw error;
   },
 };
