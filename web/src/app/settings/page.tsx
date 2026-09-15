@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [inboxBusy, setInboxBusy] = useState(false);
   const [inboxError, setInboxError] = useState<string | null>(null);
   const [inboxCopied, setInboxCopied] = useState(false);
+  const [inboxRevealed, setInboxRevealed] = useState(false);
 
   useEffect(() => {
     businessProfileStore.get().then((p) => {
@@ -58,6 +59,7 @@ export default function SettingsPage() {
       const token = generateInboxToken();
       await businessProfileStore.save({ ...profile, inboxToken: token });
       setInboxToken(token);
+      setInboxRevealed(false);
     } catch (err) {
       setInboxError(err instanceof Error ? err.message : "Could not generate an import address.");
     } finally {
@@ -351,13 +353,32 @@ export default function SettingsPage() {
         {inboxError && <p className="text-sm text-red-600">{inboxError}</p>}
         {inboxToken ? (
           <>
+            <p className="text-xs font-medium text-amber-700">
+              Treat this address like a password. Anyone who has it can send mail that creates receipts in your
+              account — don&apos;t post it publicly, and regenerate it below if it ever ends up somewhere it
+              shouldn&apos;t.
+            </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-lg border bg-neutral-50 px-3 py-2 text-sm">{inboxAddress(inboxToken)}</code>
+              <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
+                {inboxRevealed ? inboxAddress(inboxToken) : `u-${"•".repeat(32)}@invoiceover.com`}
+              </code>
+              <button
+                type="button"
+                onClick={() => setInboxRevealed((v) => !v)}
+                className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700"
+              >
+                {inboxRevealed ? "Hide" : "Reveal"}
+              </button>
               <button type="button" onClick={copyInboxAddress} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
                 {inboxCopied ? "Copied" : "Copy"}
               </button>
             </div>
-            <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className="text-sm text-neutral-500 underline disabled:opacity-50">
+            <button
+              type="button"
+              onClick={regenerateInboxToken}
+              disabled={inboxBusy}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
+            >
               {inboxBusy ? "Working…" : "Regenerate address"}
             </button>
             <p className="text-xs text-neutral-500">

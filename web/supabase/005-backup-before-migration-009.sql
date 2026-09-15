@@ -1,3 +1,11 @@
+-- NOTE ON NUMBERING: this is 005, not 004 -- 004 was never skipped by
+-- accident, it was reserved for a backup before migration-008
+-- (push_subscriptions) and then not needed, since that migration only
+-- creates a brand-new table and touches nothing existing (see
+-- migration-008-push-subscriptions.sql's own header). So the sequence
+-- genuinely reads 000, 001, 002, 003, 005 -- nothing missing, nothing to
+-- go looking for.
+--
 -- Run this FIRST, before migration-009. business_profile was last backed
 -- up before migration-006 and receipts before migration-007 -- both are
 -- being altered again here, so this takes fresh snapshots of both rather
