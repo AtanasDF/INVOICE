@@ -255,6 +255,7 @@ export default function ScanPage() {
         paymentTerms: "",
         defaultCurrency: "",
         contactPerson,
+        remindersEnabled: true,
       });
       setSupplierSaved(true);
     } catch (err) {

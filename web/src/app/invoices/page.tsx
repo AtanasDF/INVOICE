@@ -7,8 +7,6 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -56,13 +54,18 @@ export default function InvoicesPage() {
     }
   }
 
-  async function togglePaid(inv: Invoice) {
-    const next = !inv.paid;
-    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, paid: next } : i)));
+  // A single quick action per row, contextual to the current status --
+  // the one transition that's actually common from the list view. Any
+  // other transition (reverting, marking partial) happens on the
+  // invoice's own page, which has room to be deliberate about it.
+  async function quickAdvance(inv: Invoice) {
+    const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
+    if (!next) return;
+    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: next } : i)));
     try {
-      await invoicesStore.update(inv.id, { paid: next });
+      await invoicesStore.update(inv.id, { status: next });
     } catch (err) {
-      setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, paid: !next } : i)));
+      setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: inv.status } : i)));
       setError(err instanceof Error ? err.message : "Could not update invoice.");
     }
   }
@@ -83,12 +86,12 @@ export default function InvoicesPage() {
       if (filterClientId && inv.clientId !== filterClientId) return false;
       if (!isNaN(minTotal) && computeInvoiceTotals(inv.items, vatRegistered).total < minTotal) return false;
       if (search && !inv.number.toLowerCase().includes(search)) return false;
-      if (filterPaid === "paid" && !inv.paid) return false;
-      if (filterPaid === "unpaid" && inv.paid) return false;
+      if (filterStatus === "overdue" && !isOverdue(inv.status, inv.dueDate)) return false;
+      if (filterStatus !== "" && filterStatus !== "overdue" && inv.status !== filterStatus) return false;
       if (filterTag && !inv.tags.includes(filterTag)) return false;
       return true;
     });
-  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterPaid, filterTag, profile]);
+  }, [invoices, filterFrom, filterTo, filterClientId, filterMinTotal, filterSearch, filterStatus, filterTag, profile]);
 
   function exportInvoices() {
     downloadCsv(
@@ -99,13 +102,13 @@ export default function InvoicesPage() {
         due_date: inv.dueDate ?? "",
         client: clientName(inv.clientId),
         total: total(inv).toFixed(2),
-        paid: inv.paid ? "yes" : "no",
+        status: invoiceStatusLabel(inv.status, isOverdue(inv.status, inv.dueDate)),
         notes: inv.notes,
       }))
     );
   }
 
-  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterPaid || filterTag;
+  const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterStatus || filterTag;
 
   return (
     <div className="space-y-8">
@@ -143,10 +146,10 @@ export default function InvoicesPage() {
             <option value="">All clients</option>
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterPaid} onChange={(e) => setFilterPaid(e.target.value as "" | "paid" | "unpaid")}>
-            <option value="">Paid or unpaid</option>
-            <option value="paid">Paid only</option>
-            <option value="unpaid">Unpaid only</option>
+          <select className="rounded-lg border px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as "" | InvoiceStatus | "overdue")}>
+            <option value="">All statuses</option>
+            {INVOICE_STATUS_KINDS.map((k) => <option key={k} value={k}>{INVOICE_STATUS_LABELS[k]}</option>)}
+            <option value="overdue">Overdue</option>
           </select>
           <input
             className="rounded-lg border px-3 py-2 text-sm"
@@ -164,7 +167,7 @@ export default function InvoicesPage() {
         </div>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterPaid(""); setFilterTag(""); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterStatus(""); setFilterTag(""); }}
             className="mt-2 text-sm text-blue-600"
           >
             Clear filters
@@ -186,20 +189,21 @@ export default function InvoicesPage() {
             </p>
           )}
           {filteredInvoices.map((inv) => {
-            const overdue = !inv.paid && inv.dueDate && inv.dueDate < today();
+            const overdue = isOverdue(inv.status, inv.dueDate);
+            const quickLabel = inv.status === "draft" ? "Mark as sent" : inv.status === "sent" ? "Mark as paid" : null;
             return (
               <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
                   <div className="flex items-center gap-2 font-medium">
                     #{inv.number} · {clientName(inv.clientId)}
-                    <button
-                      onClick={() => togglePaid(inv)}
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        inv.paid ? "bg-green-100 text-green-800" : overdue ? "bg-red-100 text-red-800" : "bg-neutral-100 text-neutral-600"
-                      }`}
-                    >
-                      {inv.paid ? "Paid" : overdue ? "Overdue" : "Unpaid"}
-                    </button>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
+                      {invoiceStatusLabel(inv.status, overdue)}
+                    </span>
+                    {quickLabel && (
+                      <button onClick={() => quickAdvance(inv)} className="text-xs font-medium text-blue-600 underline">
+                        {quickLabel}
+                      </button>
+                    )}
                   </div>
                   <div className="text-sm text-neutral-500">
                     {inv.date} · £{total(inv).toFixed(2)}

@@ -3,6 +3,14 @@
     {
       "path": "/api/notifications/check",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/recurring-invoices/generate",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/reminders/send",
+      "schedule": "0 9 * * *"
     }
   ]
 }

@@ -15,6 +15,7 @@ import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
+import { DEFAULT_REMINDER_TEXT } from "@/lib/reminderTemplates";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -41,6 +42,9 @@ export default function SettingsPage() {
   const [invoiceNextNumber, setInvoiceNextNumber] = useState("1");
   const [vatRegistered, setVatRegistered] = useState(false);
   const [bankDetails, setBankDetails] = useState("");
+  const [reminderTextBefore, setReminderTextBefore] = useState("");
+  const [reminderTextDue, setReminderTextDue] = useState("");
+  const [reminderTextAfter, setReminderTextAfter] = useState("");
 
   useEffect(() => {
     businessProfileStore.get().then((p) => {
@@ -54,6 +58,9 @@ export default function SettingsPage() {
       setInvoiceNextNumber(String(p.invoiceNextNumber));
       setVatRegistered(p.vatRegistered);
       setBankDetails(p.bankDetails);
+      setReminderTextBefore(p.reminderTextBefore ?? "");
+      setReminderTextDue(p.reminderTextDue ?? "");
+      setReminderTextAfter(p.reminderTextAfter ?? "");
       setLoading(false);
     });
     getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
@@ -151,6 +158,9 @@ export default function SettingsPage() {
         invoiceNextNumber: parseInt(invoiceNextNumber, 10) || 1,
         vatRegistered,
         bankDetails,
+        reminderTextBefore: reminderTextBefore.trim() || null,
+        reminderTextDue: reminderTextDue.trim() || null,
+        reminderTextAfter: reminderTextAfter.trim() || null,
       });
       setSaved(true);
     } catch (err) {
@@ -291,6 +301,49 @@ export default function SettingsPage() {
             onChange={(e) => setBankDetails(e.target.value)}
             rows={3}
           />
+        </div>
+
+        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div>
+            <h2 className="font-semibold">Payment reminders</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              Three fixed reminders go out per invoice — 3 days before it&apos;s due, on the due date, and 7 days
+              after — to any client with reminders turned on (see their entry under Clients). Edit the wording
+              below; leave a box blank to use the default text. Use <code>{"{{client_name}}"}</code>,{" "}
+              <code>{"{{invoice_number}}"}</code>, <code>{"{{amount_due}}"}</code>, and <code>{"{{due_date}}"}</code>{" "}
+              anywhere in the text.
+            </p>
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">3 days before due</label>
+            <textarea
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              placeholder={DEFAULT_REMINDER_TEXT.before}
+              value={reminderTextBefore}
+              onChange={(e) => setReminderTextBefore(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">On the due date</label>
+            <textarea
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              placeholder={DEFAULT_REMINDER_TEXT.due}
+              value={reminderTextDue}
+              onChange={(e) => setReminderTextDue(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500">7 days after due</label>
+            <textarea
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              placeholder={DEFAULT_REMINDER_TEXT.after}
+              value={reminderTextAfter}
+              onChange={(e) => setReminderTextAfter(e.target.value)}
+              rows={2}
+            />
+          </div>
         </div>
 
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
