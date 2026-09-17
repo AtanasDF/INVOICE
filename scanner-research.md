@@ -227,8 +227,9 @@ official articles and are marked low.
   instance). That bounds abuse to a few pounds an hour at Gemini Flash prices but is not a
   real brake. Follow-up: a shared counter (a small Supabase table keyed by address and
   hour, or Upstash) once the free page gets traffic.
-- A cheaper Flash-Lite variant can be tried by changing one model constant; compare it
-  on the same documents before switching.
+- The engine runs on Gemini 3.5 Flash-Lite: in a side-by-side probe it read the test
+  invoice correctly in one to three seconds, while 3.8 Flash was overloaded and took
+  around twenty seconds when it did answer. Switching back is one model constant.
 
 ### On the iPhone specifically
 

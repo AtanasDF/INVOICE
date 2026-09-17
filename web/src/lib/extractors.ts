@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 export type ScanEngine = "claude" | "gemini";
 export const SCAN_ENGINES: readonly ScanEngine[] = ["claude", "gemini"];
 export const CLAUDE_MODEL = "claude-opus-5";
-export const GEMINI_MODEL = "gemini-3.8-flash";
+export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 export type ScanPage = { mediaType: string; base64: string };
 
