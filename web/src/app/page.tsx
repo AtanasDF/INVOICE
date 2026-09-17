@@ -16,7 +16,7 @@ import {
 import { computeInvoiceTotals } from "@/lib/vat";
 import { isOverdue } from "@/lib/invoiceStatus";
 import { FolderIcon, RepeatIcon } from "@/components/icons";
-import { useIsIOS } from "@/lib/platform";
+import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
 
@@ -75,17 +75,17 @@ export default function Dashboard() {
   const [billsError, setBillsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // The dashboard's Scan tap is the one real user gesture available --
-  // spending it on navigation to /scan and only opening the camera once
-  // that page mounts (via a second tap on "Take a photo") is one tap
-  // more than iOS actually needs. A label-wrapped file input fires from
-  // this same gesture, so the camera opens immediately; the captured
-  // photo is downscaled and handed to /scan via sessionStorage
-  // (scanHandoff) rather than a route param, then that page reads it on
-  // mount and skips straight to extraction instead of showing its own
-  // capture screen. Non-iOS keeps the plain Link -- the in-page camera
-  // there already opens instantly on /scan with no extra tap, so there's
-  // nothing to save.
+  // On iOS with the native camera chosen, the dashboard's Scan tap is
+  // the one real user gesture available -- spending it on navigation to
+  // /scan and only opening the camera once that page mounts (via a
+  // second tap on "Take a photo") is one tap more than iOS actually
+  // needs. A label-wrapped file input fires from this same gesture, so
+  // the camera opens immediately; the captured photo is downscaled and
+  // handed to /scan via sessionStorage (scanHandoff) rather than a route
+  // param, then that page reads it on mount and skips straight to
+  // extraction instead of showing its own capture screen. Everything
+  // else keeps the plain Link -- the in-page camera already opens
+  // instantly on /scan with no extra tap, so there's nothing to save.
   async function onIOSScanCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -278,7 +278,7 @@ export default function Dashboard() {
       )}
 
       <div className="flex gap-3">
-        {isIOS ? (
+        {isIOS && readScannerMode() === "native" ? (
           <label
             aria-label="Scan a document"
             aria-disabled={scanHandoffBusy}

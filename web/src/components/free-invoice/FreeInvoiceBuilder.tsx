@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import CaptureButton from "@/components/CaptureButton";
@@ -60,6 +60,9 @@ export default function FreeInvoiceBuilder() {
   const [printing, setPrinting] = useState(false);
   const editing = stage === "editor" && !!draft;
   const pageChars = pages.reduce((s, p) => s + p.dataUrl.length, 0);
+  // Read generation: adding a page mid-read starts a new one and the
+  // older result is dropped.
+  const runRef = useRef(0);
 
   useEffect(() => {
     if (stage === "editor" && draft) writeFreeInvoiceDraft(draft);
@@ -96,13 +99,14 @@ export default function FreeInvoiceBuilder() {
     setStage("editor");
   }
 
-  async function readInvoice() {
+  async function readInvoice(toRead: CapturedFile[]) {
+    const run = ++runRef.current;
     setReading(true);
     setReadError(null);
     try {
-      if (pageChars > MAX_BATCH_CHARS) throw new Error(TOO_LARGE);
+      if (toRead.reduce((s, p) => s + p.dataUrl.length, 0) > MAX_BATCH_CHARS) throw new Error(TOO_LARGE);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      const payload: { images: string[]; engine?: ScanEngine } = { images: pages.map((p) => p.dataUrl) };
+      const payload: { images: string[]; engine?: ScanEngine } = { images: toRead.map((p) => p.dataUrl) };
       if (user) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
@@ -112,6 +116,7 @@ export default function FreeInvoiceBuilder() {
       }
       const res = await fetch("/api/invoice-template", { method: "POST", headers, body: JSON.stringify(payload) });
       const body = (await res.json().catch(() => null)) as { template?: InvoiceTemplate; error?: string } | null;
+      if (run !== runRef.current) return;
       if (!body) throw new Error(res.status === 413 ? TOO_LARGE : "Couldn't read the invoice.");
       if (!res.ok || !body.template) throw new Error(body.error ?? "Couldn't read the invoice.");
       setDraft(templateToDraft(body.template));
@@ -120,9 +125,10 @@ export default function FreeInvoiceBuilder() {
       setTab("edit");
       setStage("editor");
     } catch (err) {
+      if (run !== runRef.current) return;
       setReadError(err instanceof Error ? err.message : "Couldn't read the invoice.");
     } finally {
-      setReading(false);
+      if (run === runRef.current) setReading(false);
     }
   }
 
@@ -137,9 +143,19 @@ export default function FreeInvoiceBuilder() {
   }
 
   function addPage(file: CapturedFile) {
-    setPages((p) => [...p, file]);
+    const next = [...pages, file];
+    setPages(next);
     setCapturing(false);
     setStage("pages");
+    readInvoice(next);
+  }
+
+  function cancelPages() {
+    runRef.current++;
+    setReading(false);
+    setPages([]);
+    setReadError(null);
+    setStage("start");
   }
 
   function saveToAccount() {
@@ -210,7 +226,7 @@ export default function FreeInvoiceBuilder() {
         <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div>
             <h2 className="font-semibold">Your invoice pages</h2>
-            <p className="mt-1 text-sm text-neutral-600">Up to {MAX_PAGES} pages. Tap Read invoice once they are all in.</p>
+            <p className="mt-1 text-sm text-neutral-600">Up to {MAX_PAGES} pages. Each page is read as soon as it arrives; adding another re-reads them all.</p>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {pages.map((p, i) => (
@@ -243,24 +259,22 @@ export default function FreeInvoiceBuilder() {
           {readError && (
             <div className="rounded-lg border p-3">
               <p className="text-sm font-medium">{readError}</p>
-              <button type="button" onClick={readInvoice} disabled={reading || !pages.length} className="mt-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
-                Try again
+              <button type="button" onClick={() => readInvoice(pages)} disabled={!pages.length} className="mt-2 rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50">
+                Read again
               </button>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={readInvoice} disabled={reading || !pages.length} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {reading ? "Reading your invoice…" : "Read invoice"}
-            </button>
+            {reading && <p className="text-sm text-neutral-600">Reading your invoice…</p>}
             <CaptureButton
               onOpen={() => setCapturing(true)}
               onCapture={addPage}
-              disabled={reading || pages.length >= MAX_PAGES || pageChars >= MAX_BATCH_CHARS}
+              disabled={pages.length >= MAX_PAGES || pageChars >= MAX_BATCH_CHARS}
               className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
             >
               Add another page
             </CaptureButton>
-            <button type="button" onClick={() => { setPages([]); setReadError(null); setStage("start"); }} disabled={reading} className="px-2 py-2 text-sm font-medium text-neutral-600 disabled:opacity-50">
+            <button type="button" onClick={cancelPages} className="px-2 py-2 text-sm font-medium text-neutral-600">
               Cancel
             </button>
           </div>

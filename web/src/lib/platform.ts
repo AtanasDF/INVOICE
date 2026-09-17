@@ -39,15 +39,33 @@ const SCANNER_MODE_KEY = "scanner-mode";
 
 export function readScannerMode(): ScannerMode {
   try {
-    return localStorage.getItem(SCANNER_MODE_KEY) === "inapp" ? "inapp" : "native";
+    return localStorage.getItem(SCANNER_MODE_KEY) === "native" ? "native" : "inapp";
   } catch {
-    return "native";
+    return "inapp";
   }
 }
 
 export function writeScannerMode(mode: ScannerMode) {
   try {
     localStorage.setItem(SCANNER_MODE_KEY, mode);
+  } catch {
+    // private mode / storage blocked -- the choice just won't persist
+  }
+}
+
+const AUTO_CAPTURE_KEY = "scanner-auto";
+
+export function readAutoCapture(): boolean {
+  try {
+    return localStorage.getItem(AUTO_CAPTURE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function writeAutoCapture(on: boolean) {
+  try {
+    localStorage.setItem(AUTO_CAPTURE_KEY, on ? "on" : "off");
   } catch {
     // private mode / storage blocked -- the choice just won't persist
   }

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadOpenCV } from "@/lib/opencv";
-import { ScannerMode, readScannerMode, useIsIOS, writeScannerMode } from "@/lib/platform";
+import { ScannerMode, readAutoCapture, readScannerMode, useIsIOS, writeAutoCapture, writeScannerMode } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
 
 type Point = { x: number; y: number };
 type Status = "starting" | "live" | "denied" | "timeout" | "unsupported" | "review";
+type Coach = "line" | "closer" | "hold";
 type ZoomRange = { min: number; max: number; step: number };
 // zoom / focusMode / pointsOfInterest are in the Media Capture spec and
 // implemented by Chromium, but not yet in lib.dom.d.ts.
@@ -22,7 +23,20 @@ type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDete
 
 const DETECT_INTERVAL_MS = 200;
 const WORK_WIDTH = 480;
-const STABLE_MS = 600;
+// Auto-capture gates (empirical). A quad must hold still for STABLE_MS
+// with each corner drifting under MOVE_TOLERANCE of the work-frame width
+// per tick, cover at least MIN_COVERAGE of the work frame, and the frame
+// must be at least SHARPNESS_RATIO of the sharpest seen in this stable
+// run and above SHARPNESS_FLOOR (variance of the Laplacian). A run that
+// stays stable for STABLE_TIMEOUT_MS captures regardless of sharpness so
+// a dim room never dead-locks the scanner.
+const STABLE_MS = 900;
+const MOVE_TOLERANCE = 0.02;
+const MIN_COVERAGE = 0.2;
+const SHARPNESS_RATIO = 0.6;
+const SHARPNESS_FLOOR = 40;
+const STABLE_TIMEOUT_MS = 4000;
+const FLASH_MS = 150;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
 // getUserMedia can hang indefinitely rather than reject in some real
@@ -94,7 +108,18 @@ export default function DocumentCapture({
   const rafRef = useRef<number | null>(null);
   const lastRunRef = useRef(0);
   const quadRef = useRef<[Point, Point, Point, Point] | null>(null);
-  const quadSinceRef = useRef<number | null>(null);
+  // Work-frame corners from the previous tick, for the movement check.
+  const lastQuadRef = useRef<[Point, Point, Point, Point] | null>(null);
+  const stableSinceRef = useRef<number | null>(null);
+  const peakSharpRef = useRef(0);
+  // Set the moment auto-capture fires; the parent unmounts this
+  // component on onCapture, so it never fires twice per mount.
+  const capturedRef = useRef(false);
+  const autoRef = useRef(true);
+  const onCaptureRef = useRef(onCapture);
+  // processFrame lives in the long-lived effect below; this hands it the
+  // current render's autoCapture without restarting the stream.
+  const autoCaptureRef = useRef<() => void>(() => {});
   const barcodeDetectorRef = useRef<BarcodeDetectorInstance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nativeInputRef = useRef<HTMLInputElement>(null);
@@ -108,7 +133,9 @@ export default function DocumentCapture({
   const [status, setStatus] = useState<Status>("starting");
   const [reviewImage, setReviewImage] = useState<string | null>(null);
   const [barcodeValue, setBarcodeValue] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [coach, setCoach] = useState<Coach>("line");
+  const [autoOn, setAutoOn] = useState(readAutoCapture);
+  const [flash, setFlash] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [focusPoint, setFocusPoint] = useState<Point | null>(null);
   const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null);
@@ -139,6 +166,27 @@ export default function DocumentCapture({
   useEffect(() => {
     cssZoomRef.current = cssZoom;
   }, [cssZoom]);
+
+  useEffect(() => {
+    autoRef.current = autoOn;
+  }, [autoOn]);
+
+  useEffect(() => {
+    onCaptureRef.current = onCapture;
+  }, [onCapture]);
+
+  function resetStable() {
+    stableSinceRef.current = null;
+    lastQuadRef.current = null;
+    peakSharpRef.current = 0;
+  }
+
+  function toggleAuto() {
+    const next = !autoOn;
+    writeAutoCapture(next);
+    resetStable();
+    setAutoOn(next);
+  }
 
   const stopStream = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -251,6 +299,13 @@ export default function DocumentCapture({
         }
         if (cancelled) return;
         const track = stream.getVideoTracks()[0];
+        try {
+          const advanced: AdvancedConstraints = { focusMode: "continuous" };
+          await track?.applyConstraints({ advanced: [advanced] });
+        } catch {
+          // focusMode unsupported here -- the stream's own default stands
+        }
+        if (cancelled) return;
         const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { zoom?: ZoomRange }) | undefined;
         if (caps?.zoom && caps.zoom.max > caps.zoom.min) {
           setZoomRange(caps.zoom);
@@ -332,9 +387,10 @@ export default function DocumentCapture({
         const src = cv.imread(work);
         const gray = new cv.Mat();
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+        const blurred = new cv.Mat();
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
         const edges = new cv.Mat();
-        cv.Canny(gray, edges, 50, 150);
+        cv.Canny(blurred, edges, 50, 150);
         const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
         cv.dilate(edges, edges, kernel);
         const contours = new cv.MatVector();
@@ -363,8 +419,31 @@ export default function DocumentCapture({
           c.delete();
         }
 
+        // Variance of the Laplacian over the unblurred grey inside the
+        // quad's bounding box -- the sharpness the auto-capture gate uses.
+        let sharpness = 0;
+        if (best) {
+          const xs = best.map((p) => p.x);
+          const ys = best.map((p) => p.y);
+          const x0 = Math.max(0, Math.min(...xs));
+          const y0 = Math.max(0, Math.min(...ys));
+          const rect = new cv.Rect(x0, y0, Math.min(workW, Math.max(...xs)) - x0, Math.min(workH, Math.max(...ys)) - y0);
+          const roi = gray.roi(rect);
+          const lap = new cv.Mat();
+          const mean = new cv.Mat();
+          const stddev = new cv.Mat();
+          cv.Laplacian(roi, lap, cv.CV_64F);
+          cv.meanStdDev(lap, mean, stddev);
+          sharpness = stddev.data64F[0] ** 2;
+          roi.delete();
+          lap.delete();
+          mean.delete();
+          stddev.delete();
+        }
+
         src.delete();
         gray.delete();
+        blurred.delete();
         edges.delete();
         kernel.delete();
         contours.delete();
@@ -375,16 +454,37 @@ export default function DocumentCapture({
             x: (p.x / workW) * displayW,
             y: (p.y / workH) * displayH,
           });
-          // Region-relative, matching the crop capture() draws.
+          // Region-relative, matching the crop renderCapture() draws.
           const toRegion = (p: Point): Point => ({
             x: (p.x / workW) * sw,
             y: (p.y / workH) * sh,
           });
           const ordered = orderPoints(best);
           quadRef.current = ordered.map(toRegion) as [Point, Point, Point, Point];
+
           const now = performance.now();
-          if (quadSinceRef.current === null) quadSinceRef.current = now;
-          setReady(now - quadSinceRef.current >= STABLE_MS);
+          const last = lastQuadRef.current;
+          const moved = last !== null && ordered.some((p, i) => dist(p, last[i]) > MOVE_TOLERANCE * workW);
+          lastQuadRef.current = ordered;
+          const coverage = bestArea / (workW * workH);
+          if (moved || coverage < MIN_COVERAGE) {
+            stableSinceRef.current = null;
+            peakSharpRef.current = 0;
+          }
+          if (coverage < MIN_COVERAGE) {
+            setCoach("closer");
+          } else {
+            if (stableSinceRef.current === null) stableSinceRef.current = now;
+            peakSharpRef.current = Math.max(peakSharpRef.current, sharpness);
+            setCoach("hold");
+            const stableFor = now - stableSinceRef.current;
+            const sharpEnough = sharpness >= SHARPNESS_FLOOR && sharpness >= SHARPNESS_RATIO * peakSharpRef.current;
+            const ready = (stableFor >= STABLE_MS && sharpEnough) || stableFor >= STABLE_TIMEOUT_MS;
+            if (ready && autoRef.current && !capturedRef.current && statusRef.current === "live") {
+              capturedRef.current = true;
+              autoCaptureRef.current();
+            }
+          }
 
           const displayPts = ordered.map(toDisplay);
           octx.strokeStyle = "#4ADE80";
@@ -396,8 +496,8 @@ export default function DocumentCapture({
           octx.stroke();
         } else {
           quadRef.current = null;
-          quadSinceRef.current = null;
-          setReady(false);
+          resetStable();
+          setCoach("line");
         }
       } catch {
         // a single bad frame shouldn't take down the scanner
@@ -453,67 +553,94 @@ export default function DocumentCapture({
     })();
   }
 
-  function capture() {
+  // The visible region of the current frame, perspective-warped to the
+  // detected quad when there is one. Reads refs only: the auto-capture
+  // path calls it from inside the long-lived detection effect.
+  async function renderCapture(): Promise<string | null> {
     const video = videoRef.current;
-    if (!video || video.videoWidth === 0) return;
-    const { sx, sy, sw, sh } = visibleRegion(video, cssZoom);
+    if (!video || video.videoWidth === 0) return null;
+    const { sx, sy, sw, sh } = visibleRegion(video, cssZoomRef.current);
     const full = document.createElement("canvas");
     full.width = Math.round(sw);
     full.height = Math.round(sh);
     const fctx = full.getContext("2d");
-    if (!fctx) return;
+    if (!fctx) return null;
     fctx.drawImage(video, sx, sy, sw, sh, 0, 0, full.width, full.height);
 
     const quad = quadRef.current;
-    if (!quad) {
-      setReviewImage(full.toDataURL("image/jpeg", 0.92));
-      setStatus("review");
+    if (!quad) return full.toDataURL("image/jpeg", 0.92);
+
+    try {
+      const cv = await loadOpenCV();
+      const src = cv.imread(full);
+      const [tl, tr, br, bl] = quad;
+      const widthA = dist(br, bl);
+      const widthB = dist(tr, tl);
+      const maxWidth = Math.max(widthA, widthB);
+      const heightA = dist(tr, br);
+      const heightB = dist(tl, bl);
+      const maxHeight = Math.max(heightA, heightB);
+
+      const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+      const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, maxWidth, 0, maxWidth, maxHeight, 0, maxHeight]);
+      const M = cv.getPerspectiveTransform(srcTri, dstTri);
+      const dst = new cv.Mat();
+      cv.warpPerspective(src, dst, M, new cv.Size(maxWidth, maxHeight));
+
+      const out = document.createElement("canvas");
+      out.width = maxWidth;
+      out.height = maxHeight;
+      cv.imshow(out, dst);
+
+      src.delete();
+      srcTri.delete();
+      dstTri.delete();
+      M.delete();
+      dst.delete();
+
+      return out.toDataURL("image/jpeg", 0.92);
+    } catch {
+      return full.toDataURL("image/jpeg", 0.92);
+    }
+  }
+
+  async function capture() {
+    const image = await renderCapture();
+    if (!image) return;
+    setReviewImage(image);
+    setStatus("review");
+  }
+
+  // Same frame as the shutter, but straight to the parent with no review
+  // step; the pages strip there still offers a retake.
+  async function autoCapture() {
+    setFlash(true);
+    let dataUrl: string;
+    try {
+      const [image] = await Promise.all([renderCapture(), new Promise((r) => setTimeout(r, FLASH_MS))]);
+      if (!image) throw new Error("Could not read this image.");
+      dataUrl = await downscaleImageDataUrl(image);
+    } catch (err) {
+      setFlash(false);
+      capturedRef.current = false;
+      resetStable();
+      showFailure(err instanceof Error ? err.message : "Could not read this image.");
       return;
     }
-
-    (async () => {
-      try {
-        const cv = await loadOpenCV();
-        const src = cv.imread(full);
-        const [tl, tr, br, bl] = quad;
-        const widthA = dist(br, bl);
-        const widthB = dist(tr, tl);
-        const maxWidth = Math.max(widthA, widthB);
-        const heightA = dist(tr, br);
-        const heightB = dist(tl, bl);
-        const maxHeight = Math.max(heightA, heightB);
-
-        const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
-        const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, maxWidth, 0, maxWidth, maxHeight, 0, maxHeight]);
-        const M = cv.getPerspectiveTransform(srcTri, dstTri);
-        const dst = new cv.Mat();
-        cv.warpPerspective(src, dst, M, new cv.Size(maxWidth, maxHeight));
-
-        const out = document.createElement("canvas");
-        out.width = maxWidth;
-        out.height = maxHeight;
-        cv.imshow(out, dst);
-
-        src.delete();
-        srcTri.delete();
-        dstTri.delete();
-        M.delete();
-        dst.delete();
-
-        setReviewImage(out.toDataURL("image/jpeg", 0.92));
-        setStatus("review");
-      } catch {
-        setReviewImage(full.toDataURL("image/jpeg", 0.92));
-        setStatus("review");
-      }
-    })();
+    stopStream();
+    onCaptureRef.current({ dataUrl, mediaType: "image/jpeg" });
   }
+
+  useEffect(() => {
+    autoCaptureRef.current = autoCapture;
+  });
 
   function retake() {
     setReviewImage(null);
     setBarcodeValue(null);
-    quadSinceRef.current = null;
-    setReady(false);
+    capturedRef.current = false;
+    resetStable();
+    setCoach("line");
     setStatus("live");
   }
 
@@ -561,7 +688,16 @@ export default function DocumentCapture({
   }
 
   const pageLabel = pageNumber && pageNumber > 1 ? `Page ${pageNumber}` : null;
-  const hint = cvUnavailable ? "Line it up and tap to capture" : ready ? "Ready — tap to capture" : "Line up the document in view";
+  const hasQuad = coach !== "line";
+  const hint = cvUnavailable
+    ? "Line it up and tap to capture"
+    : !hasQuad
+      ? "Line up the document in view"
+      : !autoOn
+        ? "Ready — tap to capture"
+        : coach === "closer"
+          ? "Move closer"
+          : "Hold still…";
 
   // iOS: the in-page live-detection camera fundamentally can't win here.
   // getUserMedia on iOS Safari returns a low-resolution, fixed-focus
@@ -572,8 +708,8 @@ export default function DocumentCapture({
   // legible. The native camera app has neither problem: full sensor
   // resolution, real autofocus, and no quad requirement since there's no
   // live crop to compute. It's also faster to open, since it skips the
-  // multi-MB OpenCV WASM download entirely. Still the default; the
-  // in-app scanner is one tap away for anyone who prefers it.
+  // multi-MB OpenCV WASM download entirely. The in-app scanner is the
+  // default since auto-capture landed; this stays one tap away.
   if (useNative) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black">
@@ -639,9 +775,10 @@ export default function DocumentCapture({
           style={cssZoom !== 1 ? { transform: `scale(${cssZoom})` } : undefined}
         />
         <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 h-full w-full" />
-        {(shownFailure || (ready && status === "live")) && (
+        {(shownFailure || (hasQuad && status === "live")) && (
           <div className={`pointer-events-none absolute inset-0 border-4 ${shownFailure ? "border-red-500" : "border-[#4ADE80]"}`} />
         )}
+        {flash && <div className="pointer-events-none absolute inset-0 z-10 bg-white" />}
         {focusPoint && (
           <div
             className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
@@ -732,6 +869,9 @@ export default function DocumentCapture({
                 ))}
               </div>
             )}
+            <button onClick={toggleAuto} className="text-xs text-white/70 underline">
+              Auto-capture: {autoOn ? "on" : "off"}
+            </button>
             {iOSMode && (
               <button onClick={() => switchScannerMode("native")} className="text-xs text-white/70 underline">
                 Use the native camera instead
@@ -753,7 +893,7 @@ export default function DocumentCapture({
             </button>
             <button
               onClick={capture}
-              className={`h-16 w-16 rounded-full border-4 bg-white/20 ${ready ? "border-[#4ADE80]" : "border-white"}`}
+              className={`h-16 w-16 rounded-full border-4 bg-white/20 ${hasQuad ? "border-[#4ADE80]" : "border-white"}`}
               aria-label="Capture"
             />
           </>
