@@ -8,6 +8,7 @@ import {
   feedbackStore,
   invoicesStore,
   pushSubscriptionsStore,
+  receiptPagesStore,
   receiptsStore,
   recurringExpensesStore,
 } from "@/lib/storage";
@@ -184,9 +185,10 @@ export default function SettingsPage() {
     setExportError(null);
     setExporting(true);
     try {
-      const [clients, receipts, invoices, creditNotes, feedback, recurringExpenses, profile] = await Promise.all([
+      const [clients, receipts, receiptPages, invoices, creditNotes, feedback, recurringExpenses, profile] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
+        receiptPagesStore.all(),
         invoicesStore.all(),
         creditNotesStore.all(),
         feedbackStore.all(),
@@ -198,6 +200,7 @@ export default function SettingsPage() {
         businessProfile: profile,
         clients,
         receipts,
+        receiptPages,
         invoices,
         creditNotes,
         recurringExpenses,

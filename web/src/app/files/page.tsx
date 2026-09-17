@@ -1,27 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Client, Receipt, clientsStore, receiptsStore } from "@/lib/storage";
+import { Client, Receipt, ReceiptPage, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
 import { isPdfDataUrl } from "@/lib/fileType";
+import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [pageCounts, setPageCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [filterSupplierId, setFilterSupplierId] = useState("");
   const [preview, setPreview] = useState<Receipt | null>(null);
+  const [previewPages, setPreviewPages] = useState<{ receiptId: string; pages: ReceiptPage[] } | null>(null);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    Promise.all([receiptsStore.all(), clientsStore.all()]).then(([r, c]) => {
+    Promise.all([receiptsStore.all(), clientsStore.all(), receiptPagesStore.counts()]).then(([r, c, counts]) => {
       setReceipts(r);
       setClients(c);
+      setPageCounts(counts);
       setLoading(false);
     });
   }, []);
+
+  function openPreview(r: Receipt) {
+    previewIdRef.current = r.id;
+    setPreview(r);
+    setPreviewIndex(0);
+    setPreviewPages(null);
+    if (!pageCounts.get(r.id)) return;
+    receiptPagesStore.forReceipt(r.id).then((pages) => {
+      if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages });
+    });
+  }
+
+  function closePreview() {
+    previewIdRef.current = null;
+    setPreview(null);
+  }
 
   const suppliers = useMemo(() => clients.filter((c) => c.kind === "supplier"), [clients]);
 
@@ -38,6 +60,10 @@ export default function FilesPage() {
   }, [receipts, filterFrom, filterTo, filterSupplierId]);
 
   const hasActiveFilters = filterFrom || filterTo || filterSupplierId;
+
+  const previewTotalPages = preview ? 1 + (pageCounts.get(preview.id) ?? 0) : 1;
+  const loadedPages = preview && previewPages?.receiptId === preview.id ? previewPages.pages : [];
+  const previewSrc = preview ? (previewIndex === 0 ? preview.imageDataUrl : loadedPages[previewIndex - 1]?.imageDataUrl ?? null) : null;
 
   return (
     <div className="space-y-6">
@@ -78,22 +104,26 @@ export default function FilesPage() {
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {files.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setPreview(r)}
-              className="rounded-xl border bg-white p-2 text-left shadow-sm transition hover:shadow-md"
-            >
-              {isPdfDataUrl(r.imageDataUrl) ? (
-                <div className="flex aspect-square items-center justify-center rounded-lg bg-neutral-100 text-neutral-500"><DocumentIcon className="h-8 w-8" /></div>
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={r.imageDataUrl ?? undefined} alt="" className="aspect-square w-full rounded-lg object-cover" />
-              )}
-              <div className="mt-2 text-xs font-medium text-neutral-900 truncate">{r.vendor || r.category}</div>
-              <div className="text-xs text-neutral-500">{r.date} · £{r.amount.toFixed(2)}</div>
-            </button>
-          ))}
+          {files.map((r) => {
+            const extra = pageCounts.get(r.id) ?? 0;
+            return (
+              <button
+                key={r.id}
+                onClick={() => openPreview(r)}
+                className="rounded-xl border bg-white p-2 text-left shadow-sm transition hover:shadow-md"
+              >
+                {isPdfDataUrl(r.imageDataUrl) ? (
+                  <div className="flex aspect-square items-center justify-center rounded-lg bg-neutral-100 text-neutral-500"><DocumentIcon className="h-8 w-8" /></div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.imageDataUrl ?? undefined} alt="" className="aspect-square w-full rounded-lg object-cover" />
+                )}
+                <div className="mt-2 text-xs font-medium text-neutral-900 truncate">{r.vendor || r.category}</div>
+                <div className="text-xs text-neutral-500">{r.date} · {money(r.amount)}</div>
+                {extra > 0 && <div className="text-xs text-neutral-500">{extra + 1} pages</div>}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -101,25 +131,46 @@ export default function FilesPage() {
         <div
           className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4"
           style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
-          onClick={() => setPreview(null)}
+          onClick={closePreview}
         >
           <div className="flex items-center justify-between text-white">
             <div>
               <div className="font-medium">{preview.vendor || preview.category}</div>
               <div className="text-sm text-neutral-300">
-                {preview.date} · £{preview.amount.toFixed(2)} · {supplierName(preview.clientId)}
+                {preview.date} · {money(preview.amount)} · {supplierName(preview.clientId)}
               </div>
             </div>
-            <button onClick={() => setPreview(null)} className="text-2xl leading-none text-white/80">✕</button>
+            <button onClick={closePreview} className="text-2xl leading-none text-white/80">✕</button>
           </div>
           <div className="mt-4 flex flex-1 items-center justify-center overflow-auto" onClick={(e) => e.stopPropagation()}>
-            {isPdfDataUrl(preview.imageDataUrl) ? (
-              <iframe src={preview.imageDataUrl ?? undefined} className="h-full w-full rounded-lg bg-white" title="Document preview" />
+            {!previewSrc ? (
+              <p className="text-sm text-neutral-300">Loading page…</p>
+            ) : isPdfDataUrl(previewSrc) ? (
+              <iframe src={previewSrc} className="h-full w-full rounded-lg bg-white" title="Document preview" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview.imageDataUrl ?? undefined} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+              <img src={previewSrc} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
             )}
           </div>
+          {previewTotalPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-4 text-sm text-white" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setPreviewIndex((i) => i - 1)}
+                disabled={previewIndex === 0}
+                className="rounded-lg border border-white/40 px-3 py-1.5 font-medium disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span>Page {previewIndex + 1} of {previewTotalPages}</span>
+              <button
+                onClick={() => setPreviewIndex((i) => i + 1)}
+                disabled={previewIndex >= previewTotalPages - 1}
+                className="rounded-lg border border-white/40 px-3 py-1.5 font-medium disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

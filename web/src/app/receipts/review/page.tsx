@@ -13,18 +13,32 @@ type DraftState = {
   totalAmount: string;
   vatAmount: string;
   notes: string;
+  invoiceNumber: string;
+  dueDate: string;
+  paid: boolean;
 };
 
+// Credit notes are stored negative; the form holds positive figures and
+// the sign is put back on save.
 function draftFor(r: Receipt): DraftState {
+  const sign = r.documentType === "credit_note" ? -1 : 1;
   return {
     vendor: r.vendor,
     date: r.date,
     category: r.category,
-    totalAmount: (r.amount + r.vatAmount).toFixed(2),
-    vatAmount: r.vatAmount.toFixed(2),
+    totalAmount: (sign * (r.amount + r.vatAmount)).toFixed(2),
+    vatAmount: (sign * r.vatAmount).toFixed(2),
     notes: r.notes,
+    invoiceNumber: r.invoiceNumber ?? "",
+    dueDate: r.dueDate ?? "",
+    paid: r.paid,
   };
 }
+
+const TYPE_BADGE: Partial<Record<Receipt["documentType"], { label: string; className: string }>> = {
+  invoice: { label: "Invoice", className: "bg-blue-100 text-blue-800" },
+  credit_note: { label: "Credit note", className: "bg-red-100 text-red-800" },
+};
 
 export default function ReviewQueuePage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -56,6 +70,12 @@ export default function ReviewQueuePage() {
 
   async function approve(r: Receipt) {
     const draft = drafts[r.id];
+    const isCredit = r.documentType === "credit_note";
+    const isInvoice = r.documentType === "invoice";
+    if (isInvoice && !draft.paid && !draft.dueDate) {
+      setError("A bill to be paid needs a due date.");
+      return;
+    }
     setError(null);
     setBusyId(r.id);
     try {
@@ -65,10 +85,12 @@ export default function ReviewQueuePage() {
         vendor: draft.vendor,
         date: draft.date,
         category: draft.category,
-        amount: Math.max(0, total - vat),
-        vatAmount: vat,
+        amount: isCredit ? -(total - vat) : Math.max(0, total - vat),
+        vatAmount: isCredit ? -vat : vat,
         notes: draft.notes,
         needsReview: false,
+        ...(isInvoice || isCredit ? { invoiceNumber: draft.invoiceNumber } : {}),
+        ...(isInvoice ? { dueDate: draft.dueDate, paid: draft.paid } : {}),
       });
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
     } catch (err) {
@@ -113,6 +135,8 @@ export default function ReviewQueuePage() {
             if (!draft) return null;
             const isPdf = r.imageDataUrl ? isPdfDataUrl(r.imageDataUrl) : false;
             const busy = busyId === r.id;
+            const badge = TYPE_BADGE[r.documentType];
+            const isInvoice = r.documentType === "invoice";
             return (
               <div key={r.id} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
                 <div className="flex items-start gap-4">
@@ -133,6 +157,9 @@ export default function ReviewQueuePage() {
                   )}
 
                   <div className="flex-1 space-y-3">
+                    {badge && (
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         className="rounded-lg border px-3 py-2 text-sm"
@@ -147,6 +174,30 @@ export default function ReviewQueuePage() {
                         onChange={(e) => updateDraft(r.id, { date: e.target.value })}
                       />
                     </div>
+
+                    {(isInvoice || r.documentType === "credit_note") && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
+                          <input
+                            className="w-full rounded-lg border px-3 py-2 text-sm"
+                            value={draft.invoiceNumber}
+                            onChange={(e) => updateDraft(r.id, { invoiceNumber: e.target.value })}
+                          />
+                        </div>
+                        {isInvoice && (
+                          <div>
+                            <label className="text-xs text-neutral-500">Due date</label>
+                            <input
+                              type="date"
+                              className="w-full rounded-lg border px-3 py-2 text-sm"
+                              value={draft.dueDate}
+                              onChange={(e) => updateDraft(r.id, { dueDate: e.target.value })}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <select
                       className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -187,6 +238,13 @@ export default function ReviewQueuePage() {
                       onChange={(e) => updateDraft(r.id, { notes: e.target.value })}
                       rows={2}
                     />
+
+                    {isInvoice && (
+                      <label className="flex items-center gap-2 text-sm text-neutral-700">
+                        <input type="checkbox" checked={draft.paid} onChange={(e) => updateDraft(r.id, { paid: e.target.checked })} />
+                        Paid
+                      </label>
+                    )}
 
                     {r.clientId && <p className="text-xs text-neutral-500">Filed under {clientName(r.clientId)}.</p>}
 

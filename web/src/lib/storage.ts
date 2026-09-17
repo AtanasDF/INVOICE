@@ -31,7 +31,50 @@ export type ReceiptLineItem = {
   description: string;
   quantity: number;
   unitPrice: number;
+  // Kept for existing rows and the manual receipt form; the scanner saves
+  // null on every line since a per-line category was never reviewed.
   category: string | null;
+};
+
+// Scanned supplier invoices and credit notes are expense documents, so
+// they live in receipts next to plain receipts (migration-017) and every
+// existing total nets them automatically. The app's own Invoice /
+// CreditNote types below are the SALES side and unrelated.
+export type DocumentType = "receipt" | "invoice" | "credit_note" | "other";
+
+export type DocumentDetails = {
+  accountNumber?: string;
+  sortCode?: string;
+  iban?: string;
+  bic?: string;
+  paymentTerms?: string;
+  reference?: string;
+  poNumber?: string;
+  orderNumber?: string;
+  customerReference?: string;
+  supplierAddress?: string;
+  supplierVatNumber?: string;
+  supplierEmail?: string;
+  supplierPhone?: string;
+  deliveryAddress?: string;
+  other?: { label: string; value: string }[];
+};
+
+export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other">, string> = {
+  accountNumber: "Account number",
+  sortCode: "Sort code",
+  iban: "IBAN",
+  bic: "BIC",
+  paymentTerms: "Payment terms",
+  reference: "Reference",
+  poNumber: "PO number",
+  orderNumber: "Order number",
+  customerReference: "Customer reference",
+  supplierAddress: "Supplier address",
+  supplierVatNumber: "Supplier VAT number",
+  supplierEmail: "Supplier email",
+  supplierPhone: "Supplier phone",
+  deliveryAddress: "Delivery address",
 };
 
 export type Receipt = {
@@ -61,6 +104,17 @@ export type Receipt = {
   // watching a live screen the way they are for a scan, so these don't
   // silently become "real" data until someone's actually checked them.
   needsReview: boolean;
+  documentType: DocumentType;
+  invoiceNumber: string | null;
+  dueDate: string | null;
+  // A documentType "invoice" with paid false is a bill: due soon when
+  // dueDate is within 3 days, overdue once it's passed. Always true for
+  // every other document type.
+  paid: boolean;
+  details: DocumentDetails;
+  // For a credit note: the scanned invoice it refunds. A credit note is
+  // stored with NEGATIVE amount and vatAmount so sums net automatically.
+  creditOfReceiptId: string | null;
 };
 
 export type InvoiceItem = {
@@ -246,6 +300,12 @@ type ReceiptRow = {
   tags: string[] | null;
   line_items: ReceiptLineItem[] | null;
   needs_review: boolean | null;
+  document_type: DocumentType | null;
+  invoice_number: string | null;
+  due_date: string | null;
+  paid: boolean | null;
+  details: DocumentDetails | null;
+  credit_of_receipt_id: string | null;
 };
 
 function receiptFromRow(r: ReceiptRow): Receipt {
@@ -268,6 +328,46 @@ function receiptFromRow(r: ReceiptRow): Receipt {
     tags: r.tags ?? [],
     lineItems: r.line_items ?? [],
     needsReview: r.needs_review ?? false,
+    documentType: r.document_type ?? "receipt",
+    invoiceNumber: r.invoice_number,
+    dueDate: r.due_date,
+    paid: r.paid ?? true,
+    details: r.details ?? {},
+    creditOfReceiptId: r.credit_of_receipt_id,
+  };
+}
+
+type ReceiptDocumentField = "documentType" | "invoiceNumber" | "dueDate" | "paid" | "details" | "creditOfReceiptId";
+
+// The document fields are optional on input so the manual receipt form
+// and the recurring-expense logger (both plain receipts) need no change.
+export type ReceiptInput = Omit<Receipt, "id" | ReceiptDocumentField> & Partial<Pick<Receipt, ReceiptDocumentField>>;
+
+function receiptRowFromInput(input: ReceiptInput) {
+  return {
+    client_id: input.clientId || null,
+    date: input.date,
+    vendor: input.vendor || null,
+    category: input.category || null,
+    amount: input.amount,
+    vat_amount: input.vatAmount,
+    original_amount: input.originalAmount,
+    original_vat_amount: input.originalVatAmount,
+    original_currency: input.originalCurrency,
+    fx_rate: input.fxRate,
+    image_data_url: input.imageDataUrl,
+    notes: input.notes || null,
+    starred: input.starred,
+    warranty_months: input.warrantyMonths,
+    tags: input.tags,
+    line_items: input.lineItems,
+    needs_review: input.needsReview,
+    document_type: input.documentType ?? "receipt",
+    invoice_number: input.invoiceNumber ?? null,
+    due_date: input.dueDate ?? null,
+    paid: input.paid ?? true,
+    details: input.details ?? {},
+    credit_of_receipt_id: input.creditOfReceiptId ?? null,
   };
 }
 
@@ -277,33 +377,26 @@ export const receiptsStore = {
     if (error) throw error;
     return (data as ReceiptRow[]).map(receiptFromRow);
   },
-  async add(input: Omit<Receipt, "id">): Promise<Receipt> {
+  // extraPages is page 2 onwards of a multi-page scan (page 1 is
+  // input.imageDataUrl). With any, the receipt and its pages go through
+  // create_receipt_with_pages so a dropped connection can't leave a
+  // document missing its later pages.
+  async add(input: ReceiptInput, extraPages: string[] = []): Promise<Receipt> {
     const user_id = await currentUserId();
-    const { data, error } = await supabase
-      .from("receipts")
-      .insert({
-        user_id,
-        client_id: input.clientId || null,
-        date: input.date,
-        vendor: input.vendor || null,
-        category: input.category || null,
-        amount: input.amount,
-        vat_amount: input.vatAmount,
-        original_amount: input.originalAmount,
-        original_vat_amount: input.originalVatAmount,
-        original_currency: input.originalCurrency,
-        fx_rate: input.fxRate,
-        image_data_url: input.imageDataUrl,
-        notes: input.notes || null,
-        starred: input.starred,
-        warranty_months: input.warrantyMonths,
-        tags: input.tags,
-        line_items: input.lineItems,
-        needs_review: input.needsReview,
-      })
-      .select()
-      .single();
+    const row = receiptRowFromInput(input);
+    if (extraPages.length === 0) {
+      const { data, error } = await supabase
+        .from("receipts")
+        .insert({ user_id, ...row })
+        .select()
+        .single();
+      if (error) throw error;
+      return receiptFromRow(data as ReceiptRow);
+    }
+    const { data: id, error } = await supabase.rpc("create_receipt_with_pages", { p_receipt: row, p_pages: extraPages });
     if (error) throw error;
+    const { data, error: readErr } = await supabase.from("receipts").select("*").eq("id", id).single();
+    if (readErr) throw readErr;
     return receiptFromRow(data as ReceiptRow);
   },
   async update(
@@ -327,6 +420,12 @@ export const receiptsStore = {
         | "originalVatAmount"
         | "originalCurrency"
         | "fxRate"
+        | "documentType"
+        | "invoiceNumber"
+        | "dueDate"
+        | "paid"
+        | "details"
+        | "creditOfReceiptId"
       >
     >
   ): Promise<void> {
@@ -347,12 +446,62 @@ export const receiptsStore = {
     if (patch.originalVatAmount !== undefined) dbPatch.original_vat_amount = patch.originalVatAmount;
     if (patch.originalCurrency !== undefined) dbPatch.original_currency = patch.originalCurrency;
     if (patch.fxRate !== undefined) dbPatch.fx_rate = patch.fxRate;
+    if (patch.documentType !== undefined) dbPatch.document_type = patch.documentType;
+    if (patch.invoiceNumber !== undefined) dbPatch.invoice_number = patch.invoiceNumber || null;
+    if (patch.dueDate !== undefined) dbPatch.due_date = patch.dueDate || null;
+    if (patch.paid !== undefined) dbPatch.paid = patch.paid;
+    if (patch.details !== undefined) dbPatch.details = patch.details;
+    if (patch.creditOfReceiptId !== undefined) dbPatch.credit_of_receipt_id = patch.creditOfReceiptId || null;
     const { error } = await supabase.from("receipts").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("receipts").delete().eq("id", id);
+    if (error) {
+      // 23503 = foreign_key_violation -- credit_of_receipt_id is ON
+      // DELETE RESTRICT (migration-017), so an invoice with a credit note
+      // pointing at it can't be removed out from under that credit note.
+      if (error.code === "23503") {
+        throw new Error("Can't remove this invoice — a credit note is linked to it. Remove the credit note first.");
+      }
+      throw error;
+    }
+  },
+};
+
+export type ReceiptPage = { id: string; pageIndex: number; imageDataUrl: string };
+
+type ReceiptPageRow = { id: string; receipt_id: string; page_index: number; image_data_url: string };
+
+export const receiptPagesStore = {
+  async forReceipt(receiptId: string): Promise<ReceiptPage[]> {
+    const { data, error } = await supabase
+      .from("receipt_pages")
+      .select("id, receipt_id, page_index, image_data_url")
+      .eq("receipt_id", receiptId)
+      .order("page_index", { ascending: true });
     if (error) throw error;
+    return (data as ReceiptPageRow[]).map((p) => ({ id: p.id, pageIndex: p.page_index, imageDataUrl: p.image_data_url }));
+  },
+  // Extra-page count per receipt id, for a "3 pages" hint on the list
+  // without ever pulling the page images down.
+  async counts(): Promise<Map<string, number>> {
+    const { data, error } = await supabase.from("receipt_pages").select("receipt_id");
+    if (error) throw error;
+    const counts = new Map<string, number>();
+    for (const { receipt_id } of data as { receipt_id: string }[]) {
+      counts.set(receipt_id, (counts.get(receipt_id) ?? 0) + 1);
+    }
+    return counts;
+  },
+  async all(): Promise<{ receiptId: string; pageIndex: number; imageDataUrl: string }[]> {
+    const { data, error } = await supabase
+      .from("receipt_pages")
+      .select("id, receipt_id, page_index, image_data_url")
+      .order("receipt_id")
+      .order("page_index", { ascending: true });
+    if (error) throw error;
+    return (data as ReceiptPageRow[]).map((p) => ({ receiptId: p.receipt_id, pageIndex: p.page_index, imageDataUrl: p.image_data_url }));
   },
 };
 

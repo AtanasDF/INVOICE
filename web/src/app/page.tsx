@@ -9,6 +9,7 @@ import {
   creditNotesStore,
   Invoice,
   invoicesStore,
+  Receipt,
   receiptsStore,
   recurringExpensesStore,
 } from "@/lib/storage";
@@ -26,6 +27,24 @@ function ScanIcon() {
       <circle cx="12" cy="12" r="3.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
+}
+
+function daysBetween(from: string, to: string): number {
+  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+}
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
+function billDueLabel(dueDate: string | null, today: string): { text: string; className: string } {
+  if (!dueDate) return { text: "No due date", className: "text-neutral-500" };
+  const days = daysBetween(today, dueDate);
+  if (days < 0) return { text: `Overdue by ${-days} ${days === -1 ? "day" : "days"}`, className: "text-red-700" };
+  if (days === 0) return { text: "Due today", className: "text-amber-700" };
+  if (days === 1) return { text: "Due tomorrow", className: "text-amber-700" };
+  if (days <= 3) return { text: `Due in ${days} days`, className: "text-amber-700" };
+  return { text: `Due ${shortDate(dueDate)}`, className: "text-neutral-500" };
 }
 
 const AGING_BUCKETS = [
@@ -49,6 +68,11 @@ export default function Dashboard() {
   const [dueRecurringCount, setDueRecurringCount] = useState(0);
   const [recurringBannerDismissed, setRecurringBannerDismissed] = useState(false);
   const [needsReviewCount, setNeedsReviewCount] = useState(0);
+  const [bills, setBills] = useState<Receipt[]>([]);
+  const [billCredits, setBillCredits] = useState<Map<string, number>>(new Map());
+  const [supplierNames, setSupplierNames] = useState<Map<string, string>>(new Map());
+  const [billsBannerDismissed, setBillsBannerDismissed] = useState(false);
+  const [billsError, setBillsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // The dashboard's Scan tap is the one real user gesture available --
@@ -124,6 +148,14 @@ export default function Dashboard() {
       setShowOverdueBanner(profile.showOverdueReminders && overdue.length > 0);
       setDueRecurringCount(recurring.filter((r) => r.active && r.nextDueDate <= today).length);
       setNeedsReviewCount(receipts.filter((r) => r.needsReview).length);
+      setBills(receipts.filter((r) => r.documentType === "invoice" && !r.paid && !r.needsReview));
+      const credits = new Map<string, number>();
+      for (const r of receipts) {
+        if (r.documentType !== "credit_note" || !r.creditOfReceiptId) continue;
+        credits.set(r.creditOfReceiptId, (credits.get(r.creditOfReceiptId) ?? 0) + r.amount + r.vatAmount);
+      }
+      setBillCredits(credits);
+      setSupplierNames(new Map(clients.map((c) => [c.id, c.name])));
       setLoading(false);
     }
     load();
@@ -151,6 +183,31 @@ export default function Dashboard() {
         .slice(0, 5),
     [outstandingInvoices]
   );
+
+  const sortedBills = useMemo(
+    () =>
+      [...bills].sort((a, b) => {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate < b.dueDate ? -1 : 1;
+      }),
+    [bills]
+  );
+  const billsDueSoon = useMemo(
+    () => bills.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= 3).length,
+    [bills, today]
+  );
+
+  async function markBillPaid(bill: Receipt) {
+    setBillsError(null);
+    setBills((prev) => prev.filter((b) => b.id !== bill.id));
+    try {
+      await receiptsStore.update(bill.id, { paid: true });
+    } catch (err) {
+      setBills((prev) => [...prev, bill]);
+      setBillsError(err instanceof Error ? err.message : "Could not mark this bill as paid.");
+    }
+  }
 
   const buckets = useMemo(() => {
     return AGING_BUCKETS.map((bucket) => {
@@ -199,6 +256,15 @@ export default function Dashboard() {
             <Link href="/recurring" className="font-medium underline">Review</Link>
             <button onClick={() => setRecurringBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
           </div>
+        </div>
+      )}
+
+      {billsDueSoon > 0 && !billsBannerDismissed && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <span>
+            {billsDueSoon} {billsDueSoon === 1 ? "bill needs" : "bills need"} paying soon — see <a href="#bills-to-pay" className="font-medium underline">Bills to pay</a>
+          </span>
+          <button onClick={() => setBillsBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
         </div>
       )}
 
@@ -278,6 +344,31 @@ export default function Dashboard() {
           <RepeatIcon /> Recurring invoices &rarr;
         </Link>
       </div>
+
+      {bills.length > 0 && (
+        <div id="bills-to-pay" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <h2 className="font-semibold">Bills to pay</h2>
+          {billsError && <p className="mt-2 text-sm text-red-600">{billsError}</p>}
+          <div className="mt-3 space-y-2">
+            {sortedBills.map((b) => {
+              const due = billDueLabel(b.dueDate, today);
+              return (
+                <div key={b.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                  <span>
+                    {supplierNames.get(b.clientId) || b.vendor || "Unknown supplier"}
+                    {b.invoiceNumber && <span className="text-neutral-500"> · {b.invoiceNumber}</span>}
+                    <span className={due.className}> · {due.text}</span>
+                  </span>
+                  <span className="flex items-center gap-3 whitespace-nowrap">
+                    <span className="font-medium">£{(b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)).toFixed(2)}</span>
+                    <button onClick={() => markBillPaid(b)} className="font-medium text-blue-600">Mark as paid</button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">Awaiting payment</h2>

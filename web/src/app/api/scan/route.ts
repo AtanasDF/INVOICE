@@ -1,48 +1,76 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument, parseDataUrl } from "@/lib/scanExtraction";
 
 export const runtime = "nodejs";
+// A multi-page invoice through claude-opus-5 can take well past the
+// default 10s; Vercel's limit is per-route.
+export const maxDuration = 60;
+
+const MAX_PAGES = 20;
 
 export async function POST(req: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  // Every scan costs real model time, so the route only serves a signed-in
+  // account: the browser sends its Supabase access token and the anon-key
+  // client verifies it here.
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
+  if (!user) {
+    return NextResponse.json({ error: "Sign in to scan documents." }, { status: 401 });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
       { error: "Scanning isn't configured yet: ANTHROPIC_API_KEY is missing on the server." },
       { status: 500 }
     );
   }
 
-  let body: { image?: string; categories?: string[] };
+  // `image` is the older single-file shape, still sent by invoices/new.
+  let body: { images?: unknown; image?: unknown; categories?: unknown };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Expected a JSON body with an `image` field." }, { status: 400 });
+    return NextResponse.json({ error: "Expected a JSON body with an `images` field." }, { status: 400 });
   }
 
-  if (!body.image) {
+  const images: unknown[] =
+    Array.isArray(body.images) && body.images.length ? body.images : typeof body.image === "string" ? [body.image] : [];
+  if (images.length === 0) {
     return NextResponse.json({ error: "No file was provided." }, { status: 400 });
   }
-
-  const categories = body.categories?.length ? body.categories : [...CATEGORIES];
-
-  const parsed = parseDataUrl(body.image);
-  if (!parsed) {
-    return NextResponse.json({ error: "The file wasn't a valid data URL." }, { status: 400 });
+  if (images.length > MAX_PAGES) {
+    return NextResponse.json({ error: `A document can have at most ${MAX_PAGES} pages.` }, { status: 400 });
   }
-  if (!ALLOWED_TYPES.includes(parsed.mediaType as (typeof ALLOWED_TYPES)[number])) {
-    return NextResponse.json(
-      { error: `Unsupported file type: ${parsed.mediaType}. Use JPEG, PNG, WEBP, GIF, or PDF.` },
-      { status: 400 }
-    );
-  }
-  const approxBytes = (parsed.base64.length * 3) / 4;
-  if (approxBytes > MAX_FILE_BYTES) {
-    return NextResponse.json({ error: "That file is too large (10MB max)." }, { status: 400 });
+
+  const sentCategories = Array.isArray(body.categories)
+    ? body.categories.filter((c): c is string => typeof c === "string" && !!c.trim())
+    : [];
+  const categories = sentCategories.length ? sentCategories : [...CATEGORIES];
+
+  const pages: { mediaType: string; base64: string }[] = [];
+  for (const [i, image] of images.entries()) {
+    const page = images.length > 1 ? ` (page ${i + 1})` : "";
+    const parsed = typeof image === "string" ? parseDataUrl(image) : null;
+    if (!parsed) {
+      return NextResponse.json({ error: `The file wasn't a valid data URL${page}.` }, { status: 400 });
+    }
+    if (!ALLOWED_TYPES.includes(parsed.mediaType as (typeof ALLOWED_TYPES)[number])) {
+      return NextResponse.json(
+        { error: `Unsupported file type${page}: ${parsed.mediaType}. Use JPEG, PNG, WEBP, GIF, or PDF.` },
+        { status: 400 }
+      );
+    }
+    if ((parsed.base64.length * 3) / 4 > MAX_FILE_BYTES) {
+      return NextResponse.json({ error: `That file is too large${page} (10MB max).` }, { status: 400 });
+    }
+    pages.push(parsed);
   }
 
   try {
-    const result = await extractDocument({ apiKey, base64: parsed.base64, mediaType: parsed.mediaType, categories });
+    const result = await extractDocument(pages, categories);
     return NextResponse.json({ result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error while scanning.";
