@@ -60,9 +60,9 @@ and what is left open. Dates are session dates (Europe/London).
 
 **Open**
 
-- Atanas's iPhone reports "nothing to scan" on the latest scanner build. Next step is the
-  readout screenshot (tap the hint pill on the camera screen), then fix from evidence.
-  The native camera remains one tap away ("Use the native camera instead").
+- (Resolved 2026-09-18: Atanas confirmed the in-app scanner "working perfect" on his
+  iPhone with the latest build; the earlier "nothing to scan" was most likely the
+  previous deploy still being served.)
 - Accuracy pass on both engines with real documents; shared rate limiter; research
   follow-ups; receipt images to Supabase Storage; paywall design.
 - Atanas's side: Safari camera permission, business details in Settings, invoice counter
