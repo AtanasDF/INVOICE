@@ -42,6 +42,8 @@ it is his real accounting record. Read this file before doing anything.
    with `grep -c '^NAME=' web/.env.local` only.
 7. Ambiguity in a brief: name it and state the assumption before building on it; do not
    guess silently.
+8. **Every session ends with everything committed and pushed** to GitHub (`main` or the
+   feature branch), so the repo is always current for the next session, wherever it runs.
 
 ## House style
 
