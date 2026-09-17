@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadOpenCV } from "@/lib/opencv";
-import { useIsIOS } from "@/lib/platform";
+import { ScannerMode, readScannerMode, useIsIOS, writeScannerMode } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
 
 type Point = { x: number; y: number };
 type Status = "starting" | "live" | "denied" | "timeout" | "unsupported" | "review";
-type ScannerMode = "inapp" | "native";
 type ZoomRange = { min: number; max: number; step: number };
 // zoom / focusMode / pointsOfInterest are in the Media Capture spec and
 // implemented by Chromium, but not yet in lib.dom.d.ts.
@@ -26,7 +25,6 @@ const WORK_WIDTH = 480;
 const STABLE_MS = 600;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
-const SCANNER_MODE_KEY = "scanner-mode";
 // getUserMedia can hang indefinitely rather than reject in some real
 // browser/OS blocking states (camera access blocked at the OS level for
 // the whole browser, not just this site, is the most common one) -- with
@@ -60,14 +58,6 @@ function visibleRegion(video: HTMLVideoElement, zoom: number) {
   const sw = video.clientWidth / cover / zoom;
   const sh = video.clientHeight / cover / zoom;
   return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh };
-}
-
-function readScannerMode(): ScannerMode {
-  try {
-    return localStorage.getItem(SCANNER_MODE_KEY) === "inapp" ? "inapp" : "native";
-  } catch {
-    return "native";
-  }
 }
 
 function BackButton({ onClick }: { onClick: () => void }) {
@@ -189,11 +179,7 @@ export default function DocumentCapture({
   }
 
   function switchScannerMode(mode: ScannerMode) {
-    try {
-      localStorage.setItem(SCANNER_MODE_KEY, mode);
-    } catch {
-      // private mode / storage blocked -- the choice just won't persist
-    }
+    writeScannerMode(mode);
     setStatus("starting");
     setScannerMode(mode);
   }

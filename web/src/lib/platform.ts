@@ -33,3 +33,22 @@ function getIOSServerSnapshot(): boolean {
 export function useIsIOS(): boolean {
   return useSyncExternalStore(subscribeNever, getIOSSnapshot, getIOSServerSnapshot);
 }
+
+export type ScannerMode = "inapp" | "native";
+const SCANNER_MODE_KEY = "scanner-mode";
+
+export function readScannerMode(): ScannerMode {
+  try {
+    return localStorage.getItem(SCANNER_MODE_KEY) === "inapp" ? "inapp" : "native";
+  } catch {
+    return "native";
+  }
+}
+
+export function writeScannerMode(mode: ScannerMode) {
+  try {
+    localStorage.setItem(SCANNER_MODE_KEY, mode);
+  } catch {
+    // private mode / storage blocked -- the choice just won't persist
+  }
+}

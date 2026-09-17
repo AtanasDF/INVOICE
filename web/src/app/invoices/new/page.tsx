@@ -8,6 +8,7 @@ import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } fr
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays } from "@/lib/freeInvoiceDraft";
 import { CameraIcon } from "@/components/icons";
+import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
 function addDays(dateStr: string, days: number): string {
@@ -256,13 +257,14 @@ export default function NewInvoicePage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">New invoice</h1>
-        <button
-          onClick={() => setShowCapture(true)}
+        <CaptureButton
+          onOpen={() => setShowCapture(true)}
+          onCapture={onDocumentCaptured}
           disabled={scanning}
           className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
         >
           {scanning ? "Reading document…" : (<><CameraIcon /> Scan or attach a document</>)}
-        </button>
+        </CaptureButton>
       </div>
       {scanError && <p className="text-sm text-red-600">{scanError}</p>}
       <p className="text-xs text-neutral-500 -mt-4">

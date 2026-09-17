@@ -2,23 +2,32 @@
 
 import { useState } from "react";
 import type { CapturedFile } from "@/components/DocumentCapture";
+import CaptureButton from "@/components/CaptureButton";
 import { DocumentIcon } from "@/components/icons";
 
 export const MAX_PAGES = 20;
 
-function Thumb({ page, index, broken, disabled, onBroken, onRetake }: {
+export type Capture =
+  | { kind: "first" }
+  | { kind: "add" }
+  | { kind: "retake"; index: number; failureMessage?: string };
+
+function Thumb({ page, index, broken, disabled, onBroken, onRetake, onRetaken }: {
   page: CapturedFile;
   index: number;
   broken: boolean;
   disabled: boolean;
   onBroken: () => void;
   onRetake: () => void;
+  onRetaken: (file: CapturedFile) => void;
 }) {
   if (broken) {
     return (
       <div className="flex h-20 w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-red-300 bg-red-50 text-xs text-red-600">
         <span>Page {index + 1}</span>
-        <button type="button" onClick={onRetake} disabled={disabled} className="font-medium underline disabled:opacity-50">Retake</button>
+        <CaptureButton onOpen={onRetake} onCapture={onRetaken} disabled={disabled} className="font-medium underline disabled:opacity-50">
+          Retake
+        </CaptureButton>
       </div>
     );
   }
@@ -38,12 +47,12 @@ function Thumb({ page, index, broken, disabled, onBroken, onRetake }: {
   );
 }
 
-export default function PagesStrip({ pages, scanning, onAdd, onRetake, onStartNew }: {
+export default function PagesStrip({ pages, scanning, onOpen, onCaptured, confirmStartNew }: {
   pages: CapturedFile[];
   scanning: boolean;
-  onAdd: () => void;
-  onRetake: (index: number) => void;
-  onStartNew: () => void;
+  onOpen: (capture: Capture) => void;
+  onCaptured: (file: CapturedFile, capture: Capture) => void;
+  confirmStartNew: () => boolean;
 }) {
   const [broken, setBroken] = useState<Set<string>>(() => new Set());
   const full = pages.length >= MAX_PAGES;
@@ -60,22 +69,29 @@ export default function PagesStrip({ pages, scanning, onAdd, onRetake, onStartNe
             broken={broken.has(p.dataUrl)}
             disabled={scanning}
             onBroken={() => setBroken((prev) => new Set(prev).add(p.dataUrl))}
-            onRetake={() => onRetake(i)}
+            onRetake={() => onOpen({ kind: "retake", index: i })}
+            onRetaken={(file) => onCaptured(file, { kind: "retake", index: i })}
           />
         ))}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={onAdd}
+        <CaptureButton
+          onOpen={() => onOpen({ kind: "add" })}
+          onCapture={(file) => onCaptured(file, { kind: "add" })}
           disabled={scanning || full}
           className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
         >
           Add another page
-        </button>
-        <button type="button" onClick={onStartNew} disabled={scanning} className="text-sm font-medium text-neutral-600 disabled:opacity-50">
+        </CaptureButton>
+        <CaptureButton
+          beforeOpen={confirmStartNew}
+          onOpen={() => onOpen({ kind: "first" })}
+          onCapture={(file) => onCaptured(file, { kind: "first" })}
+          disabled={scanning}
+          className="text-sm font-medium text-neutral-600 disabled:opacity-50"
+        >
           Start a new document
-        </button>
+        </CaptureButton>
       </div>
       {full && <p className="mt-1 text-xs text-neutral-500">{MAX_PAGES} pages is the most one document can have.</p>}
       <p className="mt-1 text-xs text-neutral-500">

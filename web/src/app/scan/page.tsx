@@ -11,7 +11,8 @@ import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { takeScanCapture } from "@/lib/scanHandoff";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
-import PagesStrip from "@/components/scan/PagesStrip";
+import CaptureButton from "@/components/CaptureButton";
+import PagesStrip, { Capture } from "@/components/scan/PagesStrip";
 import DateConfirm from "@/components/scan/DateConfirm";
 import LineItemsTable, { EditableLine } from "@/components/scan/LineItemsTable";
 import DocumentDetailsFields from "@/components/scan/DocumentDetailsFields";
@@ -21,11 +22,6 @@ import FieldFlag, { Confidence } from "@/components/scan/FieldFlag";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
-
-type Capture =
-  | { kind: "first" }
-  | { kind: "add" }
-  | { kind: "retake"; index: number; failureMessage?: string };
 
 type Form = {
   docType: ScanDocumentType | null;
@@ -292,12 +288,14 @@ export default function ScanPage() {
     }
   }
 
-  function onCaptured(file: CapturedFile) {
-    const current = capture ?? { kind: "first" as const };
+  function onCaptured(file: CapturedFile, current: Capture) {
     let next: CapturedFile[];
     if (current.kind === "retake") next = pages.map((p, i) => (i === current.index ? file : p));
     else if (current.kind === "add") next = [...pages, file];
-    else next = [file];
+    else {
+      resetDocument();
+      next = [file];
+    }
     setPages(next);
     setCapture(null);
     setSupplierSaved(false);
@@ -317,19 +315,19 @@ export default function ScanPage() {
     else router.push("/");
   }
 
-  function startNew() {
-    if (pages.length && !window.confirm("Start a new document? This scan hasn't been saved.")) return;
+  function confirmStartNew() {
+    return !pages.length || window.confirm("Start a new document? This scan hasn't been saved.");
+  }
+
+  // Runs once the replacement's first page is in hand rather than when
+  // the camera opens, so backing out of the camera keeps the current scan.
+  function resetDocument() {
     runRef.current++;
     touchedRef.current = new Set();
-    setPages([]);
     setForm({ ...EMPTY_FORM, date: todayIso(), category: form.category });
-    setScanError(null);
     setSaveError(null);
     setFxError(null);
     setTypePickerOpen(false);
-    setSupplierSaved(false);
-    setSupplierDuplicate(false);
-    setCapture({ kind: "first" });
   }
 
   async function onCurrencyChange(next: string) {
@@ -480,7 +478,7 @@ export default function ScanPage() {
   if (capture) {
     return (
       <DocumentCapture
-        onCapture={onCaptured}
+        onCapture={(file) => onCaptured(file, capture)}
         onClose={onCaptureClosed}
         pageNumber={capture.kind === "add" ? pages.length + 1 : capture.kind === "retake" ? capture.index + 1 : undefined}
         failureMessage={capture.kind === "retake" ? capture.failureMessage : undefined}
@@ -496,9 +494,9 @@ export default function ScanPage() {
     <PagesStrip
       pages={pages}
       scanning={scanning}
-      onAdd={() => setCapture({ kind: "add" })}
-      onRetake={(index) => setCapture({ kind: "retake", index })}
-      onStartNew={startNew}
+      onOpen={setCapture}
+      onCaptured={onCaptured}
+      confirmStartNew={confirmStartNew}
     />
   );
 
@@ -513,14 +511,14 @@ export default function ScanPage() {
         >
           Try again
         </button>
-        <button
-          type="button"
-          onClick={() => setCapture({ kind: "retake", index: pages.length - 1, failureMessage: scanError })}
+        <CaptureButton
+          onOpen={() => setCapture({ kind: "retake", index: pages.length - 1, failureMessage: scanError })}
+          onCapture={(file) => onCaptured(file, { kind: "retake", index: pages.length - 1 })}
           disabled={scanning}
           className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50"
         >
           Retake last page
-        </button>
+        </CaptureButton>
       </div>
     </div>
   );

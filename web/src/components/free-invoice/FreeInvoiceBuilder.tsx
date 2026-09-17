@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
+import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import InvoiceDocument from "@/components/invoice/InvoiceDocument";
 import DraftEditor from "@/components/free-invoice/DraftEditor";
@@ -135,6 +136,12 @@ export default function FreeInvoiceBuilder() {
     setStage("start");
   }
 
+  function addPage(file: CapturedFile) {
+    setPages((p) => [...p, file]);
+    setCapturing(false);
+    setStage("pages");
+  }
+
   function saveToAccount() {
     if (draft) writeFreeInvoiceDraft(draft);
     router.push(user ? "/invoices/new" : "/login?next=/invoices/new");
@@ -143,11 +150,7 @@ export default function FreeInvoiceBuilder() {
   if (capturing) {
     return (
       <DocumentCapture
-        onCapture={(file) => {
-          setPages((p) => [...p, file]);
-          setCapturing(false);
-          setStage("pages");
-        }}
+        onCapture={addPage}
         onClose={() => setCapturing(false)}
         pageNumber={pages.length + 1}
       />
@@ -193,9 +196,9 @@ export default function FreeInvoiceBuilder() {
               <p className="font-medium">Scan an existing invoice</p>
               <p className="mt-1 flex-1 text-sm text-neutral-600">Photograph one you have sent before. Its layout and details are copied in, so you only change what is new.</p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
-                <button type="button" onClick={() => setCapturing(true)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                   Scan an existing invoice
-                </button>
+                </CaptureButton>
                 {user && <EnginePicker value={engine} onChange={setEngine} />}
               </div>
             </div>
@@ -249,14 +252,14 @@ export default function FreeInvoiceBuilder() {
             <button type="button" onClick={readInvoice} disabled={reading || !pages.length} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {reading ? "Reading your invoice…" : "Read invoice"}
             </button>
-            <button
-              type="button"
-              onClick={() => setCapturing(true)}
+            <CaptureButton
+              onOpen={() => setCapturing(true)}
+              onCapture={addPage}
               disabled={reading || pages.length >= MAX_PAGES || pageChars >= MAX_BATCH_CHARS}
               className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
             >
               Add another page
-            </button>
+            </CaptureButton>
             <button type="button" onClick={() => { setPages([]); setReadError(null); setStage("start"); }} disabled={reading} className="px-2 py-2 text-sm font-medium text-neutral-600 disabled:opacity-50">
               Cancel
             </button>
