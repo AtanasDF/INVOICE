@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { CUT_OFF, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
+import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { extractInvoiceTemplate } from "@/lib/invoiceTemplate";
 import { addressKey, allow } from "@/lib/rateLimit";
 import { ALLOWED_TYPES, parseDataUrl } from "@/lib/scanExtraction";
@@ -16,7 +16,7 @@ const HOUR = 60 * 60 * 1000;
 const ANON_PER_HOUR = 10;
 const USER_PER_HOUR = 60;
 const GLOBAL_PER_HOUR = 200;
-const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED]);
+const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 
 // Public: anyone on the free invoice page can scan one of their own
 // invoices without an account. Anonymous callers always run on Gemini;

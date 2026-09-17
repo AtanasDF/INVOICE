@@ -25,6 +25,7 @@ type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
 
 export const CUT_OFF = "The reading was cut off before the document was finished. Try scanning fewer pages at once.";
 export const NOT_STRUCTURED = "The model didn't return structured data. Try again.";
+export const ENGINE_BUSY = "The scanner is busy right now. Try again in a minute.";
 
 export async function extractStructured<T>(opts: ExtractStructuredOptions): Promise<T> {
   return opts.engine === "gemini" ? extractWithGemini<T>(opts) : extractWithClaude<T>(opts);
@@ -60,21 +61,33 @@ async function extractWithClaude<T>(opts: ExtractStructuredOptions): Promise<T> 
 async function extractWithGemini<T>(opts: ExtractStructuredOptions): Promise<T> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
-  const client = new GoogleGenAI({ apiKey });
-
-  const interaction = await client.interactions.create({
-    model: GEMINI_MODEL,
-    input: [
-      ...opts.pages.map((p) =>
-        p.mediaType === "application/pdf"
-          ? ({ type: "document", data: p.base64, mime_type: "application/pdf" } as const)
-          : ({ type: "image", data: p.base64, mime_type: p.mediaType } as const)
-      ),
-      { type: "text", text: `${opts.prompt}\n\n${opts.description}` },
-    ],
-    response_format: { type: "text", mime_type: "application/json", schema: toGeminiSchema(opts.schema) },
-    generation_config: { max_output_tokens: opts.maxTokens ?? 16000 },
+  // The SDK retries 429/5xx five times with backoff by default, which on
+  // a quota error turns into a hang that outlives the route's 60s budget.
+  const client = new GoogleGenAI({
+    apiKey,
+    httpOptions: { timeout: 40_000, retryOptions: { attempts: 2, initialDelay: 1000, maxDelay: 3000 } },
   });
+
+  let interaction;
+  try {
+    interaction = await client.interactions.create({
+      model: GEMINI_MODEL,
+      input: [
+        ...opts.pages.map((p) =>
+          p.mediaType === "application/pdf"
+            ? ({ type: "document", data: p.base64, mime_type: "application/pdf" } as const)
+            : ({ type: "image", data: p.base64, mime_type: p.mediaType } as const)
+        ),
+        { type: "text", text: `${opts.prompt}\n\n${opts.description}` },
+      ],
+      response_format: { type: "text", mime_type: "application/json", schema: toGeminiSchema(opts.schema) },
+      generation_config: { max_output_tokens: opts.maxTokens ?? 16000, thinking_level: "LOW" },
+    });
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (status === 429 || status === 503) throw new Error(ENGINE_BUSY);
+    throw err;
+  }
 
   if (interaction.status === "incomplete" || interaction.status === "budget_exceeded") throw new Error(CUT_OFF);
   if (interaction.status === "failed") {
