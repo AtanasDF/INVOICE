@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Mat, MatVector } from "@techstark/opencv-js";
 import { CVModule, loadOpenCV } from "@/lib/opencv";
 import { ScannerMode, consumeCameraHint, isIOS, readAutoCapture, readScannerMode, useIsIOS, writeAutoCapture, writeScannerMode } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
@@ -8,6 +9,14 @@ import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
 
 type Point = { x: number; y: number };
+type Quad = [Point, Point, Point, Point];
+// Corners in work-frame pixels plus the work frame they were found in,
+// so any consumer can rescale them to its own frame.
+type WorkQuad = { pts: Quad; w: number; h: number };
+// Everything OpenCV needs per tick, allocated once per work-frame size
+// and reused: allocating and freeing seven Mats every tick was most of
+// the per-frame cost on a phone.
+type WorkMats = { w: number; h: number; src: Mat; gray: Mat; blurred: Mat; edges: Mat; kernel: Mat; contours: MatVector; hierarchy: Mat };
 type Status = "starting" | "live" | "denied" | "timeout" | "unsupported";
 type CvStatus = "loading" | "ready" | "failed";
 type Coach = "line" | "closer" | "hold";
@@ -22,21 +31,29 @@ type BarcodeDetectorResult = { rawValue: string };
 type BarcodeDetectorInstance = { detect: (source: CanvasImageSource) => Promise<BarcodeDetectorResult[]> };
 type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
 
-const DETECT_INTERVAL_MS = 200;
+const DETECT_INTERVAL_MS = 150;
 const WORK_WIDTH = 480;
+// A four-corner contour has to cover this share of the work frame to be
+// a candidate at all -- low enough that a page fitted inside the
+// brackets from arm's length still counts.
+const MIN_CONTOUR_AREA = 0.06;
 // Auto-capture gates (empirical). A quad must hold still for STABLE_MS
 // with each corner drifting under MOVE_TOLERANCE of the work-frame width
 // per tick, cover at least MIN_COVERAGE of the work frame, and the frame
 // must be at least SHARPNESS_RATIO of the sharpest seen in this stable
-// run and above SHARPNESS_FLOOR (variance of the Laplacian). A run that
+// run and above SHARPNESS_FLOOR (variance of the Laplacian) -- mostly a
+// "focus has settled" check rather than an absolute bar. A run that
 // stays stable for STABLE_TIMEOUT_MS captures regardless of sharpness so
 // a dim room never dead-locks the scanner.
-const STABLE_MS = 900;
+const STABLE_MS = 600;
 const MOVE_TOLERANCE = 0.02;
-const MIN_COVERAGE = 0.2;
-const SHARPNESS_RATIO = 0.6;
-const SHARPNESS_FLOOR = 40;
-const STABLE_TIMEOUT_MS = 4000;
+const MIN_COVERAGE = 0.09;
+const SHARPNESS_RATIO = 0.7;
+const SHARPNESS_FLOOR = 12;
+const STABLE_TIMEOUT_MS = 2500;
+// Per-frame easing of the drawn outline toward the latest detected quad,
+// so it glides between detection ticks instead of jumping at tick rate.
+const OUTLINE_EASE = 0.35;
 const FLASH_MS = 150;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
@@ -82,7 +99,7 @@ function drawGuide(ctx: CanvasRenderingContext2D, w: number, h: number, color: s
   ctx.stroke();
 }
 
-function orderPoints(pts: Point[]): [Point, Point, Point, Point] {
+function orderPoints(pts: Point[]): Quad {
   const sums = pts.map((p) => p.x + p.y);
   const diffs = pts.map((p) => p.x - p.y);
   const tl = pts[sums.indexOf(Math.min(...sums))];
@@ -94,6 +111,10 @@ function orderPoints(pts: Point[]): [Point, Point, Point, Point] {
 
 function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function scaleQuad(quad: WorkQuad, w: number, h: number): Quad {
+  return quad.pts.map((p) => ({ x: (p.x / quad.w) * w, y: (p.y / quad.h) * h })) as Quad;
 }
 
 // The part of the camera frame the user can actually see: object-cover
@@ -115,8 +136,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       aria-label="Back"
-      className="absolute left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
-      style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+      className="pointer-events-auto flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-black/50 text-white"
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -140,12 +160,16 @@ export default function DocumentCapture({
   const liveAreaRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const matsRef = useRef<WorkMats | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastRunRef = useRef(0);
-  const quadRef = useRef<[Point, Point, Point, Point] | null>(null);
+  // Latest detected quad, and the eased outline (display pixels) the
+  // overlay is currently showing on its way there.
+  const quadRef = useRef<WorkQuad | null>(null);
+  const outlineRef = useRef<Quad | null>(null);
   // Work-frame corners from the previous tick, for the movement check.
-  const lastQuadRef = useRef<[Point, Point, Point, Point] | null>(null);
+  const lastQuadRef = useRef<Quad | null>(null);
   const stableSinceRef = useRef<number | null>(null);
   const peakSharpRef = useRef(0);
   // Set the moment auto-capture fires; the parent unmounts this
@@ -223,12 +247,26 @@ export default function DocumentCapture({
     setAutoOn(next);
   }
 
+  const freeMats = useCallback(() => {
+    const m = matsRef.current;
+    if (!m) return;
+    matsRef.current = null;
+    m.src.delete();
+    m.gray.delete();
+    m.blurred.delete();
+    m.edges.delete();
+    m.kernel.delete();
+    m.contours.delete();
+    m.hierarchy.delete();
+  }, []);
+
   const stopStream = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-  }, []);
+    freeMats();
+  }, [freeMats]);
 
   function showFailure(message: string) {
     setFailure(message);
@@ -273,6 +311,7 @@ export default function DocumentCapture({
     if (useNative) return;
 
     let cancelled = false;
+    let detecting = false;
 
     async function start() {
       cvRef.current = null;
@@ -372,28 +411,79 @@ export default function DocumentCapture({
       }
     }
 
-    async function loop(timestamp: number) {
+    // The overlay redraws every frame from the last known quad; only the
+    // OpenCV work is throttled, and never overlaps itself.
+    function loop(timestamp: number) {
       if (cancelled) return;
-      if (statusRef.current === "live" && timestamp - lastRunRef.current >= DETECT_INTERVAL_MS) {
-        lastRunRef.current = timestamp;
-        await processFrame();
+      if (statusRef.current === "live") {
+        drawOverlay();
+        if (!detecting && timestamp - lastRunRef.current >= DETECT_INTERVAL_MS) {
+          lastRunRef.current = timestamp;
+          detecting = true;
+          processFrame().finally(() => {
+            detecting = false;
+          });
+        }
       }
       rafRef.current = requestAnimationFrame(loop);
     }
 
-    async function processFrame() {
+    function drawOverlay() {
       const video = videoRef.current;
       const overlay = overlayRef.current;
-      if (!video || !overlay || video.readyState < 2 || video.videoWidth === 0) return;
-
+      if (!video || !overlay || video.videoWidth === 0) return;
       const displayW = video.clientWidth;
       const displayH = video.clientHeight;
       if (overlay.width !== displayW) overlay.width = displayW;
       if (overlay.height !== displayH) overlay.height = displayH;
       const octx = overlay.getContext("2d");
       if (!octx) return;
-      octx.clearRect(0, 0, overlay.width, overlay.height);
-      drawGuide(octx, displayW, displayH, GUIDE_IDLE);
+      octx.clearRect(0, 0, displayW, displayH);
+
+      const quad = quadRef.current;
+      if (!quad) {
+        outlineRef.current = null;
+        drawGuide(octx, displayW, displayH, GUIDE_IDLE);
+        return;
+      }
+      const target = scaleQuad(quad, displayW, displayH);
+      const shown = outlineRef.current;
+      const outline = shown
+        ? (shown.map((p, i) => ({ x: p.x + (target[i].x - p.x) * OUTLINE_EASE, y: p.y + (target[i].y - p.y) * OUTLINE_EASE })) as Quad)
+        : target;
+      outlineRef.current = outline;
+      octx.strokeStyle = GREEN;
+      octx.lineWidth = 3;
+      octx.beginPath();
+      octx.moveTo(outline[0].x, outline[0].y);
+      for (let i = 1; i < outline.length; i++) octx.lineTo(outline[i].x, outline[i].y);
+      octx.closePath();
+      octx.stroke();
+      drawGuide(octx, displayW, displayH, GREEN);
+    }
+
+    function ensureMats(cv: CVModule, w: number, h: number): WorkMats {
+      const m = matsRef.current;
+      if (m && m.w === w && m.h === h) return m;
+      freeMats();
+      const mats: WorkMats = {
+        w,
+        h,
+        src: new cv.Mat(h, w, cv.CV_8UC4),
+        gray: new cv.Mat(),
+        blurred: new cv.Mat(),
+        edges: new cv.Mat(),
+        kernel: cv.Mat.ones(3, 3, cv.CV_8U),
+        contours: new cv.MatVector(),
+        hierarchy: new cv.Mat(),
+      };
+      matsRef.current = mats;
+      return mats;
+    }
+
+    async function processFrame() {
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || video.videoWidth === 0) return;
 
       // Barcode check runs on the live video frame directly -- cheap,
       // native, and independent of OpenCV, so it still runs even if
@@ -408,6 +498,7 @@ export default function DocumentCapture({
           // detector can throw on a transient bad frame; ignore and keep going
         }
       }
+      if (cancelled || !streamRef.current) return;
 
       const cv = cvRef.current;
       if (!cv) return;
@@ -417,28 +508,23 @@ export default function DocumentCapture({
       const workH = Math.round((sh / sw) * WORK_WIDTH);
       if (!workCanvasRef.current) workCanvasRef.current = document.createElement("canvas");
       const work = workCanvasRef.current;
-      work.width = workW;
-      work.height = workH;
-      const wctx = work.getContext("2d");
+      if (work.width !== workW) work.width = workW;
+      if (work.height !== workH) work.height = workH;
+      const wctx = work.getContext("2d", { willReadFrequently: true });
       if (!wctx) return;
       wctx.drawImage(video, sx, sy, sw, sh, 0, 0, workW, workH);
 
       try {
-        const src = cv.imread(work);
-        const gray = new cv.Mat();
+        const { src, gray, blurred, edges, kernel, contours, hierarchy } = ensureMats(cv, workW, workH);
+        src.data.set(wctx.getImageData(0, 0, workW, workH).data);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        const blurred = new cv.Mat();
         cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-        const edges = new cv.Mat();
         cv.Canny(blurred, edges, 50, 150);
-        const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
         cv.dilate(edges, edges, kernel);
-        const contours = new cv.MatVector();
-        const hierarchy = new cv.Mat();
         cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
 
         let best: Point[] | null = null;
-        let bestArea = workW * workH * 0.15;
+        let bestArea = workW * workH * MIN_CONTOUR_AREA;
         for (let i = 0; i < contours.size(); i++) {
           const c = contours.get(i);
           const peri = cv.arcLength(c, true);
@@ -481,26 +567,9 @@ export default function DocumentCapture({
           stddev.delete();
         }
 
-        src.delete();
-        gray.delete();
-        blurred.delete();
-        edges.delete();
-        kernel.delete();
-        contours.delete();
-        hierarchy.delete();
-
         if (best) {
-          const toDisplay = (p: Point): Point => ({
-            x: (p.x / workW) * displayW,
-            y: (p.y / workH) * displayH,
-          });
-          // Region-relative, matching the crop renderCapture() draws.
-          const toRegion = (p: Point): Point => ({
-            x: (p.x / workW) * sw,
-            y: (p.y / workH) * sh,
-          });
           const ordered = orderPoints(best);
-          quadRef.current = ordered.map(toRegion) as [Point, Point, Point, Point];
+          quadRef.current = { pts: ordered, w: workW, h: workH };
 
           const now = performance.now();
           const last = lastQuadRef.current;
@@ -525,16 +594,6 @@ export default function DocumentCapture({
               captureRef.current();
             }
           }
-
-          const displayPts = ordered.map(toDisplay);
-          octx.strokeStyle = GREEN;
-          octx.lineWidth = 3;
-          octx.beginPath();
-          octx.moveTo(displayPts[0].x, displayPts[0].y);
-          for (let i = 1; i < displayPts.length; i++) octx.lineTo(displayPts[i].x, displayPts[i].y);
-          octx.closePath();
-          octx.stroke();
-          drawGuide(octx, displayW, displayH, GREEN);
         } else {
           quadRef.current = null;
           resetStable();
@@ -555,7 +614,7 @@ export default function DocumentCapture({
     // (the state) is deliberately not listed -- processFrame reads cvRef
     // instead precisely so OpenCV arriving mid-effect doesn't need to
     // restart the camera stream just to start detection.
-  }, [stopStream, retryKey, useNative]);
+  }, [stopStream, freeMats, retryKey, useNative]);
 
   function applyZoom(value: number) {
     setZoom(value);
@@ -614,23 +673,22 @@ export default function DocumentCapture({
 
     try {
       const src = cv.imread(full);
-      const [tl, tr, br, bl] = quad;
-      const widthA = dist(br, bl);
-      const widthB = dist(tr, tl);
-      const maxWidth = Math.max(widthA, widthB);
-      const heightA = dist(tr, br);
-      const heightB = dist(tl, bl);
-      const maxHeight = Math.max(heightA, heightB);
+      // The quad rescaled from the 480px work frame to the full-resolution
+      // frame before the output size is measured, so a page captured from
+      // further away still uses every native pixel available.
+      const [tl, tr, br, bl] = scaleQuad(quad, full.width, full.height);
+      const outW = Math.round(Math.max(dist(br, bl), dist(tr, tl)));
+      const outH = Math.round(Math.max(dist(tr, br), dist(tl, bl)));
 
       const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
-      const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, maxWidth, 0, maxWidth, maxHeight, 0, maxHeight]);
+      const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, outW, 0, outW, outH, 0, outH]);
       const M = cv.getPerspectiveTransform(srcTri, dstTri);
       const dst = new cv.Mat();
-      cv.warpPerspective(src, dst, M, new cv.Size(maxWidth, maxHeight));
+      cv.warpPerspective(src, dst, M, new cv.Size(outW, outH));
 
       const out = document.createElement("canvas");
-      out.width = maxWidth;
-      out.height = maxHeight;
+      out.width = outW;
+      out.height = outH;
       cv.imshow(out, dst);
 
       src.delete();
@@ -734,7 +792,9 @@ export default function DocumentCapture({
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black">
         <div className={`relative flex flex-1 flex-col items-center justify-center gap-3 ${shownFailure ? "border-4 border-red-500" : ""}`}>
-          <BackButton onClick={close} />
+          <div className="absolute left-4 z-10" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
+            <BackButton onClick={close} />
+          </div>
           {pageLabel && <p className="text-sm font-medium text-white">{pageLabel}</p>}
           <p className="px-8 text-center text-sm text-white/70">
             Take a clear, well-lit photo of the whole document.
@@ -806,11 +866,6 @@ export default function DocumentCapture({
           />
         )}
 
-        {/* Always visible, regardless of status -- the old bottom-bar
-            "Cancel" text was easy to miss entirely while stuck on a
-            black screen with no other affordance. */}
-        <BackButton onClick={close} />
-
         {status === "starting" && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-white">Starting camera…</div>
         )}
@@ -836,31 +891,39 @@ export default function DocumentCapture({
             <p>This browser doesn&apos;t support camera capture here. Upload a photo or PDF instead.</p>
           </div>
         )}
-        {barcodeValue && !shownFailure && (
-          <div
-            className="absolute inset-x-4 rounded-lg bg-white/95 p-3 text-sm text-neutral-900 shadow"
-            style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
-          >
-            <div className="font-medium">Barcode detected: {barcodeValue}</div>
-            <button onClick={() => setBarcodeValue(null)} className="mt-1 text-xs text-blue-600">Dismiss</button>
+
+        {/* One strip inside the safe area: back button and hint share a
+            row so neither can sit on top of the other, the edge-detection
+            status and any barcode banner stack below. The back button is
+            always there -- the old bottom-bar "Cancel" text was easy to
+            miss entirely while stuck on a black screen. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-1 px-4"
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+        >
+          <div className="flex items-center gap-2">
+            <BackButton onClick={close} />
+            {shownFailure ? (
+              <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-white line-clamp-2">{shownFailure}</div>
+            ) : (
+              status === "live" && (
+                <div className="min-w-0 flex-1 rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2">
+                  {pageLabel ? `${pageLabel} · ${hint}` : hint}
+                </div>
+              )
+            )}
           </div>
-        )}
-        {shownFailure ? (
-          <div
-            className="absolute inset-x-4 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-white"
-            style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
-          >
-            {shownFailure}
-          </div>
-        ) : (
-          status === "live" &&
-          !barcodeValue && (
-            <div className="absolute inset-x-4 flex flex-col gap-1" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
-              <div className="rounded-lg bg-black/50 p-2 text-center text-xs text-white">{pageLabel ? `${pageLabel} · ${hint}` : hint}</div>
-              {cvLine && <div className="rounded-lg bg-black/50 px-2 py-1 text-center text-[11px] text-neutral-300">{cvLine}</div>}
+          {status === "live" && !shownFailure && cvLine && (
+            <div className="rounded-lg bg-black/50 px-2 py-1 text-center text-[11px] text-neutral-300">{cvLine}</div>
+          )}
+          {barcodeValue && !shownFailure && (
+            <div className="pointer-events-auto rounded-lg bg-white/95 p-3 text-sm text-neutral-900 shadow">
+              <div className="font-medium">Barcode detected: {barcodeValue}</div>
+              <button onClick={() => setBarcodeValue(null)} className="mt-1 text-xs text-blue-600">Dismiss</button>
             </div>
-          )
-        )}
+          )}
+        </div>
+
         {status === "live" && (
           <div className="absolute inset-x-8 bottom-3 flex flex-col items-center gap-2">
             {zoomRange ? (

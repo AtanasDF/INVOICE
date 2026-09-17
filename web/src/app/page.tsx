@@ -19,6 +19,8 @@ import { FolderIcon, RepeatIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
+import { loadOpenCV } from "@/lib/opencv";
+import { useAuth } from "@/lib/authContext";
 
 function ScanIcon() {
   return (
@@ -58,6 +60,7 @@ const AGING_BUCKETS = [
 export default function Dashboard() {
   const router = useRouter();
   const isIOS = useIsIOS();
+  const { user } = useAuth();
   const [scanHandoffBusy, setScanHandoffBusy] = useState(false);
 
   const [outstandingInvoices, setOutstandingInvoices] = useState<{ invoice: Invoice; amountDue: number; clientName: string }[]>([]);
@@ -105,6 +108,23 @@ export default function Dashboard() {
     reader.onerror = () => router.push("/scan");
     reader.readAsDataURL(file);
   }
+
+  // Warm-up for the in-app scanner: fetching the OpenCV script here puts
+  // it in the HTTP cache and initialises the runtime before Scan is
+  // tapped, and loadOpenCV caches its promise module-wide, so the capture
+  // screen then resolves instantly. Failures are its problem to report.
+  useEffect(() => {
+    if (!user || readScannerMode() === "native") return;
+    const warm = () => {
+      loadOpenCV().catch(() => {});
+    };
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(warm);
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(warm, 2000);
+    return () => clearTimeout(t);
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;

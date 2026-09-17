@@ -1,8 +1,40 @@
 export type CVModule = typeof import("@techstark/opencv-js") & { onRuntimeInitialized?: () => void; Mat?: unknown };
 
+// Copied from node_modules by scripts/copy-opencv.mjs (predev/prebuild)
+// and served immutable, so after the first visit it comes from the HTTP
+// cache instead of a fresh multi-MB download per deploy.
+const SCRIPT_SRC = "/vendor/opencv-5.0.0.js";
 const INIT_TIMEOUT_MS = 20_000;
 
+// The vendor file is a UMD wrapper. In a plain <script> there is no
+// module/define, so it takes the browser-globals branch and assigns
+// window.cv = factory(), where the factory is the runtime's async entry
+// point: the value is a Promise of the initialised runtime.
+type CVEntry = CVModule | Promise<CVModule>;
+type CVGlobal = { cv?: CVEntry };
+
 let cvPromise: Promise<CVModule> | null = null;
+
+// Resolves with the global boxed rather than bare: a bare Promise would
+// be adopted here, and the runtime timeout below is meant to cover it.
+function injectScript(): Promise<{ cv: CVEntry }> {
+  return new Promise((resolve, reject) => {
+    const global = window as unknown as CVGlobal;
+    if (global.cv) return resolve({ cv: global.cv });
+    const script = document.createElement("script");
+    script.src = SCRIPT_SRC;
+    script.async = true;
+    script.onload = () => {
+      if (global.cv) resolve({ cv: global.cv });
+      else reject(new Error(`script did not define window.cv: ${SCRIPT_SRC}`));
+    };
+    script.onerror = () => {
+      script.remove();
+      reject(new Error(`script failed to load: ${SCRIPT_SRC}`));
+    };
+    document.head.appendChild(script);
+  });
+}
 
 function waitForRuntime(cv: CVModule): Promise<CVModule> {
   if (cv.Mat) return Promise.resolve(cv);
@@ -12,18 +44,14 @@ function waitForRuntime(cv: CVModule): Promise<CVModule> {
 }
 
 /**
- * Lazily loads OpenCV.js (a multi-MB WASM module) on first call and caches
- * the result -- nothing about this module is imported until a caller
- * actually needs computer vision, so pages that never open the camera
- * scanner never pay for it.
+ * Lazily loads OpenCV.js on first call and caches the result -- pages that
+ * never open the camera scanner never pay for it, and a warm-up call from
+ * the dashboard makes the scanner's own call resolve instantly.
  */
 export function loadOpenCV(): Promise<CVModule> {
   if (!cvPromise) {
-    cvPromise = import("./opencv-module")
-      .catch((err) => {
-        throw new Error(`import failed: ${err instanceof Error ? err.message : String(err)}`);
-      })
-      .then((mod) => {
+    cvPromise = injectScript()
+      .then(({ cv }) => {
         let timer: ReturnType<typeof setTimeout> | undefined;
         const timeout = new Promise<never>((_, reject) => {
           timer = setTimeout(
@@ -31,7 +59,7 @@ export function loadOpenCV(): Promise<CVModule> {
             INIT_TIMEOUT_MS
           );
         });
-        const runtime = Promise.resolve(mod.load()).then(waitForRuntime);
+        const runtime = Promise.resolve(cv).then(waitForRuntime);
         return Promise.race([runtime, timeout]).finally(() => clearTimeout(timer));
       })
       .catch((err) => {
@@ -39,7 +67,7 @@ export function loadOpenCV(): Promise<CVModule> {
         // otherwise cache the rejection forever -- every later call site
         // re-awaiting this same promise would keep re-throwing the exact
         // same failure with no chance to recover, even after "Try again".
-        // Clearing it lets the next call attempt a fresh import instead.
+        // Clearing it lets the next call inject the script afresh.
         cvPromise = null;
         throw err;
       });
