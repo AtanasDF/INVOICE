@@ -45,9 +45,12 @@ it is his real accounting record. Read this file before doing anything.
    guess silently.
 8. **Every session ends with everything committed and pushed** to GitHub (`main` or the
    feature branch), so the repo is always current for the next session, wherever it runs.
-9. **Keep the session log.** Read the top of `SESSIONS.md` when a session starts; append
-   an entry for your session (what shipped, decisions, what is open, gotchas) before the
-   final push. It is how sessions on different devices know what the others did.
+9. **Keep the session log as you go, not only at the end.** Start every session with
+   `git pull` and by reading the top of `SESSIONS.md`. Add your entry when the first
+   real step completes and update it after each further step, so a session that is cut
+   off mid-way still leaves a current log. Push after each completed step, not just at
+   the end. Half-finished work that must leave the machine goes to a `wip/<topic>`
+   branch, never to `main` (Vercel deploys every push to `main`).
 
 ## House style
 
