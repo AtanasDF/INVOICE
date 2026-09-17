@@ -4,19 +4,21 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
+import { safeNext } from "@/lib/safeNext";
 import { supabase } from "@/lib/supabaseClient";
 import { useWakeLock } from "@/lib/wakeLock";
 
 function Header() {
   const { user } = useAuth();
   return (
-    <header className="border-b bg-white text-neutral-900" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <header className="border-b bg-white text-neutral-900 print:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
         <Link href="/" className="text-lg font-semibold">
           Invoicer
         </Link>
-        {user && (
+        {user ? (
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
+            <Link href="/free-invoice">Free invoice</Link>
             <Link href="/">Home</Link>
             <Link href="/clients">Clients & suppliers</Link>
             <Link href="/receipts">Receipts</Link>
@@ -29,6 +31,11 @@ function Header() {
             >
               Sign out
             </button>
+          </nav>
+        ) : (
+          <nav className="flex items-center gap-x-4 text-sm font-medium text-neutral-600">
+            <Link href="/free-invoice">Free invoice</Link>
+            <Link href="/login">Sign in</Link>
           </nav>
         )}
       </div>
@@ -47,12 +54,12 @@ function Gate({ children }: { children: React.ReactNode }) {
   // password) -- unlike /login, being authenticated here must NOT
   // bounce them away before they finish.
   const isResetPasswordPage = pathname === "/reset-password";
-  const isPublicPage = isLoginPage || isResetPasswordPage;
+  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice";
 
   useEffect(() => {
     if (loading) return;
     if (!user && !isPublicPage) router.replace("/login");
-    if (user && isLoginPage) router.replace("/");
+    if (user && isLoginPage) router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
   }, [loading, user, isLoginPage, isPublicPage, router]);
 
   if (loading) {
@@ -85,7 +92,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <Header />
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
       <FeedbackButton />

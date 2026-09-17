@@ -218,6 +218,18 @@ official articles and are marked low.
 - **Supplier rules**: per-supplier default category and VAT treatment stored on the
   supplier record, applied on match, editable in Clients & suppliers.
 
+### Free invoice page (added 17 September, evening)
+
+- The public template scanner runs on Gemini only for visitors; the Claude/Gemini
+  comparison switch appears only when signed in, so the expensive engine is never
+  reachable without an account.
+- Its rate limit is per serverless instance (10 an hour per address, 200 an hour per
+  instance). That bounds abuse to a few pounds an hour at Gemini Flash prices but is not a
+  real brake. Follow-up: a shared counter (a small Supabase table keyed by address and
+  hour, or Upstash) once the free page gets traffic.
+- A cheaper Flash-Lite variant can be tried by changing one model constant; compare it
+  on the same documents before switching.
+
 ### On the iPhone specifically
 
 - The native camera (the default on iOS) cannot show a green frame or coaching text; the

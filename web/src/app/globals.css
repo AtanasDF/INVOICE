@@ -17,3 +17,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.print-only-document {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+  /* The free-invoice page portals the document straight under <body>
+     while printing, so hiding its siblings is all "only the document
+     prints" takes. */
+  body.printing-invoice > :not(.print-only-document) {
+    display: none;
+  }
+  .print-only-document {
+    display: block;
+  }
+  .invoice-document {
+    print-color-adjust: exact;
+  }
+  .invoice-document tr,
+  .invoice-document section {
+    break-inside: avoid;
+  }
+}
