@@ -33,6 +33,9 @@ and what is left open. Dates are session dates (Europe/London).
   diagnostic readout on the capture screen.
 - `scanner-research.md` (ten capture apps, patterns adopted, follow-up plan) and
   `CLAUDE.md` (rules, data model, architecture, open items).
+- Working-across-devices setup: `CLAUDE.md` rules 8–9 (push after every step, keep this
+  log as you go, pull at start, `wip/` branches for unfinished work) and this log. The Mac
+  session also runs an automatic 33-minute checkpoint that updates the log and pushes.
 
 **Decisions**
 
