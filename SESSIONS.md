@@ -1,0 +1,90 @@
+# Session log
+
+One entry per Claude Code session, newest first. Read the top entries before starting;
+append yours before the final push. Keep each entry to what changed, what was decided,
+and what is left open. Dates are session dates (Europe/London).
+
+## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
+
+**Shipped to main and live**
+
+- Scanner rework (PR #6): scanned supplier invoices and credit notes as expense documents
+  in `receipts` (migration-017 + backup 008, applied and verified live), multi-page up to
+  20 with `receipt_pages` and an atomic RPC, day-first date parsing with confirmation for
+  ambiguous dates, supplier matching with add-in-place, rebuilt result page in the
+  brief's order, line items editable but not deletable, paid / to-be-paid with a
+  three-day bill reminder on the dashboard and push cron, credit notes linked to their
+  invoice with a CN badge, discard, location-based guessing removed, `/api/scan` now
+  requires the user's bearer token, extraction moved to `claude-opus-5` with a strict
+  schema. Sales invoices list nets its credit notes and shows a CN badge.
+- Free invoice page (PR #7): public, no account, three monochrome A4 layouts (classic,
+  modern, compact) with VAT and CIS support, print/PDF, "Save to your account" carrying
+  the draft through sign-up. Template-from-scan via the public, rate-limited
+  `/api/invoice-template`. Second extraction engine: Gemini via `@google/genai`; the
+  Claude/Gemini switch appears only when signed in (anonymous callers get Gemini only).
+- Gemini engine switched to `gemini-3.5-flash-lite` after 3.8 Flash was overloaded and
+  slow; fail-fast on quota (429/503) instead of hanging; `thinking_level` is lowercase.
+- Camera: one-tap capture from every scan button on iPhone (`CaptureButton`), in-app
+  scanner default on iOS, auto-capture when the page is steady and sharp, no "Use this
+  photo" step, corner-bracket alignment guide, OpenCV loader fixed (it had never loaded
+  anywhere: the package exports a Promise and Turbopack's interop rejected it), then
+  OpenCV moved out of the bundle to `public/vendor/` with an immutable cache header and a
+  dashboard warm-up, Mats reused per tick, relaxed distance/hold gates, and a tap-to-show
+  diagnostic readout on the capture screen.
+- `scanner-research.md` (ten capture apps, patterns adopted, follow-up plan) and
+  `CLAUDE.md` (rules, data model, architecture, open items).
+
+**Decisions**
+
+- Received invoices never go into the sales `invoices` table.
+- Credit notes stored negative so existing sums net without change.
+- App-wide wake lock kept on Atanas's request despite the battery cost.
+- Anonymous scanning is Gemini-only; the rate limiter is per serverless instance (known
+  gap, shared counter is the follow-up).
+- Google AI Studio billing: Atanas linked a Cloud trial account, then activated Gemini
+  billing with a £20 prepaid top-up (account `015649-CDA16A-FCF373`).
+
+**Verified**
+
+- Live DB before migration-017 was at migration-016 with all client FKs RESTRICT and an
+  empty `receipts` table. Backup verified by content both ways; migration verified
+  (columns, constraints, RLS, grants) and the RPC exercised as `authenticated` in a
+  rolled-back transaction.
+- Free scanner on the live site read the synthetic test invoice correctly (Gemini
+  Flash-Lite, about 5 seconds). Atanas on his iPhone: "It reads all perfect."
+- The latest scanner build detects, auto-captures and reads here against a fake camera
+  stream at phone width.
+
+**Open**
+
+- Atanas's iPhone reports "nothing to scan" on the latest scanner build. Next step is the
+  readout screenshot (tap the hint pill on the camera screen), then fix from evidence.
+  The native camera remains one tap away ("Use the native camera instead").
+- Accuracy pass on both engines with real documents; shared rate limiter; research
+  follow-ups; receipt images to Supabase Storage; paywall design.
+- Atanas's side: Safari camera permission, business details in Settings, invoice counter
+  at 357358, Resend key, Cloudflare Worker deploy, revoke the old Mapbox token.
+
+**Gotchas met**
+
+- The account usage cap killed background agent runs several times; keep parallel agent
+  fan-outs small.
+- Research agents used the shared browser pane and navigated Atanas's sign-in tabs away;
+  tell agents never to use the browser tools.
+- `web/.env.local` had empty `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`, so
+  local scanning tests need the live site or the Gemini key.
+- The desktop app's safety layer refused to merge PR #7 unreviewed; Atanas merged it.
+
+## 2026-09-15 (before this log; reconstructed from git)
+
+Scanner iOS fixes (native camera, downscaling, safe-area, one-tap dashboard tile);
+restrict client FKs and add Archive; atomic recurring-invoice generation; invoice
+status lifecycle, recurring invoices and payment reminders; invoice numbering and VAT.
+Migrations 010–016. Cowork's reviews caught the missed FKs and archived-client billing.
+
+## 2026-09-13 → 2026-09-14 (reconstructed from git)
+
+MVP, Supabase auth and schema, AI document scanner, client/supplier split, credit
+notes on sales invoices, business profile, tagging, CSV/PDF exports, feedback widget,
+recurring expenses, per-item receipt categories, file library, password reset.
+Migrations 002–009.

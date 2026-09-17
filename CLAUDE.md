@@ -13,6 +13,7 @@ it is his real accounting record. Read this file before doing anything.
 - Live at https://invoice-omega-rust.vercel.app, auto-deployed from `main` by Vercel.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
 - `scanner-research.md` — competitor research and the scanner follow-up plan.
+- `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
   in the Supabase SQL editor; there is no migration runner.
 
@@ -44,6 +45,9 @@ it is his real accounting record. Read this file before doing anything.
    guess silently.
 8. **Every session ends with everything committed and pushed** to GitHub (`main` or the
    feature branch), so the repo is always current for the next session, wherever it runs.
+9. **Keep the session log.** Read the top of `SESSIONS.md` when a session starts; append
+   an entry for your session (what shipped, decisions, what is open, gotchas) before the
+   final push. It is how sessions on different devices know what the others did.
 
 ## House style
 
