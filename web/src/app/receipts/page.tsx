@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileStore, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
+import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
 
 type ReceiptDraft = {
@@ -19,37 +20,48 @@ type ReceiptDraft = {
   currency: string;
   fxRateInput: string;
   notes: string;
+  invoiceNumber: string;
+  dueDate: string;
+  paid: boolean;
 };
 
+// Credit notes are stored negative; the form holds positive figures and
+// the sign is put back on save.
 function draftForReceipt(r: Receipt): ReceiptDraft {
+  const sign = r.documentType === "credit_note" ? -1 : 1;
   return {
     clientId: r.clientId,
     vendor: r.vendor,
     date: r.date,
     category: r.category,
-    totalAmount: (r.amount + r.vatAmount).toFixed(2),
-    vatAmount: r.vatAmount.toFixed(2),
+    totalAmount: (sign * (r.amount + r.vatAmount)).toFixed(2),
+    vatAmount: (sign * r.vatAmount).toFixed(2),
     currency: r.originalCurrency ?? "GBP",
     fxRateInput: r.fxRate != null ? String(r.fxRate) : "",
     notes: r.notes,
+    invoiceNumber: r.invoiceNumber ?? "",
+    dueDate: r.dueDate ?? "",
+    paid: r.paid,
   };
 }
 
 // Same total-incl-VAT convention as everywhere else in the app -- what's
 // typed is the total actually paid, converted to GBP at save time, never
 // a raw net figure typed directly.
-function draftGbpAmounts(draft: ReceiptDraft) {
+function draftGbpAmounts(draft: ReceiptDraft, documentType: DocumentType) {
   const total = parseFloat(draft.totalAmount) || 0;
   const vat = parseFloat(draft.vatAmount) || 0;
+  const isCredit = documentType === "credit_note";
+  const net = (totalGbp: number, vatGbp: number) => (isCredit ? -(totalGbp - vatGbp) : Math.max(0, totalGbp - vatGbp));
   if (draft.currency === "GBP") {
-    return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
+    return { netGbp: net(total, vat), vatGbp: isCredit ? -vat : vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
   }
   const rate = parseFloat(draft.fxRateInput) || 0;
   const totalGbp = total * rate;
   const vatGbp = vat * rate;
   return {
-    netGbp: Math.max(0, totalGbp - vatGbp),
-    vatGbp,
+    netGbp: net(totalGbp, vatGbp),
+    vatGbp: isCredit ? -vatGbp : vatGbp,
     originalAmount: total,
     originalVatAmount: vat,
     originalCurrency: draft.currency,
@@ -57,9 +69,19 @@ function draftGbpAmounts(draft: ReceiptDraft) {
   };
 }
 
+const TYPE_BADGE: Partial<Record<DocumentType, { label: string; className: string }>> = {
+  invoice: { label: "Invoice", className: "bg-blue-100 text-blue-800" },
+  credit_note: { label: "Credit note", className: "bg-red-100 text-red-800" },
+};
+
+function daysBetween(from: string, to: string): number {
+  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+}
+
 export default function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [pageCounts, setPageCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +101,11 @@ export default function ReceiptsPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]).then(([c, r, profile]) => {
+    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get(), receiptPagesStore.counts()]).then(([c, r, profile, counts]) => {
       setClients(c);
       setReceipts(r);
       setCategories(effectiveCategories(profile.customCategories));
+      setPageCounts(counts);
       setLoading(false);
     });
   }, []);
@@ -97,6 +120,21 @@ export default function ReceiptsPage() {
     () => suppliers.filter((c) => !c.archived || c.id === editDraft?.clientId),
     [suppliers, editDraft?.clientId]
   );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const receiptById = useMemo(() => new Map(receipts.map((r) => [r.id, r])), [receipts]);
+  // Signed (negative) credit totals per invoice id, net and gross.
+  const creditsByInvoice = useMemo(() => {
+    const map = new Map<string, { net: number; gross: number }>();
+    for (const r of receipts) {
+      if (r.documentType !== "credit_note" || !r.creditOfReceiptId) continue;
+      const entry = map.get(r.creditOfReceiptId) ?? { net: 0, gross: 0 };
+      entry.net += r.amount;
+      entry.gross += r.amount + r.vatAmount;
+      map.set(r.creditOfReceiptId, entry);
+    }
+    return map;
+  }, [receipts]);
 
   async function removeReceipt(id: string) {
     setError(null);
@@ -116,6 +154,17 @@ export default function ReceiptsPage() {
     } catch (err) {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, starred: !next } : x)));
       setError(err instanceof Error ? err.message : "Could not update receipt.");
+    }
+  }
+
+  async function markPaid(r: Receipt) {
+    setError(null);
+    setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, paid: true } : x)));
+    try {
+      await receiptsStore.update(r.id, { paid: true });
+    } catch (err) {
+      setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, paid: false } : x)));
+      setError(err instanceof Error ? err.message : "Could not mark this invoice as paid.");
     }
   }
 
@@ -147,7 +196,7 @@ export default function ReceiptsPage() {
     }
   }
 
-  async function saveEditReceipt(id: string) {
+  async function saveEditReceipt(r: Receipt) {
     if (!editDraft) return;
     if (editDraft.currency !== "GBP" && !editDraft.fxRateInput) {
       setEditError("Enter an exchange rate before saving (or wait for it to load).");
@@ -156,8 +205,9 @@ export default function ReceiptsPage() {
     setEditError(null);
     setEditBusy(true);
     try {
-      const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = draftGbpAmounts(editDraft);
-      await receiptsStore.update(id, {
+      const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = draftGbpAmounts(editDraft, r.documentType);
+      const isInvoice = r.documentType === "invoice";
+      const patch = {
         clientId: editDraft.clientId,
         vendor: editDraft.vendor,
         date: editDraft.date,
@@ -169,27 +219,11 @@ export default function ReceiptsPage() {
         originalCurrency,
         fxRate,
         notes: editDraft.notes,
-      });
-      setReceipts((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                clientId: editDraft.clientId,
-                vendor: editDraft.vendor,
-                date: editDraft.date,
-                category: editDraft.category,
-                amount: netGbp,
-                vatAmount: vatGbp,
-                originalAmount,
-                originalVatAmount,
-                originalCurrency,
-                fxRate,
-                notes: editDraft.notes,
-              }
-            : r
-        )
-      );
+        ...(isInvoice || r.documentType === "credit_note" ? { invoiceNumber: editDraft.invoiceNumber || null } : {}),
+        ...(isInvoice ? { dueDate: editDraft.dueDate || null, paid: editDraft.paid } : {}),
+      };
+      await receiptsStore.update(r.id, patch);
+      setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, ...patch } : x)));
       setEditingId(null);
       setEditDraft(null);
     } catch (err) {
@@ -226,6 +260,10 @@ export default function ReceiptsPage() {
       `receipts-${new Date().toISOString().slice(0, 10)}.csv`,
       filteredReceipts.map((r) => ({
         date: r.date,
+        type: r.documentType,
+        invoice_number: r.invoiceNumber ?? "",
+        due_date: r.dueDate ?? "",
+        paid: r.paid ? "yes" : "no",
         vendor: r.vendor,
         supplier: clientName(r.clientId),
         category: r.category,
@@ -238,6 +276,28 @@ export default function ReceiptsPage() {
     );
   }
 
+  function creditNoteFor(r: Receipt): string | null {
+    const linked = r.creditOfReceiptId ? receiptById.get(r.creditOfReceiptId) : null;
+    if (!linked) return null;
+    if (linked.invoiceNumber) return `Credit note for ${linked.invoiceNumber}`;
+    return `Credit note for a receipt from ${linked.vendor || clientName(linked.clientId)} on ${linked.date}`;
+  }
+
+  function dueStatus(r: Receipt): { text: string; className: string } {
+    if (!r.dueDate) return { text: "Unpaid", className: "text-neutral-500" };
+    const days = daysBetween(today, r.dueDate);
+    if (days < 0) return { text: `Overdue · was due ${r.dueDate}`, className: "text-red-700" };
+    if (days <= 3) return { text: `Due ${r.dueDate}`, className: "text-amber-700" };
+    return { text: `Due ${r.dueDate}`, className: "text-neutral-500" };
+  }
+
+  function detailLines(r: Receipt): { label: string; value: string }[] {
+    const lines = (Object.keys(DOCUMENT_DETAIL_LABELS) as (keyof typeof DOCUMENT_DETAIL_LABELS)[])
+      .filter((k) => r.details[k])
+      .map((k) => ({ label: DOCUMENT_DETAIL_LABELS[k], value: r.details[k] as string }));
+    return [...lines, ...(r.details.other ?? [])];
+  }
+
   const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly || filterTag;
 
   return (
@@ -246,7 +306,7 @@ export default function ReceiptsPage() {
         <div>
           <h1 className="text-2xl font-bold">Receipts</h1>
           <p className="mt-1 text-neutral-600">
-            Scan or upload a receipt, tag it with a supplier and category, and it is saved for later.
+            Receipts, supplier invoices and credit notes you&apos;ve captured.
           </p>
         </div>
         <div className="flex gap-2">
@@ -312,9 +372,16 @@ export default function ReceiptsPage() {
               )}
             </p>
           )}
-          {filteredReceipts.map((r) =>
-            editingId === r.id && editDraft ? (
+          {filteredReceipts.map((r) => {
+            const isInvoice = r.documentType === "invoice";
+            const isCredit = r.documentType === "credit_note";
+            const badge = TYPE_BADGE[r.documentType];
+            const credits = isInvoice ? creditsByInvoice.get(r.id) : undefined;
+            const extraPages = pageCounts.get(r.id) ?? 0;
+            const details = detailLines(r);
+            return editingId === r.id && editDraft ? (
               <div key={r.id} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+                {badge && <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>}
                 <select
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   value={editDraft.clientId}
@@ -323,6 +390,29 @@ export default function ReceiptsPage() {
                   <option value="">No supplier / general expense</option>
                   {pickableSuppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                {(isInvoice || isCredit) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
+                      <input
+                        className="w-full rounded-lg border px-3 py-2 text-sm"
+                        value={editDraft.invoiceNumber}
+                        onChange={(e) => setEditDraft({ ...editDraft, invoiceNumber: e.target.value })}
+                      />
+                    </div>
+                    {isInvoice && (
+                      <div>
+                        <label className="text-xs text-neutral-500">Due date</label>
+                        <input
+                          type="date"
+                          className="w-full rounded-lg border px-3 py-2 text-sm"
+                          value={editDraft.dueDate}
+                          onChange={(e) => setEditDraft({ ...editDraft, dueDate: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
                   <select className="rounded-lg border px-3 py-2 text-sm" value={editDraft.category} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
@@ -338,7 +428,7 @@ export default function ReceiptsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <input
                     className="col-span-2 rounded-lg border px-3 py-2 text-sm"
-                    placeholder={`Total (${editDraft.currency}, incl. VAT)`}
+                    placeholder={`${isCredit ? "Credited" : "Total"} (${editDraft.currency}, incl. VAT)`}
                     value={editDraft.totalAmount}
                     onChange={(e) => setEditDraft({ ...editDraft, totalAmount: e.target.value })}
                     inputMode="decimal"
@@ -368,6 +458,12 @@ export default function ReceiptsPage() {
                   </div>
                 )}
                 {editFxError && <p className="text-xs text-amber-700">{editFxError}</p>}
+                {isInvoice && (
+                  <label className="flex items-center gap-2 text-sm text-neutral-700">
+                    <input type="checkbox" checked={editDraft.paid} onChange={(e) => setEditDraft({ ...editDraft, paid: e.target.checked })} />
+                    Paid
+                  </label>
+                )}
                 <textarea
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   placeholder="Notes"
@@ -377,7 +473,7 @@ export default function ReceiptsPage() {
                 {editError && <p className="text-sm text-red-600">{editError}</p>}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => saveEditReceipt(r.id)}
+                    onClick={() => saveEditReceipt(r)}
                     disabled={editBusy}
                     className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
@@ -400,24 +496,60 @@ export default function ReceiptsPage() {
                   )
                 )}
                 <div>
-                  <div className="font-medium">
-                    {r.vendor || r.category}
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
+                    <span>
+                      {r.vendor || r.category}
+                      {r.invoiceNumber && <span className="text-neutral-500"> · {r.invoiceNumber}</span>}
+                    </span>
+                    {badge && <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>}
+                    {credits && (
+                      <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">CN</span>
+                    )}
                     {r.needsReview && (
-                      <a href="/receipts/review" className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 no-underline">
+                      <a href="/receipts/review" className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 no-underline">
                         Needs review
                       </a>
                     )}
                   </div>
                   <div className="text-sm text-neutral-600">
-                    £{r.amount.toFixed(2)} excl. VAT · £{(r.amount + r.vatAmount).toFixed(2)} incl. VAT
+                    {credits ? (
+                      <>
+                        {money(r.amount + credits.net)} excl. VAT · {money(r.amount + r.vatAmount + credits.gross)} incl. VAT · {money(-credits.gross)} credited
+                      </>
+                    ) : (
+                      <>{money(r.amount)} excl. VAT · {money(r.amount + r.vatAmount)} incl. VAT</>
+                    )}
                     {r.originalCurrency && r.originalAmount != null && (
                       <span className="text-neutral-400">
                         {" "}(from {r.originalCurrency} {r.originalAmount.toFixed(2)} @ {r.fxRate?.toFixed(4)})
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-neutral-500">{r.date} · {r.category} · {clientName(r.clientId)}</div>
+                  <div className="text-sm text-neutral-500">
+                    {r.date} · {r.category} · {clientName(r.clientId)}
+                    {extraPages > 0 && ` · ${extraPages + 1} pages`}
+                  </div>
+                  {isInvoice && (
+                    <div className="mt-1 flex items-center gap-3 text-sm">
+                      {r.paid ? (
+                        <span className="text-neutral-500">Paid</span>
+                      ) : (
+                        <>
+                          <span className={dueStatus(r).className}>{dueStatus(r).text}</span>
+                          {!r.needsReview && <button onClick={() => markPaid(r)} className="font-medium text-blue-600">Mark as paid</button>}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {isCredit && creditNoteFor(r) && <div className="mt-1 text-sm text-neutral-500">{creditNoteFor(r)}</div>}
                   {r.notes && <div className="mt-1 text-sm text-neutral-500 italic">{r.notes}</div>}
+                  {details.length > 0 && (
+                    <div className="mt-1 space-y-0.5 text-sm text-neutral-600">
+                      {details.map((d, i) => (
+                        <div key={i}>{d.label}: {d.value}</div>
+                      ))}
+                    </div>
+                  )}
                   {r.warrantyMonths != null && (
                     <div className="mt-1 text-xs text-neutral-400">
                       Warranty: {r.warrantyMonths} months (until {addMonths(r.date, r.warrantyMonths)})
@@ -434,7 +566,7 @@ export default function ReceiptsPage() {
                     <ul className="mt-1 space-y-0.5 text-xs text-neutral-500">
                       {r.lineItems.map((li, i) => (
                         <li key={i}>
-                          {li.description} — £{(li.quantity * li.unitPrice).toFixed(2)}
+                          {li.description} — {money((isCredit ? -1 : 1) * li.quantity * li.unitPrice)}
                           {li.category ? ` (${li.category})` : ""}
                         </li>
                       ))}
@@ -454,8 +586,8 @@ export default function ReceiptsPage() {
                 <button onClick={() => removeReceipt(r.id)} className="text-sm text-red-600">Remove</button>
               </div>
             </div>
-            )
-          )}
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument } from "@/lib/scanExtraction";
+import { documentDetailsFromScan } from "@/lib/scanClient";
 import { getFxRate } from "@/lib/fx";
+import type { DocumentType } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,14 @@ function convertToGbp(total: number, vat: number, rate: number) {
   const totalGbp = total * rate;
   const vatGbp = vat * rate;
   return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp };
+}
+
+// Nobody sees the scan screen's "could also be ..." prompt for an emailed
+// document, so the ambiguity has to travel with the row into the review
+// queue or it's silently lost.
+function dateCue(label: string, printed: string | null, iso: string | null, alternative: string | null): string {
+  const alt = alternative ? `; could be ${alternative}` : "";
+  return `${label} read as ${printed} as ${iso ?? "unreadable"}${alt} — please confirm`;
 }
 
 export async function POST(req: Request) {
@@ -102,8 +112,12 @@ export async function POST(req: Request) {
     }
 
     for (const attachment of usableAttachments) {
-      const result = await extractDocument({ apiKey: anthropicKey, base64: attachment.base64, mediaType: attachment.mimeType });
+      const result = await extractDocument([{ mediaType: attachment.mimeType, base64: attachment.base64 }], []);
 
+      const documentType: DocumentType =
+        result.documentType === "invoice" || result.documentType === "credit_note" ? result.documentType : "receipt";
+      // A credit note is stored negative so it nets against spend.
+      const sign = documentType === "credit_note" ? -1 : 1;
       const total = result.totalAmount ?? 0;
       const vat = result.vatAmount ?? 0;
       let amount: number;
@@ -136,6 +150,13 @@ export async function POST(req: Request) {
         vatAmount = vat;
       }
 
+      const cues: string[] = [];
+      if (result.dateAmbiguous) cues.push(dateCue("Date", result.dateAsPrinted, result.date, result.dateAlternative));
+      if (result.dueDateAmbiguous) {
+        cues.push(dateCue("Due date", result.dueDateAsPrinted, result.dueDate, result.dueDateAlternative));
+      }
+      const notes = [result.notes, ...cues].filter(Boolean).join("\n");
+
       const { data, error } = await admin
         .from("receipts")
         .insert({
@@ -144,19 +165,29 @@ export async function POST(req: Request) {
           date: result.date || new Date().toISOString().slice(0, 10),
           vendor: result.vendor || body.subject || null,
           category: result.category,
-          amount,
-          vat_amount: vatAmount,
+          amount: sign * amount,
+          vat_amount: sign * vatAmount,
           original_amount: originalAmount,
           original_vat_amount: originalVatAmount,
           original_currency: originalCurrency,
           fx_rate: fxRate,
           image_data_url: `data:${attachment.mimeType};base64,${attachment.base64}`,
-          notes: result.notes || "",
+          notes,
           starred: false,
           needs_review: true,
           warranty_months: null,
           tags: ["via-email"],
-          line_items: result.lineItems ?? [],
+          line_items: (result.lineItems ?? []).map(({ description, quantity, unitPrice }) => ({
+            description,
+            quantity,
+            unitPrice,
+            category: null,
+          })),
+          document_type: documentType,
+          invoice_number: result.invoiceNumber,
+          due_date: result.dueDate,
+          paid: documentType !== "invoice",
+          details: documentDetailsFromScan(result.details),
         })
         .select("id")
         .single();

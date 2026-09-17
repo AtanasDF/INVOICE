@@ -1,6 +1,5 @@
 // Frankfurter: free, no API key, no signup -- backed by European Central
-// Bank reference rates. Called directly from the browser, same pattern as
-// the Mapbox reverse-geocoding calls in geocode.ts.
+// Bank reference rates. Called directly from the browser.
 //
 // api.frankfurter.app (the v1 host referenced in most docs/tutorials)
 // 301-redirects to api.frankfurter.dev/v1, which is now frozen in favor

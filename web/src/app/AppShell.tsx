@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
+import { useWakeLock } from "@/lib/wakeLock";
 
 function Header() {
   const { user } = useAuth();
@@ -80,6 +81,7 @@ function FeedbackButton() {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  useWakeLock();
   return (
     <AuthProvider>
       <Header />

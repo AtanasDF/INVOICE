@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BusinessProfile, Client, Invoice, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
+import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -10,6 +10,7 @@ import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvo
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +24,11 @@ export default function InvoicesPage() {
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
-    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([inv, c, biz]) => {
+    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get(), creditNotesStore.all()]).then(([inv, c, biz, cn]) => {
       setInvoices(inv);
       setClients(c);
       setProfile(biz);
+      setCreditNotes(cn);
       setLoading(false);
     });
   }, []);
@@ -36,6 +38,23 @@ export default function InvoicesPage() {
   // raw subtotal.
   function total(inv: Invoice) {
     return computeInvoiceTotals(inv.items, profile?.vatRegistered ?? false).total;
+  }
+
+  const creditNotesByInvoice = useMemo(() => {
+    const map = new Map<string, CreditNote[]>();
+    for (const c of creditNotes) map.set(c.invoiceId, [...(map.get(c.invoiceId) ?? []), c]);
+    return map;
+  }, [creditNotes]);
+
+  function credited(inv: Invoice) {
+    return (creditNotesByInvoice.get(inv.id) ?? []).reduce((s, c) => s + c.amount, 0);
+  }
+
+  // Net of credit notes -- the same figure the detail page shows as
+  // "Amount due", so the list never claims a client owes more than
+  // the invoice itself says.
+  function netTotal(inv: Invoice) {
+    return total(inv) - credited(inv);
   }
 
   const billableClients = useMemo(() => clients.filter((c) => c.kind === "client"), [clients]);
@@ -99,7 +118,8 @@ export default function InvoicesPage() {
         date: inv.date,
         due_date: inv.dueDate ?? "",
         client: clientName(inv.clientId),
-        total: total(inv).toFixed(2),
+        total: netTotal(inv).toFixed(2),
+        credited: credited(inv).toFixed(2),
         status: invoiceStatusLabel(inv.status, isOverdue(inv.status, inv.dueDate)),
         notes: inv.notes,
       }))
@@ -188,6 +208,8 @@ export default function InvoicesPage() {
           )}
           {filteredInvoices.map((inv) => {
             const overdue = isOverdue(inv.status, inv.dueDate);
+            const notes = creditNotesByInvoice.get(inv.id) ?? [];
+            const creditedAmount = credited(inv);
             return (
               <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
@@ -196,6 +218,11 @@ export default function InvoicesPage() {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                       {invoiceStatusLabel(inv.status, overdue)}
                     </span>
+                    {notes.length > 0 && (
+                      <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">
+                        CN
+                      </span>
+                    )}
                     {inv.status === "sent" && (
                       <button onClick={() => quickMarkPaid(inv)} className="text-xs font-medium text-blue-600 underline">
                         Mark as paid
@@ -203,9 +230,19 @@ export default function InvoicesPage() {
                     )}
                   </div>
                   <div className="text-sm text-neutral-500">
-                    {inv.date} · £{total(inv).toFixed(2)}
+                    {inv.date} · £{netTotal(inv).toFixed(2)}
+                    {notes.length > 0 && (
+                      <>
+                        {" "}<span className="line-through">£{total(inv).toFixed(2)}</span> after £{creditedAmount.toFixed(2)} credited
+                      </>
+                    )}
                     {inv.dueDate && ` · due ${inv.dueDate}`}
                   </div>
+                  {notes.map((c) => (
+                    <div key={c.id} className="pl-4 text-xs text-neutral-500">
+                      Credit note {c.date} · −£{c.amount.toFixed(2)}{c.reason && ` · ${c.reason}`}
+                    </div>
+                  ))}
                   {inv.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {inv.tags.map((t) => (

@@ -5,15 +5,22 @@ import webpush from "web-push";
 export const runtime = "nodejs";
 
 // Triggered daily by vercel.json's cron config. Checks every account for
-// an overdue invoice or a due recurring expense -- same conditions as the
-// dashboard's reminder banners -- and pushes to each of that account's
-// subscribed devices. Needs the service_role key to see every account's
-// rows at once, since this runs with no signed-in user, not scoped to one.
+// an overdue invoice, a due recurring expense or a supplier bill due
+// within 3 days -- same conditions as the dashboard's reminder banners --
+// and pushes to each of that account's subscribed devices. Needs the
+// service_role key to see every account's rows at once, since this runs
+// with no signed-in user, not scoped to one.
 
-type DueCounts = { overdueInvoices: number; dueRecurring: number };
+type DueCounts = { overdueInvoices: number; dueRecurring: number; dueBills: number };
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function daysFromToday(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function GET(req: Request) {
@@ -41,27 +48,42 @@ export async function GET(req: Request) {
 
     const today = todayStr();
 
-    const [{ data: overdueInvoices, error: invErr }, { data: dueRecurring, error: recErr }] = await Promise.all([
+    const [
+      { data: overdueInvoices, error: invErr },
+      { data: dueRecurring, error: recErr },
+      { data: dueBills, error: billErr },
+    ] = await Promise.all([
       // "sent" or "partial" only -- a draft was never issued so it can't
       // be overdue, and a paid invoice is done regardless of due date.
       admin.from("invoices").select("user_id").in("status", ["sent", "partial"]).lt("due_date", today),
       admin.from("recurring_expenses").select("user_id").eq("active", true).lte("next_due_date", today),
+      // Unpaid supplier invoices (scanned into receipts) due within 3 days
+      // or already overdue -- the same window the dashboard's Bills card
+      // flags. No lower bound so an overdue bill keeps being mentioned.
+      // Unreviewed (emailed-in) rows are excluded: their due date is an
+      // unchecked AI reading, not a bill the account holder knows about.
+      admin
+        .from("receipts")
+        .select("user_id")
+        .eq("document_type", "invoice")
+        .eq("paid", false)
+        .eq("needs_review", false)
+        .lte("due_date", daysFromToday(3)),
     ]);
-    if (invErr || recErr) {
-      return NextResponse.json({ error: (invErr ?? recErr)?.message }, { status: 500 });
+    const queryErr = invErr ?? recErr ?? billErr;
+    if (queryErr) {
+      return NextResponse.json({ error: queryErr.message }, { status: 500 });
     }
 
     const dueByUser = new Map<string, DueCounts>();
-    for (const row of overdueInvoices ?? []) {
-      const entry = dueByUser.get(row.user_id) ?? { overdueInvoices: 0, dueRecurring: 0 };
-      entry.overdueInvoices += 1;
-      dueByUser.set(row.user_id, entry);
+    function bump(userId: string, key: keyof DueCounts) {
+      const entry = dueByUser.get(userId) ?? { overdueInvoices: 0, dueRecurring: 0, dueBills: 0 };
+      entry[key] += 1;
+      dueByUser.set(userId, entry);
     }
-    for (const row of dueRecurring ?? []) {
-      const entry = dueByUser.get(row.user_id) ?? { overdueInvoices: 0, dueRecurring: 0 };
-      entry.dueRecurring += 1;
-      dueByUser.set(row.user_id, entry);
-    }
+    for (const row of overdueInvoices ?? []) bump(row.user_id, "overdueInvoices");
+    for (const row of dueRecurring ?? []) bump(row.user_id, "dueRecurring");
+    for (const row of dueBills ?? []) bump(row.user_id, "dueBills");
 
     if (dueByUser.size === 0) {
       return NextResponse.json({ notified: 0, checked: 0, usersWithReminders: 0 });
@@ -88,6 +110,9 @@ export async function GET(req: Request) {
         }
         if (due.dueRecurring > 0) {
           parts.push(`${due.dueRecurring} recurring ${due.dueRecurring === 1 ? "expense" : "expenses"} due`);
+        }
+        if (due.dueBills > 0) {
+          parts.push(`${due.dueBills} ${due.dueBills === 1 ? "bill" : "bills"} due soon`);
         }
         try {
           await webpush.sendNotification(

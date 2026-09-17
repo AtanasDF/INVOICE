@@ -1,243 +1,329 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
-import { getCurrentPosition, guessLocationContext } from "@/lib/geocode";
+import { Client, DocumentDetails, DocumentType, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
-import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
-import { DocumentIcon, PinIcon } from "@/components/icons";
+import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
+import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
+import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { takeScanCapture } from "@/lib/scanHandoff";
+import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
+import PagesStrip from "@/components/scan/PagesStrip";
+import DateConfirm from "@/components/scan/DateConfirm";
+import LineItemsTable, { EditableLine } from "@/components/scan/LineItemsTable";
+import DocumentDetailsFields from "@/components/scan/DocumentDetailsFields";
+import PaidChoice from "@/components/scan/PaidChoice";
+import CreditOfSelect from "@/components/scan/CreditOfSelect";
+import FieldFlag, { Confidence } from "@/components/scan/FieldFlag";
 
-type Confidence = "high" | "low";
+type TransactionalType = "invoice" | "receipt" | "credit_note";
+type Mode = TransactionalType | "archival" | "contact";
 
-type ScanApiResult = {
-  documentType: string;
-  vendor: string | null;
-  vendorConfidence: Confidence;
-  date: string | null;
-  dateConfidence: Confidence;
-  totalAmount: number | null;
-  totalAmountConfidence: Confidence;
-  currency: string | null;
-  vatAmount: number | null;
-  vatAmountConfidence: Confidence;
-  category: Category | null;
-  lineItems: ReceiptLineItem[];
-  contactPerson: string | null;
-  contactEmail: string | null;
-  notes: string | null;
+type Capture =
+  | { kind: "first" }
+  | { kind: "add" }
+  | { kind: "retake"; index: number; failureMessage?: string };
+
+type Form = {
+  docType: ScanDocumentType | null;
+  typeOverride: TransactionalType | null;
+  clientId: string;
+  vendor: string;
+  vendorConf: Confidence | null;
+  invoiceNumber: string;
+  date: string;
+  dateConf: Confidence | null;
+  dateAsPrinted: string | null;
+  // Non-null while the day-first reading still needs confirming.
+  dateAlternative: string | null;
+  dueDate: string;
+  dueDateAsPrinted: string | null;
+  dueDateAlternative: string | null;
+  category: string;
+  totalAmount: string;
+  totalConf: Confidence | null;
+  vatAmount: string;
+  vatConf: Confidence | null;
+  currency: string;
+  fxRateInput: string;
+  details: DocumentDetails;
+  notes: string;
+  lines: EditableLine[];
+  paid: boolean;
+  paidTouched: boolean;
+  creditOfReceiptId: string;
+  contactPerson: string;
+  contactEmail: string;
 };
 
-// business_card is a different save path entirely (create a supplier, no
-// amount involved). bank_statement/contract/barcode aren't a single
-// financial transaction, so amount there is optional rather than
-// required -- everything else keeps the normal receipt-style form.
-function modeFor(documentType: string | null): "contact" | "archival" | "transactional" {
-  if (documentType === "business_card") return "contact";
-  if (documentType === "bank_statement" || documentType === "contract" || documentType === "barcode") return "archival";
-  return "transactional";
+const EMPTY_FORM: Form = {
+  docType: null,
+  typeOverride: null,
+  clientId: "",
+  vendor: "",
+  vendorConf: null,
+  invoiceNumber: "",
+  date: "",
+  dateConf: null,
+  dateAsPrinted: null,
+  dateAlternative: null,
+  dueDate: "",
+  dueDateAsPrinted: null,
+  dueDateAlternative: null,
+  category: "",
+  totalAmount: "",
+  totalConf: null,
+  vatAmount: "",
+  vatConf: null,
+  currency: "GBP",
+  fxRateInput: "",
+  details: {},
+  notes: "",
+  lines: [],
+  paid: true,
+  paidTouched: false,
+  creditOfReceiptId: "",
+  contactPerson: "",
+  contactEmail: "",
+};
+
+const TYPE_WORD: Record<TransactionalType, string> = { invoice: "Invoice", receipt: "Receipt", credit_note: "Credit note" };
+const SAVED_TYPE: Record<Mode, DocumentType> = { invoice: "invoice", receipt: "receipt", credit_note: "credit_note", archival: "other", contact: "other" };
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function FieldFlag({ confidence }: { confidence: Confidence | null }) {
-  if (confidence !== "low") return null;
-  return (
-    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-      double-check this
-    </span>
-  );
+function modeOf(f: Form): Mode {
+  if (f.typeOverride) return f.typeOverride;
+  if (f.docType === "business_card") return "contact";
+  if (f.docType === "bank_statement" || f.docType === "contract" || f.docType === "barcode") return "archival";
+  if (f.docType === "invoice" || f.docType === "credit_note") return f.docType;
+  return "receipt";
+}
+
+function headingFor(f: Form, mode: Mode): string {
+  if (mode === "archival" || mode === "contact") return (f.docType ?? "document").replace("_", " ").replace(/^\w/, (c) => c.toUpperCase());
+  return TYPE_WORD[mode];
+}
+
+const pill = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium ${on ? "bg-neutral-900 text-white" : "border text-neutral-700"}`;
+
+function sameNumber(a: string | null, b: string | null): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+  return !!a && !!b && norm(a) === norm(b);
 }
 
 export default function ScanPage() {
   const router = useRouter();
 
   const [clients, setClients] = useState<Client[]>([]);
-  const [clientId, setClientId] = useState("");
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
 
-  // Starts true so the camera opens the instant this page mounts -- no
-  // button to tap first. Only set false once something's been captured
-  // (including a handoff capture from the dashboard's iOS Scan button,
-  // read on mount below -- in that case this page never actually shows
-  // the capture screen at all).
-  const [showCapture, setShowCapture] = useState(true);
-  const [capturedFile, setCapturedFile] = useState<CapturedFile | null>(null);
+  const [pages, setPages] = useState<CapturedFile[]>([]);
+  const [capture, setCapture] = useState<Capture | null>({ kind: "first" });
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [documentType, setDocumentType] = useState<string | null>(null);
 
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [vendor, setVendor] = useState("");
-  const [category, setCategory] = useState<Category | "">("");
-  // Total paid, VAT included -- what's actually printed as the receipt's
-  // final total. Net is derived from total - VAT at save time, never
-  // stored or edited directly, same fix as the manual Receipts form.
-  const [totalAmount, setTotalAmount] = useState("");
-  const [vatAmount, setVatAmount] = useState("");
-  const [currency, setCurrency] = useState("GBP");
-  const [fxRateInput, setFxRateInput] = useState("");
+  const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayIso() }));
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [fxLoading, setFxLoading] = useState(false);
   const [fxError, setFxError] = useState<string | null>(null);
-  const [notes, setNotes] = useState("");
-  const [lineItems, setLineItems] = useState<ReceiptLineItem[]>([]);
-  const [contactPerson, setContactPerson] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [modeOverride, setModeOverride] = useState<"transactional" | null>(null);
   const [supplierSaved, setSupplierSaved] = useState(false);
   const [supplierDuplicate, setSupplierDuplicate] = useState(false);
-
-  const [vendorConf, setVendorConf] = useState<Confidence | null>(null);
-  const [dateConf, setDateConf] = useState<Confidence | null>(null);
-  const [totalAmountConf, setTotalAmountConf] = useState<Confidence | null>(null);
-  const [vatConf, setVatConf] = useState<Confidence | null>(null);
-
-  const [locating, setLocating] = useState(false);
-  const [locateNote, setLocateNote] = useState<string | null>(null);
-
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Extraction generation: a result from an older run is dropped.
+  const runRef = useRef(0);
+  // Fields the user has edited, which a re-read must not overwrite.
+  const touchedRef = useRef(new Set<keyof Form>());
+  const listsLoadedRef = useRef(false);
+
+  const touch = (...keys: (keyof Form)[]) => keys.forEach((k) => touchedRef.current.add(k));
+  const set = (p: Partial<Form>) => setForm((f) => ({ ...f, ...p }));
+  const patch = (p: Partial<Form>) => {
+    touch(...(Object.keys(p) as (keyof Form)[]));
+    set(p);
+  };
+
   useEffect(() => {
-    // A handoff capture (the dashboard's iOS Scan button) can be read
-    // synchronously -- do that first, before anything async, so the
-    // capture screen never has a chance to render for it at all. Only
-    // the actual extraction request has to wait for categories to load.
+    // The iOS dashboard handoff is read synchronously so the capture
+    // screen never renders for it; extraction waits for the lists to load.
     const handoff = takeScanCapture();
-    if (handoff) beginScan(handoff);
-
-    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]).then(([c, r, profile]) => {
-      setClients(c);
-      const usual = mostUsedCategory(r.map((receipt) => receipt.category));
-      if (usual) setCategory((prev) => prev || usual);
-      const activeCategories = effectiveCategories(profile.customCategories);
-      setCategories(activeCategories);
-
-      // categories is passed explicitly rather than letting
-      // runExtraction close over the categories state -- this callback
-      // has just set it, but that update isn't visible in THIS closure
-      // until the next render, so reading the state var here would still
-      // see the stale default.
-      if (handoff) runExtraction(handoff, activeCategories);
-    });
-    // Deliberately empty -- this only ever needs to run once, on mount.
-    // beginScan/runExtraction aren't stable across renders (plain
-    // function declarations, not memoized), so exhaustive-deps wants
-    // them listed, but doing so would just make this effect's identity
-    // churn on every render for no benefit -- nothing here should ever
-    // re-fire once mounted.
+    if (handoff) beginHandoff(handoff);
+    loadLists()
+      .then((l) => {
+        if (handoff) runExtraction([handoff], l.cats, l.suppliers, l.receipts);
+      })
+      .catch((err) => {
+        setScanning(false);
+        setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
+  const scannedInvoices = receipts.filter((r) => r.documentType === "invoice");
+  const mode = modeOf(form);
+  const baseMode = modeOf({ ...form, typeOverride: null });
+  const heading = headingFor(form, mode);
 
-  function beginScan(file: CapturedFile) {
-    setCapturedFile(file);
-    setShowCapture(false);
+  async function loadLists() {
+    const [c, r, profile] = await Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]);
+    setClients(c);
+    setReceipts(r);
+    const cats = effectiveCategories(profile.customCategories);
+    setCategories(cats);
+    const usual = mostUsedCategory(r.map((receipt) => receipt.category));
+    if (usual) setForm((f) => (f.category ? f : { ...f, category: usual }));
+    listsLoadedRef.current = true;
+    return { cats, suppliers: c.filter((x) => x.kind === "supplier" && !x.archived), receipts: r };
+  }
+
+  function beginHandoff(file: CapturedFile) {
+    setPages([file]);
+    setCapture(null);
+    setScanning(true);
+  }
+
+  function applyResult(result: ScanResult, supplierList: Client[], receiptList: Receipt[]) {
+    const touched = touchedRef.current;
+    const unless = (k: keyof Form, fields: Partial<Form>) => (touched.has(k) ? {} : fields);
+    setForm((f) => {
+      const match = touched.has("clientId") || !result.vendor ? null : matchSupplier(result.vendor, supplierList);
+      const credited = receiptList.find(
+        (r) => r.documentType === "invoice" && sameNumber(r.invoiceNumber, result.creditedInvoiceNumber)
+      );
+      const lines = result.lineItems.map((li) => ({
+        description: li.description,
+        quantity: String(li.quantity),
+        unitPrice: String(li.unitPrice),
+        lineTotal: li.lineTotal,
+      }));
+      return {
+        ...f,
+        docType: result.documentType,
+        ...unless("clientId", { clientId: match?.id ?? "" }),
+        ...unless("vendor", { vendor: result.vendor ?? "", vendorConf: result.vendorConfidence }),
+        ...unless("invoiceNumber", { invoiceNumber: result.invoiceNumber ?? "" }),
+        ...unless("date", {
+          date: result.date ?? f.date,
+          dateConf: result.dateConfidence,
+          dateAsPrinted: result.dateAsPrinted,
+          dateAlternative: result.date && result.dateAmbiguous ? result.dateAlternative : null,
+        }),
+        ...unless("dueDate", {
+          dueDate: result.dueDate ?? "",
+          dueDateAsPrinted: result.dueDateAsPrinted,
+          dueDateAlternative: result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
+        }),
+        ...unless("category", { category: result.category ?? f.category }),
+        ...unless("totalAmount", {
+          totalAmount: result.totalAmount !== null ? String(result.totalAmount) : "",
+          totalConf: result.totalAmountConfidence,
+        }),
+        ...unless("vatAmount", {
+          vatAmount: result.vatAmount !== null ? String(result.vatAmount) : "",
+          vatConf: result.vatAmountConfidence,
+        }),
+        ...unless("details", { details: documentDetailsFromScan(result.details) }),
+        ...unless("notes", { notes: result.notes ?? "" }),
+        lines: touched.has("lines") ? [...f.lines, ...lines.slice(f.lines.length)] : lines,
+        paid: f.paidTouched ? f.paid : !result.dueDate,
+        ...unless("creditOfReceiptId", { creditOfReceiptId: credited?.id ?? "" }),
+        ...unless("contactPerson", { contactPerson: result.contactPerson ?? "" }),
+        ...unless("contactEmail", { contactEmail: result.contactEmail ?? "" }),
+      };
+    });
+    if (touched.has("currency") || touched.has("fxRateInput")) return;
+    if (result.currency && result.currency !== "GBP") onCurrencyChange(result.currency);
+    else {
+      set({ currency: "GBP", fxRateInput: "" });
+      setFxError(null);
+    }
+  }
+
+  async function runExtraction(toRead: CapturedFile[], cats: string[], supplierList: Client[], receiptList: Receipt[]) {
+    const run = ++runRef.current;
     setScanning(true);
     setScanError(null);
-    setModeOverride(null);
+    try {
+      const result = await extractPages(toRead, cats);
+      if (run !== runRef.current) return;
+      applyResult(result, supplierList, receiptList);
+    } catch (err) {
+      if (run !== runRef.current) return;
+      setScanError(err instanceof Error ? err.message : "Scanning failed.");
+    } finally {
+      if (run === runRef.current) setScanning(false);
+    }
+  }
+
+  async function retry() {
+    if (listsLoadedRef.current) {
+      runExtraction(pages, categories, suppliers, receipts);
+      return;
+    }
+    setScanning(true);
+    setScanError(null);
+    try {
+      const l = await loadLists();
+      runExtraction(pages, l.cats, l.suppliers, l.receipts);
+    } catch (err) {
+      setScanning(false);
+      setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+    }
+  }
+
+  function onCaptured(file: CapturedFile) {
+    const current = capture ?? { kind: "first" as const };
+    let next: CapturedFile[];
+    if (current.kind === "retake") next = pages.map((p, i) => (i === current.index ? file : p));
+    else if (current.kind === "add") next = [...pages, file];
+    else next = [file];
+    setPages(next);
+    setCapture(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
+    runExtraction(next, categories, suppliers, receipts);
   }
 
-  async function runExtraction(file: CapturedFile, categoriesForRequest: string[]) {
-    try {
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: file.dataUrl, categories: categoriesForRequest }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Scan failed.");
-      const result = body.result as ScanApiResult;
-
-      setDocumentType(result.documentType);
-      if (result.date) setDate(result.date);
-      if (result.vendor) setVendor(result.vendor);
-      if (result.category) setCategory(result.category);
-      if (result.totalAmount !== null) setTotalAmount(String(result.totalAmount));
-      if (result.vatAmount !== null) setVatAmount(String(result.vatAmount));
-      if (result.notes) setNotes(result.notes);
-      if (result.lineItems?.length) setLineItems(result.lineItems);
-      setContactPerson(result.contactPerson || "");
-      setContactEmail(result.contactEmail || "");
-      setVendorConf(result.vendorConfidence);
-      setDateConf(result.dateConfidence);
-      setTotalAmountConf(result.totalAmountConfidence);
-      setVatConf(result.vatAmountConfidence);
-      if (result.currency && result.currency !== "GBP") {
-        onCurrencyChange(result.currency);
-      } else {
-        setCurrency("GBP");
-        setFxRateInput("");
-        setFxError(null);
-      }
-    } catch (err) {
-      setScanError(err instanceof Error ? err.message : "Scan failed.");
-    } finally {
-      setScanning(false);
-    }
+  function onCaptureClosed() {
+    if (pages.length) setCapture(null);
+    else router.push("/");
   }
 
-  // The normal path, when DocumentCapture's own capture screen was
-  // actually shown -- by now the page has been mounted long enough that
-  // categories has almost certainly already loaded, so reading it from
-  // state here (rather than needing it passed in, like runExtraction
-  // does for the handoff path above) is safe.
-  async function onDocumentCaptured(file: CapturedFile) {
-    beginScan(file);
-    await runExtraction(file, categories);
+  function startNew() {
+    if (pages.length && !window.confirm("Start a new document? This scan hasn't been saved.")) return;
+    runRef.current++;
+    touchedRef.current = new Set();
+    setPages([]);
+    setForm({ ...EMPTY_FORM, date: todayIso(), category: form.category });
+    setScanError(null);
+    setSaveError(null);
+    setFxError(null);
+    setTypePickerOpen(false);
+    setSupplierSaved(false);
+    setSupplierDuplicate(false);
+    setCapture({ kind: "first" });
   }
-
-  function updateLineItem(idx: number, patch: Partial<ReceiptLineItem>) {
-    setLineItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
-  }
-
-  function removeLineItem(idx: number) {
-    setLineItems((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  async function useLocation() {
-    setLocating(true);
-    setLocateNote(null);
-    try {
-      const pos = await getCurrentPosition();
-      const guess = await guessLocationContext(pos.coords.latitude, pos.coords.longitude);
-      const filled: string[] = [];
-      if (guess.vendorName && !vendor) {
-        setVendor(guess.vendorName);
-        filled.push("shop name");
-      }
-      if (guess.category && !category) {
-        setCategory(guess.category);
-        filled.push("category");
-      }
-      setLocateNote(filled.length ? `Filled in ${filled.join(" and ")} from your location.` : "Couldn't recognize a business at your location.");
-    } catch (err) {
-      setLocateNote(err instanceof Error ? err.message : "Couldn't get your location.");
-    } finally {
-      setLocating(false);
-    }
-  }
-
-  function clientName(id: string) {
-    return clients.find((c) => c.id === id)?.name || "";
-  }
-
-  const mode = modeOverride ?? modeFor(documentType);
 
   async function onCurrencyChange(next: string) {
-    setCurrency(next);
+    set({ currency: next });
     setFxError(null);
     if (next === "GBP") {
-      setFxRateInput("");
+      set({ fxRateInput: "" });
       return;
     }
     setFxLoading(true);
     try {
       const rate = await getFxRate(next, "GBP");
-      setFxRateInput(String(rate));
+      set({ fxRateInput: String(rate) });
     } catch (err) {
       setFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
     } finally {
@@ -245,55 +331,49 @@ export default function ScanPage() {
     }
   }
 
-  // Same conversion pattern as the manual Receipts form: whatever's typed
-  // stays in `currency` until save time, when it's converted to GBP --
-  // never stored as a raw foreign number.
+  // Same conversion as the manual Receipts form: figures stay in
+  // `currency` until save time, when they're converted to GBP.
   function gbpAmounts() {
-    const total = parseFloat(totalAmount) || 0;
-    const vat = parseFloat(vatAmount) || 0;
-    if (currency === "GBP") {
+    const total = parseFloat(form.totalAmount) || 0;
+    const vat = parseFloat(form.vatAmount) || 0;
+    if (form.currency === "GBP") {
       return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
     }
-    const rate = parseFloat(fxRateInput) || 0;
+    const rate = parseFloat(form.fxRateInput) || 0;
     const totalGbp = total * rate;
     const vatGbp = vat * rate;
-    return {
-      netGbp: Math.max(0, totalGbp - vatGbp),
-      vatGbp,
-      originalAmount: total,
-      originalVatAmount: vat,
-      originalCurrency: currency,
-      fxRate: rate,
-    };
+    return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp, originalAmount: total, originalVatAmount: vat, originalCurrency: form.currency, fxRate: rate };
   }
 
-  async function saveAsSupplier() {
-    if (!vendor.trim()) {
-      setSaveError("Enter a company name before saving.");
+  async function addAsSupplier() {
+    const name = form.vendor.trim();
+    if (!name) {
+      setSaveError("Enter a supplier name first.");
       return;
     }
     setSaving(true);
     setSaveError(null);
     try {
-      const existing = clients.find(
-        (c) => c.kind === "supplier" && c.name.trim().toLowerCase() === vendor.trim().toLowerCase()
-      );
+      const existing = suppliers.find((c) => normaliseSupplierName(c.name) === normaliseSupplierName(name));
       if (existing) {
+        patch({ clientId: existing.id });
         setSupplierDuplicate(true);
         return;
       }
-      await clientsStore.add({
-        name: vendor,
+      const created = await clientsStore.add({
+        name,
         isCompany: true,
-        email: contactEmail,
-        address: "",
         kind: "supplier",
-        vatNumber: "",
-        paymentTerms: "",
-        defaultCurrency: "",
-        contactPerson,
+        email: form.details.supplierEmail ?? form.contactEmail,
+        address: form.details.supplierAddress ?? "",
+        vatNumber: form.details.supplierVatNumber ?? "",
+        paymentTerms: form.details.paymentTerms ?? "",
+        defaultCurrency: form.currency === "GBP" ? "" : form.currency,
+        contactPerson: form.contactPerson,
         remindersEnabled: true,
       });
+      setClients((prev) => [...prev, created]);
+      patch({ clientId: created.id });
       setSupplierSaved(true);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
@@ -302,38 +382,70 @@ export default function ScanPage() {
     }
   }
 
+  const showDueDate = mode === "invoice";
+  const blockedReason = scanning
+    ? "Wait for the pages to be read."
+    : form.dateAlternative
+      ? "Confirm the date first."
+      : showDueDate && form.dueDateAlternative
+        ? "Confirm the due date first."
+        : null;
+
   async function save() {
-    if (mode === "transactional" && !totalAmount) {
+    if (mode !== "archival" && !form.totalAmount) {
       setSaveError("Enter a total before saving.");
       return;
     }
-    if (currency !== "GBP" && !fxRateInput) {
+    if (form.currency !== "GBP" && !form.fxRateInput) {
       setSaveError("Enter an exchange rate before saving (or wait for it to load).");
+      return;
+    }
+    if (mode === "invoice" && !form.paid && !form.dueDate) {
+      setSaveError("A bill to be paid needs a due date.");
       return;
     }
     setSaving(true);
     setSaveError(null);
     try {
       const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
-      await receiptsStore.add({
-        clientId,
-        date,
-        vendor,
-        category: category || "Other",
-        amount: netGbp,
-        vatAmount: vatGbp,
-        originalAmount,
-        originalVatAmount,
-        originalCurrency,
-        fxRate,
-        imageDataUrl: capturedFile?.dataUrl ?? null,
-        notes,
-        starred: false,
-        needsReview: false,
-        warrantyMonths: null,
-        tags: [],
-        lineItems,
-      });
+      const sign = mode === "credit_note" ? -1 : 1;
+      const details: DocumentDetails = { ...form.details };
+      const other = (details.other ?? []).filter((o) => o.label.trim() && o.value.trim());
+      if (other.length) details.other = other;
+      else delete details.other;
+      await receiptsStore.add(
+        {
+          clientId: form.clientId,
+          date: form.date,
+          vendor: form.vendor,
+          category: form.category || "Other",
+          amount: sign * netGbp,
+          vatAmount: sign * vatGbp,
+          originalAmount,
+          originalVatAmount,
+          originalCurrency,
+          fxRate,
+          imageDataUrl: pages[0]?.dataUrl ?? null,
+          notes: form.notes,
+          starred: false,
+          needsReview: false,
+          warrantyMonths: null,
+          tags: [],
+          lineItems: form.lines.map((l) => ({
+            description: l.description,
+            quantity: parseFloat(l.quantity) || 0,
+            unitPrice: parseFloat(l.unitPrice) || 0,
+            category: null,
+          })),
+          documentType: SAVED_TYPE[mode],
+          invoiceNumber: form.invoiceNumber.trim() || null,
+          dueDate: showDueDate && form.dueDate ? form.dueDate : null,
+          paid: mode === "invoice" ? form.paid : true,
+          details,
+          creditOfReceiptId: mode === "credit_note" && form.creditOfReceiptId ? form.creditOfReceiptId : null,
+        },
+        pages.slice(1).map((p) => p.dataUrl)
+      );
       router.push("/receipts");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
@@ -342,244 +454,360 @@ export default function ScanPage() {
     }
   }
 
-  if (showCapture) {
-    return <DocumentCapture onCapture={onDocumentCaptured} onClose={() => router.push("/")} />;
+  function discard() {
+    if (window.confirm("Discard this scan? Nothing has been saved.")) router.push("/");
   }
 
-  const isPdf = capturedFile?.mediaType === "application/pdf";
+  if (capture) {
+    return (
+      <DocumentCapture
+        onCapture={onCaptured}
+        onClose={onCaptureClosed}
+        pageNumber={capture.kind === "add" ? pages.length + 1 : capture.kind === "retake" ? capture.index + 1 : undefined}
+        failureMessage={capture.kind === "retake" ? capture.failureMessage : undefined}
+      />
+    );
+  }
+
+  const amounts = gbpAmounts();
+  const saveLabel = mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`;
+  const changeLabel = mode === "archival" ? "Not right?" : `Not ${mode === "invoice" ? "an invoice" : mode === "receipt" ? "a receipt" : mode === "credit_note" ? "a credit note" : "a business card"}?`;
+
+  const pagesStrip = (
+    <PagesStrip
+      pages={pages}
+      scanning={scanning}
+      onAdd={() => setCapture({ kind: "add" })}
+      onRetake={(index) => setCapture({ kind: "retake", index })}
+      onStartNew={startNew}
+    />
+  );
+
+  const errorBanner = scanError && (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+      <p className="text-sm text-red-600">{scanError}</p>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={retry}
+          className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+        >
+          Try again
+        </button>
+        <button
+          type="button"
+          onClick={() => setCapture({ kind: "retake", index: pages.length - 1, failureMessage: scanError })}
+          disabled={scanning}
+          className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50"
+        >
+          Retake last page
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Scan</h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
+          {form.docType && (
+            <button type="button" onClick={() => setTypePickerOpen((o) => !o)} className="text-xs font-medium text-blue-600">
+              {changeLabel}
+            </button>
+          )}
+        </div>
+        {typePickerOpen && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(baseMode === "archival" || baseMode === "contact") && (
+              <button
+                type="button"
+                onClick={() => {
+                  patch({ typeOverride: null });
+                  setTypePickerOpen(false);
+                }}
+                className={pill(!form.typeOverride)}
+              >
+                {headingFor(form, baseMode)}
+              </button>
+            )}
+            {(["invoice", "receipt", "credit_note"] as TransactionalType[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  patch({ typeOverride: t });
+                  setTypePickerOpen(false);
+                }}
+                className={pill(mode === t)}
+              >
+                {TYPE_WORD[t]}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="mt-1 text-neutral-600">
-          Claude reads the document and fills in the details below for you.
+          {scanning ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…` : "Claude read the document — check the details below before saving."}
         </p>
       </div>
 
-      <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <div className="flex items-center gap-3">
-          {isPdf ? (
-            <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500">
-              <DocumentIcon className="h-6 w-6" />
-              PDF
-            </div>
-          ) : capturedFile ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={capturedFile.dataUrl} alt="Document preview" className="h-20 w-20 rounded-lg border object-cover" />
-          ) : null}
-          <button
-            onClick={() => setShowCapture(true)}
-            disabled={scanning}
-            className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-          >
-            {scanning ? "Reading document…" : "Scan a different document"}
-          </button>
-        </div>
-
-        {scanError && <p className="text-sm text-red-600">{scanError}</p>}
-        {documentType && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-neutral-500">Recognized as: <span className="font-medium text-neutral-700">{documentType.replace("_", " ")}</span></p>
-            {mode !== "transactional" && !modeOverride && (
-              <button type="button" onClick={() => setModeOverride("transactional")} className="text-xs font-medium text-blue-600">
-                Not right? Log as a normal receipt instead
-              </button>
-            )}
-          </div>
-        )}
-
-        {mode === "archival" && documentType === "barcode" && notes && (
-          <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-            Barcode value: <span className="font-mono font-medium">{notes}</span>
-          </p>
-        )}
+      <fieldset disabled={scanning} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        {errorBanner}
 
         {mode === "contact" ? (
           <>
+            {pagesStrip}
             <div>
-              <input
-                className="w-full rounded-lg border px-3 py-2"
-                placeholder="Company name"
-                value={vendor}
-                onChange={(e) => setVendor(e.target.value)}
-              />
-              <FieldFlag confidence={vendorConf} />
+              <label className="text-xs text-neutral-500">Company name</label>
+              <input className="w-full rounded-lg border px-3 py-2" value={form.vendor} onChange={(e) => patch({ vendor: e.target.value })} />
+              <FieldFlag confidence={form.vendorConf} />
             </div>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="Contact person (optional)"
-              value={contactPerson}
-              onChange={(e) => setContactPerson(e.target.value)}
-            />
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="Email (optional)"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-            />
-            <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-
+            <div>
+              <label className="text-xs text-neutral-500">Contact person</label>
+              <input className="w-full rounded-lg border px-3 py-2" value={form.contactPerson} onChange={(e) => patch({ contactPerson: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs text-neutral-500">Email</label>
+              <input className="w-full rounded-lg border px-3 py-2" value={form.contactEmail} onChange={(e) => patch({ contactEmail: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs text-neutral-500">Notes</label>
+              <textarea className="w-full rounded-lg border px-3 py-2" value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
+            </div>
             {supplierDuplicate && (
               <p className="text-sm text-amber-700">
-                Already have a supplier named &quot;{vendor}&quot; — didn&apos;t create a duplicate.{" "}
+                Already have a supplier named &quot;{form.vendor}&quot; — didn&apos;t create a duplicate.{" "}
                 <a href="/clients" className="font-medium underline">View suppliers</a>
               </p>
             )}
             {supplierSaved && <p className="text-sm text-green-700">Saved as a new supplier.</p>}
             {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-
-            <button
-              onClick={saveAsSupplier}
-              disabled={saving || supplierSaved}
-              className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {saving ? "Saving…" : supplierSaved ? "Saved" : "Save as new supplier"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={addAsSupplier}
+                disabled={saving || supplierSaved || scanning}
+                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {saving ? "Saving…" : supplierSaved ? "Saved" : "Save as new supplier"}
+              </button>
+              <button type="button" onClick={discard} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                Discard
+              </button>
+            </div>
           </>
         ) : (
-        <>
-        <select
-          className="w-full rounded-lg border px-3 py-2"
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-        >
-          <option value="">No supplier / general expense</option>
-          {suppliers.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+          <>
+            <div>
+              <label className="text-xs text-neutral-500">Supplier</label>
+              {!form.clientId && (
+                <div className="mt-1 flex gap-2">
+                  <input
+                    className="w-full rounded-lg border px-3 py-2 font-medium"
+                    placeholder="Supplier name as printed"
+                    value={form.vendor}
+                    onChange={(e) => patch({ vendor: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={addAsSupplier}
+                    disabled={saving || !form.vendor.trim()}
+                    className="shrink-0 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+                  >
+                    Add as new supplier
+                  </button>
+                </div>
+              )}
+              <FieldFlag confidence={form.vendorConf} />
+              <select
+                className="mt-2 w-full rounded-lg border px-3 py-2"
+                value={form.clientId}
+                onChange={(e) => patch({ clientId: e.target.value })}
+              >
+                <option value="">{form.clientId ? "No supplier / general expense" : "Or pick an existing supplier…"}</option>
+                {suppliers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {form.clientId && form.vendor && (
+                <p className="mt-1 text-xs text-neutral-500">Read as &quot;{form.vendor}&quot;.</p>
+              )}
+              {supplierSaved && <p className="mt-1 text-sm text-green-700">Saved as a new supplier.</p>}
+              {supplierDuplicate && <p className="mt-1 text-sm text-amber-700">Already a supplier — using the existing one.</p>}
+            </div>
 
-        <div>
-          <button
-            type="button"
-            onClick={useLocation}
-            disabled={locating}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 disabled:opacity-50"
-          >
-            {locating ? "Locating…" : (<><PinIcon /> Guess from my location</>)}
-          </button>
-          {locateNote && <p className="mt-1 text-sm text-neutral-500">{locateNote}</p>}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <input type="date" className="w-full rounded-lg border px-3 py-2" value={date} onChange={(e) => setDate(e.target.value)} />
-            <FieldFlag confidence={dateConf} />
-          </div>
-          <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            <option value="">Overall category…</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <input
-            className="w-full rounded-lg border px-3 py-2"
-            placeholder="Vendor / shop name"
-            value={vendor}
-            onChange={(e) => setVendor(e.target.value)}
-          />
-          <FieldFlag confidence={vendorConf} />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder={mode === "archival" ? `Total paid (${currency}, optional)` : `Total paid (${currency}, incl. VAT)`}
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              inputMode="decimal"
-            />
-            <FieldFlag confidence={totalAmountConf} />
-          </div>
-          <select className="rounded-lg border px-3 py-2" value={currency} onChange={(e) => onCurrencyChange(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <input className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
-          <FieldFlag confidence={vatConf} />
-        </div>
-        {currency !== "GBP" && (
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>
-            <input
-              className="w-28 rounded-lg border px-2 py-1.5 text-sm"
-              value={fxRateInput}
-              onChange={(e) => setFxRateInput(e.target.value)}
-              inputMode="decimal"
-              placeholder={fxLoading ? "Loading…" : "rate"}
-            />
-            <span className="text-xs text-neutral-500">GBP {fxLoading && "(fetching today's rate…)"}</span>
-          </div>
-        )}
-        {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
-        {mode === "archival" && (
-          <p className="text-xs text-neutral-500">
-            {documentType?.replace("_", " ")}s aren&apos;t usually a single expense — leave the total blank to just file this away.
-          </p>
-        )}
-        {totalAmount && (
-          <p className="text-xs text-neutral-500">
-            → £{gbpAmounts().netGbp.toFixed(2)} excl. VAT{currency !== "GBP" ? `, £${gbpAmounts().vatGbp.toFixed(2)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.
-          </p>
-        )}
-
-        {lineItems.length > 0 && (
-          <div className="space-y-2 rounded-lg border p-3">
-            <p className="text-xs font-medium text-neutral-500">
-              Items — give each its own category to split this receipt across categories (e.g. Groceries + Household).
-            </p>
-            {lineItems.map((it, idx) => (
-              <div key={idx} className="grid grid-cols-12 items-center gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div className={showDueDate ? "" : "col-span-2"}>
+                <label className="text-xs text-neutral-500">{mode === "receipt" ? "Receipt number" : mode === "credit_note" ? "Credit note number" : "Invoice number"}</label>
+                <input className="w-full rounded-lg border px-3 py-2" value={form.invoiceNumber} onChange={(e) => patch({ invoiceNumber: e.target.value })} />
+              </div>
+              {showDueDate && (
+                <div>
+                  <label className="text-xs text-neutral-500">Due date</label>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.dueDate}
+                    onChange={(e) => patch({ dueDate: e.target.value, dueDateAlternative: null })}
+                  />
+                  {form.dueDateAlternative && (
+                    <DateConfirm
+                      iso={form.dueDate}
+                      alternative={form.dueDateAlternative}
+                      printed={form.dueDateAsPrinted}
+                      onSwap={() => patch({ dueDate: form.dueDateAlternative!, dueDateAlternative: null })}
+                      onConfirm={() => patch({ dueDate: form.dueDate, dueDateAlternative: null })}
+                    />
+                  )}
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-neutral-500">Date</label>
                 <input
-                  className="col-span-4 rounded-lg border px-2 py-1.5"
-                  value={it.description}
-                  onChange={(e) => updateLineItem(idx, { description: e.target.value })}
+                  type="date"
+                  className="w-full rounded-lg border px-3 py-2"
+                  value={form.date}
+                  onChange={(e) => patch({ date: e.target.value, dateAlternative: null })}
                 />
-                <input
-                  className="col-span-2 rounded-lg border px-2 py-1.5"
-                  placeholder="Qty"
-                  value={it.quantity}
-                  onChange={(e) => updateLineItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
-                />
-                <input
-                  className="col-span-2 rounded-lg border px-2 py-1.5"
-                  placeholder="Price"
-                  value={it.unitPrice}
-                  onChange={(e) => updateLineItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
-                />
-                <select
-                  className="col-span-3 rounded-lg border px-2 py-1.5"
-                  value={it.category ?? ""}
-                  onChange={(e) => updateLineItem(idx, { category: e.target.value || null })}
-                >
-                  <option value="">No category</option>
+                <FieldFlag confidence={form.dateConf} />
+                {form.dateAlternative && (
+                  <DateConfirm
+                    iso={form.date}
+                    alternative={form.dateAlternative}
+                    printed={form.dateAsPrinted}
+                    onSwap={() => patch({ date: form.dateAlternative!, dateAlternative: null })}
+                    onConfirm={() => patch({ date: form.date, dateAlternative: null })}
+                  />
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500">Category</label>
+                <select className="w-full rounded-lg border px-3 py-2" value={form.category} onChange={(e) => patch({ category: e.target.value })}>
+                  <option value="">Category…</option>
                   {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <button onClick={() => removeLineItem(idx)} className="col-span-1 text-red-600">✕</button>
               </div>
-            ))}
-          </div>
+            </div>
+
+            {pagesStrip}
+
+            {mode === "archival" && form.docType === "barcode" && form.notes && (
+              <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+                Barcode value: <span className="font-mono font-medium">{form.notes}</span>
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-neutral-500">
+                  Total ({form.currency}, incl. VAT{mode === "archival" ? ", optional" : ""})
+                </label>
+                <input
+                  className="w-full rounded-lg border px-3 py-2"
+                  value={form.totalAmount}
+                  onChange={(e) => patch({ totalAmount: e.target.value })}
+                  inputMode="decimal"
+                />
+                <FieldFlag confidence={form.totalConf} />
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500">Of which VAT ({form.currency}, optional)</label>
+                <input
+                  className="w-full rounded-lg border px-3 py-2"
+                  value={form.vatAmount}
+                  onChange={(e) => patch({ vatAmount: e.target.value })}
+                  inputMode="decimal"
+                />
+                <FieldFlag confidence={form.vatConf} />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div>
+                <label className="text-xs text-neutral-500">Currency</label>
+                <select
+                  className="w-full rounded-lg border px-3 py-2"
+                  value={form.currency}
+                  onChange={(e) => {
+                    touch("currency");
+                    onCurrencyChange(e.target.value);
+                  }}
+                >
+                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              {form.currency !== "GBP" && (
+                <div className="flex items-center gap-2 self-end pb-2">
+                  <label className="text-xs text-neutral-500 whitespace-nowrap">1 {form.currency} =</label>
+                  <input
+                    className="w-28 rounded-lg border px-2 py-1.5 text-sm"
+                    value={form.fxRateInput}
+                    onChange={(e) => patch({ fxRateInput: e.target.value })}
+                    inputMode="decimal"
+                    placeholder={fxLoading ? "Loading…" : "rate"}
+                  />
+                  <span className="text-xs text-neutral-500">GBP {fxLoading && "(fetching today's rate…)"}</span>
+                </div>
+              )}
+            </div>
+            {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
+            {mode === "archival" && (
+              <p className="text-xs text-neutral-500">
+                {heading}s aren&apos;t usually a single expense — leave the total blank to just file this away.
+              </p>
+            )}
+            {form.totalAmount && (
+              <p className="text-xs text-neutral-500">
+                → {mode === "credit_note" ? "Refund of " : ""}£{amounts.netGbp.toFixed(2)} net · £{amounts.vatGbp.toFixed(2)} VAT · £{(amounts.netGbp + amounts.vatGbp).toFixed(2)} total
+                {form.currency !== "GBP" ? ", recorded in GBP" : ""}.
+              </p>
+            )}
+
+            <DocumentDetailsFields details={form.details} onChange={(details) => patch({ details })} />
+
+            <div>
+              <label className="text-xs text-neutral-500">Notes</label>
+              <textarea className="w-full rounded-lg border px-3 py-2" value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
+            </div>
+
+            {form.lines.length > 0 && (
+              <LineItemsTable
+                lines={form.lines}
+                currency={form.currency}
+                onChange={(i, linePatch) => patch({ lines: form.lines.map((l, idx) => (idx === i ? { ...l, ...linePatch } : l)) })}
+              />
+            )}
+
+            {mode === "invoice" && (
+              <PaidChoice paid={form.paid} onChange={(paid) => patch({ paid, paidTouched: true })} />
+            )}
+
+            {mode === "credit_note" && (
+              <CreditOfSelect
+                invoices={scannedInvoices}
+                clients={clients}
+                clientId={form.clientId}
+                vendor={form.vendor}
+                value={form.creditOfReceiptId}
+                onChange={(id) => patch({ creditOfReceiptId: id })}
+              />
+            )}
+
+            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={save}
+                disabled={saving || !!blockedReason}
+                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {saving ? "Saving…" : saveLabel}
+              </button>
+              <button type="button" onClick={discard} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                Discard
+              </button>
+              {blockedReason && !saving && <span className="text-xs text-neutral-500">{blockedReason}</span>}
+            </div>
+          </>
         )}
-
-        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-
-        {clientId && <p className="text-xs text-neutral-500">Will be filed under {clientName(clientId)}.</p>}
-        {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-
-        <button
-          onClick={save}
-          disabled={saving}
-          className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {saving ? "Saving…" : mode === "archival" ? "Save to your files" : "Save as receipt"}
-        </button>
-        </>
-        )}
-      </div>
+      </fieldset>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // Small shared icon set, same stroke-outline style as the dashboard's
 // existing ScanIcon and the camera modal's back arrow -- replaces the
-// emoji that were scattered around (📷 📁 🔁 📄 📍), which render
+// emoji that were scattered around (📷 📁 🔁 📄), which render
 // differently across platforms/browsers and don't match the rest of the
 // app's visual language.
 
@@ -41,11 +41,12 @@ export function DocumentIcon({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
-export function PinIcon({ className = "h-4 w-4" }: IconProps) {
+export function PhotoIcon({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7-6.1-7-11.5a7 7 0 1 1 14 0C19 14.9 12 21 12 21Z" />
-      <circle cx="12" cy="9.5" r="2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3" y="5" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="8.5" cy="9.5" r="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 15-4.5-4.5L9 18M3 17l4-4 3 3" />
     </svg>
   );
 }
