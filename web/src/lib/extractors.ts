@@ -81,7 +81,7 @@ async function extractWithGemini<T>(opts: ExtractStructuredOptions): Promise<T> 
         { type: "text", text: `${opts.prompt}\n\n${opts.description}` },
       ],
       response_format: { type: "text", mime_type: "application/json", schema: toGeminiSchema(opts.schema) },
-      generation_config: { max_output_tokens: opts.maxTokens ?? 16000, thinking_level: "LOW" },
+      generation_config: { max_output_tokens: opts.maxTokens ?? 16000, thinking_level: "low" },
     });
   } catch (err) {
     const status = (err as { status?: number }).status;
