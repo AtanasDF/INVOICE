@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
+import { SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument, parseDataUrl } from "@/lib/scanExtraction";
 
 export const runtime = "nodejs";
@@ -21,19 +22,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Sign in to scan documents." }, { status: 401 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "Scanning isn't configured yet: ANTHROPIC_API_KEY is missing on the server." },
-      { status: 500 }
-    );
-  }
-
   // `image` is the older single-file shape, still sent by invoices/new.
-  let body: { images?: unknown; image?: unknown; categories?: unknown };
+  let body: { images?: unknown; image?: unknown; categories?: unknown; engine?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Expected a JSON body with an `images` field." }, { status: 400 });
+  }
+
+  if (body.engine !== undefined && !SCAN_ENGINES.includes(body.engine as ScanEngine)) {
+    return NextResponse.json({ error: "engine must be \"claude\" or \"gemini\"." }, { status: 400 });
+  }
+  const engine = (body.engine as ScanEngine | undefined) ?? "claude";
+  const keyName = engine === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+  if (!process.env[keyName]) {
+    return NextResponse.json(
+      { error: `Scanning isn't configured yet: ${keyName} is missing on the server.` },
+      { status: 500 }
+    );
   }
 
   const images: unknown[] =
@@ -70,7 +76,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await extractDocument(pages, categories);
+    const result = await extractDocument(pages, categories, engine);
     return NextResponse.json({ result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error while scanning.";

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 function PasswordField({
@@ -49,8 +48,8 @@ function PasswordField({
   );
 }
 
+// After sign-in the Gate in AppShell owns the redirect (it reads ?next).
 export default function LoginPage() {
-  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,15 +79,12 @@ export default function LoginPage() {
       } else if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email: formEmail, password: formPassword });
         if (error) throw error;
-        router.replace("/");
       } else {
         const { data, error } = await supabase.auth.signUp({ email: formEmail, password: formPassword });
         if (error) throw error;
         if (!data.session) {
           setInfo("Account created. Check your email to confirm it, then sign in.");
           setMode("signin");
-        } else {
-          router.replace("/");
         }
       }
     } catch (err) {

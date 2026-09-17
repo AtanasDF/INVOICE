@@ -6,6 +6,7 @@ import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, cl
 import { supabase } from "@/lib/supabaseClient";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
+import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays } from "@/lib/freeInvoiceDraft";
 import { CameraIcon } from "@/components/icons";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 
@@ -28,18 +29,39 @@ type ScanApiResult = {
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
+function importedDueDate(draft: FreeInvoiceDraft, date: string): { dueDate: string; manual: boolean } {
+  const days = termsDays(draft.paymentTerms);
+  if (days !== null) return { dueDate: addDays(date, days), manual: false };
+  const derived = addDays(date, 30);
+  const dueDate = draft.dueDate || derived;
+  return { dueDate, manual: dueDate !== derived };
+}
+
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [pastInvoices, setPastInvoices] = useState<Invoice[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [clientId, setClientId] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dueDate, setDueDate] = useState(() => addDays(new Date().toISOString().slice(0, 10), 30));
-  const [dueDateManual, setDueDateManual] = useState(false);
-  const [paymentTerms, setPaymentTerms] = useState("");
-  const [items, setItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
-  const [notes, setNotes] = useState("");
+  // The free-invoice draft is read once, on mount: the form is empty then by
+  // construction, and the gate never server-renders this page, so lazy
+  // initialisers are safe and avoid a setState-in-effect cascade.
+  const [draft] = useState(readFreeInvoiceDraft);
+  const [date, setDate] = useState(() => draft?.date || new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(() => (draft ? importedDueDate(draft, date).dueDate : addDays(date, 30)));
+  const [dueDateManual, setDueDateManual] = useState(() => !!draft && importedDueDate(draft, date).manual);
+  const [paymentTerms, setPaymentTerms] = useState<string>(draft?.paymentTerms ?? "");
+  const [items, setItems] = useState<InvoiceItem[]>(() =>
+    draft?.lines.length
+      ? draft.lines.map(({ description, quantity, unitPrice, vatRate }) => ({
+          description,
+          quantity,
+          unitPrice,
+          vatRate: draft.vatRegistered ? vatRate : "standard",
+        }))
+      : [{ ...BLANK_ITEM }]
+  );
+  const [notes, setNotes] = useState<string>(draft?.notes ?? "");
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +69,7 @@ export default function NewInvoicePage() {
   const [showCapture, setShowCapture] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [imported, setImported] = useState(!!draft);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
@@ -55,6 +78,16 @@ export default function NewInvoicePage() {
       setProfile(biz);
     });
   }, []);
+
+  function discardImport() {
+    clearFreeInvoiceDraft();
+    setItems([{ ...BLANK_ITEM }]);
+    setNotes("");
+    setPaymentTerms("");
+    setDueDate(addDays(date, 30));
+    setDueDateManual(false);
+    setImported(false);
+  }
 
   const billableClients = clients.filter((c) => c.kind === "client" && !c.archived);
 
@@ -204,6 +237,7 @@ export default function NewInvoicePage() {
         status: "draft",
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
+      if (imported) clearFreeInvoiceDraft();
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save invoice.");
@@ -235,6 +269,14 @@ export default function NewInvoicePage() {
         Scanning fills in the date, line items, and notes from a source document (a timesheet, delivery note,
         etc.) — the client is always your own choice below, never guessed.
       </p>
+      {imported && draft && (
+        <p className="text-sm text-blue-600">
+          Imported from your free invoice.
+          {draft.currencySymbol !== "£" &&
+            ` Amounts were entered in ${draft.currencySymbol}; this account invoices in £, so check them before saving.`}{" "}
+          <button type="button" onClick={discardImport} className="font-medium underline">Discard import</button>
+        </p>
+      )}
 
       <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => onClientChange(e.target.value)}>

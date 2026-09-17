@@ -6,6 +6,7 @@ import { Client, DocumentDetails, DocumentType, Receipt, businessProfileStore, c
 import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
+import type { ScanEngine } from "@/lib/extractors";
 import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { takeScanCapture } from "@/lib/scanHandoff";
@@ -110,6 +111,16 @@ function headingFor(f: Form, mode: Mode): string {
   return TYPE_WORD[mode];
 }
 
+const ENGINE_KEY = "scan-engine";
+
+function readEngine(): ScanEngine {
+  try {
+    return localStorage.getItem(ENGINE_KEY) === "gemini" ? "gemini" : "claude";
+  } catch {
+    return "claude";
+  }
+}
+
 const pill = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium ${on ? "bg-neutral-900 text-white" : "border text-neutral-700"}`;
 
 function sameNumber(a: string | null, b: string | null): boolean {
@@ -128,6 +139,7 @@ export default function ScanPage() {
   const [capture, setCapture] = useState<Capture | null>({ kind: "first" });
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [engine, setEngine] = useState<ScanEngine>(readEngine);
 
   const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayIso() }));
   const [typePickerOpen, setTypePickerOpen] = useState(false);
@@ -253,7 +265,7 @@ export default function ScanPage() {
     setScanning(true);
     setScanError(null);
     try {
-      const result = await extractPages(toRead, cats);
+      const result = await extractPages(toRead, cats, engine);
       if (run !== runRef.current) return;
       applyResult(result, supplierList, receiptList);
     } catch (err) {
@@ -291,6 +303,13 @@ export default function ScanPage() {
     setSupplierSaved(false);
     setSupplierDuplicate(false);
     runExtraction(next, categories, suppliers, receipts);
+  }
+
+  function onEngineChange(next: ScanEngine) {
+    setEngine(next);
+    try {
+      localStorage.setItem(ENGINE_KEY, next);
+    } catch {}
   }
 
   function onCaptureClosed() {
@@ -546,9 +565,23 @@ export default function ScanPage() {
             ))}
           </div>
         )}
-        <p className="mt-1 text-neutral-600">
-          {scanning ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…` : "Claude read the document — check the details below before saving."}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-neutral-600">
+            {scanning ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…` : `${engine === "gemini" ? "Gemini" : "Claude"} read the document — check the details below before saving.`}
+          </p>
+          <label className="flex items-center gap-2 text-xs text-neutral-500">
+            Read with
+            <select
+              className="rounded-lg border px-2 py-1 text-sm text-neutral-900"
+              value={engine}
+              disabled={scanning}
+              onChange={(e) => onEngineChange(e.target.value as ScanEngine)}
+            >
+              <option value="claude">Claude</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <fieldset disabled={scanning} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

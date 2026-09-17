@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES } from "@/lib/categories";
 import { CURRENCIES } from "@/lib/fx";
 import { NormalisedDates, normaliseScanDates } from "@/lib/documentDate";
+import { extractStructured, type ScanEngine } from "@/lib/extractors";
 import type { DocumentDetails } from "@/lib/storage";
 
 // Shared between /api/scan (a live camera/upload capture, reviewed on
@@ -12,8 +12,6 @@ import type { DocumentDetails } from "@/lib/storage";
 export const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB, generous for a phone photo or PDF
 export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 export const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, "application/pdf"] as const;
-
-type ImageMediaType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
 export type ScanLineItem = {
   description: string;
@@ -107,141 +105,135 @@ const confidence = { type: "string", enum: ["high", "low"] };
 // The tool schema's category enum is built per-request from whichever
 // category list the caller sends (their customized list, if they have
 // one) so the model only ever suggests categories that actually appear in
-// their dropdown. strict: true, so every object closes additionalProperties
-// and lists every property as required.
-function buildExtractionTool(categories: string[]): Anthropic.Tool {
+// their dropdown. Claude-strict form, so every object closes
+// additionalProperties and lists every property as required.
+export function buildExtractionSchema(categories: string[]): Record<string, unknown> {
   const detailProperties = Object.fromEntries(
     (Object.keys(DETAIL_DESCRIPTIONS) as ScanDetailKey[]).map((k) => [k, nullable(DETAIL_DESCRIPTIONS[k])])
   );
   return {
-    name: "record_document",
-    description:
-      "Records the structured data read off a scanned UK business document (receipt, supplier invoice, credit note, or similar).",
-    strict: true,
-    input_schema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        documentType: {
-          type: "string",
-          enum: [
-            "receipt",
-            "invoice",
-            "credit_note",
-            "bank_statement",
-            "business_card",
-            "delivery_note",
-            "contract",
-            "handwritten_note",
-            "barcode",
-            "other",
-          ],
-          description:
-            "receipt = proof of a payment already made; invoice = a request for payment; credit_note = reduces or refunds an earlier invoice.",
-        },
-        vendor: nullable("The business that ISSUED the document, as printed. Never the customer or the addressee."),
-        vendorConfidence: confidence,
-        date: nullable("Your reading of the document date as YYYY-MM-DD (day-first for numeric dates)."),
-        dateAsPrinted: nullable("The document date copied EXACTLY as printed, character for character. Null if not printed."),
-        dateConfidence: confidence,
-        invoiceNumber: nullable("Invoice / receipt / credit note number as printed. Null if none."),
-        dueDate: nullable("Your reading of the payment due date as YYYY-MM-DD, only when a due date is printed."),
-        dueDateAsPrinted: nullable("The due date copied EXACTLY as printed. Null if no due date is printed."),
-        creditedInvoiceNumber: nullable(
-          "Only for a credit_note: the number of the original invoice it credits, as printed. Null otherwise."
-        ),
-        totalAmount: {
-          type: ["number", "null"],
-          description:
-            "The grand total actually paid/charged, INCLUDING VAT/tax -- read this directly off whatever is " +
-            "printed as the final total. Do NOT subtract VAT yourself and do NOT report a subtotal here. " +
-            "Always positive, even on a credit note.",
-        },
-        totalAmountConfidence: confidence,
-        currency: {
-          type: ["string", "null"],
-          enum: [...CURRENCIES, null],
-          description:
-            "The currency totalAmount/vatAmount are actually in, from its symbol or code on the document " +
-            '(e.g. "$" or "USD" -> USD). Null if it\'s GBP (£, or no currency marked at all -- the default ' +
-            'assumption for a UK document) or if you genuinely can\'t tell which currency a symbol like "$" ' +
-            "refers to.",
-        },
-        vatAmount: {
-          type: ["number", "null"],
-          description: "VAT/tax portion only, not the total. Always positive, even on a credit note.",
-        },
-        vatAmountConfidence: confidence,
-        category: {
-          type: ["string", "null"],
-          enum: [...categories, null],
-          description: "Best-guess overall expense category, or null if unclear.",
-        },
-        lineItems: {
-          type: "array",
-          description: "Every distinct item/line on the document, in printed order.",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              description: { type: "string" },
-              quantity: { type: "number", description: "1 when no quantity is printed." },
-              unitPrice: { type: "number", description: "Price per unit, ex VAT where the document shows it that way." },
-              lineTotal: { type: ["number", "null"], description: "The printed line total, or null if none is printed." },
-            },
-            required: ["description", "quantity", "unitPrice", "lineTotal"],
-          },
-        },
-        details: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      documentType: {
+        type: "string",
+        enum: [
+          "receipt",
+          "invoice",
+          "credit_note",
+          "bank_statement",
+          "business_card",
+          "delivery_note",
+          "contract",
+          "handwritten_note",
+          "barcode",
+          "other",
+        ],
+        description:
+          "receipt = proof of a payment already made; invoice = a request for payment; credit_note = reduces or refunds an earlier invoice.",
+      },
+      vendor: nullable("The business that ISSUED the document, as printed. Never the customer or the addressee."),
+      vendorConfidence: confidence,
+      date: nullable("Your reading of the document date as YYYY-MM-DD (day-first for numeric dates)."),
+      dateAsPrinted: nullable("The document date copied EXACTLY as printed, character for character. Null if not printed."),
+      dateConfidence: confidence,
+      invoiceNumber: nullable("Invoice / receipt / credit note number as printed. Null if none."),
+      dueDate: nullable("Your reading of the payment due date as YYYY-MM-DD, only when a due date is printed."),
+      dueDateAsPrinted: nullable("The due date copied EXACTLY as printed. Null if no due date is printed."),
+      creditedInvoiceNumber: nullable(
+        "Only for a credit_note: the number of the original invoice it credits, as printed. Null otherwise."
+      ),
+      totalAmount: {
+        type: ["number", "null"],
+        description:
+          "The grand total actually paid/charged, INCLUDING VAT/tax -- read this directly off whatever is " +
+          "printed as the final total. Do NOT subtract VAT yourself and do NOT report a subtotal here. " +
+          "Always positive, even on a credit note.",
+      },
+      totalAmountConfidence: confidence,
+      currency: {
+        type: ["string", "null"],
+        enum: [...CURRENCIES, null],
+        description:
+          "The currency totalAmount/vatAmount are actually in, from its symbol or code on the document " +
+          '(e.g. "$" or "USD" -> USD). Null if it\'s GBP (£, or no currency marked at all -- the default ' +
+          'assumption for a UK document) or if you genuinely can\'t tell which currency a symbol like "$" ' +
+          "refers to.",
+      },
+      vatAmount: {
+        type: ["number", "null"],
+        description: "VAT/tax portion only, not the total. Always positive, even on a credit note.",
+      },
+      vatAmountConfidence: confidence,
+      category: {
+        type: ["string", "null"],
+        enum: [...categories, null],
+        description: "Best-guess overall expense category, or null if unclear.",
+      },
+      lineItems: {
+        type: "array",
+        description: "Every distinct item/line on the document, in printed order.",
+        items: {
           type: "object",
-          description: "Everything else printed that identifies the supplier or how to pay. Null for anything not printed.",
           additionalProperties: false,
           properties: {
-            ...detailProperties,
-            other: {
-              type: "array",
-              description:
-                "Any other printed label/value pair that has no field above (e.g. a driver name or a job number). Empty when none.",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: { label: { type: "string" }, value: { type: "string" } },
-                required: ["label", "value"],
-              },
+            description: { type: "string" },
+            quantity: { type: "number", description: "1 when no quantity is printed." },
+            unitPrice: { type: "number", description: "Price per unit, ex VAT where the document shows it that way." },
+            lineTotal: { type: ["number", "null"], description: "The printed line total, or null if none is printed." },
+          },
+          required: ["description", "quantity", "unitPrice", "lineTotal"],
+        },
+      },
+      details: {
+        type: "object",
+        description: "Everything else printed that identifies the supplier or how to pay. Null for anything not printed.",
+        additionalProperties: false,
+        properties: {
+          ...detailProperties,
+          other: {
+            type: "array",
+            description:
+              "Any other printed label/value pair that has no field above (e.g. a driver name or a job number). Empty when none.",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: { label: { type: "string" }, value: { type: "string" } },
+              required: ["label", "value"],
             },
           },
-          required: [...Object.keys(DETAIL_DESCRIPTIONS), "other"],
         },
-        contactPerson: nullable("Only for documentType business_card: the named individual's full name, if shown."),
-        contactEmail: nullable("Only for documentType business_card: an email address, if shown."),
-        notes: nullable(
-          "Only a genuine remark or warning printed on the document or something the reviewer must know (a smudged total, a handwritten alteration). Null otherwise -- never a summary."
-        ),
+        required: [...Object.keys(DETAIL_DESCRIPTIONS), "other"],
       },
-      required: [
-        "documentType",
-        "vendor",
-        "vendorConfidence",
-        "date",
-        "dateAsPrinted",
-        "dateConfidence",
-        "invoiceNumber",
-        "dueDate",
-        "dueDateAsPrinted",
-        "creditedInvoiceNumber",
-        "totalAmount",
-        "totalAmountConfidence",
-        "currency",
-        "vatAmount",
-        "vatAmountConfidence",
-        "category",
-        "lineItems",
-        "details",
-        "contactPerson",
-        "contactEmail",
-        "notes",
-      ],
+      contactPerson: nullable("Only for documentType business_card: the named individual's full name, if shown."),
+      contactEmail: nullable("Only for documentType business_card: an email address, if shown."),
+      notes: nullable(
+        "Only a genuine remark or warning printed on the document or something the reviewer must know (a smudged total, a handwritten alteration). Null otherwise -- never a summary."
+      ),
     },
+    required: [
+      "documentType",
+      "vendor",
+      "vendorConfidence",
+      "date",
+      "dateAsPrinted",
+      "dateConfidence",
+      "invoiceNumber",
+      "dueDate",
+      "dueDateAsPrinted",
+      "creditedInvoiceNumber",
+      "totalAmount",
+      "totalAmountConfidence",
+      "currency",
+      "vatAmount",
+      "vatAmountConfidence",
+      "category",
+      "lineItems",
+      "details",
+      "contactPerson",
+      "contactEmail",
+      "notes",
+    ],
   };
 }
 
@@ -285,34 +277,17 @@ export function parseDataUrl(dataUrl: string): { mediaType: string; base64: stri
 
 export async function extractDocument(
   pages: { mediaType: string; base64: string }[],
-  categories: string[]
+  categories: string[],
+  engine: ScanEngine = "claude"
 ): Promise<ScanResult> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const pageBlocks: Anthropic.ContentBlockParam[] = pages.map((p) =>
-    p.mediaType === "application/pdf"
-      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: p.base64 } }
-      : { type: "image", source: { type: "base64", media_type: p.mediaType as ImageMediaType, data: p.base64 } }
-  );
-
-  // claude-opus-5 thinks adaptively by default and its thinking tokens
-  // count against max_tokens, so the ceiling has to leave room for both
-  // the reasoning and a long line-item list; medium effort keeps the
-  // thinking share proportionate for a read-and-copy task.
-  const response = await anthropic.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 16000,
-    output_config: { effort: "medium" },
-    tools: [buildExtractionTool(categories.length ? categories : [...CATEGORIES])],
-    tool_choice: { type: "tool", name: "record_document" },
-    messages: [{ role: "user", content: [...pageBlocks, { type: "text", text: PROMPT }] }],
+  const output = await extractStructured<ScanToolOutput>({
+    engine,
+    name: "record_document",
+    description:
+      "Records the structured data read off a scanned UK business document (receipt, supplier invoice, credit note, or similar).",
+    schema: buildExtractionSchema(categories.length ? categories : [...CATEGORIES]),
+    prompt: PROMPT,
+    pages,
   });
-
-  if (response.stop_reason === "max_tokens") {
-    throw new Error("The reading was cut off before the document was finished. Try scanning fewer pages at once.");
-  }
-  const toolUse = response.content.find((block): block is Anthropic.ToolUseBlock => block.type === "tool_use");
-  if (!toolUse) {
-    throw new Error("The model didn't return structured data. Try again.");
-  }
-  return normaliseScanDates(toolUse.input as ScanToolOutput);
+  return normaliseScanDates(output);
 }
