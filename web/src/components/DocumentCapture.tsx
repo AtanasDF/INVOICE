@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadOpenCV } from "@/lib/opencv";
-import { ScannerMode, readAutoCapture, readScannerMode, useIsIOS, writeAutoCapture, writeScannerMode } from "@/lib/platform";
+import { CVModule, loadOpenCV } from "@/lib/opencv";
+import { ScannerMode, consumeCameraHint, isIOS, readAutoCapture, readScannerMode, useIsIOS, writeAutoCapture, writeScannerMode } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
 
 type Point = { x: number; y: number };
-type Status = "starting" | "live" | "denied" | "timeout" | "unsupported" | "review";
+type Status = "starting" | "live" | "denied" | "timeout" | "unsupported";
+type CvStatus = "loading" | "ready" | "failed";
 type Coach = "line" | "closer" | "hold";
 type ZoomRange = { min: number; max: number; step: number };
 // zoom / focusMode / pointsOfInterest are in the Media Capture spec and
@@ -45,6 +46,41 @@ const FOCUS_RING_MS = 800;
 // no timeout, that's exactly the "stuck on Starting camera... forever,
 // no error, no prompt" dead end. This bounds it.
 const CAMERA_TIMEOUT_MS = 8000;
+const CV_ERROR_MAX = 140;
+const GREEN = "#4ADE80";
+const GUIDE_IDLE = "rgba(255,255,255,0.7)";
+const GUIDE_WIDTH = 0.8;
+const GUIDE_MAX_HEIGHT = 0.9;
+const A4_RATIO = Math.SQRT2;
+const SAFARI_CAMERA_TIP =
+  "Safari asks each time until you allow it permanently: tap the aA button in the address bar, Website Settings, then set Camera to Allow.";
+
+// A4 portrait frame, centred, as four corner brackets -- the thing to
+// line the page up with whether or not edge detection is running.
+function drawGuide(ctx: CanvasRenderingContext2D, w: number, h: number, color: string) {
+  const gh = Math.min(GUIDE_WIDTH * Math.min(w, h) * A4_RATIO, GUIDE_MAX_HEIGHT * h);
+  const gw = gh / A4_RATIO;
+  const x0 = (w - gw) / 2;
+  const y0 = (h - gh) / 2;
+  const x1 = x0 + gw;
+  const y1 = y0 + gh;
+  const arm = gw * 0.12;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  for (const [cx, cy, dx, dy] of [
+    [x0, y0, 1, 1],
+    [x1, y0, -1, 1],
+    [x1, y1, -1, -1],
+    [x0, y1, 1, -1],
+  ]) {
+    ctx.moveTo(cx + dx * arm, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy + dy * arm);
+  }
+  ctx.stroke();
+}
 
 function orderPoints(pts: Point[]): [Point, Point, Point, Point] {
   const sums = pts.map((p) => p.x + p.y);
@@ -118,8 +154,8 @@ export default function DocumentCapture({
   const autoRef = useRef(true);
   const onCaptureRef = useRef(onCapture);
   // processFrame lives in the long-lived effect below; this hands it the
-  // current render's autoCapture without restarting the stream.
-  const autoCaptureRef = useRef<() => void>(() => {});
+  // current render's capture without restarting the stream.
+  const captureRef = useRef<() => void>(() => {});
   const barcodeDetectorRef = useRef<BarcodeDetectorInstance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nativeInputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +167,6 @@ export default function DocumentCapture({
   const useNative = iOSMode && scannerMode === "native";
 
   const [status, setStatus] = useState<Status>("starting");
-  const [reviewImage, setReviewImage] = useState<string | null>(null);
   const [barcodeValue, setBarcodeValue] = useState<string | null>(null);
   const [coach, setCoach] = useState<Coach>("line");
   const [autoOn, setAutoOn] = useState(readAutoCapture);
@@ -142,18 +177,18 @@ export default function DocumentCapture({
   const [zoom, setZoom] = useState(1);
   const [cssZoom, setCssZoom] = useState(1);
   const [retryKey, setRetryKey] = useState(0);
-  // Distinguishes "OpenCV itself never loaded" (WASM/network failure --
-  // detection can never work this session) from the ordinary per-frame
-  // "no document currently in view" -- previously both looked identical:
-  // the overlay just never appeared, silently, forever. Only meaningful
-  // on the non-iOS path below, which is the only one that loads OpenCV.
-  const [cvUnavailable, setCvUnavailable] = useState(false);
+  // OpenCV is loaded the moment the live-camera path mounts. "failed"
+  // carries the real error text: it is the diagnostic the user will
+  // screenshot, so it is never rewritten into something friendlier.
+  const [cvStatus, setCvStatus] = useState<CvStatus>("loading");
+  const [cvError, setCvError] = useState<string | null>(null);
+  const [cameraHint, setCameraHint] = useState(false);
   // processFrame lives inside a long-lived effect that only re-runs on
   // [stopStream, retryKey, useNative] -- it closes over state as it was
   // AT EFFECT-SETUP TIME, so a plain state read there would never observe
   // later updates. These refs are what processFrame actually checks; the
   // state exists only to re-render.
-  const cvUnavailableRef = useRef(false);
+  const cvRef = useRef<CVModule | null>(null);
   const cssZoomRef = useRef(1);
   const statusRef = useRef<Status>("starting");
 
@@ -221,8 +256,6 @@ export default function DocumentCapture({
 
   function retry() {
     setStatus("starting");
-    cvUnavailableRef.current = false;
-    setCvUnavailable(false);
     setRetryKey((k) => k + 1);
   }
 
@@ -242,6 +275,23 @@ export default function DocumentCapture({
     let cancelled = false;
 
     async function start() {
+      cvRef.current = null;
+      setCvStatus("loading");
+      setCvError(null);
+      loadOpenCV().then(
+        (cv) => {
+          if (cancelled) return;
+          cvRef.current = cv;
+          setCvStatus("ready");
+        },
+        (err) => {
+          if (cancelled) return;
+          console.error("OpenCV failed to load", err);
+          setCvStatus("failed");
+          setCvError((err instanceof Error ? err.message : String(err)).slice(0, CV_ERROR_MAX));
+        }
+      );
+
       const BarcodeDetectorGlobal = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
       if (BarcodeDetectorGlobal) {
         try {
@@ -314,6 +364,7 @@ export default function DocumentCapture({
           setZoomRange(null);
         }
         setStatus("live");
+        if (isIOS() && consumeCameraHint()) setCameraHint(true);
         rafRef.current = requestAnimationFrame(loop);
       } catch {
         if (cancelled) return;
@@ -342,6 +393,7 @@ export default function DocumentCapture({
       const octx = overlay.getContext("2d");
       if (!octx) return;
       octx.clearRect(0, 0, overlay.width, overlay.height);
+      drawGuide(octx, displayW, displayH, GUIDE_IDLE);
 
       // Barcode check runs on the live video frame directly -- cheap,
       // native, and independent of OpenCV, so it still runs even if
@@ -357,7 +409,8 @@ export default function DocumentCapture({
         }
       }
 
-      if (cvUnavailableRef.current) return;
+      const cv = cvRef.current;
+      if (!cv) return;
 
       const { sx, sy, sw, sh } = visibleRegion(video, cssZoomRef.current);
       const workW = WORK_WIDTH;
@@ -369,19 +422,6 @@ export default function DocumentCapture({
       const wctx = work.getContext("2d");
       if (!wctx) return;
       wctx.drawImage(video, sx, sy, sw, sh, 0, 0, workW, workH);
-
-      let cv;
-      try {
-        cv = await loadOpenCV();
-      } catch {
-        // OpenCV itself never loaded (WASM/network failure) -- distinct
-        // from a single bad frame below, and not going to fix itself on
-        // the next tick, so stop retrying it every 200ms and let the
-        // camera keep working as manual-capture-only.
-        cvUnavailableRef.current = true;
-        if (!cancelled) setCvUnavailable(true);
-        return;
-      }
 
       try {
         const src = cv.imread(work);
@@ -482,18 +522,19 @@ export default function DocumentCapture({
             const ready = (stableFor >= STABLE_MS && sharpEnough) || stableFor >= STABLE_TIMEOUT_MS;
             if (ready && autoRef.current && !capturedRef.current && statusRef.current === "live") {
               capturedRef.current = true;
-              autoCaptureRef.current();
+              captureRef.current();
             }
           }
 
           const displayPts = ordered.map(toDisplay);
-          octx.strokeStyle = "#4ADE80";
+          octx.strokeStyle = GREEN;
           octx.lineWidth = 3;
           octx.beginPath();
           octx.moveTo(displayPts[0].x, displayPts[0].y);
           for (let i = 1; i < displayPts.length; i++) octx.lineTo(displayPts[i].x, displayPts[i].y);
           octx.closePath();
           octx.stroke();
+          drawGuide(octx, displayW, displayH, GREEN);
         } else {
           quadRef.current = null;
           resetStable();
@@ -510,10 +551,10 @@ export default function DocumentCapture({
       stopStream();
     };
     // retryKey is intentionally a dependency purely to let retry() force
-    // this whole effect (and therefore start()) to run again. cvUnavailable
-    // (the state) is deliberately not listed -- processFrame reads
-    // cvUnavailableRef instead precisely so setting it mid-effect doesn't
-    // need to restart the camera stream just to skip detection.
+    // this whole effect (and therefore start()) to run again. cvStatus
+    // (the state) is deliberately not listed -- processFrame reads cvRef
+    // instead precisely so OpenCV arriving mid-effect doesn't need to
+    // restart the camera stream just to start detection.
   }, [stopStream, retryKey, useNative]);
 
   function applyZoom(value: number) {
@@ -568,10 +609,10 @@ export default function DocumentCapture({
     fctx.drawImage(video, sx, sy, sw, sh, 0, 0, full.width, full.height);
 
     const quad = quadRef.current;
-    if (!quad) return full.toDataURL("image/jpeg", 0.92);
+    const cv = cvRef.current;
+    if (!quad || !cv) return full.toDataURL("image/jpeg", 0.92);
 
     try {
-      const cv = await loadOpenCV();
       const src = cv.imread(full);
       const [tl, tr, br, bl] = quad;
       const widthA = dist(br, bl);
@@ -604,16 +645,9 @@ export default function DocumentCapture({
     }
   }
 
+  // Straight to the parent with no review step; the pages strip there
+  // offers a retake.
   async function capture() {
-    const image = await renderCapture();
-    if (!image) return;
-    setReviewImage(image);
-    setStatus("review");
-  }
-
-  // Same frame as the shutter, but straight to the parent with no review
-  // step; the pages strip there still offers a retake.
-  async function autoCapture() {
     setFlash(true);
     let dataUrl: string;
     try {
@@ -632,30 +666,13 @@ export default function DocumentCapture({
   }
 
   useEffect(() => {
-    autoCaptureRef.current = autoCapture;
+    captureRef.current = capture;
   });
 
-  function retake() {
-    setReviewImage(null);
-    setBarcodeValue(null);
-    capturedRef.current = false;
-    resetStable();
-    setCoach("line");
-    setStatus("live");
-  }
-
-  async function confirmCapture() {
-    if (!reviewImage) return;
-    let dataUrl: string;
-    try {
-      dataUrl = await downscaleImageDataUrl(reviewImage);
-    } catch (err) {
-      retake();
-      showFailure(err instanceof Error ? err.message : "Could not read this image.");
-      return;
-    }
-    stopStream();
-    onCapture({ dataUrl, mediaType: "image/jpeg" });
+  function shutter() {
+    if (capturedRef.current) return;
+    capturedRef.current = true;
+    capture();
   }
 
   function readAndCapture(file: File) {
@@ -689,15 +706,18 @@ export default function DocumentCapture({
 
   const pageLabel = pageNumber && pageNumber > 1 ? `Page ${pageNumber}` : null;
   const hasQuad = coach !== "line";
-  const hint = cvUnavailable
-    ? "Line it up and tap to capture"
-    : !hasQuad
-      ? "Line up the document in view"
-      : !autoOn
-        ? "Ready — tap to capture"
-        : coach === "closer"
-          ? "Move closer"
-          : "Hold still…";
+  const hint =
+    cvStatus === "failed"
+      ? "Fit the page inside the corners and tap to capture"
+      : !hasQuad
+        ? "Fit the page inside the corners"
+        : !autoOn
+          ? "Ready — tap to capture"
+          : coach === "closer"
+            ? "Move closer"
+            : "Hold still…";
+  const cvLine =
+    cvStatus === "loading" ? "Edge detection: loading…" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
 
   // iOS: the in-page live-detection camera fundamentally can't win here.
   // getUserMedia on iOS Safari returns a low-resolution, fixed-focus
@@ -805,6 +825,7 @@ export default function DocumentCapture({
         {status === "denied" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-white">
             <p>Camera access was denied. You can allow it from your browser&apos;s site settings, or upload a photo or PDF instead.</p>
+            {iOSMode && <p className="text-neutral-400">{SAFARI_CAMERA_TIP}</p>}
             <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
               Try again
             </button>
@@ -834,11 +855,9 @@ export default function DocumentCapture({
         ) : (
           status === "live" &&
           !barcodeValue && (
-            <div
-              className="absolute inset-x-4 rounded-lg bg-black/50 p-2 text-center text-xs text-white"
-              style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
-            >
-              {pageLabel ? `${pageLabel} · ${hint}` : hint}
+            <div className="absolute inset-x-4 flex flex-col gap-1" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
+              <div className="rounded-lg bg-black/50 p-2 text-center text-xs text-white">{pageLabel ? `${pageLabel} · ${hint}` : hint}</div>
+              {cvLine && <div className="rounded-lg bg-black/50 px-2 py-1 text-center text-[11px] text-neutral-300">{cvLine}</div>}
             </div>
           )
         )}
@@ -877,6 +896,7 @@ export default function DocumentCapture({
                 Use the native camera instead
               </button>
             )}
+            {cameraHint && <p className="text-center text-xs text-neutral-400">{SAFARI_CAMERA_TIP}</p>}
           </div>
         )}
       </div>
@@ -892,7 +912,7 @@ export default function DocumentCapture({
               <PhotoIcon className="h-5 w-5" />
             </button>
             <button
-              onClick={capture}
+              onClick={shutter}
               className={`h-16 w-16 rounded-full border-4 bg-white/20 ${hasQuad ? "border-[#4ADE80]" : "border-white"}`}
               aria-label="Capture"
             />
@@ -917,30 +937,6 @@ export default function DocumentCapture({
           className="hidden"
         />
       </div>
-
-      {/* Rendered over the live view rather than instead of it so the
-          video element (and its srcObject) survives a Retake. */}
-      {status === "review" && reviewImage && (
-        <div className="absolute inset-0 z-20 flex flex-col bg-black">
-          {pageLabel && (
-            <p className="px-4 text-center text-sm font-medium text-white" style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}>
-              {pageLabel}
-            </p>
-          )}
-          <div className="flex flex-1 items-center justify-center overflow-hidden p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={reviewImage} alt="Captured document" className="max-h-full max-w-full rounded-lg object-contain" />
-          </div>
-          <div className="flex gap-3 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
-            <button onClick={retake} className="flex-1 rounded-lg border border-white/30 px-4 py-3 text-sm font-medium text-white">
-              Retake
-            </button>
-            <button onClick={confirmCapture} className="flex-1 rounded-lg bg-white px-4 py-3 text-sm font-medium text-neutral-900">
-              Use this photo
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
