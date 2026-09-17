@@ -193,6 +193,11 @@ export default function DocumentCapture({
   const [status, setStatus] = useState<Status>("starting");
   const [barcodeValue, setBarcodeValue] = useState<string | null>(null);
   const [coach, setCoach] = useState<Coach>("line");
+  // On-screen readout toggled by tapping the hint: the only way to see
+  // what the detection loop is doing on a phone in the field.
+  const [debug, setDebug] = useState(false);
+  const [debugText, setDebugText] = useState("");
+  const diagRef = useRef({ ticks: 0, quads: 0, coverage: 0, sharpness: 0, lastTickMs: 0, videoW: 0, videoH: 0 });
   const [autoOn, setAutoOn] = useState(readAutoCapture);
   const [flash, setFlash] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -484,6 +489,10 @@ export default function DocumentCapture({
     async function processFrame() {
       const video = videoRef.current;
       if (!video || video.readyState < 2 || video.videoWidth === 0) return;
+      const tickStart = performance.now();
+      diagRef.current.ticks++;
+      diagRef.current.videoW = video.videoWidth;
+      diagRef.current.videoH = video.videoHeight;
 
       // Barcode check runs on the live video frame directly -- cheap,
       // native, and independent of OpenCV, so it still runs even if
@@ -567,6 +576,11 @@ export default function DocumentCapture({
           stddev.delete();
         }
 
+        diagRef.current.lastTickMs = Math.round(performance.now() - tickStart);
+        diagRef.current.sharpness = Math.round(sharpness);
+        diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
+        if (best) diagRef.current.quads++;
+
         if (best) {
           const ordered = orderPoints(best);
           quadRef.current = { pts: ordered, w: workW, h: workH };
@@ -599,8 +613,12 @@ export default function DocumentCapture({
           resetStable();
           setCoach("line");
         }
-      } catch {
-        // a single bad frame shouldn't take down the scanner
+      } catch (err) {
+        // A bad frame must not stop the loop, but a repeating error is the
+        // whole story when a phone shows "nothing to scan", so surface it.
+        console.error("detection tick failed:", err);
+        setCvError(String((err as Error)?.message ?? err).slice(0, 140));
+        setCvStatus("failed");
       }
     }
 
@@ -764,6 +782,17 @@ export default function DocumentCapture({
 
   const pageLabel = pageNumber && pageNumber > 1 ? `Page ${pageNumber}` : null;
   const hasQuad = coach !== "line";
+  useEffect(() => {
+    if (!debug) return;
+    const id = setInterval(() => {
+      const d = diagRef.current;
+      setDebugText(
+        `cv:${cvStatus} video:${d.videoW}x${d.videoH} ticks:${d.ticks} quads:${d.quads} cov:${d.coverage}% sharp:${d.sharpness} tick:${d.lastTickMs}ms coach:${coach} auto:${autoRef.current ? "on" : "off"}`
+      );
+    }, 500);
+    return () => clearInterval(id);
+  }, [debug, cvStatus, coach]);
+
   const hint =
     cvStatus === "failed"
       ? "Fit the page inside the corners and tap to capture"
@@ -907,7 +936,10 @@ export default function DocumentCapture({
               <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-white line-clamp-2">{shownFailure}</div>
             ) : (
               status === "live" && (
-                <div className="min-w-0 flex-1 rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2">
+                <div
+                  onClick={() => setDebug((d) => !d)}
+                  className="pointer-events-auto min-w-0 flex-1 rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2"
+                >
                   {pageLabel ? `${pageLabel} · ${hint}` : hint}
                 </div>
               )
@@ -915,6 +947,11 @@ export default function DocumentCapture({
           </div>
           {status === "live" && !shownFailure && cvLine && (
             <div className="rounded-lg bg-black/50 px-2 py-1 text-center text-[11px] text-neutral-300">{cvLine}</div>
+          )}
+          {status === "live" && debug && (
+            <div className="rounded-lg bg-black/70 px-2 py-1 text-center font-mono text-[11px] text-neutral-200">
+              {debugText}
+            </div>
           )}
           {barcodeValue && !shownFailure && (
             <div className="pointer-events-auto rounded-lg bg-white/95 p-3 text-sm text-neutral-900 shadow">
