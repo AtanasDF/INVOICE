@@ -14,6 +14,8 @@ it is his real accounting record. Read this file before doing anything.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
 - `scanner-research.md` — competitor research and the scanner follow-up plan.
 - `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
+- `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
+  is, verified DB state, decisions, references, queued work). Update it when a fact changes.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
   in the Supabase SQL editor; there is no migration runner.
 
