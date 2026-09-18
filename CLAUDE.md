@@ -122,9 +122,7 @@ them against the original before deleting.
 
 ## Open items (2026-09-18)
 
-- iPhone in-app scanner reports "nothing to scan" on the latest build while the same
-  build detects and auto-captures here against a fake camera. Next step: the readout
-  screenshot from the phone (tap the hint pill), then fix from evidence.
+- (Resolved 2026-09-18: the iPhone in-app scanner is confirmed working by Atanas.)
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
   carry everything.
 - Shared rate limiter for `/api/invoice-template`; then the research follow-ups
