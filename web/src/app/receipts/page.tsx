@@ -8,8 +8,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { money } from "@/lib/money";
-import { normaliseSupplierName } from "@/lib/supplierMatch";
-import { bulkMatchSupplier, readLinkSkips, writeLinkSkips } from "@/lib/supplierLinks";
+import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } from "@/lib/supplierLinks";
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 
@@ -665,7 +664,7 @@ export default function ReceiptsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium">
                       {supplierName || r.vendor || r.category || "No supplier"}
-                      {supplierName && r.vendor && normaliseSupplierName(r.vendor) !== normaliseSupplierName(supplierName) && (
+                      {supplierName && r.vendor && !plainlySupplier(r.vendor, supplierName) && (
                         <span className="font-normal text-neutral-500"> · {r.vendor}</span>
                       )}
                     </span>
