@@ -6,7 +6,7 @@ import { addressKey, allow } from "@/lib/rateLimit";
 import { ALLOWED_TYPES, parseDataUrl } from "@/lib/scanExtraction";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const MAX_PAGES = 3;
 const MAX_PAGE_CHARS = 3_500_000;

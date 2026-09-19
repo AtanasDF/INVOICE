@@ -7,7 +7,7 @@ import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument, parseDataUrl } from "@/
 export const runtime = "nodejs";
 // A multi-page invoice through claude-opus-5 can take well past the
 // default 10s; Vercel's limit is per-route.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const MAX_PAGES = 20;
 

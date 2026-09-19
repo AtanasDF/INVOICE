@@ -70,6 +70,7 @@ export async function extractContacts(pages: ScanPage[], engine: ScanEngine): Pr
     prompt: PROMPT,
     pages,
     maxTokens: 8000,
+    effort: "low",
   });
   return out.contacts.filter((c) => c.name.trim());
 }

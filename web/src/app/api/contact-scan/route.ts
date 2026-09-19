@@ -5,7 +5,7 @@ import { extractContacts } from "@/lib/contactExtraction";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, parseDataUrl } from "@/lib/scanExtraction";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 

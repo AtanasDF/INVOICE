@@ -180,6 +180,7 @@ export async function extractInvoiceTemplate(pages: ScanPage[], engine: ScanEngi
     prompt: PROMPT,
     pages,
     maxTokens: 12000,
+    effort: "low",
   });
   const { dateAsPrinted, dueDateAsPrinted, ...rest } = raw;
   return {
