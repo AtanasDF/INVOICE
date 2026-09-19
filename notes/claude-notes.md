@@ -39,7 +39,14 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-020 as of 2026-09-19: `quotes` table (RLS owner policy;
+- Live Supabase is at migration-021 as of 2026-09-19 (backup 010:
+  business_profile_backup_20260919_m021 and invoice_reminders_sent_backup_20260919_m021,
+  verified 0/0 both ways, RLS on): business_profile.reminder_text_late /
+  reminder_text_final / reminder_late_payment_interest (default false), and the
+  invoice_reminders_sent kind check widened to before/due/after/late/final. Verified in a
+  rolled-back block: owner saves the new fields, late+final insert, bogus kind and a
+  duplicate refused.
+- Migration-020 as of 2026-09-19: `quotes` table (RLS owner policy;
   authenticated select/insert/update only, anon nothing, because Supabase's default
   privileges otherwise grant everything; trigger `quotes_same_owner` so a quote can only
   point at its own client/invoice; client FK RESTRICT, invoice FK SET NULL). Verified in a

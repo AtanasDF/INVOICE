@@ -144,9 +144,13 @@ and what is left open. Dates are session dates (Europe/London).
   0, +7, +14 ('late') and +30 ('final notice') days, each editable, `{{pay_by}}` a week
   out; optional switch to state statutory late-payment interest + £40/£70/£100
   compensation in the final notice, business clients only (the Act doesn't cover
-  consumers). Unit 11/11, cron against a stubbed DB 6/6. Backup 010 taken and verified
-  (business_profile + invoice_reminders_sent, 0/0 both ways, RLS); migration-021 waits
-  for the review.
+  consumers). Invoice page shows which reminders went out and the next one, or why none
+  will. Review: no blockers; fixed a missed cron day losing a reminder (3-day catch-up),
+  customers from New invoice marked Company only with a company suffix, interest wording
+  ("may be entitled", from the day after the due date), restore steps without deletes.
+  Tests: unit 19, cron against a stubbed DB 6/6, invoice card 5/5. Backup 010 verified
+  (0/0 both ways), migration-021 applied and verified (columns, one kind check, rolled-back
+  behaviour). Merged (4057539). Atanas has no invoices, so nothing is due a final notice.
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked
