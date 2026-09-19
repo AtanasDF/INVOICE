@@ -9,12 +9,13 @@ import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
 import type { ScanEngine } from "@/lib/extractors";
 import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
+import { findDuplicate, sameNumber, sameSupplier } from "@/lib/duplicates";
 import { takeScanCapture } from "@/lib/scanHandoff";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import CaptureButton from "@/components/CaptureButton";
 import PagesStrip, { Capture } from "@/components/scan/PagesStrip";
 import DateConfirm from "@/components/scan/DateConfirm";
-import LineItemsTable, { EditableLine } from "@/components/scan/LineItemsTable";
+import LineItemsTable, { EditableLine, lineTotalOf } from "@/components/scan/LineItemsTable";
 import DocumentDetailsFields from "@/components/scan/DocumentDetailsFields";
 import PaidChoice from "@/components/scan/PaidChoice";
 import CreditOfSelect from "@/components/scan/CreditOfSelect";
@@ -39,6 +40,9 @@ type Form = {
   dueDateAsPrinted: string | null;
   dueDateAlternative: string | null;
   category: string;
+  // The model's category, restored when a supplier with no history is picked.
+  categoryGuess: string;
+  categoryUsual: boolean;
   totalAmount: string;
   totalConf: Confidence | null;
   vatAmount: string;
@@ -70,6 +74,8 @@ const EMPTY_FORM: Form = {
   dueDateAsPrinted: null,
   dueDateAlternative: null,
   category: "",
+  categoryGuess: "",
+  categoryUsual: false,
   totalAmount: "",
   totalConf: null,
   vatAmount: "",
@@ -145,9 +151,10 @@ function limiter(n: number) {
     });
 }
 
-function sameNumber(a: string | null, b: string | null): boolean {
-  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
-  return !!a && !!b && norm(a) === norm(b);
+function usualCategory(clientId: string, supplierList: Client[], receiptList: Receipt[]): string | null {
+  if (!clientId) return null;
+  const vendor = supplierList.find((c) => c.id === clientId)?.name ?? "";
+  return mostUsedCategory(receiptList.filter((r) => sameSupplier(r, { clientId, vendor })).map((r) => r.category));
 }
 
 export default function ScanPage() {
@@ -173,6 +180,7 @@ export default function ScanPage() {
   const [supplierDuplicate, setSupplierDuplicate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<Receipt | null>(null);
 
   // Extraction generation: a result from an older run is dropped.
   const runRef = useRef(0);
@@ -185,7 +193,20 @@ export default function ScanPage() {
   const patch = (p: Partial<Form>) => {
     touch(...(Object.keys(p) as (keyof Form)[]));
     set(p);
+    setDuplicate(null);
   };
+
+  function supplierCategory(f: Form, clientId: string, supplierList: Client[], receiptList: Receipt[]): Partial<Form> {
+    if (touchedRef.current.has("category")) return {};
+    const usual = usualCategory(clientId, supplierList, receiptList);
+    return usual ? { category: usual, categoryUsual: true } : { category: f.categoryGuess || f.category, categoryUsual: false };
+  }
+
+  function pickSupplier(clientId: string, supplierList: Client[] = suppliers) {
+    touch("clientId");
+    setForm((f) => ({ ...f, clientId, ...supplierCategory(f, clientId, supplierList, receipts) }));
+    setDuplicate(null);
+  }
 
   useEffect(() => {
     // The iOS dashboard handoff is read synchronously so the capture
@@ -242,6 +263,8 @@ export default function ScanPage() {
         unitPrice: String(li.unitPrice),
         lineTotal: li.lineTotal,
       }));
+      const clientId = touched.has("clientId") ? f.clientId : match?.id ?? "";
+      const categoryGuess = result.category ?? f.category;
       return {
         ...f,
         docType: result.documentType,
@@ -259,7 +282,8 @@ export default function ScanPage() {
           dueDateAsPrinted: result.dueDateAsPrinted,
           dueDateAlternative: result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
         }),
-        ...unless("category", { category: result.category ?? f.category }),
+        categoryGuess,
+        ...supplierCategory({ ...f, categoryGuess }, clientId, supplierList, receiptList),
         ...unless("totalAmount", {
           totalAmount: result.totalAmount !== null ? String(result.totalAmount) : "",
           totalConf: result.totalAmountConfidence,
@@ -295,6 +319,8 @@ export default function ScanPage() {
     const run = ++runRef.current;
     setScanning(true);
     setScanError(null);
+    // A warning about the previous reading doesn't describe the next one.
+    setDuplicate(null);
     try {
       const result = await (pending ?? extractPages(toRead, cats, engine));
       if (run !== runRef.current) return;
@@ -408,6 +434,7 @@ export default function ScanPage() {
     touchedRef.current = new Set();
     setForm({ ...EMPTY_FORM, date: todayIso(), category: form.category });
     setSaveError(null);
+    setDuplicate(null);
     setFxError(null);
     setTypePickerOpen(false);
   }
@@ -455,7 +482,7 @@ export default function ScanPage() {
     try {
       const existing = suppliers.find((c) => normaliseSupplierName(c.name) === normaliseSupplierName(name));
       if (existing) {
-        patch({ clientId: existing.id });
+        pickSupplier(existing.id);
         setSupplierDuplicate(true);
         return;
       }
@@ -472,7 +499,7 @@ export default function ScanPage() {
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, created]);
-      patch({ clientId: created.id });
+      pickSupplier(created.id, [...suppliers, created]);
       setSupplierSaved(true);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
@@ -490,7 +517,8 @@ export default function ScanPage() {
         ? "Confirm the due date first."
         : null;
 
-  async function save() {
+  async function save(force = false) {
+    if (blockedReason) return;
     if (mode !== "archival" && !form.totalAmount) {
       setSaveError("Enter a total before saving.");
       return;
@@ -503,11 +531,29 @@ export default function ScanPage() {
       setSaveError("A bill to be paid needs a due date.");
       return;
     }
+    const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
+    const sign = mode === "credit_note" ? -1 : 1;
+    if (!force && mode !== "archival") {
+      const dup = findDuplicate(
+        {
+          clientId: form.clientId,
+          vendor: form.vendor,
+          invoiceNumber: form.invoiceNumber.trim() || null,
+          date: form.date,
+          gross: sign * (netGbp + vatGbp),
+          isCreditNote: mode === "credit_note",
+        },
+        receipts
+      );
+      if (dup) {
+        setDuplicate(dup);
+        return;
+      }
+    }
+    setDuplicate(null);
     setSaving(true);
     setSaveError(null);
     try {
-      const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
-      const sign = mode === "credit_note" ? -1 : 1;
       const details: DocumentDetails = { ...form.details };
       const other = (details.other ?? []).filter((o) => o.label.trim() && o.value.trim());
       if (other.length) details.other = other;
@@ -578,6 +624,14 @@ export default function ScanPage() {
   }
 
   const amounts = gbpAmounts();
+  const money = (n: number) => `${form.currency === "GBP" ? "£" : `${form.currency} `}${n.toFixed(2)}`;
+  const linesSum = form.lines.reduce((sum, l) => sum + lineTotalOf(l), 0);
+  const enteredTotal = parseFloat(form.totalAmount);
+  const linesMismatch =
+    form.lines.length > 0 &&
+    !Number.isNaN(enteredTotal) &&
+    Math.abs(linesSum - enteredTotal) > 0.02 + 1e-9 &&
+    Math.abs(linesSum - (enteredTotal - (parseFloat(form.vatAmount) || 0))) > 0.02 + 1e-9;
   const saveLabel =
     (mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`) +
     (remaining ? " and next" : "");
@@ -750,7 +804,7 @@ export default function ScanPage() {
               <select
                 className="mt-2 w-full rounded-lg border px-3 py-2"
                 value={form.clientId}
-                onChange={(e) => patch({ clientId: e.target.value })}
+                onChange={(e) => pickSupplier(e.target.value)}
               >
                 <option value="">{form.clientId ? "No supplier / general expense" : "Or pick an existing supplier…"}</option>
                 {suppliers.map((c) => (
@@ -809,8 +863,14 @@ export default function ScanPage() {
                 )}
               </div>
               <div>
-                <label className="text-xs text-neutral-500">Category</label>
-                <select className="w-full rounded-lg border px-3 py-2" value={form.category} onChange={(e) => patch({ category: e.target.value })}>
+                <label className="text-xs text-neutral-500">
+                  Category{form.categoryUsual && " (usual for this supplier)"}
+                </label>
+                <select
+                  className="w-full rounded-lg border px-3 py-2"
+                  value={form.category}
+                  onChange={(e) => patch({ category: e.target.value, categoryUsual: false })}
+                >
                   <option value="">Category…</option>
                   {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -904,6 +964,11 @@ export default function ScanPage() {
                 onChange={(i, linePatch) => patch({ lines: form.lines.map((l, idx) => (idx === i ? { ...l, ...linePatch } : l)) })}
               />
             )}
+            {linesMismatch && (
+              <p className="text-xs text-amber-700">
+                The lines add up to {money(linesSum)} but the total says {money(enteredTotal)} — worth a check.
+              </p>
+            )}
 
             {mode === "invoice" && (
               <PaidChoice paid={form.paid} onChange={(paid) => patch({ paid, paidTouched: true })} />
@@ -921,9 +986,34 @@ export default function ScanPage() {
             )}
 
             {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            {duplicate && (
+              <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                Looks like a duplicate of {duplicate.vendor || clients.find((c) => c.id === duplicate.clientId)?.name || "a saved document"}, £
+                {Math.abs(duplicate.amount + duplicate.vatAmount).toFixed(2)} on {duplicate.date}
+                {duplicate.invoiceNumber ? `, number ${duplicate.invoiceNumber}` : ""}.
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => save(true)}
+                    disabled={saving || !!blockedReason}
+                    className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    Save anyway
+                  </button>
+                  <button
+                    type="button"
+                    onClick={discard}
+                    disabled={saving}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700"
+                  >
+                    {remaining ? "Skip this one" : "Discard"}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={save}
+                onClick={() => save()}
                 disabled={saving || !!blockedReason}
                 className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >

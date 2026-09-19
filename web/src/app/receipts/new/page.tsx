@@ -7,10 +7,7 @@ import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/l
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
-
-function daysBetween(a: string, b: string): number {
-  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
-}
+import { findDuplicate } from "@/lib/duplicates";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -137,17 +134,9 @@ export default function NewReceiptPage() {
     setLineItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function findDuplicate(): Receipt | null {
+  function duplicateOf(): Receipt | null {
     const { netGbp, vatGbp } = gbpAmounts();
-    return (
-      receipts.find(
-        (r) =>
-          r.vendor.trim().toLowerCase() === vendor.trim().toLowerCase() &&
-          vendor.trim() !== "" &&
-          Math.abs(r.amount + r.vatAmount - (netGbp + vatGbp)) < 0.01 &&
-          daysBetween(r.date, date) <= 3
-      ) || null
-    );
+    return findDuplicate({ clientId, vendor, invoiceNumber: null, date, gross: netGbp + vatGbp, isCreditNote: false }, receipts);
   }
 
   async function addReceipt(e: React.FormEvent) {
@@ -159,7 +148,7 @@ export default function NewReceiptPage() {
     }
 
     if (!confirmedDuplicate) {
-      const dup = findDuplicate();
+      const dup = duplicateOf();
       if (dup) {
         setPossibleDuplicate(dup);
         return;
