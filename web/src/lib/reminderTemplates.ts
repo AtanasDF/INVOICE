@@ -13,14 +13,14 @@ export const REMINDER_SCHEDULE: { kind: ReminderKind; days: number; label: strin
 // Shown in Settings as placeholder text and used as the actual wording
 // whenever the account hasn't typed an override.
 export const DEFAULT_REMINDER_TEXT: Record<ReminderKind, string> = {
-  before: "Hi {{client_name}}, just a friendly reminder that invoice {{invoice_number}} for £{{amount_due}} is due on {{due_date}}. Thank you.",
-  due: "Hi {{client_name}}, invoice {{invoice_number}} for £{{amount_due}} is due for payment today. If it's already on its way, thank you and please ignore this.",
+  before: "Hi {{client_name}}, just a friendly reminder that invoice {{invoice_number}} is due on {{due_date}}, with £{{amount_due}} to pay. Thank you.",
+  due: "Hi {{client_name}}, invoice {{invoice_number}} is due for payment today, with £{{amount_due}} to pay. If it's already on its way, thank you and please ignore this.",
   after:
-    "Hi {{client_name}}, invoice {{invoice_number}} for £{{amount_due}} was due on {{due_date}} and is now overdue. Please arrange payment within the next 7 days, or reply to this email if there's a problem with it.",
+    "Hi {{client_name}}, invoice {{invoice_number}} was due on {{due_date}} and £{{amount_due}} of it is now overdue. Please arrange payment within the next 7 days, or reply to this email if there's a problem with it.",
   late:
-    "Hi {{client_name}}, invoice {{invoice_number}} for £{{amount_due}} is now two weeks overdue (it was due on {{due_date}}). Please pay it by {{pay_by}}. If there's a reason it can't be paid, reply to this email so we can sort it out.",
+    "Hi {{client_name}}, invoice {{invoice_number}} is now two weeks overdue (it was due on {{due_date}}), with £{{amount_due}} still to pay. Please pay it by {{pay_by}}. If there's a reason it can't be paid, reply to this email so we can sort it out.",
   final:
-    "Hi {{client_name}}, this is a final reminder: invoice {{invoice_number}} for £{{amount_due}} was due on {{due_date}} and is 30 days overdue. Please pay it by {{pay_by}}. If you think something is wrong with the invoice, reply to this email straight away.",
+    "Hi {{client_name}}, this is a final reminder: invoice {{invoice_number}} was due on {{due_date}} and is 30 days overdue, with £{{amount_due}} still to pay. Please pay it by {{pay_by}}. If you think something is wrong with the invoice, reply to this email straight away.",
 };
 
 export const SUBJECT: Record<ReminderKind, string> = {

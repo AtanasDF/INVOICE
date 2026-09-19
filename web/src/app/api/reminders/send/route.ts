@@ -122,7 +122,9 @@ export async function GET(req: Request) {
       const paid = paidByInvoice.get(inv.id) ?? 0;
       // Marked part-paid with nothing recorded: the balance isn't known.
       if (inv.status === "partial" && paid === 0) continue;
-      const amountDue = Math.round((gross - (creditByInvoice.get(inv.id) ?? 0) - paid) * 100) / 100;
+      // Each to the penny first, so a half-penny total can't leave 1p to chase.
+      const pence = (n: number) => Math.round(n * 100);
+      const amountDue = (pence(gross) - pence(creditByInvoice.get(inv.id) ?? 0) - pence(paid)) / 100;
       // Credited or paid in full: nothing to chase.
       if (amountDue <= 0) continue;
       const businessName = profile?.business_name?.trim() ?? "";

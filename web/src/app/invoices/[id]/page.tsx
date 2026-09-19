@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
-import { invoiceBalance, statusFromPayments } from "@/lib/invoiceBalance";
+import { invoiceBalance, syncedStatus } from "@/lib/invoiceBalance";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -146,6 +146,7 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf
   );
 }
 
+const sum = (rows: { amount: number }[]) => rows.reduce((s, r) => s + r.amount, 0);
 const money = (n: number) => (Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 
@@ -244,6 +245,7 @@ export default function InvoiceViewPage() {
         setClients(allClients);
         setCreditNotes(notes);
         setPayments(paid);
+        syncStatus(inv, notes, paid, biz.vatRegistered).catch(() => {});
         setProfile(biz);
         setEditDueDate(inv.dueDate ?? "");
         setEditPaymentTerms(inv.paymentTerms);
@@ -287,37 +289,45 @@ export default function InvoiceViewPage() {
     }
   }
 
-  // Payments set the status: part-paid while money is still owed, paid
-  // once nothing is. Saved one after the other; if the status write fails
-  // the payment stands and the next change puts the status right.
-  async function applyPayments(next: InvoicePayment[]) {
-    if (!invoice) return;
-    setPayments(next);
-    const status = statusFromPayments({
-      total: computeInvoiceTotals(invoice.items, vatRegistered).total,
-      credited: creditNotes.reduce((s, c) => s + c.amount, 0),
-      paid: next.reduce((s, p) => s + p.amount, 0),
-    });
-    if (status !== invoice.status) {
-      await invoicesStore.update(invoice.id, { status });
-      setInvoice({ ...invoice, status });
-    }
+  // The status follows credit notes and payments (paid once nothing is
+  // owed, credited in full included). Run after every change and on load,
+  // so a status write that failed is put right the next time the page opens.
+  async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
+    const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
+    if (!next) return;
+    await invoicesStore.update(inv.id, { status: next });
+    setInvoice((prev) => (prev && prev.id === inv.id ? { ...prev, status: next } : prev));
   }
 
-  async function recordPayment(amount: number, date: string, method: PaymentMethod | null, note: string) {
-    if (!invoice) return;
-    const added = await paymentsStore.add({ invoiceId: invoice.id, date, amount, method, note });
-    await applyPayments([...payments, added]);
+  // Fresh from the database, so another tab's payment is counted before
+  // working out what's owed.
+  async function freshFigures() {
+    const [pays, notes] = await Promise.all([paymentsStore.forInvoice(invoice!.id), creditNotesStore.forInvoice(invoice!.id)]);
+    setPayments(pays);
+    setCreditNotes(notes);
+    const due = invoiceBalance({ total: computeInvoiceTotals(invoice!.items, vatRegistered).total, credited: sum(notes), paid: sum(pays), status: invoice!.status });
+    return { pays, notes, due };
   }
 
   async function addPayment(e: React.FormEvent) {
     e.preventDefault();
+    if (!invoice || paySaving) return;
     const amount = Math.round(parseAmount(payAmount) * 100) / 100;
+    if (!payDate) return setPayError("Enter the date it was received.");
     if (!(amount > 0)) return setPayError("Enter the amount received.");
     setPaySaving(true);
     setPayError(null);
+    setStatusError(null);
+    let saved: { pays: InvoicePayment[]; notes: CreditNote[] } | null = null;
     try {
-      await recordPayment(amount, payDate, payMethod || null, "");
+      const { pays, notes, due } = await freshFigures();
+      if (amount > due + 0.005) {
+        setPayError(due > 0 ? `That's more than the £${money(due)} still owed.` : "Nothing is owed on this invoice.");
+        return;
+      }
+      const added = await paymentsStore.add({ invoiceId: invoice.id, date: payDate, amount, method: payMethod || null, note: "" });
+      saved = { pays: [...pays, added], notes };
+      setPayments(saved.pays);
       setShowPayForm(false);
       setPayAmount("");
     } catch (err) {
@@ -325,21 +335,30 @@ export default function InvoiceViewPage() {
     } finally {
       setPaySaving(false);
     }
+    if (saved) await syncStatus(invoice, saved.notes, saved.pays, vatRegistered).catch((err) => setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it."));
   }
 
+  // Records whatever is still owed as received today. An invoice marked
+  // part-paid by hand before payments existed has an unknown balance, so it's
+  // just marked paid rather than inventing a payment for the full amount.
   async function markPaidInFull() {
-    if (!invoice) return;
-    const due = invoiceBalance({
-      total: computeInvoiceTotals(invoice.items, vatRegistered).total,
-      credited: creditNotes.reduce((s, c) => s + c.amount, 0),
-      paid: payments.reduce((s, p) => s + p.amount, 0),
-      status: invoice.status,
-    });
-    if (due <= 0) return;
+    if (!invoice || statusSaving) return;
     setStatusError(null);
     setStatusSaving(true);
     try {
-      await recordPayment(due, new Date().toISOString().slice(0, 10), null, "Marked as paid");
+      const { pays, notes, due } = await freshFigures();
+      if (invoice.status === "partial" && pays.length === 0) {
+        await invoicesStore.update(invoice.id, { status: "paid" });
+        setInvoice({ ...invoice, status: "paid" });
+        return;
+      }
+      let all = pays;
+      if (due > 0) {
+        const added = await paymentsStore.add({ invoiceId: invoice.id, date: new Date().toISOString().slice(0, 10), amount: due, method: null, note: "Marked as paid" });
+        all = [...pays, added];
+        setPayments(all);
+      }
+      await syncStatus(invoice, notes, all, vatRegistered);
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : "Could not mark it paid.");
     } finally {
@@ -348,10 +367,12 @@ export default function InvoiceViewPage() {
   }
 
   async function removePayment(id: string) {
+    if (!invoice) return;
     setPayError(null);
     try {
       await paymentsStore.remove(id);
-      await applyPayments(payments.filter((p) => p.id !== id));
+      const { pays, notes } = await freshFigures();
+      await syncStatus(invoice, notes, pays, vatRegistered, true);
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Could not remove the payment.");
     }
@@ -508,10 +529,12 @@ export default function InvoiceViewPage() {
         amount: parseFloat(cnAmount) || 0,
         reason: cnReason,
       });
-      setCreditNotes((prev) => [created, ...prev]);
+      const notes = [created, ...creditNotes];
+      setCreditNotes(notes);
       setCnAmount("");
       setCnReason("");
       setShowCnForm(false);
+      await syncStatus(invoice, notes, payments, vatRegistered);
     } catch (err) {
       setCnError(err instanceof Error ? err.message : "Could not save credit note.");
     } finally {
@@ -523,6 +546,7 @@ export default function InvoiceViewPage() {
     setCreditNotes((prev) => prev.filter((c) => c.id !== id));
     try {
       await creditNotesStore.remove(id);
+      if (invoice) await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, vatRegistered);
     } catch {
       // best-effort local update above; a reload will resync if this failed
     }
@@ -681,7 +705,7 @@ export default function InvoiceViewPage() {
   // ── Sent / Partial / Paid: locked, print-ready view ───────────────
   const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
+  const paidSoFar = sum(payments);
   const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
   const paid = invoice.status === "paid";
   const overdue = isOverdue(invoice.status, invoice.dueDate);
@@ -693,12 +717,12 @@ export default function InvoiceViewPage() {
           <span className={`rounded-full px-3 py-1 text-sm font-medium ${invoiceStatusBadgeClass(invoice.status, overdue)}`}>
             {invoiceStatusLabel(invoice.status, overdue)}
           </span>
-          {amountDue > 0 && (
+          {!paid && (
             <button onClick={markPaidInFull} disabled={statusSaving || paySaving} className="rounded-lg border px-3 py-1 text-sm font-medium text-neutral-700 disabled:opacity-50">
               Mark as paid
             </button>
           )}
-          {paid && paidSoFar === 0 && (
+          {invoice.status !== "sent" && payments.length === 0 && (
             <button onClick={() => changeStatus("sent")} disabled={statusSaving} className="rounded-lg border px-3 py-1 text-sm font-medium text-neutral-700 disabled:opacity-50">
               Mark as unpaid
             </button>

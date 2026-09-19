@@ -89,20 +89,33 @@ export default function InvoicesPage() {
   // "Mark as sent" isn't a quick inline action any more -- it now
   // assigns the real invoice number, which needs the confirmation panel
   // on the invoice's own page, not a one-tap flip from the list.
-  // "Mark as paid" records a payment of whatever is still owed, so the
-  // payments add up to the invoice.
+  // "Mark as paid" records a payment of whatever is still owed (read
+  // fresh, so another tab's payment counts), so the payments add up. An
+  // invoice marked part-paid by hand before payments existed is just marked
+  // paid: its balance is unknown.
+  const [marking, setMarking] = useState<string[]>([]);
   async function quickMarkPaid(inv: Invoice) {
-    const due = balance(inv);
+    if (marking.includes(inv.id)) return;
+    setMarking((m) => [...m, inv.id]);
     setError(null);
     try {
+      const [pays, notes] = await Promise.all([paymentsStore.forInvoice(inv.id), creditNotesStore.forInvoice(inv.id)]);
+      const legacy = inv.status === "partial" && pays.length === 0;
+      const due = legacy
+        ? 0
+        : invoiceBalance({ total: total(inv), credited: notes.reduce((s, c) => s + c.amount, 0), paid: pays.reduce((s, p) => s + p.amount, 0), status: inv.status });
+      let all = pays;
       if (due > 0) {
         const added = await paymentsStore.add({ invoiceId: inv.id, date: new Date().toISOString().slice(0, 10), amount: due, method: null, note: "Marked as paid" });
-        setPayments((prev) => [...prev, added]);
+        all = [...pays, added];
       }
+      setPayments((prev) => [...prev.filter((p) => p.invoiceId !== inv.id), ...all]);
       await invoicesStore.update(inv.id, { status: "paid" });
       setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update invoice.");
+    } finally {
+      setMarking((m) => m.filter((id) => id !== inv.id));
     }
   }
 
@@ -248,7 +261,7 @@ export default function InvoicesPage() {
                       </span>
                     )}
                     {(inv.status === "sent" || inv.status === "partial") && (
-                      <button onClick={() => quickMarkPaid(inv)} className="text-xs font-medium text-blue-600 underline">
+                      <button onClick={() => quickMarkPaid(inv)} disabled={marking.includes(inv.id)} className="text-xs font-medium text-blue-600 underline disabled:opacity-50">
                         Mark as paid
                       </button>
                     )}
