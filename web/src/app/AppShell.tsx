@@ -13,7 +13,7 @@ function Header() {
   const { user } = useAuth();
   // A customer opening an invoice link sees the invoice, not the app.
   const path = usePathname();
-  if (path.startsWith("/i/") || path.startsWith("/q/")) return null;
+  if (path.startsWith("/i/") || path.startsWith("/q/") || path.startsWith("/r/")) return null;
   return (
     <header className="border-b bg-white text-neutral-900 print:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
@@ -59,7 +59,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   // password) -- unlike /login, being authenticated here must NOT
   // bounce them away before they finish.
   const isResetPasswordPage = pathname === "/reset-password";
-  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice" || pathname.startsWith("/i/") || pathname.startsWith("/q/");
+  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/");
 
   useEffect(() => {
     if (loading) return;
@@ -80,7 +80,7 @@ function Gate({ children }: { children: React.ReactNode }) {
 function FeedbackButton() {
   const { user } = useAuth();
   const pathname = usePathname();
-  if (!user || pathname === "/feedback" || pathname.startsWith("/i/") || pathname.startsWith("/q/")) return null;
+  if (!user || pathname === "/feedback" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/")) return null;
   return (
     <Link
       href="/feedback"

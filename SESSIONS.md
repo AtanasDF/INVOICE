@@ -412,6 +412,62 @@ payment options come later. No schema change; not merged to main.
 - Session hygiene: this session started in another project's folder (MM INVOICES AUTO);
   nothing there was read or changed. Start the next Invoicer session in `Desktop/INVOICE`.
 
+## 2026-09-19 — Supplier quote requests (agent in a worktree), branch `feature/quote-requests`
+
+**Brief (Atanas, from his phone):** request quotes from companies by email, gather them
+clearly separated, compare suppliers' prices, pick the better value per item and split
+the order. Schema change: migration-028 (new tables only). Not merged; migration NOT
+applied (Atanas applies and verifies it).
+
+- migration-028: `quote_requests` (title, items jsonb with ids, notes, needed_by,
+  site_address, open/closed, choice) and `quote_request_suppliers` (one row per supplier:
+  token, sent_at, waiting/replied/declined, prices keyed by item id, delivery,
+  vat_included, valid_until, note, source online/manual/scan, document_path, previous).
+  Request FK is composite with user_id; supplier FK is RESTRICT + same-owner trigger
+  (clients has no unique (id, user_id), adding one would alter clients). The owner has no
+  update grant on answer columns: typed-in / scanned prices go through
+  `record_quote_request_response` (security definer, checks the answer time the page
+  showed, keeps the replaced answer in `previous`); the supplier's own answer through
+  `submit_quote_request_response` (service role, once, open and not past needed-by).
+- `src/lib/quoteCompare.ts`: per-line cheapest, supplier totals (ex VAT; VAT-inclusive
+  prices converted at 20%), best single vs best split (every supplier set tried, delivery
+  once per supplier used; split only when cheaper), expired offers never auto-picked,
+  order text, scanned-line matching. Unit 20/20.
+- UI (2cb5d5d): Quotes gets tabs My quotes / From suppliers (`QuotesTabs`, the only
+  change to the existing quotes list). `/quotes/requests` lists requests with every
+  supplier's status and ex-VAT total; `/quotes/requests/new`; `/quotes/requests/[id]`
+  with suppliers (email, copy link, enter prices, attach and read their quote, can't
+  quote, ask again, stop link), Compare (items x suppliers, cheapest labelled, tap a price
+  to pick, "Use the best value" follows the recommendation again) and Orders (per
+  supplier text: copy, email, share). Supplier page `/r/<token>` (AppShell treats /r/ as
+  public). Routes: `/api/quote-requests/send` (signed in; reads as the owner, sends only to
+  the saved address the page showed; shares send-invoice's limits) and
+  `/api/quote-requests/respond` (public, 10/hour/IP, service-role function).
+- Tests (dev server 3305, RESEND_API_KEY empty, Supabase mocked by
+  `harness/qr-mock-server.mjs` + `qr-mockdb.mjs`, which mirror migration-028's grants,
+  trigger and functions): `harness/test-quote-requests.mjs` 82/82, covering the request
+  form, three per-supplier sends (recipient, subject, link and reply-to checked, nothing
+  sent), the supplier page (prices, can't supply, VAT in and out, delivery, submit once,
+  closed and expired), typed-in and scanned answers, the comparison in both directions
+  (a split not worth its deliveries, then worth them), per-line overrides, order lists,
+  and 375px on every page. The route's own guards were exercised against the running
+  server (wrong address 409, signed out 401, another account 404, and 503 not-configured
+  as the last stop before Resend, since the key is empty by design).
+- Reviewed the SQL line by line against migrations 020, 025 and 026 (no Postgres here to
+  run it): fixed from that review — prices are normalised in the database by one helper
+  (`quote_request_clean_prices`) for both answer paths, `items` lost a default its own
+  check refused, a copied supplier link is shown as well as copied (the clipboard can be
+  refused), a past needed-by date is refused, and saving typed-in prices reloads before
+  returning to the request.
+- Merged `origin/main` (quotes UX, torch, clear forms) into the branch and re-ran
+  everything against it: quote requests 82/82, quotes-ux 48/48, quotes 34/34, quote links
+  18/18; tsc, eslint and build clean (build needs a temporary `turbopack.root`, not
+  committed; iCloud's " 2" copies in .next were moved to the scratchpad again).
+- For Atanas: migration-028 is NOT applied; nothing about this is live. Open questions in
+  the report (supplier's VAT rate assumed 20% when they quote VAT-inclusive; a request
+  expires for suppliers on its needed-by date; a supplier row can't be removed from a
+  request, only left unsent).
+
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
 **Shipped to main and live**

@@ -9,6 +9,7 @@ import { depositGross } from "@/lib/quoteDeposit";
 import { todayIso } from "@/lib/freeInvoiceDraft";
 import Tip from "@/components/Tip";
 import { errorText } from "@/lib/errorText";
+import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
 
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -43,6 +44,8 @@ export default function QuotesPage() {
           New quote
         </Link>
       </div>
+
+      <QuotesTabs current="mine" />
 
       <Tip id="quotes-intro">
         Tip: send the quote from its page. When the customer says yes, tap <strong>Accepted</strong>, then{" "}
