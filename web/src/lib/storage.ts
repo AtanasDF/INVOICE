@@ -15,6 +15,7 @@ export type Client = {
   paymentTerms: string;
   defaultCurrency: string;
   contactPerson: string;
+  phone: string;
   // Payment reminders (3 days before due / on due date / 7 days after)
   // go out for this client unless turned off here. Only meaningful for
   // kind "client" -- suppliers are never invoiced, so it's ignored for them.
@@ -166,6 +167,7 @@ type ClientRow = {
   payment_terms: string | null;
   default_currency: string | null;
   contact_person: string | null;
+  phone: string | null;
   reminders_enabled: boolean | null;
   archived: boolean | null;
 };
@@ -182,6 +184,7 @@ function clientFromRow(r: ClientRow): Client {
     paymentTerms: r.payment_terms ?? "",
     defaultCurrency: r.default_currency ?? "",
     contactPerson: r.contact_person ?? "",
+    phone: r.phone ?? "",
     remindersEnabled: r.reminders_enabled ?? true,
     archived: r.archived ?? false,
   };
@@ -208,6 +211,7 @@ export const clientsStore = {
         payment_terms: input.paymentTerms || null,
         default_currency: input.defaultCurrency || null,
         contact_person: input.contactPerson || null,
+        phone: input.phone || null,
         reminders_enabled: input.remindersEnabled,
         archived: false,
       })
@@ -232,6 +236,7 @@ export const clientsStore = {
     if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
     if (patch.defaultCurrency !== undefined) dbPatch.default_currency = patch.defaultCurrency || null;
     if (patch.contactPerson !== undefined) dbPatch.contact_person = patch.contactPerson || null;
+    if (patch.phone !== undefined) dbPatch.phone = patch.phone || null;
     if (patch.remindersEnabled !== undefined) dbPatch.reminders_enabled = patch.remindersEnabled;
     const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
     if (error) throw error;

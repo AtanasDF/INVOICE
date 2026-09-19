@@ -497,6 +497,7 @@ export default function ScanPage() {
         paymentTerms: form.details.paymentTerms ?? "",
         defaultCurrency: form.currency === "GBP" ? "" : form.currency,
         contactPerson: form.contactPerson,
+        phone: form.details.supplierPhone ?? "",
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, created]);

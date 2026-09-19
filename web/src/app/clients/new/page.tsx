@@ -35,6 +35,7 @@ export default function NewClientPage() {
   const [paymentTerms, setPaymentTerms] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [phone, setPhone] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -48,19 +49,20 @@ export default function NewClientPage() {
   // value belongs to the scan and follows the next pick (cleared when the
   // new contact lacks it); anything typed by hand is left alone unless the
   // new contact has a value for it.
-  const scannedRef = useRef({ email: "", address: "", vatNumber: "", contactPerson: "" });
+  const scannedRef = useRef({ email: "", address: "", vatNumber: "", contactPerson: "", phone: "" });
 
   function fill(c: ScannedContact, i: number) {
     setPicked(i);
     setIsCompany(c.isCompany);
     setName(c.name);
     const prev = scannedRef.current;
-    const next = { email: c.email ?? "", address: c.address ?? "", vatNumber: c.vatNumber ?? "", contactPerson: c.contactPerson ?? "" };
+    const next = { email: c.email ?? "", address: c.address ?? "", vatNumber: c.vatNumber ?? "", contactPerson: c.contactPerson ?? "", phone: c.phone ?? "" };
     const follow = (current: string, was: string, now: string) => (now || current === was ? now : current);
     setEmail((v) => follow(v, prev.email, next.email));
     setAddress((v) => follow(v, prev.address, next.address));
     setVatNumber((v) => follow(v, prev.vatNumber, next.vatNumber));
     setContactPerson((v) => follow(v, prev.contactPerson, next.contactPerson));
+    setPhone((v) => follow(v, prev.phone, next.phone));
     scannedRef.current = next;
   }
 
@@ -99,6 +101,7 @@ export default function NewClientPage() {
         paymentTerms,
         defaultCurrency,
         contactPerson,
+        phone,
         remindersEnabled,
       });
       router.push(`/clients?tab=${kind}`);
@@ -189,6 +192,7 @@ export default function NewClientPage() {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
             <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
             <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency (e.g. GBP)" value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} />
           </div>

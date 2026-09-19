@@ -37,3 +37,29 @@ export function addressKey(forwardedFor: string | null): string {
   const full = [...heads, ...Array(Math.max(0, 8 - heads.length - tails.length)).fill("0"), ...tails];
   return full.slice(0, 4).map((h) => h.toLowerCase().replace(/^0+(?=.)/, "")).join(":");
 }
+
+// Shared across every serverless instance through a counter in the
+// database (migration-018). Falls back to the per-instance counter if the
+// database can't be reached, so a Supabase hiccup never opens the route
+// wider than it was before.
+export async function allowShared(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return allow(key, limit, windowMs);
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+    // Keys can hold a visitor's IP address; only a keyed hash is stored.
+    const { createHmac } = await import("node:crypto");
+    const stored = createHmac("sha256", serviceKey).update(key).digest("hex").slice(0, 32);
+    // A slow database mustn't hold up the public route; past 1.5s the
+    // per-instance count decides.
+    const rpc = admin.rpc("hit_rate_limit", { p_key: stored, p_limit: limit, p_window_seconds: Math.round(windowMs / 1000) });
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+    const result = await Promise.race([rpc, timeout]);
+    if (!result || result.error || typeof result.data !== "boolean") return allow(key, limit, windowMs);
+    return result.data;
+  } catch {
+    return allow(key, limit, windowMs);
+  }
+}
