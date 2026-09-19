@@ -289,9 +289,8 @@ export default function InvoiceViewPage() {
   }
 
   // The status follows credit notes and payments (paid once nothing is
-  // owed, credited in full included), after each change made here. Not on
-  // opening the page: totals use today's VAT setting, which may not be the
-  // one the invoice was issued under.
+  // owed, credited in full included), after each change made here, never
+  // just from opening the page.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
     const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
     if (!next) return;
