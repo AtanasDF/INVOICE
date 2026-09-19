@@ -31,17 +31,19 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
 
   const [{ data: client }, { data: bp }, { data: notes }, { data: pays }] = await Promise.all([
     inv.client_id
-      ? admin.from("clients").select("id, name, email, address, vat_number, is_company").eq("id", inv.client_id).eq("user_id", link.user_id).maybeSingle()
+      ? admin.from("clients").select("name, email, address, vat_number, is_company").eq("id", inv.client_id).eq("user_id", link.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
     admin.from("business_profile").select("business_name, address, vat_number, vat_registered, bank_details").eq("user_id", link.user_id).maybeSingle(),
-    admin.from("credit_notes").select("id, invoice_id, date, amount, reason").eq("invoice_id", inv.id),
-    admin.from("invoice_payments").select("id, invoice_id, date, amount, method").eq("invoice_id", inv.id).order("date"),
+    admin.from("credit_notes").select("date, amount, reason").eq("invoice_id", inv.id),
+    admin.from("invoice_payments").select("date, amount").eq("invoice_id", inv.id).order("date"),
   ]);
 
   return {
+    // Record ids are left blank: the page is sent to the customer's browser
+    // and needs none of them.
     invoice: {
-      id: inv.id,
-      clientId: inv.client_id ?? "",
+      id: "",
+      clientId: "",
       date: inv.date,
       number: inv.number,
       items: (inv.items ?? []).map((it: Invoice["items"][number]) => ({ ...it, vatRate: it.vatRate ?? "zero" })),
@@ -54,7 +56,7 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
     },
     client: client
       ? {
-          id: client.id,
+          id: "",
           name: client.name,
           email: client.email ?? "",
           address: client.address ?? "",
@@ -77,7 +79,7 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
       vatRegistered: bp?.vat_registered ?? false,
       bankDetails: bp?.bank_details ?? "",
     } as BusinessProfile,
-    creditNotes: (notes ?? []).map((c) => ({ id: c.id, invoiceId: c.invoice_id, date: c.date, amount: Number(c.amount), reason: c.reason ?? "" })),
-    payments: (pays ?? []).map((p) => ({ id: p.id, invoiceId: p.invoice_id, date: p.date, amount: Number(p.amount), method: p.method, note: "" })),
+    creditNotes: (notes ?? []).map((c, i) => ({ id: String(i), invoiceId: "", date: c.date, amount: Number(c.amount), reason: c.reason ?? "" })),
+    payments: (pays ?? []).map((p, i) => ({ id: String(i), invoiceId: "", date: p.date, amount: Number(p.amount), method: null, note: "" })),
   };
 }
