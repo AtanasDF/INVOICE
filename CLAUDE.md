@@ -124,6 +124,18 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
   answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
   works; copying its link marks it sent first. The owner's `#o` copy shows no buttons.
+- Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
+  late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
+  +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
+  (invoice_id, kind) is claimed before sending). The statutory-interest line goes only in
+  the final notice, only with `business_profile.reminder_late_payment_interest`, only to
+  clients with `is_company` true.
+- A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
+  and in the push cron from 3 days before `due_date`.
+- Suppliers are `clients` rows with `kind = 'supplier'`. A scanned document is linked to a
+  supplier only when the form showed it (read-time match) or the names are exactly the same
+  at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
+  marks "No supplier" picked on purpose, so the receipts list doesn't offer to link it.
 - Quote requests (migration-028, branch `feature/quote-requests`): Atanas asking
   suppliers to price a list. `quote_requests` (items with ids, needed_by, site_address,
   open/closed, `choice` = his pick per line) and one `quote_request_suppliers` row per
@@ -137,18 +149,6 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   (VAT-inclusive converted at 20%), split only when cheaper than the best single supplier
   after each supplier's delivery, expired offers never auto-picked. UI under
   `/quotes/requests` (Quotes tabs: My quotes / From suppliers).
-- Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
-  late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
-  +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
-  (invoice_id, kind) is claimed before sending). The statutory-interest line goes only in
-  the final notice, only with `business_profile.reminder_late_payment_interest`, only to
-  clients with `is_company` true.
-- A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
-  and in the push cron from 3 days before `due_date`.
-- Suppliers are `clients` rows with `kind = 'supplier'`. A scanned document is linked to a
-  supplier only when the form showed it (read-time match) or the names are exactly the same
-  at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
-  marks "No supplier" picked on purpose, so the receipts list doesn't offer to link it.
 
 ## Scanning and extraction
 
