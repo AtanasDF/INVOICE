@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-027, backup 013 (027 on branch `feature/tax-cis`; applied only once verified). Supabase grants anon/authenticated everything
+   migration-027, backup 013 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
