@@ -16,7 +16,7 @@ import {
 } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
-import { PhotoIcon } from "@/components/icons";
+import { PhotoIcon, TorchIcon } from "@/components/icons";
 import BatchReview, { Shot, groupShots } from "@/components/scan/BatchReview";
 import Tip from "@/components/Tip";
 
@@ -35,7 +35,7 @@ type Coach = "line" | "zooming" | "centre" | "closer" | "hold";
 type ZoomRange = { min: number; max: number; step: number };
 // zoom / focusMode / pointsOfInterest are in the Media Capture spec and
 // implemented by Chromium, but not yet in lib.dom.d.ts.
-type AdvancedConstraints = MediaTrackConstraintSet & { zoom?: number; focusMode?: string; pointsOfInterest?: Point[] };
+type AdvancedConstraints = MediaTrackConstraintSet & { zoom?: number; focusMode?: string; pointsOfInterest?: Point[]; torch?: boolean };
 
 export type CapturedFile = { dataUrl: string; mediaType: string };
 
@@ -113,6 +113,10 @@ const OUTLINE_EASE = 0.35;
 const SMOOTH_TICKS = 3;
 const LOST_GRACE_TICKS = 2;
 const FLASH_MS = 150;
+// Low light: a view this dark on average (0-255 grey) for this long turns
+// the torch on by itself, on a camera that has one.
+const DARK_LEVEL = 55;
+const DARK_MS = 1200;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
 // Batch mode: after a capture, auto-capture waits until the page has left
@@ -635,6 +639,17 @@ function visibleRegion(video: HTMLVideoElement, zoom: number): Region {
   return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh };
 }
 
+// Average grey of every 16th pixel: enough to tell a dark room.
+function meanLight(px: Uint8ClampedArray): number {
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < px.length; i += 64) {
+    sum += px[i] * 0.3 + px[i + 1] * 0.59 + px[i + 2] * 0.11;
+    n++;
+  }
+  return n ? sum / n : 255;
+}
+
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -731,6 +746,14 @@ export default function DocumentCapture({
   const [failure, setFailure] = useState<string | null>(null);
   const [focusPoint, setFocusPoint] = useState<Point | null>(null);
   const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null);
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [dark, setDark] = useState(false);
+  const torchCapRef = useRef(false);
+  const torchRef = useRef(false);
+  // Once switched by hand, low light leaves the torch alone.
+  const torchByHandRef = useRef(false);
+  const darkSinceRef = useRef<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [cssZoom, setCssZoom] = useState(1);
   const [retryKey, setRetryKey] = useState(0);
@@ -797,6 +820,35 @@ export default function DocumentCapture({
     peakSharpRef.current = 0;
   }
 
+  // Every other constraint change restates the torch, in a set of its own
+  // so a camera refusing one still takes the other.
+  function constrain(track: MediaStreamTrack | undefined, advanced: AdvancedConstraints): Promise<void> {
+    if (!track) return Promise.resolve();
+    const sets: AdvancedConstraints[] = [advanced];
+    if (torchCapRef.current) sets.push({ torch: torchRef.current });
+    return track.applyConstraints({ advanced: sets });
+  }
+
+  function setTorch(on: boolean) {
+    torchRef.current = on;
+    setTorchOn(on);
+    const advanced: AdvancedConstraints = { torch: on };
+    streamRef.current
+      ?.getVideoTracks()[0]
+      ?.applyConstraints({ advanced: [advanced] })
+      .catch(() => {
+        torchCapRef.current = false;
+        torchRef.current = false;
+        setTorchAvailable(false);
+        setTorchOn(false);
+      });
+  }
+
+  function toggleTorch() {
+    torchByHandRef.current = true;
+    setTorch(!torchRef.current);
+  }
+
   function toggleAuto() {
     const next = !autoOn;
     writeAutoCapture(next);
@@ -839,8 +891,7 @@ export default function DocumentCapture({
     const value = Math.min(hw.max, base * AUTO_ZOOM_MAX_LENS, Math.max(hw.min, stepped));
     hwZoomValueRef.current = value;
     setZoom(value);
-    const advanced: AdvancedConstraints = { zoom: value };
-    streamRef.current?.getVideoTracks()[0]?.applyConstraints({ advanced: [advanced] }).catch(() => {});
+    constrain(streamRef.current?.getVideoTracks()[0], { zoom: value }).catch(() => {});
   }
 
   function toggleAutoZoom() {
@@ -1025,7 +1076,12 @@ export default function DocumentCapture({
             photoRef.current = null;
           }
         }
-        const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { zoom?: ZoomRange }) | undefined;
+        const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { zoom?: ZoomRange; torch?: boolean }) | undefined;
+        torchCapRef.current = !!caps?.torch;
+        torchRef.current = false;
+        darkSinceRef.current = null;
+        setTorchAvailable(!!caps?.torch);
+        setTorchOn(false);
         if (caps?.zoom && caps.zoom.max > caps.zoom.min) {
           const current = (track.getSettings() as { zoom?: number }).zoom ?? caps.zoom.min;
           hwZoomRef.current = caps.zoom;
@@ -1150,7 +1206,14 @@ export default function DocumentCapture({
       try {
         const mats = ensureMats(cv, workW, workH);
         const { src, gray } = mats;
-        src.data.set(wctx.getImageData(0, 0, workW, workH).data);
+        const pixels = wctx.getImageData(0, 0, workW, workH).data;
+        src.data.set(pixels);
+        const now0 = performance.now();
+        if (meanLight(pixels) < DARK_LEVEL) darkSinceRef.current ??= now0;
+        else darkSinceRef.current = null;
+        const darkLong = darkSinceRef.current !== null && now0 - darkSinceRef.current >= DARK_MS;
+        if (darkLong && torchCapRef.current && !torchRef.current && !torchByHandRef.current) setTorch(true);
+        setDark(darkLong && !torchCapRef.current);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
         const page = findPage(cv, mats);
         const best = page?.pts ?? null;
@@ -1368,8 +1431,7 @@ export default function DocumentCapture({
     setZoom(value);
     const track = streamRef.current?.getVideoTracks()[0];
     if (!track) return;
-    const advanced: AdvancedConstraints = { zoom: value };
-    track.applyConstraints({ advanced: [advanced] }).catch(() => {});
+    constrain(track, { zoom: value }).catch(() => {});
   }
 
   function focusAt(e: React.MouseEvent<HTMLVideoElement>) {
@@ -1394,7 +1456,7 @@ export default function DocumentCapture({
     };
     (async () => {
       try {
-        await track.applyConstraints({ advanced: [advanced] });
+        await constrain(track, advanced);
       } catch {
         // focus constraints unsupported here -- the ring alone is the feedback
       }
@@ -1725,7 +1787,9 @@ export default function DocumentCapture({
     ? "Hold still — taking the photo…"
     : multi && waitingNext
       ? `Got it — ${shots.length} scanned. Next document…`
-      : cvStatus === "failed" || !hasQuad
+      : dark
+        ? "It's dark here — more light helps"
+        : cvStatus === "failed" || !hasQuad
         ? null
         : coach === "zooming"
           ? "Hold still — zooming in"
@@ -1893,6 +1957,16 @@ export default function DocumentCapture({
                   {pill}
                 </div>
               )
+            )}
+            {status === "live" && torchAvailable && (
+              <button
+                onClick={toggleTorch}
+                aria-label="Torch"
+                aria-pressed={torchOn}
+                className={`pointer-events-auto flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${torchOn ? "bg-white text-neutral-900" : "bg-black/50 text-white"}`}
+              >
+                <TorchIcon className="h-5 w-5" />
+              </button>
             )}
           </div>
           {status === "live" && !shownFailure && cvLine && (
