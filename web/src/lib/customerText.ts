@@ -38,9 +38,10 @@ export function greeting(name: string, isCompany: boolean, contactPerson: string
   return who ? `Hi ${who},` : "Hi,";
 }
 
-export type TextPreset = "onMyWay" | "late" | "arrived" | "done" | "thanks";
+export type TextPreset = "quote" | "onMyWay" | "late" | "arrived" | "done" | "thanks";
 
 export const PRESET_LABELS: Record<TextPreset, string> = {
+  quote: "Here's your quote",
   onMyWay: "On my way",
   late: "Running late",
   arrived: "I've arrived",
@@ -50,9 +51,13 @@ export const PRESET_LABELS: Record<TextPreset, string> = {
 
 export const MINUTES = [10, 20, 30, 45, 60];
 
-export function presetText(preset: TextPreset, { hi, from, minutes, link }: { hi: string; from: string; minutes: number; link?: string }): string {
+export type QuoteSummary = { total: string; validUntil: string };
+
+export function presetText(preset: TextPreset, { hi, from, minutes, link, quote }: { hi: string; from: string; minutes: number; link?: string; quote?: QuoteSummary }): string {
   const me = from ? ` it's ${from}.` : "";
   switch (preset) {
+    case "quote":
+      return `${hi} here's your quote${quote?.total ? ` for ${quote.total}` : ""}${quote?.validUntil ? `, valid until ${quote.validUntil}` : ""}.${link ? ` You can see it and accept it here: ${link}` : ""}${from ? `\n${from}` : ""}`;
     case "onMyWay":
       return `${hi}${me} I'm on my way and should be with you in about ${minutes} minutes.`;
     case "late":

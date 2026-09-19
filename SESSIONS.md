@@ -4,7 +4,38 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
-## 2026-09-19 — Mac desktop app (Opus 5), overnight run
+## 2026-09-19 — Quotes UX (agent in a worktree), branch `feature/quotes-ux`
+
+**Brief (Atanas, from his phone):** quotes should look better, pick the recipient from all
+clients or suppliers, work for a company or a private person, and be sendable every way;
+payment options come later. No schema change; not merged to main.
+
+- Picker: anyone in Clients & suppliers (clients first, grouped, search from 7 people),
+  shown as a card (company + VAT / private, contact details) once picked. `client_id`
+  unchanged. A quote to a supplier can be invoiced; the draft invoice's picker and the
+  Invoices filter now show that supplier.
+- New customer inline on the quote form: Company (Companies House lookup, contact, VAT
+  number) or Private person (name), both with email, mobile and the address finder; saved
+  as a `clients` row (kind client, `is_company` set). Empty account goes straight to it.
+- Quote document: a company shows "Attn: <contact>" and its VAT number; a private person
+  never does (the /q/ page reads contact_person for this). Quote emails greet the person.
+- Quote page: summary card (who, total, deposit, valid until), status card with the next
+  step first, one Send card with Email / Text / WhatsApp / PDF tabs and the view-and-accept
+  link. Text/WhatsApp use the new "Here's your quote" preset; the link goes in only when
+  tapped, and from a draft that asks and marks it sent, as copying the link does.
+  SendInvoicePanel split into `useDocumentPdf`, `EmailForm`, `ShareButtons` (its own output
+  unchanged). List rows show badge, total, deposit and valid until.
+- Tests (mocked DB, dev server on 3300): quotes 34/34, deposits 17/17 (both with the
+  client picked in the new picker; the old "no suppliers offered" check now expects them),
+  new quotes-ux 48/48, Free-page quote import 10/10, texts 12/12 (quote half now drives
+  the Send card's tabs), and against the local Supabase stand-in: quote links 18/18,
+  invoice links 18/18, customer's /q/ page for a company and a private person 3/3.
+  tsc, eslint, build clean (build needs a temporary `turbopack.root` in a worktree with
+  symlinked node_modules; not committed).
+- Left for Atanas: try it on the iPhone (tabs, Messages/WhatsApp hand-off, the inline
+  form with the keyboard up). Payment options have a marked place above the Send card
+  (a comment, no UI). CLAUDE.md's quotes bullet could gain "putting the link in a text
+  marks a draft sent too" when this merges.
 
 **Brief from Atanas (19/09, evening)**
 
