@@ -20,9 +20,37 @@ export type FreeInvoiceDraft = {
   lines: FreeInvoiceLine[];
   notes: string;
   footer: string;
+  signature: string | null;
+  signedBy: string;
 };
 
 const KEY = "free-invoice-draft";
+const SIGNATURE_KEY = "free-invoice-signature";
+
+// Kept apart from the draft so it survives Start over and fills every new
+// invoice on this device.
+export function readSavedSignature(): { image: string | null; name: string } {
+  try {
+    const raw = localStorage.getItem(SIGNATURE_KEY);
+    const v: unknown = raw ? JSON.parse(raw) : null;
+    if (v && typeof v === "object" && typeof (v as { image?: unknown }).image === "string") {
+      const s = v as { image: string; name?: unknown };
+      return { image: s.image, name: typeof s.name === "string" ? s.name : "" };
+    }
+  } catch {
+    // nothing saved, or storage blocked
+  }
+  return { image: null, name: "" };
+}
+
+export function saveSignature(image: string | null, name: string) {
+  try {
+    if (image) localStorage.setItem(SIGNATURE_KEY, JSON.stringify({ image, name }));
+    else localStorage.removeItem(SIGNATURE_KEY);
+  } catch {
+    // private mode / storage blocked -- it just won't be remembered
+  }
+}
 
 export const PAYMENT_TERMS = ["Upon receipt", "7 days", "14 days", "30 days"] as const;
 
@@ -60,6 +88,7 @@ export function emptyLine(): FreeInvoiceLine {
 
 export function defaultDraft(): FreeInvoiceDraft {
   const date = todayIso();
+  const saved = readSavedSignature();
   return {
     version: 1,
     layout: "modern",
@@ -77,6 +106,8 @@ export function defaultDraft(): FreeInvoiceDraft {
     lines: [emptyLine()],
     notes: "",
     footer: "",
+    signature: saved.image,
+    signedBy: saved.name,
   };
 }
 

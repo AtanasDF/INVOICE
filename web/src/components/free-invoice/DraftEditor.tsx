@@ -1,10 +1,11 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { addDays, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, termsDays } from "@/lib/freeInvoiceDraft";
+import { addDays, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, saveSignature, termsDays } from "@/lib/freeInvoiceDraft";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS } from "@/lib/vat";
 import { Field, INPUT, NumberInput, Segmented, Toggle } from "@/components/free-invoice/fields";
 import LayoutPicker from "@/components/free-invoice/LayoutPicker";
+import SignaturePad from "@/components/free-invoice/SignaturePad";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -219,6 +220,29 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         <Field label="Notes" hint="Shown above the payment details.">
           <textarea rows={3} className={INPUT} placeholder="Thank you for your business." value={draft.notes} onChange={(e) => set({ notes: e.target.value })} />
         </Field>
+      </Card>
+
+      <Card title="Signature">
+        <SignaturePad
+          value={draft.signature}
+          onChange={(signature) => {
+            saveSignature(signature, draft.signedBy);
+            set({ signature });
+          }}
+        />
+        {draft.signature && (
+          <Field label="Name under the signature" hint="Remembered on this device with your signature.">
+            <input
+              className={INPUT}
+              placeholder={draft.issuer.name ?? "Your name"}
+              value={draft.signedBy}
+              onChange={(e) => {
+                saveSignature(draft.signature, e.target.value);
+                set({ signedBy: e.target.value });
+              }}
+            />
+          </Field>
+        )}
       </Card>
 
       <Card title="Footer">

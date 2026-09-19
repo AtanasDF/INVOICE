@@ -166,6 +166,19 @@ function Notes({ d, dense }: { d: FreeInvoiceDraft; dense?: boolean }) {
   );
 }
 
+function Signature({ d, dense }: { d: FreeInvoiceDraft; dense?: boolean }) {
+  if (!d.signature) return null;
+  return (
+    <section className={dense ? "mt-3" : "mt-10"}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={d.signature} alt="Signature" className={`${dense ? "h-10" : "h-14"} w-auto max-w-[16rem] object-contain`} />
+      <p className={`mt-1 w-56 border-t border-neutral-400 pt-1 text-neutral-500 ${dense ? "text-[10px]" : "text-xs"}`}>
+        {d.signedBy.trim() || "Signed"}
+      </p>
+    </section>
+  );
+}
+
 // Classic and modern print the VAT number in the header, so only compact
 // carries it here.
 function Footer({ d, dense, withVat }: { d: FreeInvoiceDraft; dense?: boolean; withVat?: boolean }) {
@@ -224,6 +237,7 @@ function Classic({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
           </dl>
         </section>
       )}
+      <Signature d={d} />
       <Footer d={d} />
     </>
   );
@@ -273,6 +287,7 @@ function Modern({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
           </dl>
         </section>
       )}
+      <Signature d={d} />
       <Footer d={d} />
     </>
   );
@@ -312,6 +327,7 @@ function Compact({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
           </p>
         </section>
       )}
+      <Signature d={d} dense />
       <Footer d={d} dense withVat />
     </div>
   );
