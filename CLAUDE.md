@@ -122,11 +122,12 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CRON_SECRET`,
 `INBOX_WEBHOOK_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
-Not yet set anywhere: `RESEND_API_KEY` (payment reminders and Send by email stay inert
-without it). Sending domain is `invoiceover.com` (registered at Cloudflare 2026-09-15, DNS
-on Cloudflare, no records as of 2026-09-19): Send by email defaults to
+`RESEND_API_KEY` set in Production on 2026-09-19 (Resend account atanaschoo, key "Invoicer
+app - Vercel", sending access). That also switched on the daily payment-reminder cron.
+Sending domain `invoiceover.com` is verified in Resend (Ireland, eu-west-1; DNS records
+added to Cloudflare by Resend's auto-configure). Send by email defaults to
 `invoices@invoiceover.com`, reminders use `reminders@invoiceover.com`; `EMAIL_FROM`
-overrides the former. Nothing delivers until the domain is verified in Resend. `/api/send-invoice` is signed-in only by design (an open route was
+overrides the former. `/api/send-invoice` is signed-in only by design (an open route was
 an invoice-fraud relay); the PDF is made in the browser (`src/lib/invoicePdf.ts`).
 Gemini billing is a Google AI Studio prepaid balance on billing account
 `015649-CDA16A-FCF373`.
@@ -144,8 +145,9 @@ them against the original before deleting.
 - (Resolved 2026-09-18: the iPhone in-app scanner is confirmed working by Atanas.)
 - (Resolved 2026-09-19: Claude scanning had been failing on every read; fixed and verified
   live on synthetic handwritten and spreadsheet invoices.)
-- Send by email: needs Atanas's Resend account, a verified sending domain, `RESEND_API_KEY`
-  and `EMAIL_FROM` in Vercel, then one real send to check delivery and the attachment.
+- Send by email: live since 2026-09-19 (domain verified, key set); one real test send to
+  Atanas's own address still to do. An unused first key "Invoicer app (Vercel)" exists in
+  Resend (its value was never copied); Atanas may delete it.
 - Test the batch scanner, green lock-on, signature pad and scan-to-fill on the iPhone
   (tested here only against a synthetic camera stream).
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can

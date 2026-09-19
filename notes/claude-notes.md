@@ -66,7 +66,11 @@ changes.
   /api/scan, 10s on the template route at low effort) and a rough spreadsheet invoice
   correctly; Gemini Flash-Lite read the handwritten one correctly too.
 - The app's domain is invoiceover.com (Atanas, 2026-09-19): registered at Cloudflare
-  2026-09-15, Cloudflare DNS, no A/MX/TXT records yet; not connected to the Vercel project.
+  2026-09-15, Cloudflare DNS; Resend sending records added and verified 2026-09-19. The
+  domain is not connected to the Vercel project (the site is still on vercel.app).
+- Resend: account atanaschoo (Google/GitHub sign-in), key "Invoicer app - Vercel" with
+  sending access is `RESEND_API_KEY` in Vercel Production. Setting it turned on the payment
+  reminder cron; Atanas's account had no invoices at the time, so nothing went out.
 - Signature: localStorage `free-invoice-signature` ({image PNG data URL, name}), separate
   from the draft so Start over and new invoices reuse it.
 
