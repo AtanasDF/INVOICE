@@ -798,7 +798,7 @@ export default function InvoiceViewPage() {
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
           <h2 className="mb-3 font-semibold">Text {client.name}</h2>
           <TextCustomer
-            key={`${invoice.status}:${link?.token ?? ""}`}
+            key={invoice.status}
             client={client}
             from={profile?.businessName ?? ""}
             presets={paid && !creditedInFull ? ["thanks", "done"] : ["done", "onMyWay", "late", "arrived"]}
