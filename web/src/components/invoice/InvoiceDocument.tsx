@@ -12,7 +12,7 @@ export function formatMoney(symbol: string, n: number): string {
   return `${symbol}${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function longDate(iso: string): string {
+export function longDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) return iso;
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -30,7 +30,7 @@ function metaRows(d: FreeInvoiceDraft): Row[] {
   return rows.filter(([, v]) => v);
 }
 
-function bankRows(d: FreeInvoiceDraft): Row[] {
+export function bankRows(d: FreeInvoiceDraft): Row[] {
   const b = d.bank;
   if (!(b.accountName || b.sortCode || b.accountNumber || b.iban)) return [];
   const rows: [string, string | null][] = [

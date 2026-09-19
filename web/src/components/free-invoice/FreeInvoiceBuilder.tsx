@@ -8,6 +8,7 @@ import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import InvoiceDocument from "@/components/invoice/InvoiceDocument";
 import DraftEditor from "@/components/free-invoice/DraftEditor";
 import ScaledPreview from "@/components/free-invoice/ScaledPreview";
+import SendByEmail from "@/components/free-invoice/SendByEmail";
 import { Segmented } from "@/components/free-invoice/fields";
 import { DocumentIcon } from "@/components/icons";
 import { useAuth } from "@/lib/authContext";
@@ -59,6 +60,7 @@ export default function FreeInvoiceBuilder() {
   const [note, setNote] = useState<"resumed" | "filled" | "next" | null>(draft ? "resumed" : null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [printing, setPrinting] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const editing = stage === "editor" && !!draft;
   const pageChars = pages.reduce((s, p) => s + p.dataUrl.length, 0);
   // Read generation: adding a page mid-read starts a new one and the
@@ -159,6 +161,12 @@ export default function FreeInvoiceBuilder() {
     setStage("start");
   }
 
+  function goToSend() {
+    setTab("preview");
+    setMoreOpen(false);
+    requestAnimationFrame(() => document.getElementById("send-by-email")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
   function startNext() {
     if (!draft) return;
     setDraft(nextDraft(draft));
@@ -184,7 +192,10 @@ export default function FreeInvoiceBuilder() {
 
   const actions = (
     <>
-      <button type="button" onClick={print} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+      <button type="button" onClick={goToSend} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+        Send by email
+      </button>
+      <button type="button" onClick={print} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         Print or save as PDF
       </button>
       <button type="button" onClick={startNext} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
@@ -195,6 +206,30 @@ export default function FreeInvoiceBuilder() {
       </button>
       <button type="button" onClick={startOver} className="px-2 py-2 text-sm font-medium text-neutral-600">
         Start over
+      </button>
+    </>
+  );
+
+  // The phone bar keeps the two main actions in reach and folds the rest.
+  const menuItem = "block w-full px-4 py-3 text-left text-sm font-medium text-neutral-800";
+  const mobileActions = (
+    <>
+      {moreOpen && (
+        <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border bg-white shadow-lg">
+          <button type="button" onClick={() => { setMoreOpen(false); print(); }} className={menuItem}>Print or save as PDF</button>
+          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>Next invoice</button>
+          <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Save to your account</button>
+          <button type="button" onClick={() => { setMoreOpen(false); startOver(); }} className={`${menuItem} border-t text-neutral-600`}>Start over</button>
+        </div>
+      )}
+      <button type="button" onClick={goToSend} className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white">
+        Send by email
+      </button>
+      <button type="button" onClick={() => setTab(tab === "edit" ? "preview" : "edit")} className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-neutral-700">
+        {tab === "edit" ? "Preview" : "Edit"}
+      </button>
+      <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} className="rounded-lg border px-3 py-2.5 text-sm font-medium text-neutral-700">
+        More
       </button>
     </>
   );
@@ -321,18 +356,19 @@ export default function FreeInvoiceBuilder() {
               <DraftEditor draft={draft} onChange={setDraft} />
             </div>
             <div className={tab === "preview" ? "min-w-0" : "hidden min-w-0 sm:block"}>
-              <div className="sm:sticky sm:top-4 sm:max-h-[calc(100vh-2rem)] sm:overflow-y-auto">
+              <div className="space-y-4 sm:sticky sm:top-4 sm:max-h-[calc(100vh-2rem)] sm:overflow-y-auto">
                 <ScaledPreview>
                   <InvoiceDocument draft={draft} />
                 </ScaledPreview>
+                <SendByEmail key={`${draft.number}|${draft.customer.email ?? ""}`} draft={draft} />
               </div>
             </div>
           </div>
           <div
-            className="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center gap-2 border-t bg-white p-3 sm:hidden"
+            className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t bg-white p-3 sm:hidden"
             style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
           >
-            {actions}
+            {mobileActions}
           </div>
           {printing &&
             createPortal(
