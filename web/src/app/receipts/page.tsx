@@ -8,6 +8,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { money } from "@/lib/money";
+import { matchSupplier } from "@/lib/supplierMatch";
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 
@@ -70,13 +71,50 @@ function draftGbpAmounts(draft: ReceiptDraft, documentType: DocumentType) {
   };
 }
 
-const TYPE_BADGE: Partial<Record<DocumentType, { label: string; className: string }>> = {
-  invoice: { label: "Invoice", className: "bg-blue-100 text-blue-800" },
+// Every card says what the document is: the page holds receipts and
+// supplier invoices side by side, and a bill read as a receipt (or the
+// other way round) has to be obvious at a glance.
+const TYPE_LABEL: Record<DocumentType, { label: string; className: string }> = {
+  receipt: { label: "Receipt", className: "bg-neutral-100 text-neutral-700" },
+  invoice: { label: "Supplier invoice", className: "bg-blue-100 text-blue-800" },
   credit_note: { label: "Credit note", className: "bg-red-100 text-red-800" },
+  other: { label: "Other document", className: "bg-neutral-100 text-neutral-700" },
 };
+
+type BillFilter = "" | "to_pay" | "overdue" | "due_week" | "paid";
 
 function daysBetween(from: string, to: string): number {
   return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+}
+
+function shortDate(iso: string, today: string): string {
+  const withYear = iso.slice(0, 4) !== today.slice(0, 4);
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" });
+}
+
+function longDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+function billStatus(r: Receipt, today: string): { text: string; className: string } | null {
+  if (r.documentType !== "invoice") return null;
+  if (r.paid) return { text: "Paid", className: "bg-green-100 text-green-800" };
+  if (!r.dueDate) return { text: "To pay", className: "bg-neutral-100 text-neutral-700" };
+  const days = daysBetween(today, r.dueDate);
+  if (days < 0) return { text: `Overdue · was due ${shortDate(r.dueDate, today)}`, className: "bg-red-100 text-red-800" };
+  const when = days === 0 ? "today" : days === 1 ? "tomorrow" : shortDate(r.dueDate, today);
+  return { text: `To pay · due ${when}`, className: days <= 3 ? "bg-amber-100 text-amber-800" : "bg-neutral-100 text-neutral-700" };
+}
+
+function matchesBillFilter(r: Receipt, filter: BillFilter, today: string): boolean {
+  if (!filter) return true;
+  if (r.documentType !== "invoice") return false;
+  if (filter === "paid") return r.paid;
+  if (r.paid) return false;
+  if (filter === "to_pay") return true;
+  if (!r.dueDate) return false;
+  const days = daysBetween(today, r.dueDate);
+  return filter === "overdue" ? days < 0 : days >= 0 && days <= 7;
 }
 
 export default function ReceiptsPage() {
@@ -93,6 +131,13 @@ export default function ReceiptsPage() {
   const [filterClientId, setFilterClientId] = useState("");
   const [filterStarredOnly, setFilterStarredOnly] = useState(false);
   const [filterTag, setFilterTag] = useState("");
+  const [filterType, setFilterType] = useState<"" | DocumentType>("");
+  const [filterBill, setFilterBill] = useState<BillFilter>("");
+
+  const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
+  const [linking, setLinking] = useState(false);
+  const [linkDismissed, setLinkDismissed] = useState(false);
+  const [showLinkable, setShowLinkable] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ReceiptDraft | null>(null);
@@ -121,6 +166,17 @@ export default function ReceiptsPage() {
     () => suppliers.filter((c) => !c.archived || c.id === editDraft?.clientId),
     [suppliers, editDraft?.clientId]
   );
+
+  // Documents read before their supplier was added: matched by the name
+  // on the document, and only to suppliers still in use.
+  const linkable = useMemo(() => {
+    const active = suppliers.filter((c) => !c.archived);
+    return receipts.flatMap((r) => {
+      if (r.clientId || !r.vendor) return [];
+      const supplier = matchSupplier(r.vendor, active);
+      return supplier ? [{ receipt: r, supplier }] : [];
+    });
+  }, [receipts, suppliers]);
 
   const today = new Date().toISOString().slice(0, 10);
   const receiptById = useMemo(() => new Map(receipts.map((r) => [r.id, r])), [receipts]);
@@ -167,6 +223,26 @@ export default function ReceiptsPage() {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, paid: false } : x)));
       setError(err instanceof Error ? err.message : "Could not mark this invoice as paid.");
     }
+  }
+
+  async function linkSuppliers() {
+    setError(null);
+    setLinking(true);
+    const results = await Promise.allSettled(
+      linkable.map(({ receipt, supplier }) => receiptsStore.update(receipt.id, { clientId: supplier.id }).then(() => [receipt.id, supplier.id] as const))
+    );
+    const linked = new Map(results.flatMap((x) => (x.status === "fulfilled" ? [x.value] : [])));
+    setReceipts((prev) => prev.map((r) => ({ ...r, clientId: linked.get(r.id) ?? r.clientId })));
+    if (linked.size < linkable.length) setError(`Couldn't link ${linkable.length - linked.size} of them. Try again.`);
+    setLinking(false);
+  }
+
+  function toggleDetails(id: string) {
+    setOpenDetails((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   function startEditReceipt(r: Receipt) {
@@ -245,16 +321,20 @@ export default function ReceiptsPage() {
   }, [receipts]);
 
   const filteredReceipts = useMemo(() => {
-    return receipts.filter((r) => {
+    const list = receipts.filter((r) => {
       if (filterFrom && r.date < filterFrom) return false;
       if (filterTo && r.date > filterTo) return false;
       if (filterCategory && r.category !== filterCategory) return false;
       if (filterClientId && r.clientId !== filterClientId) return false;
       if (filterStarredOnly && !r.starred) return false;
       if (filterTag && !r.tags.includes(filterTag)) return false;
-      return true;
+      if (filterType && r.documentType !== filterType) return false;
+      return matchesBillFilter(r, filterBill, today);
     });
-  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId, filterStarredOnly, filterTag]);
+    // Bills still to pay read best soonest-due first; no due date goes last.
+    if (filterBill && filterBill !== "paid") list.sort((a, b) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999"));
+    return list;
+  }, [receipts, filterFrom, filterTo, filterCategory, filterClientId, filterStarredOnly, filterTag, filterType, filterBill, today]);
 
   function exportReceipts() {
     downloadCsv(
@@ -284,14 +364,6 @@ export default function ReceiptsPage() {
     return `Credit note for a receipt from ${linked.vendor || clientName(linked.clientId)} on ${linked.date}`;
   }
 
-  function dueStatus(r: Receipt): { text: string; className: string } {
-    if (!r.dueDate) return { text: "Unpaid", className: "text-neutral-500" };
-    const days = daysBetween(today, r.dueDate);
-    if (days < 0) return { text: `Overdue · was due ${r.dueDate}`, className: "text-red-700" };
-    if (days <= 3) return { text: `Due ${r.dueDate}`, className: "text-amber-700" };
-    return { text: `Due ${r.dueDate}`, className: "text-neutral-500" };
-  }
-
   function detailLines(r: Receipt): { label: string; value: string }[] {
     const lines = (Object.keys(DOCUMENT_DETAIL_LABELS) as (keyof typeof DOCUMENT_DETAIL_LABELS)[])
       .filter((k) => r.details[k])
@@ -299,15 +371,15 @@ export default function ReceiptsPage() {
     return [...lines, ...(r.details.other ?? [])];
   }
 
-  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly || filterTag;
+  const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly || filterTag || filterType || filterBill;
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Receipts</h1>
+          <h1 className="text-2xl font-bold">Receipts &amp; bills</h1>
           <p className="mt-1 text-neutral-600">
-            Receipts, supplier invoices and credit notes you&apos;ve captured.
+            Receipts, supplier invoices (bills) and credit notes you&apos;ve captured.
           </p>
         </div>
         <div className="flex items-start gap-2">
@@ -327,9 +399,51 @@ export default function ReceiptsPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {linkable.length > 0 && !linkDismissed && (
+        <div className="rounded-xl border bg-neutral-50 p-4 text-sm text-neutral-800">
+          <div className="flex items-start justify-between gap-3">
+            <span>
+              {linkable.length} {linkable.length === 1 ? "document matches" : "documents match"} your suppliers —{" "}
+              <button onClick={linkSuppliers} disabled={linking} className="font-medium underline disabled:opacity-50">
+                {linking ? "linking…" : linkable.length === 1 ? "link it" : "link them"}
+              </button>
+              {" · "}
+              <button onClick={() => setShowLinkable((v) => !v)} aria-expanded={showLinkable} className="text-neutral-600 underline">
+                {showLinkable ? "hide" : "which?"}
+              </button>
+            </span>
+            <button onClick={() => setLinkDismissed(true)} className="text-neutral-500" aria-label="Dismiss">✕</button>
+          </div>
+          {showLinkable && (
+            <ul className="mt-2 space-y-0.5 text-xs text-neutral-600">
+              {linkable.map(({ receipt, supplier }) => (
+                <li key={receipt.id}>
+                  {receipt.vendor}
+                  {receipt.invoiceNumber && ` · ${receipt.invoiceNumber}`} → {supplier.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <select aria-label="Payment status" className="rounded-lg border px-3 py-2 text-sm" value={filterBill} onChange={(e) => setFilterBill(e.target.value as BillFilter)}>
+            <option value="">All statuses</option>
+            <option value="to_pay">To pay</option>
+            <option value="overdue">Overdue</option>
+            <option value="due_week">Due in the next 7 days</option>
+            <option value="paid">Paid</option>
+          </select>
+          <select aria-label="Document type" className="rounded-lg border px-3 py-2 text-sm" value={filterType} onChange={(e) => setFilterType(e.target.value as "" | DocumentType)}>
+            <option value="">All types</option>
+            <option value="receipt">Receipts</option>
+            <option value="invoice">Supplier invoices</option>
+            <option value="credit_note">Credit notes</option>
+            {receipts.some((r) => r.documentType === "other") && <option value="other">Other documents</option>}
+          </select>
           <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="From" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
           <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="To" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
           <select className="rounded-lg border px-3 py-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
@@ -355,7 +469,7 @@ export default function ReceiptsPage() {
         </div>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); setFilterTag(""); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); setFilterTag(""); setFilterType(""); setFilterBill(""); }}
             className="mt-2 text-sm text-blue-600"
           >
             Clear filters
@@ -366,26 +480,29 @@ export default function ReceiptsPage() {
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filteredReceipts.length === 0 && (
             <p className="text-sm text-neutral-500">
               {hasActiveFilters ? (
-                "No receipts match these filters."
+                "Nothing matches these filters."
               ) : (
-                "No receipts yet. Scan a few at once, or add one manually."
+                "No receipts or bills yet. Scan a few at once, or add one manually."
               )}
             </p>
           )}
           {filteredReceipts.map((r) => {
             const isInvoice = r.documentType === "invoice";
             const isCredit = r.documentType === "credit_note";
-            const badge = TYPE_BADGE[r.documentType];
+            const type = TYPE_LABEL[r.documentType];
+            const status = billStatus(r, today);
             const credits = isInvoice ? creditsByInvoice.get(r.id) : undefined;
             const extraPages = pageCounts.get(r.id) ?? 0;
             const details = detailLines(r);
+            const supplierName = clients.find((c) => c.id === r.clientId)?.name;
+            const detailsOpen = openDetails.has(r.id);
             return editingId === r.id && editDraft ? (
               <div key={r.id} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-                {badge && <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>}
+                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${type.className}`}>{type.label}</span>
                 <select
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   value={editDraft.clientId}
@@ -489,39 +606,68 @@ export default function ReceiptsPage() {
                 </div>
               </div>
             ) : (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-              <div className="flex items-center gap-3">
+            <div key={r.id} className="rounded-xl border bg-white p-3 text-neutral-900 shadow-sm">
+              <div className="flex gap-3">
                 {r.imageDataUrl && (
                   isPdfDataUrl(r.imageDataUrl) ? (
                     <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-neutral-500"><DocumentIcon className="h-6 w-6" /></div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.imageDataUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                    <img src={r.imageDataUrl} alt="" className="h-12 w-12 flex-shrink-0 rounded object-cover" />
                   )
                 )}
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 font-medium">
-                    <span>
-                      {r.vendor || r.category}
-                      {r.invoiceNumber && <span className="text-neutral-500"> · {r.invoiceNumber}</span>}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium">{supplierName || r.vendor || r.category || "No supplier"}</span>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      {credits && (
+                        <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">CN</span>
+                      )}
+                      <span className="font-semibold">{money(r.amount + r.vatAmount + (credits?.gross ?? 0))}</span>
                     </span>
-                    {badge && <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>}
-                    {credits && (
-                      <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">CN</span>
-                    )}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${type.className}`}>{type.label}</span>
+                    {status && <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>{status.text}</span>}
                     {r.needsReview && (
                       <a href="/receipts/review" className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 no-underline">
                         Needs review
                       </a>
                     )}
                   </div>
-                  <div className="text-sm text-neutral-600">
+                  <div className="mt-1 truncate text-xs text-neutral-500">
+                    {[r.invoiceNumber, longDate(r.date), r.category].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="font-medium text-neutral-600">
+                  Details {detailsOpen ? "▴" : "▾"}
+                </button>
+                <div className="flex items-center gap-3">
+                  {isInvoice && !r.paid && !r.needsReview && (
+                    <button onClick={() => markPaid(r)} className="font-medium text-blue-600">Mark as paid</button>
+                  )}
+                  <button
+                    onClick={() => toggleStar(r)}
+                    aria-label={r.starred ? "Unstar" : "Star"}
+                    className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-300"}`}
+                  >
+                    ★
+                  </button>
+                  <button onClick={() => startEditReceipt(r)} className="font-medium text-blue-600">Edit</button>
+                  <button onClick={() => removeReceipt(r.id)} className="text-red-600">Remove</button>
+                </div>
+              </div>
+              {detailsOpen && (
+                <div className="mt-2 space-y-1 border-t pt-2 text-sm text-neutral-600">
+                  <div>
                     {credits ? (
                       <>
                         {money(r.amount + credits.net)} excl. VAT · {money(r.amount + r.vatAmount + credits.gross)} incl. VAT · {money(-credits.gross)} credited
                       </>
                     ) : (
-                      <>{money(r.amount)} excl. VAT · {money(r.amount + r.vatAmount)} incl. VAT</>
+                      <>{money(r.amount)} excl. VAT · {money(r.vatAmount)} VAT</>
                     )}
                     {r.originalCurrency && r.originalAmount != null && (
                       <span className="text-neutral-400">
@@ -529,45 +675,31 @@ export default function ReceiptsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-neutral-500">
-                    {r.date} · {r.category} · {clientName(r.clientId)}
-                    {extraPages > 0 && ` · ${extraPages + 1} pages`}
-                  </div>
-                  {isInvoice && (
-                    <div className="mt-1 flex items-center gap-3 text-sm">
-                      {r.paid ? (
-                        <span className="text-neutral-500">Paid</span>
-                      ) : (
-                        <>
-                          <span className={dueStatus(r).className}>{dueStatus(r).text}</span>
-                          {!r.needsReview && <button onClick={() => markPaid(r)} className="font-medium text-blue-600">Mark as paid</button>}
-                        </>
-                      )}
-                    </div>
+                  {!supplierName ? (
+                    <div className="text-neutral-500">No supplier linked</div>
+                  ) : (
+                    r.vendor && r.vendor !== supplierName && <div><span className="text-neutral-500">On the document:</span> {r.vendor}</div>
                   )}
-                  {isCredit && creditNoteFor(r) && <div className="mt-1 text-sm text-neutral-500">{creditNoteFor(r)}</div>}
-                  {r.notes && <div className="mt-1 text-sm text-neutral-500 italic">{r.notes}</div>}
-                  {details.length > 0 && (
-                    <div className="mt-1 space-y-0.5 text-sm text-neutral-600">
-                      {details.map((d, i) => (
-                        <div key={i}>{d.label}: {d.value}</div>
-                      ))}
-                    </div>
-                  )}
+                  {isCredit && creditNoteFor(r) && <div>{creditNoteFor(r)}</div>}
+                  {extraPages > 0 && <div>{extraPages + 1} pages</div>}
+                  {r.notes && <div className="italic">{r.notes}</div>}
+                  {details.map((d, i) => (
+                    <div key={i} className="break-words"><span className="text-neutral-500">{d.label}:</span> {d.value}</div>
+                  ))}
                   {r.warrantyMonths != null && (
-                    <div className="mt-1 text-xs text-neutral-400">
+                    <div className="text-xs text-neutral-400">
                       Warranty: {r.warrantyMonths} months (until {addMonths(r.date, r.warrantyMonths)})
                     </div>
                   )}
                   {r.tags.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {r.tags.map((t) => (
                         <span key={t} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{t}</span>
                       ))}
                     </div>
                   )}
                   {r.lineItems.length > 0 && (
-                    <ul className="mt-1 space-y-0.5 text-xs text-neutral-500">
+                    <ul className="space-y-0.5 text-xs text-neutral-500">
                       {r.lineItems.map((li, i) => (
                         <li key={i}>
                           {li.description} — {money((isCredit ? -1 : 1) * li.quantity * li.unitPrice)}
@@ -577,18 +709,7 @@ export default function ReceiptsPage() {
                     </ul>
                   )}
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => toggleStar(r)}
-                  aria-label={r.starred ? "Unstar" : "Star"}
-                  className={`text-lg ${r.starred ? "text-amber-500" : "text-neutral-300"}`}
-                >
-                  ★
-                </button>
-                <button onClick={() => startEditReceipt(r)} className="text-sm font-medium text-blue-600">Edit</button>
-                <button onClick={() => removeReceipt(r.id)} className="text-sm text-red-600">Remove</button>
-              </div>
+              )}
             </div>
             );
           })}
