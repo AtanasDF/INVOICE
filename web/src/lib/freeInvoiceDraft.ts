@@ -165,7 +165,7 @@ export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
   // still be a valid line, or the saved draft is rejected on the next load.
   const lines = t.lineItems.map((l) => ({
     description: String(l.description ?? ""),
-    quantity: Number.isFinite(l.quantity) && l.quantity > 0 ? l.quantity : 1,
+    quantity: Number.isFinite(l.quantity) && l.quantity !== 0 ? l.quantity : 1,
     unitPrice: Number.isFinite(l.unitPrice) ? l.unitPrice : 0,
     vatRate: (t.showsVat ? "standard" : "zero") as VatRateKind,
     kind: (["labour", "materials", "other"] as const).includes(l.kind) ? l.kind : "other",

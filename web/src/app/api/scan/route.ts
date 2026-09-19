@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
 import { SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument, parseDataUrl } from "@/lib/scanExtraction";
-import { allow } from "@/lib/rateLimit";
+import { allow, release } from "@/lib/rateLimit";
 
 const HOUR = 60 * 60 * 1000;
 // A batch of receipts is one read per document; a busy evening of scanning
@@ -28,8 +28,12 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Sign in to scan documents." }, { status: 401 });
   }
-  if (!allow(`scan:${user.id}`, USER_PER_HOUR, HOUR) || !allow("scan:global", GLOBAL_PER_HOUR, HOUR)) {
+  if (!allow(`scan:${user.id}`, USER_PER_HOUR, HOUR)) {
     return NextResponse.json({ error: "Too many scans this hour. Try again later." }, { status: 429 });
+  }
+  if (!allow("scan:global", GLOBAL_PER_HOUR, HOUR)) {
+    release(`scan:${user.id}`);
+    return NextResponse.json({ error: "Scanning is busy right now. Try again in a little while." }, { status: 429 });
   }
 
   // `image` is the older single-file shape, still sent by invoices/new.

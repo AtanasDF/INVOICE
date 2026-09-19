@@ -12,7 +12,7 @@ import { CameraIcon } from "@/components/icons";
 import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
-import { matchSupplier } from "@/lib/supplierMatch";
+import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import type { TypedVat } from "@/lib/invoiceFromText";
 
 function addDays(dateStr: string, days: number): string {
@@ -83,6 +83,12 @@ export default function NewInvoicePage() {
   const [date, setDate] = useState(() => draft?.date || todayIso());
   const [dueDate, setDueDate] = useState(() => (draft ? importedDueDate(draft, date).dueDate : addDays(date, 30)));
   const [dueDateManual, setDueDateManual] = useState(() => !!draft && importedDueDate(draft, date).manual);
+  // A typed fill lands seconds after the tap; it applies to the date as it
+  // is then, not as it was when the button was pressed.
+  const latestRef = useRef({ date, dueDateManual });
+  useEffect(() => {
+    latestRef.current = { date, dueDateManual };
+  }, [date, dueDateManual]);
   const [paymentTerms, setPaymentTerms] = useState<string>(draft?.paymentTerms ?? "");
   const [items, setItems] = useState<InvoiceItem[]>(() =>
     draft?.lines.length
@@ -90,7 +96,7 @@ export default function NewInvoicePage() {
           description,
           quantity,
           unitPrice,
-          vatRate: draft.vatRegistered ? vatRate : "standard",
+          vatRate: draft.vatRegistered ? (draft.reverseCharge ? "reverse_charge" : vatRate) : "standard",
         }))
       : [{ ...BLANK_ITEM }]
   );
@@ -327,7 +333,7 @@ export default function NewInvoicePage() {
         vat === "included" && !lists.vatRegistered && "You're not VAT registered, so the prices were kept as typed.",
         vat === "plus" && !lists.vatRegistered && "You're not VAT registered, so no VAT is added (turn it on in Settings if you are).",
       ].filter(Boolean);
-      setTypedNote({ ok: true, text: ["Filled in from what you typed, dated today. Check it before saving.", ...warnings].join(" ") });
+      setTypedNote({ ok: true, text: ["Filled in from what you typed. Check it before saving.", ...warnings].join(" ") });
     } catch (err) {
       setTypedNote({ ok: false, text: err instanceof Error ? err.message : "Couldn't turn that into an invoice." });
     } finally {
@@ -359,18 +365,24 @@ export default function NewInvoicePage() {
     const name = t.customer.name?.trim() ?? "";
     const billable = lists.clients.filter((c) => c.kind === "client" && !c.archived);
     const match = name ? matchSupplier(name, billable) : null;
-    const archived = name && !match ? matchSupplier(name, lists.clients.filter((c) => c.kind === "client" && c.archived)) : null;
+    // Only the same name is offered back: a fuzzy match could unarchive
+    // someone else.
+    const archived =
+      name && !match ? lists.clients.find((c) => c.kind === "client" && c.archived && normaliseSupplierName(c.name) === normaliseSupplierName(name)) : null;
     const keepClient = !!typed && !name;
     const forClientId = keepClient ? clientId : (match?.id ?? "");
     if (!keepClient) {
       setClientId(forClientId);
       setNewCustomer(
-        !match && name ? { name, email: t.customer.email ?? "", address: t.customer.address ?? "", archivedId: archived?.id } : null
+        !match && name
+          ? { name: archived?.name ?? name, email: t.customer.email ?? "", address: t.customer.address ?? "", archivedId: archived?.id }
+          : null
       );
       setAddClientError(null);
     }
 
-    setItems(
+    const replaceLines = !typed || t.lineItems.length > 0;
+    if (replaceLines) setItems(
       t.lineItems.length
         ? t.lineItems.map((li) => {
             const vatRate = lineVatRate(t, typed, forClientId, li.description, lists.pastInvoices);
@@ -382,10 +394,11 @@ export default function NewInvoicePage() {
             const net = typed?.vat === "included" && lists.vatRegistered ? said / (1 + VAT_RATES[vatRate]) : said;
             return {
               description: String(li.description ?? ""),
-              quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
-              // To the penny, so the printed unit price times the quantity
-              // is the printed line total.
-              unitPrice: Math.round(net * 100) / 100,
+              // Negative is a real discount or deposit line; only 0 or junk is 1.
+              quantity: Number.isFinite(quantity) && quantity !== 0 ? quantity : 1,
+              // Four places keep a printed £0.045 and make an inc-VAT price
+              // multiply back to the gross that was said.
+              unitPrice: Math.round(net * 10000) / 10000,
               vatRate,
             };
           })
@@ -399,7 +412,7 @@ export default function NewInvoicePage() {
       if (length !== null) {
         setPaymentTerms(days !== null ? (days === 0 ? "Upon receipt" : `${days} days`) : (match?.paymentTerms ?? ""));
         setTermsLength(length);
-        if (!dueDateManual) setDueDate(addDays(date, length));
+        if (!latestRef.current.dueDateManual) setDueDate(addDays(latestRef.current.date, length));
       }
     } else {
       // A new invoice: dated today whatever the scan says, due by the copied
@@ -413,14 +426,18 @@ export default function NewInvoicePage() {
       setDueDateManual(false);
     }
 
-    const copiedNotes = t.notes ?? "";
-    const previousCopy = copiedNotesRef.current;
-    copiedNotesRef.current = copiedNotes;
-    // Notes from an imported free invoice go with the rest of the import.
-    const replaceImport = imported;
-    setNotes((prev) => (replaceImport || !prev.trim() || prev === previousCopy ? copiedNotes : prev));
+    // Typed text that says nothing about notes leaves them, and an import
+    // whose lines were kept stays an import.
+    if (!typed || t.notes) {
+      const copiedNotes = t.notes ?? "";
+      const previousCopy = copiedNotesRef.current;
+      copiedNotesRef.current = copiedNotes;
+      // Notes from an imported free invoice go with the rest of the import.
+      const replaceImport = imported && replaceLines;
+      setNotes((prev) => (replaceImport || !prev.trim() || prev === previousCopy ? copiedNotes : prev));
+    }
     // What's filled in now replaces the import; the Free page keeps its draft.
-    setImported(false);
+    if (replaceLines) setImported(false);
     setCopied({ currency: t.currency && t.currency !== "GBP" ? t.currency : null });
   }
 
@@ -564,8 +581,11 @@ export default function NewInvoicePage() {
             ` Amounts were entered in ${draft.currencySymbol}; this account invoices in £, so check them before saving.`}
           {draft.number &&
             ` It was numbered ${draft.number} there; here it gets your account's next number when you mark it sent, so if ${draft.number} has already gone to the customer, don't send this one again.`}
-          {(draft.cis.enabled || (draft.vatRegistered && draft.reverseCharge)) &&
-            ` ${draft.cis.enabled ? "The CIS deduction" : "Reverse charge"} isn't carried across, so the total here can differ from the one the customer saw.`}{" "}
+          {draft.cis.enabled && " The CIS deduction isn't carried across, so the amount due here is higher than the one the customer saw."}
+          {profile && draft.vatRegistered !== profile.vatRegistered &&
+            (profile.vatRegistered
+              ? " It had no VAT there, but this account is VAT registered, so 20% has been added to every line: check before saving."
+              : " It had VAT there, but this account isn't VAT registered, so no VAT is charged here: check before saving.")}{" "}
           <button type="button" onClick={discardImport} className="font-medium underline">Discard import</button>
         </p>
       )}

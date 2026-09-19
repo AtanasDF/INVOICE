@@ -112,7 +112,11 @@ export function conformToSchema(schema: unknown, value: unknown): unknown {
     const text = typeof value === "string" ? value : String(value);
     if (!options || options.includes(text)) return text;
     const match = options.find((o) => o.toLowerCase() === text.toLowerCase());
-    return match ?? (nullable ? null : fallbackOption);
+    if (match) return match;
+    // A currency the list doesn't have is still a currency: turning it into
+    // null would book it as pounds.
+    if (options.every((o) => /^[A-Z]{3}$/.test(o)) && /^[a-z]{3}$/i.test(text.trim())) return text.trim().toUpperCase();
+    return nullable ? null : fallbackOption;
   }
   if (concrete === "array") return Array.isArray(value) ? value.map((v) => conformToSchema(node.items, v)) : [];
   if (concrete === "object") {

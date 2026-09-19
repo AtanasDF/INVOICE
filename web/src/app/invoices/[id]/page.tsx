@@ -30,7 +30,7 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
   const vatRegistered = profile?.vatRegistered ?? false;
   const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const amountDue = invoice.status === "paid" ? 0 : totals.total - creditNoteTotal;
+  const amountDue = issuedAmountDue(invoice, totals.total, creditNoteTotal);
   return (
     <>
       <div className="flex items-start justify-between">
@@ -131,6 +131,14 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
   
     </>
   );
+}
+
+const money = (n: number) => (Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Rounded once, to the penny, so the email and the PDF can't disagree by a
+// half-penny; never below zero when credit notes exceed the total.
+function issuedAmountDue(invoice: Invoice, total: number, credited: number): number {
+  return invoice.status === "paid" ? 0 : Math.max(0, Math.round((total - credited) * 100) / 100);
 }
 
 // "Sort code: 12-34-56" lines become label/value rows in the email.
@@ -581,8 +589,8 @@ export default function InvoiceViewPage() {
   // ── Sent / Partial / Paid: locked, print-ready view ───────────────
   const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const netTotal = totals.total - creditNoteTotal;
-  const amountDue = invoice.status === "paid" ? 0 : netTotal;
+  const amountDue = issuedAmountDue(invoice, totals.total, creditNoteTotal);
+  const paid = invoice.status === "paid";
   const overdue = isOverdue(invoice.status, invoice.dueDate);
 
   return (
@@ -668,9 +676,13 @@ export default function InvoiceViewPage() {
           customerName: client?.name ?? "",
           customerEmail: client?.email ?? "",
           number: invoice.number,
-          total: `£${amountDue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-          dueDate: invoice.dueDate && invoice.status !== "paid" ? longDate(invoice.dueDate) : "",
-          bank: bankRowsFromText(profile?.bankDetails ?? ""),
+          total: paid
+            ? `£${money(Math.max(0, totals.total - creditNoteTotal))}, paid`
+            : `£${money(amountDue)}`,
+          dueDate: invoice.dueDate && !paid ? longDate(invoice.dueDate) : "",
+          // A paid invoice is a copy for their records: no amount to pay, no
+          // bank details.
+          bank: paid ? [] : bankRowsFromText(profile?.bankDetails ?? ""),
         }}
       />
 

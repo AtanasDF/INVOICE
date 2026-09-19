@@ -87,15 +87,20 @@ export async function POST(req: Request) {
   };
 
   const key = `send:user:${user.id}`;
-  if (!allow(`${key}:day`, USER_PER_DAY, DAY)) {
-    return NextResponse.json({ error: "That's the most emails for today. Try again tomorrow." }, { status: 429 });
-  }
+  // Hour, then overall, then day: a request refused by one limit gives
+  // back what it took from the ones before, so waiting out the hourly limit
+  // never uses up the day. Sends that reach Resend count, failed or not.
   if (!allow(key, USER_PER_HOUR, HOUR)) {
     return NextResponse.json({ error: "Too many emails this hour. Try again later." }, { status: 429 });
   }
   if (!allow("send:global", GLOBAL_PER_HOUR, HOUR)) {
     release(key);
     return NextResponse.json({ error: "Sending is busy right now. Try again in a little while." }, { status: 429 });
+  }
+  if (!allow(`${key}:day`, USER_PER_DAY, DAY)) {
+    release(key);
+    release("send:global");
+    return NextResponse.json({ error: "That's the most emails for today. Try again tomorrow." }, { status: 429 });
   }
 
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
@@ -132,7 +137,8 @@ export async function POST(req: Request) {
         : "The email couldn't be sent. Try again in a minute.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
-  // One line per send in the server log, so misuse can be traced to an account.
-  console.log("send-invoice sent", JSON.stringify({ user: user.id, to, issuerName, number: input.number, total: input.total, bank: bank.map(([k, v]) => `${k}: ${v}`) }));
+  // One line per send in the server log, so misuse can be traced to an
+  // account, without putting a client's address or bank numbers in the logs.
+  console.log("send-invoice sent", JSON.stringify({ user: user.id, toDomain: to.split("@")[1], issuerName, number: input.number, total: input.total, bankRows: bank.length }));
   return NextResponse.json({ sent: true, to, copied: copyToSelf });
 }
