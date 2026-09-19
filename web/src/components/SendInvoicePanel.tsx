@@ -43,6 +43,8 @@ export default function SendInvoicePanel({
   missingName,
   resetKey = "",
   docType = "invoice",
+  viewUrl = "",
+  ensureViewUrl,
   onSent,
 }: {
   sheet: ReactNode;
@@ -54,6 +56,10 @@ export default function SendInvoicePanel({
   // number yet.
   resetKey?: string | number;
   docType?: SendDocType;
+  // The invoice's online link if it has one, and a way to make it when an
+  // email is sent (the email then carries a "View invoice online" button).
+  viewUrl?: string;
+  ensureViewUrl?: () => Promise<string>;
   onSent?: () => void;
 }) {
   const { user } = useAuth();
@@ -87,6 +93,7 @@ export default function SendInvoicePanel({
   const word = quote ? "quote" : "invoice";
   const filename = pdfFilenameFor(fields.number, docType);
   const shareText = `${quote ? "Quote" : "Invoice"}${fields.number ? ` ${fields.number}` : ""}${fields.issuerName ? ` from ${fields.issuerName}` : ""}: ${fields.total}${fields.dueDate ? `, ${quote ? "valid until" : "due"} ${fields.dueDate}` : ""}.`;
+  const shareMessage = viewUrl ? `${shareText}\n${viewUrl}` : shareText;
 
   async function currentPdf() {
     if (pdfRef.current?.key === pdfKey) return pdfRef.current;
@@ -109,7 +116,7 @@ export default function SendInvoicePanel({
         return;
       }
       try {
-        await navigator.share({ files: [file], title: filename, text: shareText });
+        await navigator.share({ files: [file], title: filename, text: shareMessage });
         setShareState("idle");
       } catch (err) {
         if ((err as Error).name === "AbortError") setShareState("idle");
@@ -142,6 +149,8 @@ export default function SendInvoicePanel({
     try {
       setStatus({ kind: "working", step: "Making the PDF…" });
       const { base64 } = await currentPdf();
+      // A link that can't be made just leaves the button out of the email.
+      const link = ensureViewUrl ? await ensureViewUrl().catch(() => "") : viewUrl;
       setStatus({ kind: "working", step: "Sending…" });
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       const { data: { session } } = await supabase.auth.getSession();
@@ -161,6 +170,7 @@ export default function SendInvoicePanel({
           dueDate: fields.dueDate,
           bank: fields.bank,
           docType,
+          viewUrl: link,
           pdf: base64,
         }),
       });

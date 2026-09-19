@@ -1,0 +1,131 @@
+"use client";
+
+import { longDate } from "@/components/invoice/InvoiceDocument";
+import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
+import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
+import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
+
+// A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
+const signedMoney = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
+
+// The issued invoice as the customer sees it: on screen, printed, and as
+// the PDF that's emailed or shared (forPdf drops notes meant for the owner).
+export default function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf }: {
+  invoice: Invoice;
+  client: Client | null;
+  profile: BusinessProfile | null;
+  creditNotes: CreditNote[];
+  payments: InvoicePayment[];
+  forPdf?: boolean;
+}) {
+  const vatRegistered = invoiceVat(invoice, profile?.vatRegistered ?? false);
+  const totals = computeInvoiceTotals(invoice.items, vatRegistered);
+  const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
+  const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
+  const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
+  return (
+    <>
+      <div className="flex items-start justify-between">
+        {profile?.businessName && (
+          <div>
+            <p className="text-lg font-bold">{profile.businessName}</p>
+            {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
+            {vatRegistered && profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
+          </div>
+        )}
+        <div className="text-right">
+          <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
+          <p className="text-sm text-neutral-500">Date: {longDate(invoice.date)}</p>
+          {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-sm font-medium text-neutral-500">Billed to</p>
+        <p className="font-medium">{client?.name || "—"}</p>
+        {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
+        {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}
+        {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
+      </div>
+
+      <table className="mt-6 w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-neutral-500">
+            <th className="py-2">Description</th>
+            <th className="py-2 text-right">Qty</th>
+            <th className="py-2 text-right">Unit price</th>
+            {vatRegistered && <th className="py-2 text-right">VAT</th>}
+            <th className="py-2 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invoice.items.map((it, idx) => (
+            <tr key={idx} className="border-b">
+              <td className="py-2">{it.description}</td>
+              <td className="py-2 text-right">{it.quantity}</td>
+              <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
+              {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
+              <td className="py-2 text-right">{signedMoney(it.quantity * it.unitPrice)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="mt-4 space-y-1 text-sm">
+        {vatRegistered && (
+          <>
+            <div className="flex justify-end text-neutral-600">
+              <span>Subtotal (excl. VAT): £{totals.subtotal.toFixed(2)}</span>
+            </div>
+            {totals.vatByRate.map((v) => (
+              <div key={v.kind} className="flex justify-end text-neutral-600">
+                <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
+              </div>
+            ))}
+            <div className="flex justify-end text-neutral-600">
+              <span>Total: £{totals.total.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+        {creditNotes.map((c) => (
+          <div key={c.id} className="flex justify-end text-neutral-500">
+            <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
+          </div>
+        ))}
+        {payments.map((p) => (
+          <div key={p.id} className="flex justify-end text-neutral-500">
+            <span>Payment received {longDate(p.date)}: −£{p.amount.toFixed(2)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
+          <div className="text-2xl font-extrabold">Amount due: £{amountDue.toFixed(2)}</div>
+          {invoice.dueDate && invoice.status !== "paid" && (
+            <div className="text-base font-bold text-neutral-700">Due: {longDate(invoice.dueDate)}</div>
+          )}
+          {invoice.status === "paid" && <div className="text-base font-bold text-green-700">Paid</div>}
+          {invoice.status === "partial" && paidSoFar === 0 && !forPdf && (
+            <div className="mt-1 max-w-xs text-xs font-normal text-neutral-500 print:hidden">
+              Marked part-paid before payments were recorded: record what came in below and the balance updates.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {invoice.notes && (
+        <div className="mt-6 border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
+      )}
+
+      {profile?.bankDetails && (
+        <div className="mt-4 rounded-lg border bg-neutral-50 p-4 text-sm">
+          <p className="font-semibold">How to pay</p>
+          <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
+        </div>
+      )}
+  
+    </>
+  );
+}
+

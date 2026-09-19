@@ -1344,3 +1344,45 @@ export const paymentsStore = {
     if (error) throw error;
   },
 };
+
+// A private link to view an issued invoice online (migration-025).
+export type InvoiceLink = { invoiceId: string; token: string; createdAt: string; firstViewedAt: string | null; lastViewedAt: string | null; viewCount: number };
+
+type InvoiceLinkRow = { invoice_id: string; token: string; created_at: string; first_viewed_at: string | null; last_viewed_at: string | null; view_count: number };
+
+const linkFromRow = (r: InvoiceLinkRow): InvoiceLink => ({
+  invoiceId: r.invoice_id,
+  token: r.token,
+  createdAt: r.created_at,
+  firstViewedAt: r.first_viewed_at,
+  lastViewedAt: r.last_viewed_at,
+  viewCount: r.view_count,
+});
+
+// 32 random bytes as base64url: 43 characters nobody can guess.
+function newLinkToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export const invoiceLinksStore = {
+  async forInvoice(invoiceId: string): Promise<InvoiceLink | null> {
+    const { data, error } = await supabase.from("invoice_links").select("*").eq("invoice_id", invoiceId).maybeSingle();
+    if (error) throw error;
+    return data ? linkFromRow(data as InvoiceLinkRow) : null;
+  },
+  // The invoice's link, made the first time it's needed. Two tabs making it
+  // at once both end up with the one that was saved.
+  async ensure(invoiceId: string): Promise<InvoiceLink> {
+    const existing = await this.forInvoice(invoiceId);
+    if (existing) return existing;
+    const user_id = await currentUserId();
+    const { error } = await supabase.from("invoice_links").insert({ invoice_id: invoiceId, user_id, token: newLinkToken() });
+    if (error && error.code !== "23505") throw error;
+    const made = await this.forInvoice(invoiceId);
+    if (!made) throw new Error("Couldn't make the link.");
+    return made;
+  },
+};
+
+export const invoiceLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/i/${token}`;
