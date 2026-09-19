@@ -40,6 +40,11 @@ export function stashUploads(files: ScanHandoff[]): void {
   uploads = files;
 }
 
+// Looks without taking: a page deciding whether to open the camera.
+export function hasUploads(): boolean {
+  return !!uploads?.length;
+}
+
 export function takeUploads(): ScanHandoff[] | null {
   const taken = uploads;
   uploads = null;

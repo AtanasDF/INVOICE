@@ -17,6 +17,8 @@ import type { TypedVat } from "@/lib/invoiceFromText";
 import { looksLikeCompany } from "@/lib/reminderTemplates";
 import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
 import { withKinds } from "@/lib/cis";
+import UploadFilesButton from "@/components/UploadFilesButton";
+import { hasUploads, takeUploads } from "@/lib/scanHandoff";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -81,7 +83,9 @@ export default function NewInvoicePage() {
   // invoice sent before; the in-page button reads a source document instead.
   // A copy starts from the scan, so a free-invoice draft isn't imported
   // under it (and stays where it is for the Free page).
-  const [copyMode] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1");
+  // A file handed over by "Upload a file" is a copy too, whatever the
+  // address says yet.
+  const [copyMode] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1" || hasUploads());
   const [draft] = useState(() => (copyMode ? null : readFreeInvoiceDraft()));
   const [date, setDate] = useState(() => draft?.date || todayIso());
   const [dueDate, setDueDate] = useState(() => (draft ? importedDueDate(draft, date).dueDate : addDays(date, 30)));
@@ -127,7 +131,9 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [capture, setCapture] = useState<"copy" | "attach" | null>(() => (copyMode ? "copy" : null));
+  // A file picked with "Upload a file" on the list is copied instead of
+  // opening the camera.
+  const [capture, setCapture] = useState<"copy" | "attach" | null>(() => (copyMode && !hasUploads() ? "copy" : null));
   const [copied, setCopied] = useState<{ currency: string | null } | null>(null);
   const [typed, setTyped] = useState("");
   const [typing, setTyping] = useState(false);
@@ -544,6 +550,12 @@ export default function NewInvoicePage() {
     }
   }
 
+
+  useEffect(() => {
+    const uploaded = copyMode ? takeUploads() : null;
+    if (uploaded) Promise.resolve().then(() => onInvoiceCopied(uploaded[0]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="space-y-6">
       {capture && (
@@ -580,6 +592,7 @@ export default function NewInvoicePage() {
           >
             {scanning ? "Reading invoice…" : copied ? "Scan again" : "Scan an invoice"}
           </CaptureButton>
+          <UploadFilesButton multiple={false} onFiles={(files) => onInvoiceCopied(files[0])} buttonClassName="inline-flex items-center gap-1 font-medium underline" />
         </div>
       ) : (
         <p className="text-xs text-neutral-500 -mt-4">

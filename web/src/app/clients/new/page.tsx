@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ClientKind, clientsStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -10,6 +10,8 @@ import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import { CameraIcon } from "@/components/icons";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFinder from "@/components/AddressFinder";
+import UploadFilesButton from "@/components/UploadFilesButton";
+import { hasUploads, takeUploads } from "@/lib/scanHandoff";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -41,7 +43,9 @@ export default function NewClientPage() {
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1");
+  // A file picked with "Upload a file" on the list is read instead of
+  // opening the camera.
+  const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1" && !hasUploads());
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   const [found, setFound] = useState<ScannedContact[]>([]);
@@ -86,6 +90,12 @@ export default function NewClientPage() {
       setReading(false);
     }
   }
+
+  useEffect(() => {
+    const uploaded = takeUploads();
+    if (uploaded) Promise.resolve().then(() => onScanned(uploaded[0]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function addClient(e: React.FormEvent) {
     e.preventDefault();
@@ -136,6 +146,7 @@ export default function NewClientPage() {
           <CameraIcon className="h-5 w-5" />
           {reading ? "Reading…" : found.length ? "Scan again" : "Scan to fill in"}
         </CaptureButton>
+        <UploadFilesButton multiple={false} className="mt-2" onFiles={(files) => onScanned(files[0])} />
         <p className="mt-2 text-xs text-neutral-500">
           A business card, letterhead, invoice, email or any photo with their details. Names, addresses, emails and VAT numbers are picked out for you.
         </p>

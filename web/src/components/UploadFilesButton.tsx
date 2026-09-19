@@ -3,18 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadIcon } from "@/components/icons";
-import { readUpload, stashUploads } from "@/lib/scanHandoff";
+import { ScanHandoff, readUpload, stashUploads } from "@/lib/scanHandoff";
 
 // Under a camera button: photos or PDFs already on the phone, straight to
-// the page that reads them.
+// the page that reads them (href), or to this page's own reader (onFiles).
 export default function UploadFilesButton({
   href,
+  onFiles,
   multiple = true,
   className = "",
   buttonClassName = "inline-flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-sm font-medium text-neutral-900 shadow-sm",
   label,
 }: {
-  href: string;
+  href?: string;
+  onFiles?: (files: ScanHandoff[]) => void;
   multiple?: boolean;
   className?: string;
   buttonClassName?: string;
@@ -37,8 +39,13 @@ export default function UploadFilesButton({
       setError(files.length === 1 ? "Couldn't read that file." : "Couldn't read those files.");
       return;
     }
+    if (onFiles) {
+      setBusy(false);
+      onFiles(ok);
+      return;
+    }
     stashUploads(ok);
-    router.push(href);
+    router.push(href ?? "/scan");
   }
 
   return (
