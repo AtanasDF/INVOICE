@@ -122,8 +122,9 @@ changes.
    camera coaching text.
 4. Receipt images to Supabase Storage before volume grows.
 5. Paywall: whole app paid except the Free invoice page; design conversation first.
-6. A second research pass on ten more apps (FreshBooks, Invoice Ninja, Bonsai, ANNA,
-   Tide, Countingup, Square Invoices, Stripe Invoicing, SumUp/Zervant, Crunch) for
-   features worth adding; keep it lean.
+6. (Done 2026-09-19: `research-apps-2.md`, the second research pass on ten apps. Top ideas:
+   Pay now links with Pay by Bank, auto-marking invoices paid, MTD Income Tax updates,
+   a running tax estimate, opened-invoice alerts and WhatsApp/SMS sharing, firmer
+   reminders with UK late-payment interest, quotes/deposits, invoice by typing.)
 7. Atanas's side: Safari camera permission, business details in Settings, invoice
    counter, Resend key, Cloudflare Worker deploy, revoke the old Mapbox token.
