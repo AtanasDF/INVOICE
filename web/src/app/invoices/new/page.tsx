@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -94,13 +94,21 @@ export default function NewInvoicePage() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [imported, setImported] = useState(!!draft);
+  const [addClientError, setAddClientError] = useState<string | null>(null);
+  // A copy is applied against the loaded lists, not the render the photo
+  // was taken in: with ?scan=1 the camera can beat the load, and matching
+  // against an empty client list would offer to add an existing client.
+  const listsRef = useRef<Promise<{ clients: Client[]; pastInvoices: Invoice[] }> | null>(null);
+  const copiedNotesRef = useRef("");
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
+    const load = Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
       setClients(c);
       setPastInvoices(inv);
       setProfile(biz);
+      return { clients: c, pastInvoices: inv };
     });
+    listsRef.current = load;
   }, []);
 
   function discardImport() {
@@ -150,10 +158,10 @@ export default function NewInvoicePage() {
     return pastVatRate(forClientId, description) ?? "standard";
   }
 
-  function pastVatRate(forClientId: string, description: string): VatRateKind | null {
+  function pastVatRate(forClientId: string, description: string, invoices: Invoice[] = pastInvoices): VatRateKind | null {
     if (!forClientId || !description.trim()) return null;
     let best: { vatRate: VatRateKind; date: string } | null = null;
-    for (const inv of pastInvoices) {
+    for (const inv of invoices) {
       if (inv.clientId !== forClientId) continue;
       for (const item of inv.items) {
         if (item.description !== description) continue;
@@ -260,7 +268,8 @@ export default function NewInvoicePage() {
       });
       const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; error?: string };
       if (!res.ok || !body.template) throw new Error(body.error || "Couldn't read the invoice.");
-      applyCopy(body.template);
+      const lists = await (listsRef.current ?? Promise.resolve({ clients, pastInvoices }));
+      applyCopy(body.template, lists);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Couldn't read the invoice.");
     } finally {
@@ -268,43 +277,56 @@ export default function NewInvoicePage() {
     }
   }
 
-  function applyCopy(t: InvoiceTemplate) {
+  // Everything a copy fills is replaced on every scan, so "Scan again" can't
+  // leave the previous customer, terms or lines behind; notes typed by hand
+  // are kept.
+  function applyCopy(t: InvoiceTemplate, lists: { clients: Client[]; pastInvoices: Invoice[] }) {
     const name = t.customer.name?.trim() ?? "";
-    const match = name ? matchSupplier(name, billableClients) : null;
+    const billable = lists.clients.filter((c) => c.kind === "client" && !c.archived);
+    const match = name ? matchSupplier(name, billable) : null;
     const forClientId = match?.id ?? "";
-    if (match) onClientChange(match.id);
+    setClientId(forClientId);
     setNewCustomer(!match && name ? { name, email: t.customer.email ?? "", address: t.customer.address ?? "" } : null);
+    setAddClientError(null);
 
-    if (t.lineItems.length) {
-      setItems(
-        t.lineItems.map((li) => ({
-          description: li.description,
-          quantity: li.quantity,
-          unitPrice: li.unitPrice,
-          vatRate: pastVatRate(forClientId, li.description) ?? (t.showsVat ? "standard" : "zero"),
-        }))
-      );
-    }
+    setItems(
+      t.lineItems.length
+        ? t.lineItems.map((li) => ({
+            description: li.description,
+            quantity: li.quantity,
+            unitPrice: li.unitPrice,
+            vatRate: pastVatRate(forClientId, li.description, lists.pastInvoices) ?? (t.showsVat ? "standard" : "zero"),
+          }))
+        : [{ ...BLANK_ITEM }]
+    );
 
     // A new invoice: dated today whatever the scan says.
     const today = new Date().toISOString().slice(0, 10);
-    if (date !== today) onDateChange(today);
+    setDate(today);
     const days = copiedTermsDays(t);
     if (days !== null) {
       setPaymentTerms(days === 0 ? "Upon receipt" : `${days} days`);
       setDueDate(addDays(today, days));
       // Otherwise a later date change would reset the due date to 30 days.
       setDueDateManual(days !== 30);
+    } else {
+      setPaymentTerms(match?.paymentTerms ?? "");
+      setDueDate(addDays(today, 30));
+      setDueDateManual(false);
     }
 
-    if (t.notes) setNotes((prev) => prev || t.notes || "");
+    const copiedNotes = t.notes ?? "";
+    setNotes((prev) => (imported || !prev.trim() || prev === copiedNotesRef.current ? copiedNotes : prev));
+    copiedNotesRef.current = copiedNotes;
+    // The copy replaces a free-invoice import rather than sitting under it.
+    setImported(false);
     setCopied({ currency: t.currency && t.currency !== "GBP" ? t.currency : null });
   }
 
   async function addScannedClient() {
     if (!newCustomer) return;
     setAddingClient(true);
-    setError(null);
+    setAddClientError(null);
     try {
       const c = await clientsStore.add({
         name: newCustomer.name,
@@ -322,7 +344,7 @@ export default function NewInvoicePage() {
       setClientId(c.id);
       setNewCustomer(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the client.");
+      setAddClientError(err instanceof Error ? err.message : "Could not add the client.");
     } finally {
       setAddingClient(false);
     }
@@ -411,7 +433,10 @@ export default function NewInvoicePage() {
       <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         {newCustomer && !clientId && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
-            <span>{newCustomer.name} isn&apos;t one of your clients yet</span>
+            <span>
+              {newCustomer.name} isn&apos;t one of your clients yet
+              {addClientError && <span className="block text-red-600">{addClientError}</span>}
+            </span>
             <button
               type="button"
               onClick={addScannedClient}
