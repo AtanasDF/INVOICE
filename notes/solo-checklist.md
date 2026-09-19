@@ -1,0 +1,92 @@
+# 50 things to check, test and fix without Atanas
+
+For a day working alone. Anything needing his hands (a key, a password, a real document,
+a decision about money) is out. Tick items off in the session log, push after each one.
+Order is rough priority, not a queue: skip anything already done and say so.
+
+## The app on a phone (375px, Safari-like)
+
+1. Re-run the 375px sweep (`harness/test-fit-sweep.mjs`) over every signed-in page after
+   each merge; add any new page to its list.
+2. Same sweep at 320px (iPhone SE) and 430px (Pro Max); fix anything that runs off.
+3. Every form: check the keyboard type on each field (numeric for money, email, tel) and
+   that the enter key does something sensible.
+4. Every list: check what it says when empty, when loading and when the load fails.
+5. Tap targets under 44px anywhere in the app; raise them.
+6. Colour contrast on every grey-on-grey label; anything under 4.5:1 gets darker.
+7. Focus rings and tab order on every form, and `aria-label`s on icon-only buttons.
+8. Long names and long numbers everywhere (60-character company names, £1,234,567.89):
+   nothing truncated without a title, nothing overlapping.
+9. Landscape orientation on the scanner and the invoice page.
+10. Dark mode: the app is light-only today — check nothing breaks when iOS forces dark.
+
+## Money and correctness
+
+11. Unit-test the VAT rounding again on mixed-rate invoices with quantities like 0.33.
+12. CIS: labour/materials split with a deposit, a credit note and a part payment together.
+13. Deposit invoice plus final invoice equals the quote total, with VAT, to the penny.
+14. Credit notes bigger than the invoice; credit notes on a CIS invoice.
+15. Foreign-currency receipts: rate changes, missing rate, rate typed by hand.
+16. Invoice numbering: gaps, duplicates, year-end rollover, numbering from 1 on a new
+    account (the case Atanas is in now).
+17. Payments: over-payment, two payments the same day, removing the last payment.
+18. Reminder schedule: every step (-3, 0, +7, +14, +30) against a fixed clock, including
+    the 3-day catch-up window and the interest line only in the final notice.
+19. Tax estimate: first month of the year, year end, a loss, income over £100k
+    (tapered allowance), Class 4 bands.
+20. Every total in the app against the same invoice: list, dashboard, PDF, public link,
+    CSV export, tax card. They must agree.
+
+## Scanning
+
+21. Re-run every camera suite (far, bent, batch, auto-zoom, lens, pinch, tip, torch).
+22. Generate new synthetic clips: glare, shadow across the page, a hand holding a corner,
+    a page on a patterned surface, a phone moving slowly.
+23. A receipt longer than the frame (a till roll) and a page in landscape.
+24. PDFs: 1 page, 20 pages, a scanned-image PDF, a password-protected one (should fail
+    with a clear message, not a crash).
+25. Uploads: HEIC from an iPhone, a 12MP photo, a 10MB file, a file with no extension.
+26. The scan review form: every field's confidence flag, the duplicate warning, the
+    line-total check, the category memory per supplier.
+27. Documents in the wrong orientation (upside down, 90°, 180°).
+28. A blank page, a photo of a screen, a photo of nothing: the app should say so, not
+    invent a receipt.
+29. Time a batch of 10 through Gemini and through Claude; record both in the notes.
+30. Check no supplier is ever created without being asked, in every path.
+
+## Data and safety
+
+31. Read-back test: every store's `add` then `all` returns exactly what went in, including
+    empty strings, nulls and unicode.
+32. RLS: with a second fake user in the mock server, no row of the first is reachable.
+33. Public links (/i/, /q/): a draft, a stopped link, a wrong token, an expired quote.
+34. Rate limits on every public route, and that they fail closed.
+35. Service-role routes: confirm none can be reached with an anon key.
+36. Storage paths: signed URLs expire and are re-signed; no data URLs left in new rows.
+37. Backup check: every `*_backup_*` table still present (never delete), listed in notes.
+38. An account with nothing in it: every page, every button, no crash.
+39. An account with 500 invoices and 2000 receipts (seed the mock): list speed, filters,
+    CSV export.
+40. Errors: kill the network mid-save on each form and check nothing is half-saved.
+
+## Code health
+
+41. `tsc`, `eslint`, `npm run build` clean on main, after every merge.
+42. Dead code and unused exports; components that exist but nothing renders.
+43. Duplicated logic that should live in one place (money, dates, supplier matching).
+44. Every `catch {}` that swallows an error a user should see.
+45. Bundle size per route; anything that grew a lot since the last check.
+46. Dependencies: outdated or unused ones, and anything with a known advisory.
+47. The harness itself: flaky tests (the camera tip one), hard-coded ports, stray Chrome
+    profiles, clips that can be regenerated instead of kept.
+48. CLAUDE.md and notes: anything stale (a branch that merged, a number that changed).
+49. A written pass over the last week's commits looking for anything left half-done.
+50. End of day: a short list of what improved, what broke and what to do next, in the
+    session log, pushed.
+
+## While there's still time
+
+Keep a running list of improvements worth doing, and start the safest ones: small, visible
+things that need no decision from him (wording, empty states, loading states, a missing
+confirmation, an obvious shortcut). Anything that changes money, the database shape, or
+what is sent to a customer waits for him.
