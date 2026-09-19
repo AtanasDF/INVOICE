@@ -83,7 +83,8 @@ export async function POST(req: Request) {
     total: line(body.total, 40),
     dueDate: line(body.dueDate, 40),
     message: text(body.message, 2000),
-    bank,
+    bank: body.docType === "quote" ? [] : bank,
+    docType: body.docType === "quote" ? "quote" : "invoice",
   };
 
   const key = `send:user:${user.id}`;
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
 
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
   const fromAddress = /<([^>]+)>/.exec(from)?.[1] ?? from;
-  const filename = `Invoice${input.number ? `-${input.number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
+  const filename = `${input.docType === "quote" ? "Quote" : "Invoice"}${input.number ? `-${input.number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
   // Quoted, and stripped of anything that could end the header or the quote.
   const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via Invoicer`;
   let res: Response;

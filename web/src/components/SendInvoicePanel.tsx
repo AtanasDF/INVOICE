@@ -26,8 +26,10 @@ export type InvoiceEmailFields = {
   bank: [string, string][];
 };
 
-export function pdfFilenameFor(number: string): string {
-  return `Invoice${number ? `-${number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
+export type SendDocType = "invoice" | "quote";
+
+export function pdfFilenameFor(number: string, docType: SendDocType = "invoice"): string {
+  return `${docType === "quote" ? "Quote" : "Invoice"}${number ? `-${number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
 }
 
 // Email it (signed in only), share the PDF through the phone's share sheet,
@@ -40,6 +42,7 @@ export default function SendInvoicePanel({
   signInNext,
   missingName,
   resetKey = "",
+  docType = "invoice",
   onSent,
 }: {
   sheet: ReactNode;
@@ -50,6 +53,7 @@ export default function SendInvoicePanel({
   // Changes when the page starts a different invoice, even one without a
   // number yet.
   resetKey?: string | number;
+  docType?: SendDocType;
   onSent?: () => void;
 }) {
   const { user } = useAuth();
@@ -79,8 +83,10 @@ export default function SendInvoicePanel({
   const [shareState, setShareState] = useState<"idle" | "making" | "ready" | "error">("idle");
   const [shareError, setShareError] = useState<string | null>(null);
   const working = status.kind === "working";
-  const filename = pdfFilenameFor(fields.number);
-  const shareText = `Invoice${fields.number ? ` ${fields.number}` : ""}${fields.issuerName ? ` from ${fields.issuerName}` : ""}: ${fields.total}${fields.dueDate ? `, due ${fields.dueDate}` : ""}.`;
+  const quote = docType === "quote";
+  const word = quote ? "quote" : "invoice";
+  const filename = pdfFilenameFor(fields.number, docType);
+  const shareText = `${quote ? "Quote" : "Invoice"}${fields.number ? ` ${fields.number}` : ""}${fields.issuerName ? ` from ${fields.issuerName}` : ""}: ${fields.total}${fields.dueDate ? `, ${quote ? "valid until" : "due"} ${fields.dueDate}` : ""}.`;
 
   async function currentPdf() {
     if (pdfRef.current?.key === pdfKey) return pdfRef.current;
@@ -154,6 +160,7 @@ export default function SendInvoicePanel({
           total: fields.total,
           dueDate: fields.dueDate,
           bank: fields.bank,
+          docType,
           pdf: base64,
         }),
       });
@@ -171,11 +178,11 @@ export default function SendInvoicePanel({
       <h2 className="font-semibold">Send it</h2>
       <p className="mt-1 text-sm text-neutral-600">
         {fields.total}
-        {fields.number ? ` · ${fields.number}` : ""} goes as a PDF, with your payment details in the email.
+        {fields.number ? ` · ${fields.number}` : ""} goes as a PDF{quote ? "." : ", with your payment details in the email."}
       </p>
       {!user ? (
         <div className="mt-4 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-          <p>Sending by email needs a free account, so every invoice sent from here comes from a real person. This invoice stays as it is.</p>
+          <p>Sending by email needs a free account, so everything sent from here comes from a real person. This {word} stays as it is.</p>
           <Link href={`/login?next=${encodeURIComponent(signInNext)}`} className="mt-3 inline-block rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
             Sign in or sign up to send
           </Link>
@@ -183,7 +190,7 @@ export default function SendInvoicePanel({
       ) : status.kind === "sent" ? (
         <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
           <p className="font-medium">
-            {status.number ? `Invoice ${status.number} sent` : "Sent"} to {status.to}.
+            {status.number ? `${quote ? "Quote" : "Invoice"} ${status.number} sent` : "Sent"} to {status.to}.
           </p>
           {status.copied && <p className="mt-0.5">A copy went to {accountEmail}.</p>}
           <button type="button" onClick={() => setStatus({ kind: "idle" })} className="mt-2 text-sm font-medium underline">
@@ -212,7 +219,7 @@ export default function SendInvoicePanel({
               id="send-message"
               rows={3}
               className={INPUT}
-              placeholder={`Please find attached invoice${fields.number ? ` ${fields.number}` : ""}. Thank you.`}
+              placeholder={`Please find attached ${word}${fields.number ? ` ${fields.number}` : ""}. Thank you.`}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
@@ -226,7 +233,7 @@ export default function SendInvoicePanel({
           <p className="text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}.</p>
           {status.kind === "error" && <p className="text-sm text-red-600">{status.message}</p>}
           <button type="submit" disabled={working} className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto">
-            {working ? status.step : "Send invoice"}
+            {working ? status.step : `Send ${word}`}
           </button>
         </form>
       )}
