@@ -71,6 +71,24 @@ export function writeAutoCapture(on: boolean) {
   }
 }
 
+const AUTO_ZOOM_KEY = "scanner-auto-zoom";
+
+export function readAutoZoom(): boolean {
+  try {
+    return localStorage.getItem(AUTO_ZOOM_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function writeAutoZoom(on: boolean) {
+  try {
+    localStorage.setItem(AUTO_ZOOM_KEY, on ? "on" : "off");
+  } catch {
+    // private mode / storage blocked -- the choice just won't persist
+  }
+}
+
 const CAMERA_HINT_KEY = "camera-hint-seen";
 
 // True the first time the camera opens on this device, and marks it seen.

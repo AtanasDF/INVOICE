@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Mat, MatVector } from "@techstark/opencv-js";
 import { CVModule, loadOpenCV } from "@/lib/opencv";
-import { ScannerMode, consumeCameraHint, isIOS, readAutoCapture, readScannerMode, useIsIOS, writeAutoCapture, writeScannerMode } from "@/lib/platform";
+import {
+  ScannerMode,
+  consumeCameraHint,
+  isIOS,
+  readAutoCapture,
+  readAutoZoom,
+  readScannerMode,
+  useIsIOS,
+  writeAutoCapture,
+  writeAutoZoom,
+  writeScannerMode,
+} from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
@@ -62,6 +73,20 @@ const FOCUS_RING_MS = 800;
 // the frame (or the detector lost it while pages were swapped) and this
 // long has passed, so one page is never taken twice.
 const REARM_MS = 900;
+// Auto-zoom: a page held still while covering less than AUTO_ZOOM_BELOW
+// of the view is zoomed toward AUTO_ZOOM_TARGET, never past AUTO_ZOOM_MAX
+// and never so far that its corners come within FIT_MARGIN of the edge.
+// A page lost for AUTO_ZOOM_LOST_MS zooms back out so the next one can be
+// found. The cooldown lets detection settle after each step, so it can't
+// hunt in and out.
+const AUTO_ZOOM_BELOW = 0.28;
+const AUTO_ZOOM_TARGET = 0.55;
+const AUTO_ZOOM_MAX = 2;
+const AUTO_ZOOM_MIN_STEP = 1.15;
+const AUTO_ZOOM_SETTLE_MS = 450;
+const AUTO_ZOOM_LOST_MS = 1500;
+const AUTO_ZOOM_COOLDOWN_MS = 800;
+const FIT_MARGIN = 0.06;
 // getUserMedia can hang indefinitely rather than reject in some real
 // browser/OS blocking states (camera access blocked at the OS level for
 // the whole browser, not just this site, is the most common one) -- with
@@ -121,6 +146,16 @@ function orderPoints(pts: Point[]): Quad {
 
 function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+// The most a centred zoom can enlarge the frame before any corner of the
+// quad comes within FIT_MARGIN of the edge.
+function fitFactor(q: Quad, w: number, h: number): number {
+  const limit = (lo: number, hi: number) =>
+    Math.min(lo < 0.5 ? (0.5 - FIT_MARGIN) / (0.5 - lo) : Infinity, hi > 0.5 ? (0.5 - FIT_MARGIN) / (hi - 0.5) : Infinity);
+  const xs = q.map((p) => p.x / w);
+  const ys = q.map((p) => p.y / h);
+  return Math.min(limit(Math.min(...xs), Math.max(...xs)), limit(Math.min(...ys), Math.max(...ys)));
 }
 
 function scaleQuad(quad: WorkQuad, w: number, h: number): Quad {
@@ -221,6 +256,7 @@ export default function DocumentCapture({
   const [debugText, setDebugText] = useState("");
   const diagRef = useRef({ ticks: 0, quads: 0, coverage: 0, sharpness: 0, lastTickMs: 0, videoW: 0, videoH: 0 });
   const [autoOn, setAutoOn] = useState(readAutoCapture);
+  const [autoZoomOn, setAutoZoomOn] = useState(readAutoZoom);
   const [flash, setFlash] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [focusPoint, setFocusPoint] = useState<Point | null>(null);
@@ -244,6 +280,15 @@ export default function DocumentCapture({
   // state exists only to re-render.
   const cvRef = useRef<CVModule | null>(null);
   const cssZoomRef = useRef(1);
+  // Hardware zoom when the camera exposes it (sharper), otherwise the CSS
+  // crop. Refs because the detection loop reads them.
+  const hwZoomRef = useRef<ZoomRange | null>(null);
+  const hwZoomValueRef = useRef(1);
+  const autoZoomRef = useRef(readAutoZoom());
+  const userZoomedRef = useRef(false);
+  const smallSinceRef = useRef<number | null>(null);
+  const lostSinceRef = useRef<number | null>(null);
+  const zoomCooldownRef = useRef(0);
   const statusRef = useRef<Status>("starting");
 
   useWakeLock(status === "live");
@@ -283,6 +328,39 @@ export default function DocumentCapture({
     writeAutoCapture(next);
     resetStable();
     setAutoOn(next);
+  }
+
+  function zoomLevel(): number {
+    const hw = hwZoomRef.current;
+    return hw ? hwZoomValueRef.current / Math.max(hw.min, 1) : cssZoomRef.current;
+  }
+
+  // Level is relative to no zoom: 1 is the widest view, 2 twice as close.
+  function zoomTo(level: number) {
+    const hw = hwZoomRef.current;
+    if (!hw) {
+      cssZoomRef.current = level;
+      setCssZoom(level);
+      return;
+    }
+    const base = Math.max(hw.min, 1);
+    const stepped = hw.step > 0 ? Math.round((base * level) / hw.step) * hw.step : base * level;
+    const value = Math.min(hw.max, base * AUTO_ZOOM_MAX, Math.max(hw.min, stepped));
+    hwZoomValueRef.current = value;
+    setZoom(value);
+    const advanced: AdvancedConstraints = { zoom: value };
+    streamRef.current?.getVideoTracks()[0]?.applyConstraints({ advanced: [advanced] }).catch(() => {});
+  }
+
+  function toggleAutoZoom() {
+    const next = !autoZoomOn;
+    writeAutoZoom(next);
+    autoZoomRef.current = next;
+    userZoomedRef.current = false;
+    smallSinceRef.current = null;
+    lostSinceRef.current = null;
+    if (!next && zoomLevel() !== 1) zoomTo(1);
+    setAutoZoomOn(next);
   }
 
   const freeMats = useCallback(() => {
@@ -435,9 +513,13 @@ export default function DocumentCapture({
         if (cancelled) return;
         const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { zoom?: ZoomRange }) | undefined;
         if (caps?.zoom && caps.zoom.max > caps.zoom.min) {
+          const current = (track.getSettings() as { zoom?: number }).zoom ?? caps.zoom.min;
+          hwZoomRef.current = caps.zoom;
+          hwZoomValueRef.current = current;
           setZoomRange(caps.zoom);
-          setZoom((track.getSettings() as { zoom?: number }).zoom ?? caps.zoom.min);
+          setZoom(current);
         } else {
+          hwZoomRef.current = null;
           setZoomRange(null);
         }
         setStatus("live");
@@ -641,6 +723,23 @@ export default function DocumentCapture({
             stableSinceRef.current = null;
             peakSharpRef.current = 0;
           }
+          lostSinceRef.current = null;
+          if (autoZoomRef.current && !userZoomedRef.current && now >= zoomCooldownRef.current && !moved && coverage < AUTO_ZOOM_BELOW) {
+            if (smallSinceRef.current === null) smallSinceRef.current = now;
+            else if (now - smallSinceRef.current >= AUTO_ZOOM_SETTLE_MS) {
+              smallSinceRef.current = null;
+              const level = zoomLevel();
+              const next = Math.min(AUTO_ZOOM_MAX, level * Math.min(Math.sqrt(AUTO_ZOOM_TARGET / coverage), fitFactor(ordered, workW, workH)));
+              if (next / level >= AUTO_ZOOM_MIN_STEP) {
+                zoomTo(next);
+                zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
+                resetStable();
+                return;
+              }
+            }
+          } else {
+            smallSinceRef.current = null;
+          }
           if (coverage < MIN_COVERAGE) {
             setCoach("closer");
           } else {
@@ -661,6 +760,16 @@ export default function DocumentCapture({
           lockedRef.current = false;
           resetStable();
           setCoach("line");
+          smallSinceRef.current = null;
+          const now = performance.now();
+          if (autoZoomRef.current && !userZoomedRef.current && now >= zoomCooldownRef.current && zoomLevel() > 1) {
+            if (lostSinceRef.current === null) lostSinceRef.current = now;
+            else if (now - lostSinceRef.current >= AUTO_ZOOM_LOST_MS) {
+              lostSinceRef.current = null;
+              zoomTo(1);
+              zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
+            }
+          }
         }
       } catch (err) {
         // A bad frame must not stop the loop, but a repeating error is the
@@ -684,6 +793,8 @@ export default function DocumentCapture({
   }, [stopStream, freeMats, retryKey, useNative]);
 
   function applyZoom(value: number) {
+    userZoomedRef.current = true;
+    hwZoomValueRef.current = value;
     setZoom(value);
     const track = streamRef.current?.getVideoTracks()[0];
     if (!track) return;
@@ -1009,7 +1120,7 @@ export default function DocumentCapture({
           muted
           onClick={focusAt}
           className="h-full w-full object-cover"
-          style={cssZoom !== 1 ? { transform: `scale(${cssZoom})` } : undefined}
+          style={{ transform: cssZoom !== 1 ? `scale(${cssZoom})` : undefined, transition: "transform 250ms ease-out" }}
         />
         <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 h-full w-full" />
         {(shownFailure || (hasQuad && status === "live")) && (
@@ -1107,7 +1218,11 @@ export default function DocumentCapture({
                 {[1, 2].map((z) => (
                   <button
                     key={z}
-                    onClick={() => setCssZoom(z)}
+                    onClick={() => {
+                      userZoomedRef.current = true;
+                      cssZoomRef.current = z;
+                      setCssZoom(z);
+                    }}
                     aria-pressed={cssZoom === z}
                     className={`px-3 py-1 ${cssZoom === z ? "bg-white text-neutral-900" : ""}`}
                   >
@@ -1116,9 +1231,14 @@ export default function DocumentCapture({
                 ))}
               </div>
             )}
-            <button onClick={toggleAuto} className="text-xs text-white/70 underline">
-              Auto-capture: {autoOn ? "on" : "off"}
-            </button>
+            <div className="flex gap-4">
+              <button onClick={toggleAuto} className="text-xs text-white/70 underline">
+                Auto-capture: {autoOn ? "on" : "off"}
+              </button>
+              <button onClick={toggleAutoZoom} className="text-xs text-white/70 underline">
+                Auto-zoom: {autoZoomOn ? "on" : "off"}
+              </button>
+            </div>
             {iOSMode && (
               <button onClick={() => switchScannerMode("native")} className="text-xs text-white/70 underline">
                 Use the native camera instead
