@@ -352,7 +352,21 @@ and what is left open. Dates are session dates (Europe/London).
   that saved the form), `feature/quotes-ux` (agent: pick any client or supplier, new
   company/private customer inline, one Send card with email/text/WhatsApp/PDF; 48/48 new,
   older quote suites pass), `feature/torch` (torch button in the scanner, on by itself in
-  low light unless switched by hand; 10/10). Review workflow over all three running.
+  low light unless switched by hand; 10/10). Review (3 lenses, 16 agents): 9 confirmed, all
+  fixed: torch now on before auto-capture fires in the dark and works without OpenCV
+  (12/12 + 3/3); recurring Clear form resets the category (22/22); quotes: no save over a
+  half-added customer, the Free-page customer opens prefilled in the picker (no duplicate
+  client), invoiced suppliers get the reminders switch and history, no draft /q/ link in
+  shared text, draft invoice picker keeps its supplier, refresh race, Clear form on a new
+  quote (fixes 11/11, quotes 34/34, deposits 17/17, Free quote 12/12, texts 12/12).
+  Clear forms and torch merged to main (cba2153, 07a67e8). A 375px sweep of all 22
+  signed-in pages found the issued invoice's buttons running off the screen; fixed on
+  main (4e169a1). `feature/quotes-ux` is fixed and merged with main, waiting for its
+  quotes-ux suite (48) and the quote/invoice link suites (need a dev server pointed at
+  mock-server.mjs on :5555) before merging.
+- Atanas's usage runs out tonight; background wake-ups at 00:33 (Vercel window), 00:43
+  and 01:05 BST to carry on. If this session stopped: push main after 23:30Z to deploy,
+  then finish `feature/quotes-ux` as above, then the two agents' branches.
 - Agents started: `feature/multi-docs` (several documents in one photo or PDF split into
   separate documents, cropped/split; "Save all ready"; "already paid" read off the
   document, the assumption behind "receipt should be created in order to take payment"),
