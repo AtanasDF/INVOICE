@@ -227,7 +227,7 @@ as $$
            'note', left(coalesce(e.value ->> 'note', ''), 300))), '{}'::jsonb)
     from jsonb_each(case when jsonb_typeof(p_prices) = 'object' then p_prices else '{}'::jsonb end) e
    where jsonb_typeof(e.value) = 'object'
-     and exists (select 1 from jsonb_array_elements(case when jsonb_typeof(p_items) = 'array' then p_items else '[]'::jsonb end) i where i ->> 'id' = e.key)
+     and case when jsonb_typeof(p_items) = 'array' then p_items else '[]'::jsonb end @> jsonb_build_array(jsonb_build_object('id', e.key))
 $$;
 
 revoke all on function public.quote_request_clean_prices(jsonb, jsonb) from public;
