@@ -229,6 +229,32 @@ and what is left open. Dates are session dates (Europe/London).
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked
   against known figures; dashboard checked with a mocked database; screenshot sent.
+- From Atanas on his phone (19/09, later): "the camera doesn't recognise receipts from far, it
+  zooms a bit, asks me to move closer when it should do it itself"; "add the address
+  thing wherever you add an address, postcode or street and number, UK only"; "choose
+  three or more things and surprise me, check other apps for ideas".
+  - Research workflow (5 agents): scanner techniques + 8 ranked feature ideas (customer
+    texts, CIS-aware tax pot, mileage, rebill materials, offline capture queue, app-icon
+    badge + Monday push, a 'Paid!' moment, SA103 summary). WebKit source checked: iOS
+    exposes lens zoom (0.5-10 on multi-lens phones, 1 = main lens) and, since 18.4,
+    ImageCapture.takePhoto (asked-for size picks the smallest max photo size >= it).
+  - Scanner, branch `feature/far-scan` (c5f758b): page candidates down to 1.2% of the
+    frame when they look like paper (lighter than around, clear of the edge, aspect <= 8),
+    torn/curled receipts via convex hull, zoom by the page's span up to 4x on the lens
+    (2.5x crop), "Move closer" only when zoom can't help ("Hold still — zooming in",
+    "Move the page to the middle" otherwise), and the shot is the camera's own ~12MP
+    still (turned upright by matching thumbnails, page re-found in it, video frame as
+    fallback). Headless with synthetic clips: far receipt 7/7, torn 2/2, shaky 1/1,
+    off-centre 2/2, dark object ignored, still upright/sideways/noise/hang 10/10, lens
+    zoom 3/4 (jumps to 4x in one step, fine), old auto-zoom 9/10 (edge page no longer
+    zooms, correct), pinch 4/4, camera tip 2/2. Review workflow running.
+  - Address finder, branch `feature/address-finder` (72b5f42): search box above every
+    address field (Free page business/customer, clients new/edit, Settings). Free now:
+    postcodes.io + OpenStreetMap (Photon); post town from the postcode (London districts,
+    built-up area), 'just the postcode' partial that keeps a typed first line. With
+    `IDEAL_POSTCODES_API_KEY`, signed-in users get Royal Mail PAF (paid per lookup, never
+    for the anonymous Free page); tested with Ideal's public test key. Free page 12/12,
+    signed-in forms 10/10. Review workflow running.
 
 **Open**
 
