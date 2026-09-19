@@ -1,3 +1,6 @@
 
 # macOS
 .DS_Store
+
+# real documents used for scanner testing; never commit
+/test-docs/

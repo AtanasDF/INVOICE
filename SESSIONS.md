@@ -4,6 +4,26 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-19 — Mac desktop app (Opus 5), overnight run
+
+**Brief from Atanas (19/09, evening)**
+
+- Scanner must read messy and handwritten documents (e.g. his brother's rough Excel invoice).
+- Free page template-from-scan: keep what stays the same, next invoice number, today's date
+  (editable), not a copy of the scanned invoice.
+- Batch scanning: camera stays open, each capture drops into a stack, review, accept, read all.
+  Template scan stays single-shot. Green fill over the document when locked on.
+- Invoices / Receipts / Clients-Suppliers: camera button first, "+ Add manually" under it;
+  empty-state text only when empty; remove "Show archived" from Clients/Suppliers; scan any
+  document to fill a client or supplier.
+- Free page: signature (draw or upload), send the invoice by email from the preview.
+
+**Progress**
+
+- Health check: `tsc`, `eslint`, `npm run build` clean on `main` at b70d091; live site loads;
+  Atanas signed in to the app in the browser pane. `test-docs/` (gitignored) created for real
+  test documents.
+
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
 **Shipped to main and live**
