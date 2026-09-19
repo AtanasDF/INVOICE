@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/lib/authContext";
 import { safeNext } from "@/lib/safeNext";
 import { supabase } from "@/lib/supabaseClient";
 import { useWakeLock } from "@/lib/wakeLock";
+import PaidCelebration from "@/components/PaidCelebration";
 
 function Header() {
   const { user } = useAuth();
@@ -100,6 +101,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Gate>{children}</Gate>
       </main>
       <FeedbackButton />
+      <PaidCelebration />
     </AuthProvider>
   );
 }

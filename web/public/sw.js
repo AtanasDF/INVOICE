@@ -19,7 +19,12 @@ self.addEventListener("push", (event) => {
     data: { url: data.url || "/" },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // The daily reminder carries the count for the home-screen icon.
+  const badge =
+    typeof data.badge !== "number" || !self.navigator.setAppBadge
+      ? Promise.resolve()
+      : (data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge()).catch(() => {});
+  event.waitUntil(Promise.all([self.registration.showNotification(title, options), badge]));
 });
 
 self.addEventListener("notificationclick", (event) => {

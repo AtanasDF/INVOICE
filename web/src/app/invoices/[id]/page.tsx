@@ -9,10 +9,12 @@ import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNum
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
+import TextCustomer from "@/components/TextCustomer";
 import { NumberInput, parseAmount } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
+import { celebratePaid } from "@/components/PaidCelebration";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -176,9 +178,15 @@ export default function InvoiceViewPage() {
   // just from opening the page.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
     const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
-    if (!next) return;
+    if (!next) return null;
     await invoicesStore.update(inv.id, { status: next });
     setInvoice((prev) => (prev && prev.id === inv.id ? { ...prev, status: next } : prev));
+    return next;
+  }
+
+  function celebrate(pays: InvoicePayment[]) {
+    if (!invoice) return;
+    celebratePaid({ amount: sum(pays) || computeInvoiceTotals(invoice.items, invoiceVat(invoice, vatRegistered)).total, from: client?.name, number: invoice.number });
   }
 
   // Fresh from the database, so another tab's payment is counted before
@@ -217,7 +225,13 @@ export default function InvoiceViewPage() {
     } finally {
       setPaySaving(false);
     }
-    if (saved) await syncStatus(invoice, saved.notes, saved.pays, invoiceVat(invoice, vatRegistered)).catch((err) => setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it."));
+    if (!saved) return;
+    const done = saved;
+    const next = await syncStatus(invoice, done.notes, done.pays, invoiceVat(invoice, vatRegistered)).catch((err) => {
+      setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it.");
+      return null;
+    });
+    if (next === "paid") celebrate(done.pays);
   }
 
   // Records whatever is still owed as received today. An invoice marked
@@ -232,6 +246,7 @@ export default function InvoiceViewPage() {
       if (invoice.status === "partial" && pays.length === 0) {
         await invoicesStore.update(invoice.id, { status: "paid" });
         setInvoice({ ...invoice, status: "paid" });
+        celebrate(pays);
         return;
       }
       let all = pays;
@@ -240,12 +255,15 @@ export default function InvoiceViewPage() {
         all = [...pays, added];
         setPayments(all);
       }
-      await syncStatus(invoice, notes, all, invoiceVat(invoice, vatRegistered));
+      const next = await syncStatus(invoice, notes, all, invoiceVat(invoice, vatRegistered));
       // Nothing was owed (a £0 balance after a deposit): the figures alone
       // don't make it paid, the owner saying so does.
       if (due <= 0 && all.length === pays.length) {
         await invoicesStore.update(invoice.id, { status: "paid" });
         setInvoice((prev) => (prev ? { ...prev, status: "paid" } : prev));
+        celebrate(all);
+      } else if (next === "paid") {
+        celebrate(all);
       }
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : "Could not mark it paid.");
@@ -773,6 +791,20 @@ export default function InvoiceViewPage() {
           bank: paid ? [] : bankRowsFromText(profile?.bankDetails ?? ""),
         }}
       />
+
+      {client && (
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+          <h2 className="mb-3 font-semibold">Text {client.name}</h2>
+          <TextCustomer
+            key={invoice.status}
+            client={client}
+            from={profile?.businessName ?? ""}
+            presets={paid ? ["thanks", "done"] : ["done", "onMyWay", "late", "arrived"]}
+            link={link ? invoiceLinkUrl(link.token) : ""}
+            makeLink={ensureLink}
+          />
+        </div>
+      )}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex items-center justify-between">

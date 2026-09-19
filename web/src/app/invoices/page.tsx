@@ -9,6 +9,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
+import { celebratePaid } from "@/components/PaidCelebration";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -112,6 +113,7 @@ export default function InvoicesPage() {
       setPayments((prev) => [...prev.filter((p) => p.invoiceId !== inv.id), ...all]);
       await invoicesStore.update(inv.id, { status: "paid" });
       setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
+      celebratePaid({ amount: all.reduce((s, p) => s + p.amount, 0) || total(inv), from: clients.find((c) => c.id === inv.clientId)?.name, number: inv.number });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update invoice.");
     } finally {
