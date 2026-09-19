@@ -81,7 +81,12 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
       vatNumber: bp?.vat_number ?? "",
       vatRegistered: bp?.vat_registered ?? false,
     } as BusinessProfile,
-    response: link.response ? { answer: link.response, at: link.responded_at, name: link.responder_name } : null,
+    // An answer counts while the quote still stands on it: if the owner has
+    // put it back to sent, the customer can answer again.
+    response:
+      link.response && (link.response === "declined" ? q.status === "declined" : q.status === "accepted" || q.status === "invoiced")
+        ? { answer: link.response, at: link.responded_at, name: link.responder_name }
+        : null,
     expired: !!q.valid_until && q.valid_until < today,
   };
 }

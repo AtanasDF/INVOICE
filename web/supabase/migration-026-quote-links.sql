@@ -10,8 +10,9 @@
 -- (migration-025): owners see their links, create them with only
 -- quote/owner/token and may change only the token; counts and answers are
 -- written by the server. respond_to_quote_link records the answer and moves
--- the quote from sent to accepted/declined in one statement each, only while
--- it is sent and not past its valid-until date, and only once.
+-- the quote from sent to accepted/declined, only while it is sent and not
+-- past its valid-until date (the owner reopening it lets the customer answer
+-- again).
 
 create table if not exists public.quote_links (
   quote_id uuid primary key references public.quotes(id) on delete cascade,
@@ -93,8 +94,8 @@ as $$
 $$;
 
 -- The customer's answer. Returns the quote it applied to, or nothing when
--- the link is unknown, already answered, the quote isn't sent any more, or
--- its valid-until date has passed.
+-- the link is unknown, the quote isn't sent (already answered, invoiced or
+-- a draft), or its valid-until date has passed.
 create or replace function public.respond_to_quote_link(p_token text, p_response text, p_name text)
 returns table (quote_id uuid, user_id uuid)
 language plpgsql
@@ -106,7 +107,9 @@ begin
   if p_response not in ('accepted', 'declined') then
     return;
   end if;
-  select * into v_link from public.quote_links where token = p_token and response is null for update;
+  -- An earlier answer doesn't block a new one: the quote has to be back at
+  -- sent (the owner reopened it) for the update below to apply.
+  select * into v_link from public.quote_links where token = p_token for update;
   if not found then
     return;
   end if;

@@ -1210,10 +1210,12 @@ export const quotesStore = {
     if (!data?.length) throw new Error("This quote isn't a draft any more, so it can't be changed. Reload to see it.");
   },
   // An invoiced quote stays invoiced: its invoice exists.
-  async setStatus(id: string, status: Exclude<QuoteStatus, "invoiced">): Promise<void> {
-    const { data, error } = await supabase.from("quotes").update({ status }).eq("id", id).neq("status", "invoiced").select("id");
+  // Only from the status the page showed: the customer may have answered
+  // online meanwhile, and that answer mustn't be overwritten unseen.
+  async setStatus(id: string, status: Exclude<QuoteStatus, "invoiced">, from: QuoteStatus): Promise<void> {
+    const { data, error } = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", from).neq("status", "invoiced").select("id");
     if (error) throw error;
-    if (!data?.length) throw new Error("This quote has already been turned into an invoice. Reload to see it.");
+    if (!data?.length) throw new Error("This quote has changed since the page loaded (the customer may have answered online). Reload to see it.");
   },
   // A draft becomes sent when it's emailed; anything further along stays.
   async markSent(id: string): Promise<boolean> {
@@ -1226,11 +1228,12 @@ export const quotesStore = {
   // invoice is then made from the claimed row, not from what a possibly
   // stale page shows, and linked. claim returns null if another tap got
   // there first; release puts it back if no invoice was made.
-  async claimForInvoice(id: string): Promise<Quote | null> {
+  async claimForInvoice(id: string, from: QuoteStatus): Promise<Quote | null> {
     const { data, error } = await supabase
       .from("quotes")
       .update({ status: "invoiced" })
       .eq("id", id)
+      .eq("status", from)
       .neq("status", "invoiced")
       .is("invoice_id", null)
       .select("*");

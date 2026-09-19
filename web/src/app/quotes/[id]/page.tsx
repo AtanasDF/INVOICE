@@ -158,7 +158,7 @@ export default function QuotePage() {
   };
   const runStatus = (status: Open) =>
     run(async () => {
-      await quotesStore.setStatus(q.id, status);
+      await quotesStore.setStatus(q.id, status, q.status);
       setQuote({ ...q, status });
     });
 
@@ -177,8 +177,8 @@ export default function QuotePage() {
   const toInvoice = () =>
     run(async () => {
       const before = q.status as Open;
-      const claimed = await quotesStore.claimForInvoice(q.id);
-      if (!claimed) throw new Error("This quote has already been turned into an invoice.");
+      const claimed = await quotesStore.claimForInvoice(q.id, before);
+      if (!claimed) throw new Error("This quote has changed since the page loaded (already invoiced, or answered online). Reload to see it.");
       const tag = `from ${claimed.number}`;
       let deposit: Invoice | null = null;
       let credited = 0;
@@ -263,8 +263,10 @@ export default function QuotePage() {
 
   // A quote can only be answered once it's sent, so sharing its link (by
   // email or copied) marks a draft as sent first.
-  async function ensureLink(): Promise<string> {
-    if (q.status === "draft" && (await quotesStore.markSent(q.id))) setQuote((prev) => (prev && prev.status === "draft" ? { ...prev, status: "sent" } : prev));
+  // Copying marks a draft sent first; emailing leaves that to a send that
+  // worked (onSent), so a failed email doesn't lock the draft.
+  async function ensureLink(markSent = false): Promise<string> {
+    if (markSent && q.status === "draft" && (await quotesStore.markSent(q.id))) setQuote((prev) => (prev && prev.status === "draft" ? { ...prev, status: "sent" } : prev));
     const made = await quoteLinksStore.ensure(q.id);
     setLink(made);
     return quoteLinkUrl(made.token);
@@ -275,7 +277,7 @@ export default function QuotePage() {
     setLinkBusy(true);
     setError(null);
     try {
-      await navigator.clipboard.writeText(await ensureLink()).catch(() => {});
+      await navigator.clipboard.writeText(await ensureLink(true)).catch(() => {});
       setLinkCopied(true);
     } catch (err) {
       setError(errorText(err, "Couldn't make the link."));
@@ -434,7 +436,7 @@ export default function QuotePage() {
         <h2 className="font-semibold">View and accept online</h2>
         {link ? (
           <>
-            {link.response && (
+            {link.response && (link.response === "declined" ? q.status === "declined" : q.status === "accepted" || q.status === "invoiced") && (
               <p className={`mt-1 text-sm font-medium ${link.response === "accepted" ? "text-green-800" : "text-neutral-700"}`}>
                 {link.response === "accepted" ? "Accepted" : "Declined"} online{link.responderName ? ` by ${link.responderName}` : ""}
                 {link.respondedAt ? `, ${when(link.respondedAt)}` : ""}.
@@ -477,7 +479,7 @@ export default function QuotePage() {
           pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
           resetKey={q.id}
           viewUrl={link ? quoteLinkUrl(link.token) : ""}
-          ensureViewUrl={ensureLink}
+          ensureViewUrl={() => ensureLink()}
           signInNext={`/quotes/${q.id}`}
           missingName="Add your business name in Settings first, so the customer knows who it's from."
           fields={{

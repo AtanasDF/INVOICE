@@ -39,8 +39,9 @@ export async function POST(req: Request) {
   if (!url || !key) return NextResponse.json({ ok: false, error: "Not available right now." }, { status: 503 });
   const admin = createClient(url, key, { auth: { persistSession: false } });
   const { data: rows, error } = await admin.rpc("respond_to_quote_link", { p_token: token, p_response: response, p_name: name });
+  if (error) return NextResponse.json({ ok: false, error: "Something went wrong on our side. Please try again in a moment." }, { status: 503 });
   const done = (rows as { quote_id: string; user_id: string }[] | null)?.[0];
-  if (error || !done) {
+  if (!done) {
     return NextResponse.json(
       { ok: false, error: "This quote can't be answered any more: it may have been answered already, withdrawn or expired. Please contact the sender." },
       { status: 409 }
