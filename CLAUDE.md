@@ -17,7 +17,9 @@ it is his real accounting record. Read this file before doing anything.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
-  in the Supabase SQL editor; there is no migration runner.
+  in the Supabase SQL editor; there is no migration runner. Latest as of 2026-09-19:
+  migration-018 and backup 009, on branch `feature/client-phone-and-shared-limit`, not yet
+  applied.
 
 ## Hard rules
 
@@ -157,10 +159,11 @@ them against the original before deleting.
   record would let them chase the balance.
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
   carry everything.
-- Shared rate limiter for `/api/invoice-template`; then the research follow-ups
-  (duplicate detection on save, line-total check, supplier memory).
+- (Done 2026-09-19: duplicate warning, line-total check and usual category per supplier
+  on saving scans. The shared rate limiter is on the branch above.)
 - Move receipt images to Supabase Storage before the base64 columns grow.
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
-  business details in Settings (still placeholder), `invoice_next_number` at 357358,
-  Resend key, Cloudflare Worker deploy, revoke the old Mapbox token.
+  business details in Settings (still placeholder; reminders and invoice emails use the
+  business name and bank details from there), `invoice_next_number` at 357358,
+  Cloudflare Worker deploy, revoke the old Mapbox token.
