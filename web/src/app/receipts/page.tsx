@@ -9,6 +9,7 @@ import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
+import Tip from "@/components/Tip";
 
 type ReceiptDraft = {
   clientId: string;
@@ -318,6 +319,11 @@ export default function ReceiptsPage() {
           <ScanOrAdd scanHref="/scan" scanLabel="Scan receipts" addHref="/receipts/new" />
         </div>
       </div>
+
+      <Tip id="receipts-batch">
+        Tip: <strong>Scan receipts</strong> keeps the camera open, so you can photograph a whole pile in one go, then
+        check them and save them one after another.
+      </Tip>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

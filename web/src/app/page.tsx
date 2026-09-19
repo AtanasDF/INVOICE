@@ -21,6 +21,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
+import Tip from "@/components/Tip";
 
 function ScanIcon() {
   return (
@@ -254,6 +255,11 @@ export default function Dashboard() {
           Scan receipts, create invoices and see what&apos;s owed to you at a glance.
         </p>
       </div>
+
+      <Tip id="dashboard-welcome">
+        New here? Tap <strong>Scan</strong> to photograph receipts and supplier invoices (several in a row is fine), or
+        create an invoice. Clients, suppliers and expenses fill in as you go.
+      </Tip>
 
       {showOverdueBanner && !bannerDismissed && (
         <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">

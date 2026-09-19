@@ -6,6 +6,7 @@ import { VAT_RATE_KINDS, VAT_RATE_LABELS } from "@/lib/vat";
 import { Field, INPUT, NumberInput, Segmented, Toggle } from "@/components/free-invoice/fields";
 import LayoutPicker from "@/components/free-invoice/LayoutPicker";
 import SignaturePad from "@/components/free-invoice/SignaturePad";
+import Tip from "@/components/Tip";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -229,6 +230,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
       </Card>
 
       <Card title="Signature">
+        <Tip id="free-invoice-signature">Sign once and it&apos;s remembered on this device for every invoice you make here.</Tip>
         <SignaturePad
           value={draft.signature}
           onChange={(signature) => {

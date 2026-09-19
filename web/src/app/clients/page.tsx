@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
+import Tip from "@/components/Tip";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -173,6 +174,11 @@ export default function ClientsPage() {
           </button>
         </div>
       </div>
+
+      <Tip id="clients-scan">
+        Tip: photograph a business card, letterhead or invoice and the name, address, email and VAT number are filled in
+        for you.
+      </Tip>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

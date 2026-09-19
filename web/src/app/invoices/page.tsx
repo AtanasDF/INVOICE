@@ -7,6 +7,7 @@ import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, cli
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
+import Tip from "@/components/Tip";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -145,6 +146,11 @@ export default function InvoicesPage() {
           <ScanOrAdd scanHref="/invoices/new?scan=1" scanLabel="Scan an invoice" addHref="/invoices/new" />
         </div>
       </div>
+
+      <Tip id="invoices-scan">
+        Tip: <strong>Scan an invoice</strong> you&apos;ve sent before and it&apos;s copied as a new one — customer, lines and
+        terms — dated today.
+      </Tip>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

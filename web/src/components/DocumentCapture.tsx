@@ -19,6 +19,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
 import BatchReview, { Shot, groupShots } from "@/components/scan/BatchReview";
+import Tip from "@/components/Tip";
 
 type Point = { x: number; y: number };
 type Quad = [Point, Point, Point, Point];
@@ -1202,6 +1203,15 @@ export default function DocumentCapture({
 
         {status === "live" && (
           <div className="absolute inset-x-8 bottom-3 flex flex-col items-center gap-2">
+            {multi && shots.length > 0 ? (
+              <Tip id="scanner-stack" dark className="w-full max-w-sm">
+                Keep going for the next page or document. Tap the stack in the corner to check your scans and read them.
+              </Tip>
+            ) : (
+              <Tip id="scanner-auto" dark className="w-full max-w-sm">
+                {autoOn ? "Hold the phone over the page and keep still: it zooms in and takes the photo by itself." : "Line the page up inside the corners and tap the button to take the photo."}
+              </Tip>
+            )}
             {zoomRange ? (
               <input
                 type="range"

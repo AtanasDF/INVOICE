@@ -25,6 +25,7 @@ import {
   templateToDraft,
   writeFreeInvoiceDraft,
 } from "@/lib/freeInvoiceDraft";
+import Tip from "@/components/Tip";
 
 const MAX_PAGES = 3;
 const TOO_LARGE = "These pages are too large to send together (about 2.5MB total). Use smaller photos or a lower-resolution PDF.";
@@ -245,6 +246,13 @@ export default function FreeInvoiceBuilder() {
         </div>
         {stage === "editor" && <div className="hidden items-center gap-2 sm:flex">{actions}</div>}
       </div>
+
+      {stage === "start" && (
+        <Tip id="free-invoice-scan">
+          Tip: scan an invoice you&apos;ve sent before, even a handwritten one, and the next one is made for you: same
+          details, number moved on, dated today.
+        </Tip>
+      )}
 
       {stage === "start" && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
