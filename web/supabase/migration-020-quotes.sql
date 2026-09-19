@@ -66,6 +66,11 @@ begin
   end if;
 end $$;
 
+-- Supabase's default privileges give anon and authenticated everything on a
+-- new public table. Quotes are never deleted from the app (a declined one
+-- stays as a record) and signed-out visitors have no use for them.
+revoke all on public.quotes from anon;
+revoke delete, truncate, references, trigger on public.quotes from authenticated;
 grant select, insert, update on public.quotes to authenticated;
 
 -- ── Checks after running ────────────────────────────────────────────
@@ -75,6 +80,9 @@ grant select, insert, update on public.quotes to authenticated;
 --     -> status check, unique (user_id, number), client FK RESTRICT, invoice FK SET NULL
 --   select tgname from pg_trigger where tgrelid = 'public.quotes'::regclass and not tgisinternal;  -> quotes_same_owner
 --   select relrowsecurity from pg_class where oid = 'public.quotes'::regclass;  -> true
+--   select grantee, string_agg(privilege_type, ',') from information_schema.role_table_grants
+--     where table_name = 'quotes' and grantee in ('anon', 'authenticated') group by grantee;
+--     -> authenticated INSERT,SELECT,UPDATE; anon none
 --   Exercise as authenticated in a block that ends in raise exception (rolls back): insert a
 --   quote for one user, check another user can't see it, can't point a quote at the
 --   first user's client, and that the first user can't point one at a foreign invoice.
