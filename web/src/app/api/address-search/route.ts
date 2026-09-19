@@ -12,18 +12,26 @@ import {
   townCase,
 } from "@/lib/addressLookup";
 import { addressKey, allow, allowShared } from "@/lib/rateLimit";
-import { isSignedIn } from "@/lib/serverAuth";
+import { signedInUser } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
+const DAY = 24 * 60 * 60 * 1000;
 const PER_ADDRESS = 60;
 // photon.komoot.io is a free public server that asks for moderate use, so
-// every visitor together stays under OSM_TOTAL a five minutes.
-const OSM_TOTAL = 300;
+// everyone together stays under 300 a five minutes, split so the anonymous
+// Free page can't use up what account holders need.
+const OSM_ANON = 180;
+const OSM_SIGNED_IN = 120;
 // Royal Mail lookups cost a credit each (a postcode's list, or a picked
-// address); searching as you type is free.
-const PAF_TOTAL = 150;
+// address), so each account gets a few a five minutes and a day, and all of
+// them together a backstop; past any of those it's the free lookup again.
+// Suggestions as you type are free but still limited.
+const PAF_PER_USER = 20;
+const PAF_PER_USER_DAY = 100;
+const PAF_CHARGED_TOTAL = 150;
+const PAF_FREE_TOTAL = 300;
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; result: AddressSearchResult }>();
 const UA = { "User-Agent": "Invoicer (https://invoiceover.com)" };
@@ -37,8 +45,12 @@ type Photon = { features?: { properties?: OsmProperties }[] };
 const json = (source: AddressSource, items: AddressMatch[], extra: Partial<AddressSearchResult> = {}, status = 200) =>
   NextResponse.json({ source, items, ...extra }, { status });
 
+// A failed answer (rate limited, down) throws, so it reaches the route's
+// "not answering" reply instead of being cached as "no matches". A 404 is
+// an answer: the postcode doesn't exist.
 async function getJson<T>(url: string): Promise<{ status: number; body: T | null }> {
   const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(5000), cache: "no-store" });
+  if (!res.ok && res.status !== 404) throw new Error(`${new URL(url).host} answered ${res.status}`);
   return { status: res.status, body: (await res.json().catch(() => null)) as T | null };
 }
 
@@ -66,7 +78,8 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
   if (!postcode) {
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&countrycode=GB&layer=house&layer=street&limit=8&lang=en`;
     const { body } = await getJson<Photon>(url);
-    const items = unique((body?.features ?? []).map((f, i) => osmMatch(f.properties ?? {}, `osm:${i}`)));
+    const houseNumber = /^(\d+[a-z]?(?:-\d+[a-z]?)?)\s+\S/i.exec(q)?.[1];
+    const items = unique((body?.features ?? []).map((f, i) => osmMatch(f.properties ?? {}, `osm:${i}`, { houseNumber })));
     return { source: "osm", items: items.slice(0, 6) };
   }
   const where = await getJson<{ result?: { latitude?: number; longitude?: number; admin_district?: string; bua?: string | null } }>(
@@ -81,7 +94,7 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
   const props = (body?.features ?? []).map((f) => f.properties ?? {});
   const town = townCase(postcodeTown(postcode, at.bua, props.map((p) => p.city ?? ""), at.admin_district));
   const here = props.filter((p) => p.postcode && normalisePostcode(p.postcode) === postcode);
-  const houses = unique(here.map((p, i) => osmMatch(p, `osm:${i}`, town))).filter((m) => !m.partial).sort(byStreetAndNumber);
+  const houses = unique(here.map((p, i) => osmMatch(p, `osm:${i}`, { town }))).filter((m) => m.lines && m.lines.length > 2).sort(byStreetAndNumber);
   const lines = [town, postcode].filter(Boolean);
   const justPostcode: AddressMatch = {
     id: `pc:${postcode}`,
@@ -136,37 +149,53 @@ async function pickPaf(udprn: string, key: string): Promise<string[] | null> {
 // what people type out of request logs.
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { q?: unknown; pick?: unknown };
-  const key = process.env.IDEAL_POSTCODES_API_KEY;
-  const paf = !!key && (await isSignedIn(req.headers.get("authorization")));
-  const source: AddressSource = paf ? "paf" : "osm";
   if (!allow(`address:ip:${addressKey(req.headers.get("x-forwarded-for"))}`, PER_ADDRESS, FIVE_MINUTES)) {
-    return json(source, [], { busy: true }, 429);
+    return json("osm", [], { busy: true }, 429);
   }
+  const key = process.env.IDEAL_POSTCODES_API_KEY;
+  const userId = await signedInUser(req.headers.get("authorization"));
+  const charged = async () =>
+    !!userId &&
+    (await allowShared(`address:paf:user:${userId}`, PAF_PER_USER, FIVE_MINUTES)) &&
+    (await allowShared(`address:paf:user-day:${userId}`, PAF_PER_USER_DAY, DAY)) &&
+    (await allowShared("address:paf:charged", PAF_CHARGED_TOTAL, FIVE_MINUTES));
 
   if (typeof body.pick === "string") {
     const udprn = /^paf:(\d{1,12})$/.exec(body.pick)?.[1];
-    if (!paf || !udprn) return json(source, [], {}, 400);
-    if (!(await allowShared("address:paf", PAF_TOTAL, FIVE_MINUTES))) return json(source, [], { busy: true }, 429);
+    if (!key || !userId || !udprn) return json("paf", [], {}, 400);
+    if (!(await charged())) return json("paf", [], { busy: true }, 429);
     try {
-      const lines = await pickPaf(udprn, key!);
-      return lines ? NextResponse.json({ lines }) : json(source, [], {}, 404);
+      const lines = await pickPaf(udprn, key);
+      return lines ? NextResponse.json({ lines }) : json("paf", [], {}, 404);
     } catch {
-      return json(source, [], { busy: true }, 503);
+      return json("paf", [], { busy: true }, 503);
     }
   }
 
   const q = typeof body.q === "string" ? body.q.replace(/\s+/g, " ").trim().slice(0, 100) : "";
-  if (q.length < 3) return json(source, []);
-  const cacheKey = `${source}:${q.toLowerCase()}`;
-  const hit = cache.get(cacheKey);
-  if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json(hit.result);
-  if (!(await allowShared(`address:${source}`, paf ? PAF_TOTAL : OSM_TOTAL, FIVE_MINUTES))) {
+  if (q.length < 3) return json(key && userId ? "paf" : "osm", []);
+  let paf = !!key && !!userId;
+  const cached = (source: AddressSource) => {
+    const hit = cache.get(`${source}:${q.toLowerCase()}`);
+    return hit && Date.now() - hit.at < CACHE_MS ? hit.result : null;
+  };
+  const fromPaf = paf ? cached("paf") : null;
+  if (fromPaf) return NextResponse.json(fromPaf);
+  if (paf) paf = normalisePostcode(q) ? await charged() : await allowShared("address:paf:free", PAF_FREE_TOTAL, FIVE_MINUTES);
+  const source: AddressSource = paf ? "paf" : "osm";
+  const fromOsm = paf ? null : cached("osm");
+  if (fromOsm) return NextResponse.json(fromOsm);
+  if (!paf && !(await allowShared(userId ? "address:osm:signed-in" : "address:osm:anon", userId ? OSM_SIGNED_IN : OSM_ANON, FIVE_MINUTES))) {
     return json(source, [], { busy: true }, 429);
   }
   try {
-    const result = paf ? await searchPaf(q, key!) : await searchOsm(q);
+    const result = paf ? await searchPaf(q, key!).catch((err) => {
+      // Out of credit or down: the free lookup is better than nothing.
+      console.error("address-search: Royal Mail lookup failed,", err instanceof Error ? err.message : err);
+      return searchOsm(q);
+    }) : await searchOsm(q);
     if (cache.size > 500) cache.clear();
-    cache.set(cacheKey, { at: Date.now(), result });
+    cache.set(`${result.source}:${q.toLowerCase()}`, { at: Date.now(), result });
     return NextResponse.json(result);
   } catch (err) {
     console.error("address-search:", err instanceof Error ? err.message : err);
