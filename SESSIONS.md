@@ -445,7 +445,28 @@ applied (Atanas applies and verifies it).
   `/api/quote-requests/respond` (public, 10/hour/IP, service-role function).
 - Tests (dev server 3305, RESEND_API_KEY empty, Supabase mocked by
   `harness/qr-mock-server.mjs` + `qr-mockdb.mjs`, which mirror migration-028's grants,
-  trigger and functions): `harness/test-quote-requests.mjs` 80/80.
+  trigger and functions): `harness/test-quote-requests.mjs` 82/82, covering the request
+  form, three per-supplier sends (recipient, subject, link and reply-to checked, nothing
+  sent), the supplier page (prices, can't supply, VAT in and out, delivery, submit once,
+  closed and expired), typed-in and scanned answers, the comparison in both directions
+  (a split not worth its deliveries, then worth them), per-line overrides, order lists,
+  and 375px on every page. The route's own guards were exercised against the running
+  server (wrong address 409, signed out 401, another account 404, and 503 not-configured
+  as the last stop before Resend, since the key is empty by design).
+- Reviewed the SQL line by line against migrations 020, 025 and 026 (no Postgres here to
+  run it): fixed from that review — prices are normalised in the database by one helper
+  (`quote_request_clean_prices`) for both answer paths, `items` lost a default its own
+  check refused, a copied supplier link is shown as well as copied (the clipboard can be
+  refused), a past needed-by date is refused, and saving typed-in prices reloads before
+  returning to the request.
+- Merged `origin/main` (quotes UX, torch, clear forms) into the branch and re-ran
+  everything against it: quote requests 82/82, quotes-ux 48/48, quotes 34/34, quote links
+  18/18; tsc, eslint and build clean (build needs a temporary `turbopack.root`, not
+  committed; iCloud's " 2" copies in .next were moved to the scratchpad again).
+- For Atanas: migration-028 is NOT applied; nothing about this is live. Open questions in
+  the report (supplier's VAT rate assumed 20% when they quote VAT-inclusive; a request
+  expires for suppliers on its needed-by date; a supplier row can't be removed from a
+  request, only left unsent).
 
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
