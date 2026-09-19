@@ -41,14 +41,21 @@ export default function QuotePage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  // Bumped by every write, so a refresh that started before it can't put
+  // the older row back when it lands.
+  const genRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(() => fetchQuote(id).then((d) => {
-    setQuote(d.quote);
+  const load = useCallback(() => {
+    const gen = genRef.current;
+    return fetchQuote(id).then((d) => {
+      if (gen !== genRef.current) return;
+      setQuote(d.quote);
     setClients(d.clients);
     setProfile(d.profile);
-    setOrphan(d.orphan);
-  }), [id]);
+      setOrphan(d.orphan);
+    });
+  }, [id]);
 
   useEffect(() => {
     fetchQuote(id)
@@ -79,6 +86,7 @@ export default function QuotePage() {
   async function run(action: () => Promise<void>) {
     setBusy(true);
     busyRef.current = true;
+    genRef.current++;
     setError(null);
     try {
       await action();
@@ -116,6 +124,7 @@ export default function QuotePage() {
     });
 
   async function saveEdit(v: QuoteFormValue) {
+    genRef.current++;
     await quotesStore.updateDraft(q.id, { ...v, validUntil: v.validUntil || null });
     setQuote({ ...q, ...v, validUntil: v.validUntil || null });
     setEditing(false);
@@ -131,7 +140,7 @@ export default function QuotePage() {
       const claimed = await quotesStore.claimForInvoice(q.id);
       if (!claimed) throw new Error("This quote has already been turned into an invoice.");
       const tag = `from ${claimed.number}`;
-      const terms = clients.find((c) => c.id === claimed.clientId)?.paymentTerms ?? "";
+      const terms = (await clientsStore.all()).find((c) => c.id === claimed.clientId)?.paymentTerms ?? "";
       let invoice: Invoice;
       try {
         const date = todayIso();
@@ -147,7 +156,9 @@ export default function QuotePage() {
           tags: [tag],
         });
       } catch (err) {
-        const made = (await invoicesStore.all().catch(() => [])).find((inv) => inv.tags.includes(tag));
+        // If even the lookup fails, the claim stays: the page's recovery
+        // finds or releases it later, rather than risk a second invoice.
+        const made = (await invoicesStore.all()).find((inv) => inv.tags.includes(tag));
         if (!made) {
           await quotesStore.releaseClaim(q.id, before).catch(() => {});
           throw err;
