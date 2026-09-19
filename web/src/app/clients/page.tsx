@@ -21,6 +21,7 @@ type ClientDraft = {
   paymentTerms: string;
   defaultCurrency: string;
   contactPerson: string;
+  phone: string;
   remindersEnabled: boolean;
 };
 
@@ -34,6 +35,7 @@ function draftFor(c: Client): ClientDraft {
     paymentTerms: c.paymentTerms,
     defaultCurrency: c.defaultCurrency,
     contactPerson: c.contactPerson,
+    phone: c.phone,
     remindersEnabled: c.remindersEnabled,
   };
 }
@@ -230,6 +232,7 @@ export default function ClientsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
+                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency" value={draft.defaultCurrency} onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })} />
                     </div>
@@ -266,7 +269,7 @@ export default function ClientsPage() {
                         )}
                       </div>
                       <div className="text-sm text-neutral-500">
-                        {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
+                        {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
                         {tab === "client" && !c.remindersEnabled && " · Reminders off"}
                       </div>
                     </div>

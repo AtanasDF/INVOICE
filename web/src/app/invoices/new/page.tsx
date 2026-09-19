@@ -353,6 +353,7 @@ export default function NewInvoicePage() {
         paymentTerms: "",
         defaultCurrency: "",
         contactPerson: "",
+        phone: "",
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, c]);

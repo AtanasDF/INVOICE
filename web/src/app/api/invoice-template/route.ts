@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { extractInvoiceTemplate } from "@/lib/invoiceTemplate";
-import { addressKey, allow } from "@/lib/rateLimit";
+import { addressKey, allowShared } from "@/lib/rateLimit";
 import { ALLOWED_TYPES, parseDataUrl } from "@/lib/scanExtraction";
 
 export const runtime = "nodejs";
@@ -91,8 +91,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Scanning isn't configured yet on the server." }, { status: 500 });
   }
 
-  const key = user ? `user:${user.id}` : `ip:${addressKey(req.headers.get("x-forwarded-for"))}`;
-  if (!allow(key, user ? USER_PER_HOUR : ANON_PER_HOUR, HOUR)) {
+  const key = user ? `template:user:${user.id}` : `template:ip:${addressKey(req.headers.get("x-forwarded-for"))}`;
+  if (!(await allowShared(key, user ? USER_PER_HOUR : ANON_PER_HOUR, HOUR))) {
     return NextResponse.json(
       {
         error: user
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       { status: 429 }
     );
   }
-  if (!allow("global", GLOBAL_PER_HOUR, HOUR)) {
+  if (!(await allowShared("template:global", GLOBAL_PER_HOUR, HOUR))) {
     return NextResponse.json({ error: "Scanning is busy right now. Try again in a little while." }, { status: 429 });
   }
 
