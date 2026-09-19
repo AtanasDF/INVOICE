@@ -362,7 +362,7 @@ export default function FreeInvoiceBuilder() {
                 <ScaledPreview>
                   <InvoiceDocument draft={draft} />
                 </ScaledPreview>
-                <SendByEmail key={`${draft.number}|${draft.customer.email ?? ""}`} draft={draft} />
+                <SendByEmail draft={draft} />
               </div>
             </div>
           </div>

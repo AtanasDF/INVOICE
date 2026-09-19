@@ -2,16 +2,13 @@
 
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import { useAuth } from "@/lib/authContext";
 import InvoiceDocument, { bankRows, formatMoney, longDate } from "@/components/invoice/InvoiceDocument";
 import { computeDraftTotals, FreeInvoiceDraft } from "@/lib/freeInvoiceDraft";
-import { renderInvoicePdf } from "@/lib/invoicePdf";
+import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
-
-// Same sheet as ScaledPreview, unscaled, so the PDF is the preview.
-const PAGE_WIDTH = 794;
-const PAGE_HEIGHT = 1123;
-const PAGE_MARGIN = 53;
 
 type Status = { kind: "idle" } | { kind: "working"; step: string } | { kind: "sent"; to: string; copied: boolean } | { kind: "error"; message: string };
 
@@ -20,12 +17,21 @@ export function pdfFilename(d: FreeInvoiceDraft): string {
 }
 
 export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft; onSent?: () => void }) {
+  const { user } = useAuth();
   const sheetRef = useRef<HTMLDivElement>(null);
-  const [to, setTo] = useState(draft.customer.email ?? "");
+  // Follows the customer's email until the sender types their own.
+  const [typedTo, setTypedTo] = useState<string | null>(null);
+  const to = typedTo ?? draft.customer.email ?? "";
   const [message, setMessage] = useState("");
   const [copyToSelf, setCopyToSelf] = useState(true);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const issuerEmail = draft.issuer.email?.trim() ?? "";
+  // A new invoice number is a new invoice: "Sent" belongs to the old one.
+  const [statusFor, setStatusFor] = useState(draft.number);
+  if (statusFor !== draft.number) {
+    setStatusFor(draft.number);
+    if (status.kind !== "working") setStatus({ kind: "idle" });
+  }
+  const accountEmail = user?.email ?? "";
   const t = computeDraftTotals(draft);
   const due = draft.cis.enabled ? t.netPaymentDue : t.total;
   const working = status.kind === "working";
@@ -52,7 +58,7 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
           message: message.trim(),
           copyToSelf,
           issuerName: draft.issuer.name,
-          issuerEmail,
+          issuerEmail: draft.issuer.email?.trim() ?? "",
           customerName: draft.customer.name ?? "",
           number: draft.number,
           total: formatMoney(draft.currencySymbol, due),
@@ -77,10 +83,17 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
         {formatMoney(draft.currencySymbol, due)}
         {draft.number ? ` · ${draft.number}` : ""} goes as a PDF, with your payment details in the email.
       </p>
-      {status.kind === "sent" ? (
+      {!user ? (
+        <div className="mt-4 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+          <p>Sending by email needs a free account, so every invoice sent from here comes from a real person. This invoice stays as it is.</p>
+          <Link href="/login?next=/free-invoice" className="mt-3 inline-block rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+            Sign in or sign up to send
+          </Link>
+        </div>
+      ) : status.kind === "sent" ? (
         <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
           <p className="font-medium">Sent to {status.to}.</p>
-          {status.copied && <p className="mt-0.5">A copy went to {issuerEmail}.</p>}
+          {status.copied && <p className="mt-0.5">A copy went to {accountEmail}.</p>}
           <button type="button" onClick={() => setStatus({ kind: "idle" })} className="mt-2 text-sm font-medium underline">
             Send again
           </button>
@@ -98,7 +111,7 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
               className={INPUT}
               placeholder="customer@example.com"
               value={to}
-              onChange={(e) => setTo(e.target.value)}
+              onChange={(e) => setTypedTo(e.target.value)}
             />
           </div>
           <div>
@@ -112,19 +125,20 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
               onChange={(e) => setMessage(e.target.value)}
             />
           </div>
-          {issuerEmail && (
+          {accountEmail && (
             <label className="flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" checked={copyToSelf} onChange={(e) => setCopyToSelf(e.target.checked)} />
-              Send me a copy ({issuerEmail})
+              Send me a copy ({accountEmail})
             </label>
           )}
-          {!issuerEmail && <p className="text-xs text-neutral-500">Add your email under Your business so replies come to you.</p>}
+          {!draft.issuer.email?.trim() && <p className="text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}. Add an email under Your business to use a different one.</p>}
           {status.kind === "error" && <p className="text-sm text-red-600">{status.message}</p>}
           <button type="submit" disabled={working} className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto">
             {working ? status.step : "Send invoice"}
           </button>
         </form>
       )}
+      {/* Same sheet as ScaledPreview, unscaled, so the PDF is the preview. */}
       {createPortal(
         <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
           <div ref={sheetRef} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>

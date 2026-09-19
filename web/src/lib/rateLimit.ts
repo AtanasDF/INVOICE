@@ -18,6 +18,12 @@ export function allow(key: string, limit: number, windowMs: number): boolean {
   return true;
 }
 
+// Gives back the most recent hit, for an attempt that failed before it
+// did anything worth counting.
+export function release(key: string) {
+  hits.get(key)?.pop();
+}
+
 // First x-forwarded-for entry, with IPv6 collapsed to its /64 so one
 // subscriber can't rotate through a whole prefix; IPv4 stays as is.
 export function addressKey(forwardedFor: string | null): string {
