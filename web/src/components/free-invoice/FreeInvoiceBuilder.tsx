@@ -19,6 +19,7 @@ import {
   FreeInvoiceDraft,
   clearFreeInvoiceDraft,
   defaultDraft,
+  nextDraft,
   readFreeInvoiceDraft,
   templateToDraft,
   writeFreeInvoiceDraft,
@@ -30,8 +31,8 @@ const TOO_LARGE = "These pages are too large to send together (about 2.5MB total
 type Stage = "start" | "pages" | "editor";
 
 const ENGINES: { value: ScanEngine; label: string }[] = [
-  { value: "gemini", label: "Gemini (fast, free)" },
-  { value: "claude", label: "Claude" },
+  { value: "claude", label: "Claude (best)" },
+  { value: "gemini", label: "Gemini (fast)" },
 ];
 
 function EnginePicker({ value, onChange, disabled }: { value: ScanEngine; onChange: (v: ScanEngine) => void; disabled?: boolean }) {
@@ -50,12 +51,12 @@ export default function FreeInvoiceBuilder() {
   // state directly instead of arriving in an effect after first paint.
   const [draft, setDraft] = useState<FreeInvoiceDraft | null>(readFreeInvoiceDraft);
   const [stage, setStage] = useState<Stage>(draft ? "editor" : "start");
-  const [engine, setEngine] = useState<ScanEngine>("gemini");
+  const [engine, setEngine] = useState<ScanEngine>("claude");
   const [pages, setPages] = useState<CapturedFile[]>([]);
   const [capturing, setCapturing] = useState(false);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
-  const [note, setNote] = useState<"resumed" | "filled" | null>(draft ? "resumed" : null);
+  const [note, setNote] = useState<"resumed" | "filled" | "next" | null>(draft ? "resumed" : null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [printing, setPrinting] = useState(false);
   const editing = stage === "editor" && !!draft;
@@ -158,6 +159,14 @@ export default function FreeInvoiceBuilder() {
     setStage("start");
   }
 
+  function startNext() {
+    if (!draft) return;
+    setDraft(nextDraft(draft));
+    setNote("next");
+    setTab("edit");
+    window.scrollTo({ top: 0 });
+  }
+
   function saveToAccount() {
     if (draft) writeFreeInvoiceDraft(draft);
     router.push(user ? "/invoices/new" : "/login?next=/invoices/new");
@@ -177,6 +186,9 @@ export default function FreeInvoiceBuilder() {
     <>
       <button type="button" onClick={print} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
         Print or save as PDF
+      </button>
+      <button type="button" onClick={startNext} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+        Next invoice
       </button>
       <button type="button" onClick={saveToAccount} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         Save to your account
@@ -210,7 +222,7 @@ export default function FreeInvoiceBuilder() {
             </div>
             <div className="flex flex-col rounded-lg border p-4">
               <p className="font-medium">Scan an existing invoice</p>
-              <p className="mt-1 flex-1 text-sm text-neutral-600">Photograph one you have sent before. Its layout and details are copied in, so you only change what is new.</p>
+              <p className="mt-1 flex-1 text-sm text-neutral-600">Photograph one you have sent before, even a rough or handwritten one. Your details, customer and lines are copied in, the number moves on by one and the date is today.</p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                   Scan an existing invoice
@@ -285,7 +297,11 @@ export default function FreeInvoiceBuilder() {
         <>
           {note && (
             <p className="text-sm text-neutral-600">
-              {note === "filled" ? "Filled in from your invoice — check every field." : "Picked up where you left off."}{" "}
+              {note === "filled"
+                ? `Copied from your invoice as the next one${draft.number ? `: number ${draft.number}` : ""}, dated today. Check every field.`
+                : note === "next"
+                  ? `Next invoice${draft.number ? ` (${draft.number})` : ""}, dated today. Change anything that's new.`
+                  : "Picked up where you left off."}{" "}
               {note === "resumed" && (
                 <button type="button" onClick={startOver} className="font-medium underline">
                   Start over

@@ -2,6 +2,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { CURRENCIES } from "@/lib/fx";
 import { NormalisedDates, normaliseScanDates } from "@/lib/documentDate";
 import { extractStructured, type ScanEngine } from "@/lib/extractors";
+import { ROUGH_DOCUMENTS } from "@/lib/invoiceTemplate";
 import type { DocumentDetails } from "@/lib/storage";
 
 // Shared between /api/scan (a live camera/upload capture, reviewed on
@@ -267,7 +268,9 @@ const PROMPT =
   "Mark a field's confidence \"low\" whenever the source is smudged, cropped, ambiguous, or you're genuinely " +
   "guessing -- never mark something \"high\" just to fill the field in. " +
   "If documentType is business_card, also fill in contactPerson and contactEmail when they're shown (vendor " +
-  "should be the company name); leave both null for every other document type.";
+  "should be the company name); leave both null for every other document type. " +
+  ROUGH_DOCUMENTS +
+  " Mark such best readings low confidence.";
 
 export function parseDataUrl(dataUrl: string): { mediaType: string; base64: string } | null {
   const match = /^data:([^;]+);base64,([\s\S]+)$/.exec(dataUrl);

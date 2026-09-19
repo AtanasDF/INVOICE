@@ -80,10 +80,40 @@ export function defaultDraft(): FreeInvoiceDraft {
   };
 }
 
+// The last run of digits moves on by one, keeping its zero padding, so
+// "INV-0042" becomes "INV-0043" and "2026/30" becomes "2026/31".
+export function nextInvoiceNumber(number: string): string {
+  const m = /^(.*?)(\d+)(\D*)$/.exec(number.trim());
+  if (!m) return number.trim();
+  const next = String(Number(m[2]) + 1).padStart(m[2].length, "0");
+  return `${m[1]}${next}${m[3]}`;
+}
+
+function daysBetween(from: string, to: string): number | null {
+  const a = Date.parse(`${from}T00:00:00Z`);
+  const b = Date.parse(`${to}T00:00:00Z`);
+  return Number.isNaN(a) || Number.isNaN(b) || b < a ? null : Math.round((b - a) / 86_400_000);
+}
+
+// A printed "Payment due within 14 days" maps onto the preset of the same
+// length; anything else stays as printed.
+function presetTerms(printed: string | null, days: number | null): string | null {
+  if (days === 0) return "Upon receipt";
+  if (days !== null && PAYMENT_TERMS.includes(`${days} days` as (typeof PAYMENT_TERMS)[number])) return `${days} days`;
+  if (!printed) return null;
+  if (/receipt|immediate/i.test(printed)) return "Upon receipt";
+  const m = /(\d+)\s*days?/i.exec(printed);
+  if (m && PAYMENT_TERMS.includes(`${Number(m[1])} days` as (typeof PAYMENT_TERMS)[number])) return `${Number(m[1])} days`;
+  return printed;
+}
+
+// A scanned invoice is the model for the NEXT one: everything that stays
+// the same is kept, the number moves on and the date is today.
 export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
   const base = defaultDraft();
-  const date = t.date ?? base.date;
-  const paymentTerms = t.paymentTerms ?? base.paymentTerms;
+  const printedGap = t.date && t.dueDate ? daysBetween(t.date, t.dueDate) : null;
+  const paymentTerms = presetTerms(t.paymentTerms, printedGap) ?? base.paymentTerms;
+  const gap = termsDays(paymentTerms) ?? printedGap ?? 14;
   const lines = t.lineItems.map((l) => ({
     description: l.description,
     quantity: l.quantity,
@@ -97,9 +127,8 @@ export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
     issuer: { ...t.issuer },
     bank: { ...t.bank },
     customer: { ...t.customer },
-    number: t.invoiceNumber ?? "",
-    date,
-    dueDate: t.dueDate ?? addDays(date, termsDays(paymentTerms) ?? 14),
+    number: t.invoiceNumber ? nextInvoiceNumber(t.invoiceNumber) : "",
+    dueDate: addDays(base.date, gap),
     paymentTerms,
     currencySymbol: currencySymbol(t.currency),
     vatRegistered: t.showsVat,
@@ -108,6 +137,13 @@ export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
     notes: t.notes ?? "",
     footer: t.footer ?? "",
   };
+}
+
+// Same business, customer and lines; the next number, dated today.
+export function nextDraft(d: FreeInvoiceDraft): FreeInvoiceDraft {
+  const date = todayIso();
+  const days = termsDays(d.paymentTerms) ?? daysBetween(d.date, d.dueDate) ?? 14;
+  return { ...d, number: d.number ? nextInvoiceNumber(d.number) : "", date, dueDate: addDays(date, days) };
 }
 
 type StoredDraft = Partial<Omit<FreeInvoiceDraft, "version" | "lines" | "cis" | "issuer" | "bank" | "customer">> & {

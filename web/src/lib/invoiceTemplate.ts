@@ -149,6 +149,14 @@ export const INVOICE_TEMPLATE_SCHEMA: Record<string, unknown> = strictObject({
   ),
 });
 
+export const ROUGH_DOCUMENTS =
+  "The document may be rough: handwritten, a home-made spreadsheet, a photo at an angle, faint, creased, partly " +
+  "cropped or missing sections. Read everything that is there anyway -- handwriting included -- and never " +
+  "discard a value because the layout is unusual or a label is missing: infer what a value is from its position " +
+  "and format (a sort code looks like 12-34-56, a UK VAT number like GB123456789, an email has an @). Use null " +
+  "only for something that is genuinely not on the page; when a value is there but hard to make out, give your " +
+  "best reading rather than null.";
+
 const PROMPT =
   "This is an example of the user's OWN issued invoice: the user is the ISSUER, the business whose name sits at " +
   "the top and whose VAT number and bank details are printed. Every attached image or PDF page is a page of the " +
@@ -164,7 +172,8 @@ const PROMPT =
   "and unit price and classify each as labour, materials or other. Copy any notes block and any footer small print " +
   "verbatim. For layout: say where the business block sits (left/centre/right), where the invoice number and date " +
   "block sits (right/left/below the business block), whether there is a graphic logo, and whether the overall " +
-  "style is classic, modern or compact.";
+  "style is classic, modern or compact. " +
+  ROUGH_DOCUMENTS;
 
 export async function extractInvoiceTemplate(pages: ScanPage[], engine: ScanEngine): Promise<InvoiceTemplate> {
   const raw = await extractStructured<InvoiceTemplateToolOutput>({
@@ -174,7 +183,7 @@ export async function extractInvoiceTemplate(pages: ScanPage[], engine: ScanEngi
     schema: INVOICE_TEMPLATE_SCHEMA,
     prompt: PROMPT,
     pages,
-    maxTokens: 4000,
+    maxTokens: 12000,
   });
   const { dateAsPrinted, dueDateAsPrinted, ...rest } = raw;
   return {
