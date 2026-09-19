@@ -103,10 +103,14 @@ and what is left open. Dates are session dates (Europe/London).
   - Live after deploy: headless share 3/3, tips 7/7, auto-zoom 9/10 (known edge-case
     expectation); /invoices/new renders with Describe it for the signed-in account.
 
+- Atanas away for three days, steering from his phone; charger connected. With his
+  standing permission, backup 009 + migration-018 run in his Chrome's Supabase SQL editor
+  and verified (backup 0/0 both ways, RLS; column, RLS, grants; function exercised in a
+  rolled-back block). Branch merged (338a286). Live: the free scanner's limit now counts in
+  rate_limit_hits (hashed keys), and /clients/new has a Phone field.
+
 **Open**
 
-- Run 009-backup-before-migration-018.sql, verify, then migration-018 in Supabase; after
-  checking, merge `feature/client-phone-and-shared-limit`.
 - Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
   signature pad and scan-to-fill on the iPhone.
 - Session hygiene: this session started in another project's folder (MM INVOICES AUTO);
