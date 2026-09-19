@@ -67,6 +67,26 @@ const MAX_ASPECT = 8;
 const MIN_SOLIDITY = 0.85;
 const MIN_RECTANGULARITY = 0.9;
 const MAX_EDGES_AROUND = 0.2;
+// Bent paper: the simplified outline of a folded-over corner, a kink or a
+// wavy edge puts a corner somewhere along a side -- the crop comes out skewed
+// and, as the page moves, the corner flips between the two ends of the fold.
+// Each side is re-fitted as a straight line through the outline points along
+// its middle (SIDE_TRIM off each end, within SIDE_BAND of it -- wide, as a
+// big fold leaves the simplified side well off the real one -- then again
+// within REFIT_BAND of that first line; at least SIDE_SUPPORT of its length
+// of them) and the corners go where those lines meet, but only outward (a
+// corner curling up at the camera reaches past its sides) and by at most
+// CORNER_SHIFT of the shorter side. A corner the outline already has within
+// MIN_CORNER_SHIFT stays: a kinked or wavy side pulls its line out a little,
+// which would only add a sliver of table. Sides meeting at under ~20°
+// (MIN_CORNER_SIN) aren't a corner.
+const SIDE_TRIM = 0.15;
+const SIDE_BAND = 0.2;
+const REFIT_BAND = 0.03;
+const SIDE_SUPPORT = 0.25;
+const CORNER_SHIFT = 0.3;
+const MIN_CORNER_SHIFT = 0.02;
+const MIN_CORNER_SIN = 0.35;
 // Auto-capture gates (empirical). A quad must hold still for STABLE_MS
 // with each corner drifting under MOVE_TOLERANCE of the work-frame width
 // per tick, cover at least MIN_COVERAGE of the work frame, and the frame
@@ -84,6 +104,14 @@ const STABLE_TIMEOUT_MS = 2500;
 // Per-frame easing of the drawn outline toward the latest detected quad,
 // so it glides between detection ticks instead of jumping at tick rate.
 const OUTLINE_EASE = 0.35;
+// The page's corners are the per-corner median of the last SMOOTH_TICKS
+// detections -- what's drawn, checked for movement and captured -- so a
+// wavy edge read a little differently every tick, or misread once, doesn't
+// restart the hold-still count; a real move shows a tick later. A page
+// missed for up to LOST_GRACE_TICKS (a curled edge losing contrast) keeps
+// its outline and count, but isn't taken until it's seen again.
+const SMOOTH_TICKS = 3;
+const LOST_GRACE_TICKS = 2;
 const FLASH_MS = 150;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
@@ -216,6 +244,15 @@ function alignTo(q: Quad, ref: Quad): { q: Quad; off: number } {
 
 const centre = (q: Point[]) => ({ x: q.reduce((s, p) => s + p.x, 0) / q.length, y: q.reduce((s, p) => s + p.y, 0) / q.length });
 
+function medianQuad(qs: Quad[]): Quad {
+  const median = (v: number[]) => {
+    const s = [...v].sort((a, b) => a - b);
+    const k = s.length >> 1;
+    return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2;
+  };
+  return [0, 1, 2, 3].map((i) => ({ x: median(qs.map((q) => q[i].x)), y: median(qs.map((q) => q[i].y)) })) as Quad;
+}
+
 // The most a centred zoom can enlarge the frame before any corner of the
 // quad comes within FIT_MARGIN of the edge.
 function fitFactor(q: Quad, w: number, h: number): number {
@@ -304,6 +341,99 @@ function quadOf(cv: CVModule, c: Mat): Point[] | null {
   }
 }
 
+type Line = { p: Point; d: Point };
+
+// The contour about a point per pixel: CHAIN_APPROX_SIMPLE keeps only the
+// ends of each straight run, and a side's fit needs all of it.
+function outlinePoints(c: Mat): Point[] {
+  const d = c.data32S;
+  const n = c.rows;
+  const out: Point[] = [];
+  for (let i = 0; i < n; i++) {
+    const ax = d[i * 2];
+    const ay = d[i * 2 + 1];
+    const bx = d[((i + 1) % n) * 2];
+    const by = d[((i + 1) % n) * 2 + 1];
+    const steps = Math.max(1, Math.abs(bx - ax), Math.abs(by - ay));
+    for (let s = 0; s < steps; s++) out.push({ x: ax + ((bx - ax) * s) / steps, y: ay + ((by - ay) * s) / steps });
+  }
+  return out;
+}
+
+// A robust line through the outline points within band of the line from a
+// to b and between trim and 1 - trim of the way along it, or null when too
+// few points lie there to call it a side.
+function fitSide(cv: CVModule, pts: Point[], a: Point, b: Point, band: number, trim: number): Line | null {
+  const len = dist(a, b);
+  if (len < 1) return null;
+  const ux = (b.x - a.x) / len;
+  const uy = (b.y - a.y) / len;
+  const along: number[] = [];
+  for (const p of pts) {
+    const t = ((p.x - a.x) * ux + (p.y - a.y) * uy) / len;
+    if (t >= trim && t <= 1 - trim && Math.abs((p.x - a.x) * uy - (p.y - a.y) * ux) <= band) along.push(p.x, p.y);
+  }
+  if (along.length / 2 < SIDE_SUPPORT * len) return null;
+  const m = cv.matFromArray(along.length / 2, 1, cv.CV_32FC2, along);
+  const line = new cv.Mat();
+  try {
+    cv.fitLine(m, line, cv.DIST_HUBER, 0, 0.01, 0.01);
+    return { d: { x: line.data32F[0], y: line.data32F[1] }, p: { x: line.data32F[2], y: line.data32F[3] } };
+  } finally {
+    m.delete();
+    line.delete();
+  }
+}
+
+function meet(l1: Line, l2: Line): Point | null {
+  const cross = l1.d.x * l2.d.y - l1.d.y * l2.d.x;
+  if (Math.abs(cross) < MIN_CORNER_SIN) return null;
+  const t = ((l2.p.x - l1.p.x) * l2.d.y - (l2.p.y - l1.p.y) * l2.d.x) / cross;
+  return { x: l1.p.x + t * l1.d.x, y: l1.p.y + t * l1.d.y };
+}
+
+function isConvex(q: Point[]): boolean {
+  const turns = q.map((p, i) => {
+    const b = q[(i + 1) % 4];
+    const c = q[(i + 2) % 4];
+    return (b.x - p.x) * (c.y - b.y) - (b.y - p.y) * (c.x - b.x);
+  });
+  return turns.every((t) => t > 0) || turns.every((t) => t < 0);
+}
+
+// The page's corners from its sides rather than from the simplified outline
+// (see SIDE_TRIM). Fitted twice: once along the simplified sides, then along
+// the first fit's lines, which a folded corner pulled off the side.
+function fitCorners(cv: CVModule, c: Mat, approx: Point[], w: number, h: number): Point[] {
+  const q = orderPoints(approx);
+  const pts = outlinePoints(c);
+  let lines = q.map((a, i) => {
+    const b = q[(i + 1) % 4];
+    const len = dist(a, b) || 1;
+    return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len } };
+  });
+  let corners: Point[] = q;
+  for (const [bandK, bandMin, trim] of [
+    [SIDE_BAND, 4, SIDE_TRIM],
+    [REFIT_BAND, 3, SIDE_TRIM / 2],
+  ]) {
+    lines = corners.map((a, i) => {
+      const b = corners[(i + 1) % 4];
+      return fitSide(cv, pts, a, b, Math.max(bandMin, bandK * dist(a, b)), trim) ?? lines[i];
+    });
+    corners = lines.map((l, i) => meet(lines[(i + 3) % 4], l) ?? q[i]);
+  }
+  const mid = centre(q);
+  const out = q.map((p, i) => {
+    const f = corners[i];
+    const shorter = Math.min(dist(p, q[(i + 1) % 4]), dist(p, q[(i + 3) % 4]));
+    const shift = dist(f, p);
+    const inFrame = f.x >= 0 && f.y >= 0 && f.x <= w && f.y <= h;
+    return inFrame && shift > MIN_CORNER_SHIFT * shorter && shift <= CORNER_SHIFT * shorter && dist(f, mid) > dist(p, mid) ? f : p;
+  });
+  return isConvex(out) ? out : q;
+}
+
 function fillPolygon(cv: CVModule, mask: Mat, pts: Point[], value: number) {
   const poly = cv.matFromArray(pts.length, 1, cv.CV_32SC2, pts.flatMap((p) => [Math.round(p.x), Math.round(p.y)]));
   cv.fillConvexPoly(mask, poly, new cv.Scalar(value));
@@ -346,22 +476,28 @@ function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false): { pts: Po
   cv.dilate(m.edges, m.edges, m.kernel);
   cv.findContours(m.edges, m.contours, m.hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
   const frame = m.w * m.h;
-  const found: { pts: Point[]; area: number }[] = [];
+  const found: { i: number; approx: Point[]; area: number }[] = [];
   for (let i = 0; i < m.contours.size(); i++) {
     const c = m.contours.get(i);
     const box = cv.boundingRect(c);
     if (box.width * box.height >= frame * FAR_MIN_AREA) {
-      const pts = quadOf(cv, c);
-      const area = pts ? polygonArea(pts) : 0;
-      if (pts && area >= frame * FAR_MIN_AREA) found.push({ pts, area });
+      const approx = quadOf(cv, c);
+      const area = approx ? polygonArea(approx) : 0;
+      if (approx && area >= frame * FAR_MIN_AREA) found.push({ i, approx, area });
     }
     c.delete();
   }
   found.sort((a, b) => b.area - a.area);
   const pages: { pts: Point[]; area: number }[] = [];
   for (const f of found) {
-    if (f.area < frame * MIN_CONTOUR_AREA && !looksLikePaper(cv, m, f.pts)) continue;
-    pages.push(f);
+    // Corners are fitted only for shapes that get this far: the live loop
+    // stops at the first page.
+    const c = m.contours.get(f.i);
+    const pts = fitCorners(cv, c, f.approx, m.w, m.h);
+    c.delete();
+    const area = polygonArea(pts);
+    if (area < frame * MIN_CONTOUR_AREA && !looksLikePaper(cv, m, pts)) continue;
+    pages.push({ pts, area });
     if (firstOnly) break;
   }
   return pages;
@@ -543,8 +679,11 @@ export default function DocumentCapture({
   const outlineRef = useRef<Quad | null>(null);
   const lockedRef = useRef(false);
   const fillRef = useRef(0);
-  // Work-frame corners from the previous tick, for the movement check.
+  // Work-frame corners from the previous tick, for the movement check, and
+  // the last few ticks' detections they're the median of (SMOOTH_TICKS).
   const lastQuadRef = useRef<Quad | null>(null);
+  const recentRef = useRef<Quad[]>([]);
+  const missesRef = useRef(0);
   const stableSinceRef = useRef<number | null>(null);
   const peakSharpRef = useRef(0);
   // Set the moment auto-capture fires; the parent unmounts this
@@ -651,6 +790,7 @@ export default function DocumentCapture({
   function resetStable() {
     stableSinceRef.current = null;
     lastQuadRef.current = null;
+    recentRef.current = [];
     peakSharpRef.current = 0;
   }
 
@@ -1018,9 +1158,14 @@ export default function DocumentCapture({
         const last = lastQuadRef.current;
         const aligned = best ? (last ? alignTo(orderPoints(best), last) : { q: orderPoints(best), off: 0 }) : null;
         const ordered = aligned?.q ?? null;
+        if (ordered) {
+          recentRef.current.push(ordered);
+          if (recentRef.current.length > SMOOTH_TICKS) recentRef.current.shift();
+        }
+        const smooth = ordered ? medianQuad(recentRef.current) : null;
         const coverage = bestArea / (workW * workH);
         lastCoverageRef.current = coverage;
-        const span = ordered ? spanOf(ordered, workW, workH) : 0;
+        const span = smooth ? spanOf(smooth, workW, workH) : 0;
         // A till receipt running most of the way down the view is big
         // enough whatever its area.
         const bigEnough = coverage >= MIN_COVERAGE || span >= AUTO_ZOOM_BELOW;
@@ -1048,12 +1193,17 @@ export default function DocumentCapture({
           }
         }
 
-        if (best && ordered) {
-          quadRef.current = { pts: ordered, w: workW, h: workH };
+        if (smooth) {
+          missesRef.current = 0;
+          quadRef.current = { pts: smooth, w: workW, h: workH };
 
           const now = performance.now();
-          const moved = last !== null && aligned!.off > MOVE_TOLERANCE * workW;
-          lastQuadRef.current = ordered;
+          const moved = last !== null && Math.max(...smooth.map((p, i) => dist(p, last[i]))) > MOVE_TOLERANCE * workW;
+          // This tick's own reading is far from the smoothed page: a misread,
+          // or a move the median hasn't caught up with. Never the moment to
+          // take the shot.
+          const agrees = aligned!.off <= MOVE_TOLERANCE * workW;
+          lastQuadRef.current = smooth;
           if (moved || !bigEnough) {
             lockedRef.current = false;
             stableSinceRef.current = null;
@@ -1064,7 +1214,7 @@ export default function DocumentCapture({
           // before a corner nears the edge, and so the step it would take.
           const level = zoomLevel();
           const room = autoZoomRef.current && !userZoomedRef.current ? autoZoomMax() / level : 1;
-          const fit = fitFactor(ordered, workW, workH);
+          const fit = fitFactor(smooth, workW, workH);
           const step = Math.min(room, fit, AUTO_ZOOM_TARGET / span);
           const canZoom = span < AUTO_ZOOM_BELOW && step >= AUTO_ZOOM_MIN_STEP;
           if (canZoom && !capturedRef.current && now >= zoomCooldownRef.current && !moved) {
@@ -1091,12 +1241,12 @@ export default function DocumentCapture({
             const sharpEnough = sharpness >= SHARPNESS_FLOOR && sharpness >= SHARPNESS_RATIO * peakSharpRef.current;
             const ready = (stableFor >= STABLE_MS && sharpEnough) || stableFor >= STABLE_TIMEOUT_MS;
             lockedRef.current = sharpEnough || stableFor >= STABLE_MS;
-            if (ready && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
+            if (ready && agrees && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
               capturedRef.current = true;
               captureRef.current();
             }
           }
-        } else {
+        } else if (!quadRef.current || ++missesRef.current > LOST_GRACE_TICKS) {
           quadRef.current = null;
           lockedRef.current = false;
           resetStable();
@@ -1552,14 +1702,15 @@ export default function DocumentCapture({
     return () => clearInterval(id);
   }, [debug, cvStatus, coach]);
 
+  // Nothing to say until a page is found: the corners on screen show where
+  // it goes (Atanas: everyone knows what to do), and first-timers get the
+  // scanner-auto tip.
   const hint = saving
     ? "Hold still — taking the photo…"
     : multi && waitingNext
       ? `Got it — ${shots.length} scanned. Next document…`
-      : cvStatus === "failed"
-      ? "Fit the page inside the corners and tap to capture"
-      : !hasQuad
-        ? "Fit the page inside the corners"
+      : cvStatus === "failed" || !hasQuad
+        ? null
         : coach === "zooming"
           ? "Hold still — zooming in"
           : coach === "centre"
@@ -1569,6 +1720,7 @@ export default function DocumentCapture({
               : !autoOn
                 ? "Ready — tap to capture"
                 : "Hold still…";
+  const pill = [pageLabel, hint].filter(Boolean).join(" · ");
   const cvLine =
     cvStatus === "loading" ? "Edge detection: loading…" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
 
@@ -1715,11 +1867,14 @@ export default function DocumentCapture({
               <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-white line-clamp-2">{shownFailure}</div>
             ) : (
               status === "live" && (
+                // With nothing to say it's an invisible strip, still there
+                // to tap for the readout -- which matters most exactly when
+                // no page is being found.
                 <div
                   onClick={() => setDebug((d) => !d)}
-                  className="pointer-events-auto min-w-0 flex-1 rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2"
+                  className={`pointer-events-auto min-w-0 flex-1 ${pill ? "rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2" : "h-10"}`}
                 >
-                  {pageLabel ? `${pageLabel} · ${hint}` : hint}
+                  {pill}
                 </div>
               )
             )}
