@@ -30,3 +30,37 @@ export function takeScanCapture(): ScanHandoff | null {
     return null;
   }
 }
+
+// Files picked with "Upload from files" on another page, for the page that
+// reads them. Held in memory: getting there is a client-side navigation,
+// and several photos or PDFs can be more than sessionStorage holds.
+let uploads: ScanHandoff[] | null = null;
+
+export function stashUploads(files: ScanHandoff[]): void {
+  uploads = files;
+}
+
+export function takeUploads(): ScanHandoff[] | null {
+  const taken = uploads;
+  uploads = null;
+  return taken;
+}
+
+// A picked file as a scan page takes it: photos downscaled like every
+// capture (see imageDownscale), PDFs as they are.
+export function readUpload(file: File): Promise<ScanHandoff> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const { downscaleImageDataUrl } = await import("@/lib/imageDownscale");
+        const dataUrl = await downscaleImageDataUrl(reader.result as string);
+        resolve({ dataUrl, mediaType: file.type.startsWith("image/") ? "image/jpeg" : file.type || "application/pdf" });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Could not read this file."));
+    reader.readAsDataURL(file);
+  });
+}

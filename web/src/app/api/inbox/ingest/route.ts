@@ -151,9 +151,12 @@ export async function POST(req: Request) {
         vatAmount = vat;
       }
 
+      // Day-first is certain on a UK document; only another currency's might
+      // mean month-first (as on the scan page).
+      const askOrder = !!result.currency && result.currency !== "GBP";
       const cues: string[] = [];
-      if (result.dateAmbiguous) cues.push(dateCue("Date", result.dateAsPrinted, result.date, result.dateAlternative));
-      if (result.dueDateAmbiguous) {
+      if (askOrder && result.dateAmbiguous) cues.push(dateCue("Date", result.dateAsPrinted, result.date, result.dateAlternative));
+      if (askOrder && result.dueDateAmbiguous) {
         cues.push(dateCue("Due date", result.dueDateAsPrinted, result.dueDate, result.dueDateAlternative));
       }
       const notes = [result.notes, ...cues].filter(Boolean).join("\n");

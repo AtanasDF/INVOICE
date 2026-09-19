@@ -23,6 +23,7 @@ import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
 import Tip from "@/components/Tip";
+import UploadFilesButton from "@/components/UploadFilesButton";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { showOnAppIcon } from "@/lib/appBadge";
 
@@ -342,6 +343,11 @@ export default function Dashboard() {
           </Link>
         )}
         <div className="grid flex-1 grid-cols-1 gap-2">
+          <UploadFilesButton
+            href="/scan"
+            label="Upload photos or PDFs"
+            buttonClassName="flex w-full items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md"
+          />
           <Link href="/receipts/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
             + Add a receipt manually
           </Link>

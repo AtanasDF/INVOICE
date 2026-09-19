@@ -10,7 +10,7 @@ import type { ScanEngine } from "@/lib/extractors";
 import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { findDuplicate, sameNumber, sameSupplier } from "@/lib/duplicates";
-import { takeScanCapture } from "@/lib/scanHandoff";
+import { takeScanCapture, takeUploads } from "@/lib/scanHandoff";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import CaptureButton from "@/components/CaptureButton";
 import PagesStrip, { Capture } from "@/components/scan/PagesStrip";
@@ -214,9 +214,14 @@ export default function ScanPage() {
     // screen never renders for it; extraction waits for the lists to load.
     const handoff = takeScanCapture();
     if (handoff) beginHandoff(handoff);
+    // Files picked with "Upload from files": each one a document, read
+    // together as a batch once the suppliers are in.
+    const uploaded = handoff ? null : takeUploads();
+    if (uploaded) beginUploads();
     loadLists()
       .then((l) => {
         if (handoff) runExtraction([handoff], l.cats, l.suppliers, l.receipts);
+        if (uploaded) startBatch(uploaded.map((f) => [f]), l);
       })
       .catch((err) => {
         setScanning(false);
@@ -244,6 +249,11 @@ export default function ScanPage() {
     return { cats, suppliers: c.filter((x) => x.kind === "supplier" && !x.archived), receipts: r };
   }
 
+  function beginUploads() {
+    setCapture(null);
+    setScanning(true);
+  }
+
   function beginHandoff(file: CapturedFile) {
     setPages([file]);
     setCapture(null);
@@ -252,6 +262,10 @@ export default function ScanPage() {
 
   function applyResult(result: ScanResult, supplierList: Client[], receiptList: Receipt[]) {
     const touched = touchedRef.current;
+    // A UK document writes the day first, so "08/09/26" is 8 September and
+    // there's nothing to ask. Only a document in another currency (an
+    // American supplier, say) might mean 9 August.
+    const askOrder = !!result.currency && result.currency !== "GBP";
     const unless = (k: keyof Form, fields: Partial<Form>) => (touched.has(k) ? {} : fields);
     setForm((f) => {
       const match = touched.has("clientId") || !result.vendor ? null : matchSupplier(result.vendor, supplierList);
@@ -276,12 +290,12 @@ export default function ScanPage() {
           date: result.date ?? f.date,
           dateConf: result.dateConfidence,
           dateAsPrinted: result.dateAsPrinted,
-          dateAlternative: result.date && result.dateAmbiguous ? result.dateAlternative : null,
+          dateAlternative: askOrder && result.date && result.dateAmbiguous ? result.dateAlternative : null,
         }),
         ...unless("dueDate", {
           dueDate: result.dueDate ?? "",
           dueDateAsPrinted: result.dueDateAsPrinted,
-          dueDateAlternative: result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
+          dueDateAlternative: askOrder && result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
         }),
         categoryGuess,
         ...supplierCategory({ ...f, categoryGuess }, clientId, supplierList, receiptList),
@@ -369,16 +383,25 @@ export default function ScanPage() {
     runExtraction(next, categories, suppliers, receipts);
   }
 
-  function startBatch(docs: CapturedFile[][]) {
+  function startBatch(docs: CapturedFile[][], lists?: { cats: string[]; suppliers: Client[]; receipts: Receipt[] }) {
     const limit = limiter(READ_CONCURRENCY);
+    const cats = lists?.cats ?? categories;
+    if (lists) suppliersRef.current = lists.suppliers;
     readsRef.current = docs.map((d) => {
-      const read = limit(() => extractPages(d, categories, engine));
+      const read = limit(() => extractPages(d, cats, engine));
       read.catch(() => {});
       return read;
     });
     setBatch({ docs, index: 0 });
-    openDoc(docs, 0);
+    openDoc(docs, 0, lists?.receipts);
   }
+
+  // Suppliers as they are now: one added while an earlier document in the
+  // batch was open must be matched against the next.
+  const suppliersRef = useRef<Client[]>([]);
+  useEffect(() => {
+    suppliersRef.current = suppliers;
+  });
 
   function openDoc(docs: CapturedFile[][], index: number, receiptList: Receipt[] = receipts) {
     resetDocument();
@@ -386,7 +409,7 @@ export default function ScanPage() {
     setCapture(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
-    runExtraction(docs[index], categories, suppliers, receiptList, readsRef.current[index]);
+    runExtraction(docs[index], categories, suppliersRef.current, receiptList, readsRef.current[index]);
   }
 
   // True when there was another document in the batch to move on to.
@@ -554,10 +577,15 @@ export default function ScanPage() {
         setSaving(false);
       }
     }
+    // Linked to the supplier it matches when none was picked, including one
+    // added since the document was read. A supplier is never made here:
+    // only "Add as supplier" does that.
+    const clientId =
+      form.clientId || (touchedRef.current.has("clientId") || !form.vendor.trim() ? "" : (matchSupplier(form.vendor, suppliersRef.current)?.id ?? ""));
     if (!force && mode !== "archival") {
       const dup = findDuplicate(
         {
-          clientId: form.clientId,
+          clientId,
           vendor: form.vendor,
           invoiceNumber: form.invoiceNumber.trim() || null,
           date: form.date,
@@ -582,7 +610,7 @@ export default function ScanPage() {
       else delete details.other;
       const saved = await receiptsStore.add(
         {
-          clientId: form.clientId,
+          clientId,
           date: form.date,
           vendor: form.vendor,
           category: form.category || "Other",
