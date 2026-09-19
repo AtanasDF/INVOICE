@@ -15,6 +15,9 @@ changes.
 - Wants everything pushed to GitHub at the end of every session, and a session log kept
   as work progresses, because he works from his phone and from cloud sessions.
 - Reads short answers best; give steps one at a time when guiding him through a UI.
+- For anything only he can do (sign-ups, logins, API keys, DNS, payments), open the exact
+  page in his own Chrome (Claude in Chrome, where he is signed in) with the button on screen,
+  and tell him which one to click, rather than sending instructions or links (2026-09-19).
 
 ## Standing process
 
