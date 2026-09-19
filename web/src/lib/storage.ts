@@ -1213,3 +1213,13 @@ export const quotesStore = {
     if (error) throw error;
   },
 };
+
+// The cron's log of reminders already emailed for an invoice (read-only for
+// the owner; only the service role writes it).
+export const remindersSentStore = {
+  async forInvoice(invoiceId: string): Promise<{ kind: string; sentAt: string }[]> {
+    const { data, error } = await supabase.from("invoice_reminders_sent").select("kind, sent_at").eq("invoice_id", invoiceId);
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ kind: r.kind as string, sentAt: r.sent_at as string }));
+  },
+};

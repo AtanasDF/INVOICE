@@ -8,6 +8,7 @@ import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNum
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
+import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -666,6 +667,8 @@ export default function InvoiceViewPage() {
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
         <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} />
       </div>
+
+      <InvoiceReminders invoice={invoice} client={client} amountDue={amountDue} />
 
       <SendInvoicePanel
         sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} forPdf />}
