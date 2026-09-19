@@ -14,6 +14,7 @@ import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import type { TypedVat } from "@/lib/invoiceFromText";
+import { looksLikeCompany } from "@/lib/reminderTemplates";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -456,7 +457,7 @@ export default function NewInvoicePage() {
       }
       const c = await clientsStore.add({
         name: newCustomer.name,
-        isCompany: true,
+        isCompany: looksLikeCompany(newCustomer.name),
         email: newCustomer.email,
         address: newCustomer.address,
         kind: "client",

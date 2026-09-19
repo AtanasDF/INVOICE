@@ -754,6 +754,11 @@ export type BusinessProfile = {
   reminderTextBefore: string | null;
   reminderTextDue: string | null;
   reminderTextAfter: string | null;
+  reminderTextLate: string | null;
+  reminderTextFinal: string | null;
+  // Mention statutory late-payment interest in the final notice to
+  // business clients.
+  reminderLatePaymentInterest: boolean;
 };
 
 type BusinessProfileRow = {
@@ -771,6 +776,9 @@ type BusinessProfileRow = {
   reminder_text_before: string | null;
   reminder_text_due: string | null;
   reminder_text_after: string | null;
+  reminder_text_late: string | null;
+  reminder_text_final: string | null;
+  reminder_late_payment_interest: boolean | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -789,6 +797,9 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     reminderTextBefore: r.reminder_text_before,
     reminderTextDue: r.reminder_text_due,
     reminderTextAfter: r.reminder_text_after,
+    reminderTextLate: r.reminder_text_late ?? null,
+    reminderTextFinal: r.reminder_text_final ?? null,
+    reminderLatePaymentInterest: r.reminder_late_payment_interest ?? false,
   };
 }
 
@@ -807,6 +818,9 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   reminderTextBefore: null,
   reminderTextDue: null,
   reminderTextAfter: null,
+  reminderTextLate: null,
+  reminderTextFinal: null,
+  reminderLatePaymentInterest: false,
 };
 
 export const businessProfileStore = {
@@ -833,6 +847,9 @@ export const businessProfileStore = {
       reminder_text_before: input.reminderTextBefore || null,
       reminder_text_due: input.reminderTextDue || null,
       reminder_text_after: input.reminderTextAfter || null,
+      reminder_text_late: input.reminderTextLate || null,
+      reminder_text_final: input.reminderTextFinal || null,
+      reminder_late_payment_interest: input.reminderLatePaymentInterest,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
@@ -1194,5 +1211,15 @@ export const quotesStore = {
   async linkInvoice(id: string, invoiceId: string): Promise<void> {
     const { error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null);
     if (error) throw error;
+  },
+};
+
+// The cron's log of reminders already emailed for an invoice (read-only for
+// the owner; only the service role writes it).
+export const remindersSentStore = {
+  async forInvoice(invoiceId: string): Promise<{ kind: string; sentAt: string }[]> {
+    const { data, error } = await supabase.from("invoice_reminders_sent").select("kind, sent_at").eq("invoice_id", invoiceId);
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ kind: r.kind as string, sentAt: r.sent_at as string }));
   },
 };
