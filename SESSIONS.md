@@ -140,6 +140,13 @@ and what is left open. Dates are session dates (Europe/London).
   Route 7/7, UI 22/22 with a stubbed register. Merged (6bbb3ce); live route answers
   configured:false and Settings renders a plain name input. His Chrome has the Companies House Developer Hub
   open (cookies: analytics rejected) at "Sign in / Register".
+- Firmer reminders (research #6), branch `feature/firmer-reminders`: reminders now at -3,
+  0, +7, +14 ('late') and +30 ('final notice') days, each editable, `{{pay_by}}` a week
+  out; optional switch to state statutory late-payment interest + £40/£70/£100
+  compensation in the final notice, business clients only (the Act doesn't cover
+  consumers). Unit 11/11, cron against a stubbed DB 6/6. Backup 010 taken and verified
+  (business_profile + invoice_reminders_sent, 0/0 both ways, RLS); migration-021 waits
+  for the review.
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked
