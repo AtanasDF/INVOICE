@@ -162,7 +162,7 @@ export type CreditNote = {
   reason: string;
 };
 
-async function currentUserId(): Promise<string> {
+export async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const id = data.session?.user.id;
   if (!id) throw new Error("You need to be signed in.");
@@ -1376,7 +1376,7 @@ const linkFromRow = (r: InvoiceLinkRow): InvoiceLink => ({
 });
 
 // 32 random bytes as base64url: 43 characters nobody can guess.
-function newLinkToken(): string {
+export function newLinkToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
