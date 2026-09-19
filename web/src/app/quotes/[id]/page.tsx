@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import QuoteDocument, { quoteTotal } from "@/components/quote/QuoteDocument";
 import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
+import TextCustomer from "@/components/TextCustomer";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { BusinessProfile, Client, Invoice, Quote, QuoteLink, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quoteLinkUrl, quoteLinksStore, quotesStore } from "@/lib/storage";
 import { computeInvoiceTotals } from "@/lib/vat";
@@ -501,6 +502,13 @@ export default function QuotePage() {
               .catch((err) => setError(errorText(err, "Sent, but the quote couldn't be marked as sent.")));
           }}
         />
+      )}
+
+      {client && (q.status === "sent" || q.status === "accepted") && (
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+          <h2 className="mb-3 font-semibold">Text {client.name}</h2>
+          <TextCustomer client={client} from={profile?.businessName ?? ""} presets={["onMyWay", "late", "arrived"]} />
+        </div>
       )}
     </div>
   );
