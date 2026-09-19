@@ -4,7 +4,8 @@ import { useState } from "react";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
 import { addDays } from "@/lib/freeInvoiceDraft";
-import type { Client, InvoiceItem } from "@/lib/storage";
+import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
+import { depositGross } from "@/lib/quoteDeposit";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { errorText } from "@/lib/errorText";
 
@@ -15,6 +16,7 @@ export type QuoteFormValue = {
   validUntil: string;
   items: InvoiceItem[];
   notes: string;
+  deposit: QuoteDeposit | null;
 };
 
 const BLANK_LINE: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
@@ -35,12 +37,15 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   const setLine = (i: number, patch: Partial<InvoiceItem>) => set({ items: v.items.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   const lines = v.items.filter((l) => l.description.trim() || l.unitPrice);
   const totals = computeInvoiceTotals(lines, vatRegistered);
+  const depositShown = depositGross({ deposit: v.deposit, items: lines }, vatRegistered);
   const billable = clients.filter((c) => c.kind === "client" && (!c.archived || c.id === v.clientId));
 
   async function save() {
     if (!v.clientId) return setError("Pick who the quote is for.");
     if (!v.number.trim()) return setError("Give the quote a number.");
     if (!lines.length) return setError("Add at least one line.");
+    if (v.deposit && v.deposit.kind === "percent" && !(v.deposit.value > 0 && v.deposit.value < 100)) return setError("A deposit percentage is between 0 and 100.");
+    if (v.deposit && v.deposit.kind === "amount" && !(v.deposit.value > 0 && v.deposit.value <= totals.total)) return setError("The deposit has to be more than £0 and no more than the total.");
     setSaving(true);
     setError(null);
     try {
@@ -111,6 +116,33 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
         <button type="button" onClick={() => set({ items: [...v.items, { ...BLANK_LINE }] })} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
           Add line
         </button>
+      </div>
+
+      <div>
+        <label className="text-xs text-neutral-500">Deposit to book the work (optional)</label>
+        <div className="flex gap-2">
+          <select
+            aria-label="Deposit"
+            className="rounded-lg border px-3 py-2"
+            value={v.deposit?.kind ?? ""}
+            onChange={(e) => set({ deposit: e.target.value ? { kind: e.target.value as QuoteDeposit["kind"], value: e.target.value === "percent" ? 25 : 0 } : null })}
+          >
+            <option value="">No deposit</option>
+            <option value="percent">% of the total</option>
+            <option value="amount">Fixed amount (£)</option>
+          </select>
+          {v.deposit && (
+            <NumberInput
+              className="w-28 rounded-lg border px-3 py-2 text-right"
+              aria-label={v.deposit.kind === "percent" ? "Deposit percentage" : "Deposit amount"}
+              value={v.deposit.value}
+              onChange={(value) => set({ deposit: { ...v.deposit!, value } })}
+            />
+          )}
+        </div>
+        {v.deposit && depositShown !== null && depositShown > 0 && (
+          <p className="mt-1 text-xs text-neutral-500">{money(depositShown)} incl. VAT, invoiced on its own once the quote is accepted.</p>
+        )}
       </div>
 
       <div>

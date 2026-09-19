@@ -1078,8 +1078,13 @@ export const pushSubscriptionsStore = {
 
 export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "invoiced";
 
+// A deposit asked for on a quote: a share of its total or a fixed amount
+// (gross, incl. VAT).
+export type QuoteDeposit = { kind: "percent" | "amount"; value: number };
+
 // A priced offer to a client; accepting it can turn it into a draft
-// invoice, which invoiceId then points at.
+// invoice, which invoiceId then points at. A deposit, if asked for, is
+// invoiced on its own first (depositInvoiceId).
 export type Quote = {
   id: string;
   clientId: string;
@@ -1090,6 +1095,9 @@ export type Quote = {
   notes: string;
   status: QuoteStatus;
   invoiceId: string | null;
+  deposit: QuoteDeposit | null;
+  depositInvoiceId: string | null;
+  depositClaimed: boolean;
 };
 
 type QuoteRow = {
@@ -1102,6 +1110,10 @@ type QuoteRow = {
   notes: string | null;
   status: QuoteStatus;
   invoice_id: string | null;
+  deposit_percent: number | string | null;
+  deposit_amount: number | string | null;
+  deposit_invoice_id: string | null;
+  deposit_claimed: boolean | null;
 };
 
 function quoteFromRow(r: QuoteRow): Quote {
@@ -1115,7 +1127,19 @@ function quoteFromRow(r: QuoteRow): Quote {
     notes: r.notes ?? "",
     status: r.status,
     invoiceId: r.invoice_id,
+    deposit:
+      r.deposit_percent != null
+        ? { kind: "percent", value: Number(r.deposit_percent) }
+        : r.deposit_amount != null
+          ? { kind: "amount", value: Number(r.deposit_amount) }
+          : null,
+    depositInvoiceId: r.deposit_invoice_id ?? null,
+    depositClaimed: r.deposit_claimed ?? false,
   };
+}
+
+function depositColumns(d: QuoteDeposit | null) {
+  return { deposit_percent: d?.kind === "percent" ? d.value : null, deposit_amount: d?.kind === "amount" ? d.value : null };
 }
 
 // Q-0001, Q-0002...: one past the highest number already used.
@@ -1135,7 +1159,7 @@ export const quotesStore = {
     if (error) throw error;
     return data ? quoteFromRow(data as QuoteRow) : null;
   },
-  async add(input: Omit<Quote, "id" | "status" | "invoiceId">): Promise<Quote> {
+  async add(input: Omit<Quote, "id" | "status" | "invoiceId" | "depositInvoiceId" | "depositClaimed">): Promise<Quote> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("quotes")
@@ -1147,6 +1171,7 @@ export const quotesStore = {
         valid_until: input.validUntil || null,
         items: input.items,
         notes: input.notes,
+        ...depositColumns(input.deposit),
         status: "draft",
       })
       .select()
@@ -1159,7 +1184,7 @@ export const quotesStore = {
   },
   // The offer itself (lines, client, dates) is only editable as a draft;
   // once sent, only its status moves.
-  async updateDraft(id: string, patch: Partial<Pick<Quote, "clientId" | "number" | "date" | "validUntil" | "items" | "notes">>): Promise<void> {
+  async updateDraft(id: string, patch: Partial<Pick<Quote, "clientId" | "number" | "date" | "validUntil" | "items" | "notes" | "deposit">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
     if (patch.number !== undefined) dbPatch.number = patch.number;
@@ -1167,6 +1192,7 @@ export const quotesStore = {
     if (patch.validUntil !== undefined) dbPatch.valid_until = patch.validUntil || null;
     if (patch.items !== undefined) dbPatch.items = patch.items;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes;
+    if (patch.deposit !== undefined) Object.assign(dbPatch, depositColumns(patch.deposit));
     const { data, error } = await supabase.from("quotes").update(dbPatch).eq("id", id).eq("status", "draft").select("id");
     if (error) {
       if (error.code === "23505") throw new Error(`Quote number "${patch.number}" is already in use.`);
@@ -1204,6 +1230,30 @@ export const quotesStore = {
   },
   async releaseClaim(id: string, status: Exclude<QuoteStatus, "invoiced">): Promise<void> {
     const { error } = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", "invoiced").is("invoice_id", null);
+    if (error) throw error;
+  },
+  // The deposit invoice is claimed like the final one: deposit_claimed first,
+  // so a double tap or another tab can't make two; released if no invoice
+  // was made, linked once it was. Only an accepted quote with a deposit.
+  async claimDeposit(id: string): Promise<Quote | null> {
+    const { data, error } = await supabase
+      .from("quotes")
+      .update({ deposit_claimed: true })
+      .eq("id", id)
+      .eq("status", "accepted")
+      .eq("deposit_claimed", false)
+      .is("deposit_invoice_id", null)
+      .or("deposit_percent.not.is.null,deposit_amount.not.is.null")
+      .select("*");
+    if (error) throw error;
+    return data?.length ? quoteFromRow(data[0] as QuoteRow) : null;
+  },
+  async releaseDeposit(id: string): Promise<void> {
+    const { error } = await supabase.from("quotes").update({ deposit_claimed: false }).eq("id", id).is("deposit_invoice_id", null);
+    if (error) throw error;
+  },
+  async linkDeposit(id: string, invoiceId: string): Promise<void> {
+    const { error } = await supabase.from("quotes").update({ deposit_invoice_id: invoiceId, deposit_claimed: true }).eq("id", id).is("deposit_invoice_id", null);
     if (error) throw error;
   },
   // Linking also sets invoiced: the invoice exists, even if the claim was
