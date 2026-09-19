@@ -392,12 +392,12 @@ payment options come later. No schema change; not merged to main.
   quote (fixes 11/11, quotes 34/34, deposits 17/17, Free quote 12/12, texts 12/12).
   Clear forms and torch merged to main (cba2153, 07a67e8). A 375px sweep of all 22
   signed-in pages found the issued invoice's buttons running off the screen; fixed on
-  main (4e169a1). `feature/quotes-ux` is fixed and merged with main, waiting for its
-  quotes-ux suite (48) and the quote/invoice link suites (need a dev server pointed at
-  mock-server.mjs on :5555) before merging.
+  main (4e169a1). `feature/quotes-ux` merged to main (897c659) after quotes-ux 48/48 and
+  the link suites against mock-server.mjs (quote links 18/18, invoice links 18/18, public
+  company/private 3/3); build/tsc/eslint clean.
 - Atanas's usage runs out tonight; background wake-ups at 00:33 (Vercel window), 00:43
   and 01:05 BST to carry on. If this session stopped: push main after 23:30Z to deploy,
-  then finish `feature/quotes-ux` as above, then the two agents' branches.
+  then the two agents' branches (multi-docs; quote-requests needs migration-028 applied).
 - Agents started: `feature/multi-docs` (several documents in one photo or PDF split into
   separate documents, cropped/split; "Save all ready"; "already paid" read off the
   document, the assumption behind "receipt should be created in order to take payment"),

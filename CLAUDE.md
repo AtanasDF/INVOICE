@@ -124,7 +124,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   lets the customer answer again. Owner status changes pass the status the page showed
   (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
   answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
-  works; copying its link marks it sent first. The owner's `#o` copy shows no buttons.
+  works; copying its link, or adding it to a text/WhatsApp message, marks it sent first
+  (after a confirm); a draft's link is never put in share-sheet text. The owner's `#o`
+  copy shows no buttons. Quotes can go to any client or supplier; a supplier who has been
+  invoiced gets the payment-reminder switch and history on the Suppliers tab.
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
