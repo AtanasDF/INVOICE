@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-018, backup 009 (both applied).
+   migration-019, backup 009 (all applied).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
    their ON DELETE, policies, function grants) and exercise new functions as the
@@ -78,7 +78,9 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   (composite FK with `user_id`, RESTRICT). Credit notes are stored with **negative**
   `amount` and `vat_amount`. Extra pages live in `receipt_pages` (page 1 stays in
   `receipts.image_data_url`); `create_receipt_with_pages` inserts both atomically.
-  `receipts.amount` is net (ex VAT) in GBP.
+  `receipts.amount` is net (ex VAT) in GBP. `image_data_url` (and receipt_pages') holds
+  either an inline data: URL (older rows, inbox imports) or `storage:<uid>/<folder>/<n>.<ext>`
+  in the private `receipts` bucket (migration-019), turned into 7-day signed URLs on read.
 - A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
   and in the push cron from 3 days before `due_date`.
 - Suppliers are `clients` rows with `kind = 'supplier'`.
@@ -162,7 +164,9 @@ them against the original before deleting.
   carry everything.
 - (Done 2026-09-19: duplicate warning, line-total check and usual category per supplier
   on saving scans. The shared rate limiter is on the branch above.)
-- Move receipt images to Supabase Storage before the base64 columns grow.
+- (Done 2026-09-19: new receipt photos/PDFs go to the private `receipts` bucket, rows keep
+  `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`. Old inline rows and
+  inbox imports still store base64; moving those is a later job.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the

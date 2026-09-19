@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { VatRateKind } from "./vat";
 import { InvoiceStatus } from "./invoiceStatus";
+import { resolveImages, storeImages } from "./receiptImages";
 
 export type ClientKind = "client" | "supplier";
 
@@ -376,11 +377,17 @@ function receiptRowFromInput(input: ReceiptInput) {
   };
 }
 
+// Stored photo references become signed URLs for display.
+async function withImagesResolved(receipts: Receipt[]): Promise<Receipt[]> {
+  const urls = await resolveImages(receipts.map((r) => r.imageDataUrl));
+  return receipts.map((r, i) => ({ ...r, imageDataUrl: urls[i] }));
+}
+
 export const receiptsStore = {
   async all(): Promise<Receipt[]> {
     const { data, error } = await supabase.from("receipts").select("*").order("date", { ascending: false });
     if (error) throw error;
-    return (data as ReceiptRow[]).map(receiptFromRow);
+    return withImagesResolved((data as ReceiptRow[]).map(receiptFromRow));
   },
   // extraPages is page 2 onwards of a multi-page scan (page 1 is
   // input.imageDataUrl). With any, the receipt and its pages go through
@@ -388,21 +395,24 @@ export const receiptsStore = {
   // document missing its later pages.
   async add(input: ReceiptInput, extraPages: string[] = []): Promise<Receipt> {
     const user_id = await currentUserId();
-    const row = receiptRowFromInput(input);
-    if (extraPages.length === 0) {
+    // Photos go to storage first; the row keeps references to them.
+    const [first, ...rest] = await storeImages(user_id, [input.imageDataUrl, ...extraPages]);
+    const row = receiptRowFromInput({ ...input, imageDataUrl: first });
+    const pages = rest as string[];
+    if (pages.length === 0) {
       const { data, error } = await supabase
         .from("receipts")
         .insert({ user_id, ...row })
         .select()
         .single();
       if (error) throw error;
-      return receiptFromRow(data as ReceiptRow);
+      return (await withImagesResolved([receiptFromRow(data as ReceiptRow)]))[0];
     }
-    const { data: id, error } = await supabase.rpc("create_receipt_with_pages", { p_receipt: row, p_pages: extraPages });
+    const { data: id, error } = await supabase.rpc("create_receipt_with_pages", { p_receipt: row, p_pages: pages });
     if (error) throw error;
     const { data, error: readErr } = await supabase.from("receipts").select("*").eq("id", id).single();
     if (readErr) throw readErr;
-    return receiptFromRow(data as ReceiptRow);
+    return (await withImagesResolved([receiptFromRow(data as ReceiptRow)]))[0];
   },
   async update(
     id: string,
@@ -486,7 +496,9 @@ export const receiptPagesStore = {
       .eq("receipt_id", receiptId)
       .order("page_index", { ascending: true });
     if (error) throw error;
-    return (data as ReceiptPageRow[]).map((p) => ({ id: p.id, pageIndex: p.page_index, imageDataUrl: p.image_data_url }));
+    const rows = data as ReceiptPageRow[];
+    const urls = await resolveImages(rows.map((p) => p.image_data_url));
+    return rows.map((p, i) => ({ id: p.id, pageIndex: p.page_index, imageDataUrl: urls[i] ?? "" }));
   },
   // Extra-page count per receipt id, for a "3 pages" hint on the list
   // without ever pulling the page images down.
@@ -506,7 +518,9 @@ export const receiptPagesStore = {
       .order("receipt_id")
       .order("page_index", { ascending: true });
     if (error) throw error;
-    return (data as ReceiptPageRow[]).map((p) => ({ receiptId: p.receipt_id, pageIndex: p.page_index, imageDataUrl: p.image_data_url }));
+    const rows = data as ReceiptPageRow[];
+    const urls = await resolveImages(rows.map((p) => p.image_data_url));
+    return rows.map((p, i) => ({ receiptId: p.receipt_id, pageIndex: p.page_index, imageDataUrl: urls[i] ?? "" }));
   },
 };
 

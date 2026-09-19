@@ -39,7 +39,12 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-018 as of 2026-09-19 (clients.phone; rate_limit_hits +
+- Live Supabase is at migration-019 as of 2026-09-19: private storage bucket `receipts`
+  (10MB, images + PDF), policies receipts_owner_select/insert on the owner's folder, no
+  delete policy. Verified in SQL (rolled back) and live with Atanas's session (own folder
+  200, other folder 403, signed read 200, public read refused). A 70-byte test file
+  `<his uid>/selftest/1.png` stays in the bucket (never delete).
+- Migration-018 as of 2026-09-19 (clients.phone; rate_limit_hits +
   hit_rate_limit, service_role only; verified in a rolled-back block). Snapshot
   clients_backup_20260919 (0 rows: Atanas had no clients yet). Never drop it.
 - Live Supabase (project `wecfwjxzyzzrcwbwnwpo`) was at migration-017 as of 2026-09-17:
