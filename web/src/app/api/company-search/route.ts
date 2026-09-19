@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { CompanyMatch, CompanySearchItem, toCompanyMatch } from "@/lib/companyLookup";
 import { addressKey, allow, allowShared } from "@/lib/rateLimit";
+import { isSignedIn } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
@@ -15,22 +15,6 @@ const ANON_TOTAL = 120;
 const SIGNED_IN_TOTAL = 180;
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; items: CompanyMatch[] }>();
-
-// Verified tokens are remembered for a few minutes so a burst of typing
-// doesn't ask Supabase each time.
-const verified = new Map<string, number>();
-async function isSignedIn(authorization: string | null): Promise<boolean> {
-  const token = authorization?.replace(/^Bearer\s+/i, "") ?? "";
-  if (!token) return false;
-  const seen = verified.get(token);
-  if (seen && Date.now() - seen < FIVE_MINUTES) return true;
-  const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-  const { data } = await auth.auth.getUser(token).catch(() => ({ data: { user: null } }));
-  if (!data.user) return false;
-  if (verified.size > 1000) verified.clear();
-  verified.set(token, Date.now());
-  return true;
-}
 
 // Public, like the Free invoice page that uses it: a name typed into a
 // business or customer field, matched against the Companies House register

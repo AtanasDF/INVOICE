@@ -8,6 +8,7 @@ import LayoutPicker from "@/components/free-invoice/LayoutPicker";
 import SignaturePad from "@/components/free-invoice/SignaturePad";
 import Tip from "@/components/Tip";
 import CompanyNameInput, { useCompanyLookup } from "@/components/CompanyNameInput";
+import AddressFinder from "@/components/AddressFinder";
 import type { CompanyMatch } from "@/lib/companyLookup";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
@@ -23,7 +24,7 @@ type Nullable<T> = { [K in keyof T]: string | null };
 
 function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey }: {
   value: T;
-  fields: { key: keyof T; label: string; type?: string; multiline?: boolean; hint?: string; span?: boolean; lookup?: (c: CompanyMatch) => Partial<T> }[];
+  fields: { key: keyof T; label: string; type?: string; multiline?: boolean; hint?: string; span?: boolean; lookup?: (c: CompanyMatch) => Partial<T>; finder?: boolean }[];
   // Where a picked company's registered address goes.
   addressKey?: keyof T;
   onChange: (v: T) => void;
@@ -47,6 +48,18 @@ function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey
               onPick={(c, fillAddress) => onChange({ ...value, ...f.lookup!(c), ...(addressKey && fillAddress ? { [addressKey]: fillAddress } : {}) })}
             />
             {f.hint && <p className="mt-1 text-xs text-neutral-500">{f.hint}</p>}
+          </div>
+        ) : f.finder ? (
+          <div key={String(f.key)} className="col-span-2 space-y-1.5">
+            <span id={`${labelBase}-${String(f.key)}`} className="text-xs text-neutral-500">{f.label}</span>
+            <AddressFinder address={value[f.key] ?? ""} onAddress={(a) => onChange({ ...value, [f.key]: a || null })} />
+            <textarea
+              rows={3}
+              className={INPUT}
+              aria-labelledby={`${labelBase}-${String(f.key)}`}
+              value={value[f.key] ?? ""}
+              onChange={(e) => onChange({ ...value, [f.key]: e.target.value || null })}
+            />
           </div>
         ) : (
         <div key={String(f.key)} className={f.span || f.multiline ? "col-span-2" : ""}>
@@ -135,7 +148,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
               hint: draft.issuer.name ? undefined : `Add your name so the customer knows who to pay.${lookupOn ? " A limited company? Type its name and pick it to fill in the address and company number." : ""}`,
               lookup: (c) => ({ name: c.name, companyNumber: c.number }),
             },
-            { key: "address", label: "Address", multiline: true },
+            { key: "address", label: "Address", multiline: true, finder: true },
             { key: "email", label: "Email", type: "email" },
             { key: "phone", label: "Phone", type: "tel" },
             { key: "website", label: "Website" },
@@ -183,7 +196,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           addressKey="address"
           fields={[
             { key: "name", label: "Customer name", span: true, lookup: (c) => ({ name: c.name }) },
-            { key: "address", label: "Address", multiline: true },
+            { key: "address", label: "Address", multiline: true, finder: true },
             { key: "email", label: "Email", type: "email", span: true },
           ]}
         />

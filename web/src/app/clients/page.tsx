@@ -8,6 +8,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
 import CompanyNameInput from "@/components/CompanyNameInput";
+import AddressFinder from "@/components/AddressFinder";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -237,12 +238,15 @@ export default function ClientsPage() {
                       value={draft.email}
                       onChange={(e) => setDraft({ ...draft, email: e.target.value })}
                     />
-                    <textarea
-                      className="w-full rounded-lg border px-3 py-2 text-sm"
-                      placeholder="Billing address"
-                      value={draft.address}
-                      onChange={(e) => setDraft({ ...draft, address: e.target.value })}
-                    />
+                    <div className="space-y-1.5">
+                      <AddressFinder address={draft.address} onAddress={(address) => setDraft({ ...draft, address })} />
+                      <textarea
+                        className="w-full rounded-lg border px-3 py-2 text-sm"
+                        placeholder="Billing address"
+                        value={draft.address}
+                        onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
