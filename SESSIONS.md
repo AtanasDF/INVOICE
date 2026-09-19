@@ -27,7 +27,15 @@ payment options come later. No schema change; not merged to main.
   unchanged). List rows show badge, total, deposit and valid until.
 - Tests (mocked DB, dev server on 3300): quotes 34/34, deposits 17/17 (both with the
   client picked in the new picker; the old "no suppliers offered" check now expects them),
-  new quotes-ux 48/48.
+  new quotes-ux 48/48, Free-page quote import 10/10, texts 12/12 (quote half now drives
+  the Send card's tabs), and against the local Supabase stand-in: quote links 18/18,
+  invoice links 18/18, customer's /q/ page for a company and a private person 3/3.
+  tsc, eslint, build clean (build needs a temporary `turbopack.root` in a worktree with
+  symlinked node_modules; not committed).
+- Left for Atanas: try it on the iPhone (tabs, Messages/WhatsApp hand-off, the inline
+  form with the keyboard up). Payment options have a marked place above the Send card
+  (a comment, no UI). CLAUDE.md's quotes bullet could gain "putting the link in a text
+  marks a draft sent too" when this merges.
 
 **Brief from Atanas (19/09, evening)**
 
