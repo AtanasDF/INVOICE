@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-024, backup 012 (all applied). Supabase grants anon/authenticated everything
+   migration-026, backup 012 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -83,7 +83,7 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   `amount` and `vat_amount`. Extra pages live in `receipt_pages` (page 1 stays in
   `receipts.image_data_url`); `create_receipt_with_pages` inserts both atomically.
   `receipts.amount` is net (ex VAT) in GBP. `image_data_url` (and receipt_pages') holds
-  either an inline data: URL (older rows, inbox imports) or `storage:<uid>/<folder>/<n>.<ext>`
+  either an inline data: URL (older rows, or when storage was unreachable) or `storage:<uid>/<folder>/<n>.<ext>`
   in the private `receipts` bucket (migration-019), turned into 7-day signed URLs on read.
 - `quotes` (migration-020): priced offers to a client, status draft/sent/accepted/
   declined/invoiced, editable only as drafts. Turn into invoice claims the quote (status
@@ -101,6 +101,21 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   page (never just from opening it). An invoice marked
   paid/part-paid by hand before payments existed keeps its status. "Mark as paid" records
   the balance as a payment. An invoice with payments can't be deleted (RESTRICT).
+- `invoice_links` (migration-025): a private link per issued invoice, `/i/<43-char token>`,
+  made when the owner copies it or emails the invoice. The page (`src/app/i/[token]`) reads
+  with the service role on the server (`src/lib/publicInvoice.ts`, every query scoped to
+  the link's owner) and shows only what the PDF shows; noindex/no-referrer via
+  `src/app/i/layout.tsx`. Opens are counted by `record_invoice_link_view` (service role
+  only) from the page's own script, never for `#o` (the owner's email copy) or a
+  signed-in browser; the first open pushes the owner. Owners may change only the token
+  ("Stop this link"). The send route accepts only this app's own /i/ links.
+- `quote_links` (migration-026): the same for quotes, `/q/<token>`, plus Accept / Decline.
+  `respond_to_quote_link` (service role only) moves a quote from sent to accepted or
+  declined only while it's sent and within valid_until; the owner putting it back to sent
+  lets the customer answer again. Owner status changes pass the status the page showed
+  (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
+  answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
+  works; copying its link marks it sent first. The owner's `#o` copy shows no buttons.
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
@@ -147,6 +162,15 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 - iOS defaults to the in-app scanner (`scanner-mode` in localStorage; `native` opts back
   into the OS camera). `CaptureButton` is the label-wrapped capture input on the native
   path so one tap opens the camera.
+- Far receipts (2026-09-19): `pageCandidates` takes four-corner shapes down to 1.2% of the
+  work frame, but under 6% only if `looksLikePaper` (lighter than a ring around it, little
+  printed round it, clear of the edge, aspect <= 8); torn/curled receipts via convex hull.
+  Auto-zoom goes by the page's span (`spanOf`), up to 4x on the lens (iOS exposes zoom
+  0.5-10, 1 = main lens) or 2.5x cropped; "Move closer" only when zoom can't help. The shot
+  is the camera's own still where `ImageCapture` exists (Safari 18.4+, Chrome), asked for
+  ~3200x1800 because Safari otherwise returns its smallest size; it's used only if it
+  matches the screen, the page is re-found near the video's corners and it's as sharp,
+  else the video frame. WebKit facts behind this are in `notes/claude-notes.md`.
 
 ## Environment variables
 
@@ -166,6 +190,14 @@ Gemini billing is a Google AI Studio prepaid balance on billing account
 Hub, creates a Live application and a REST API key) switches on the company name lookup
 (`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
 Settings. Without it those fields are plain inputs and nothing mentions the lookup.
+UK address lookup (`/api/address-search`, `AddressFinder` above every address field) is
+free by default: postcodes.io (postcode check, place, post town from the built-up area)
+and OpenStreetMap via photon.komoot.io (houses and streets; not every UK house is there,
+so a postcode can always be used on its own). Optional `IDEAL_POSTCODES_API_KEY` (not
+set) gives signed-in users Royal Mail's full address file; it's paid per postcode list or
+picked address, capped per account (20/5 min, 100/day) and overall (150/5 min, 400/day),
+and falls back to the free lookup when capped or failing. Set a daily limit and no auto
+top-up on the key in the Ideal Postcodes dashboard too.
 
 ## Who else works here
 
@@ -194,10 +226,15 @@ them against the original before deleting.
   carry everything.
 - (Done 2026-09-19: duplicate warning, line-total check and usual category per supplier
   on saving scans. The shared rate limiter is on the branch above.)
-- (Done 2026-09-19: new receipt photos/PDFs go to the private `receipts` bucket, rows keep
-  `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`. Old inline rows and
-  inbox imports still store base64; moving those is a later job.)
+- (Done 2026-09-19: receipt photos/PDFs go to the private `receipts` bucket, rows keep
+  `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`, and
+  `receiptImagesServer.ts` for the inbox import. No inline rows exist in the live DB.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
+- Try on the iPhone (tested headless with synthetic clips and a mocked database only):
+  far receipts and the full-resolution still, the address finder, the "Paid" moment
+  (haptic), "Text <customer>", the home-screen badge (needs notifications allowed).
+- Offline scan queue (keep captures on the phone until there's signal) is not built: it
+  needs a caching service worker; worth doing only with an iPhone to test on.
 - "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the

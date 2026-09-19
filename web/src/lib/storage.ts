@@ -1210,10 +1210,12 @@ export const quotesStore = {
     if (!data?.length) throw new Error("This quote isn't a draft any more, so it can't be changed. Reload to see it.");
   },
   // An invoiced quote stays invoiced: its invoice exists.
-  async setStatus(id: string, status: Exclude<QuoteStatus, "invoiced">): Promise<void> {
-    const { data, error } = await supabase.from("quotes").update({ status }).eq("id", id).neq("status", "invoiced").select("id");
+  // Only from the status the page showed: the customer may have answered
+  // online meanwhile, and that answer mustn't be overwritten unseen.
+  async setStatus(id: string, status: Exclude<QuoteStatus, "invoiced">, from: QuoteStatus): Promise<void> {
+    const { data, error } = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", from).neq("status", "invoiced").select("id");
     if (error) throw error;
-    if (!data?.length) throw new Error("This quote has already been turned into an invoice. Reload to see it.");
+    if (!data?.length) throw new Error("This quote has changed since the page loaded (the customer may have answered online). Reload to see it.");
   },
   // A draft becomes sent when it's emailed; anything further along stays.
   async markSent(id: string): Promise<boolean> {
@@ -1226,11 +1228,12 @@ export const quotesStore = {
   // invoice is then made from the claimed row, not from what a possibly
   // stale page shows, and linked. claim returns null if another tap got
   // there first; release puts it back if no invoice was made.
-  async claimForInvoice(id: string): Promise<Quote | null> {
+  async claimForInvoice(id: string, from: QuoteStatus): Promise<Quote | null> {
     const { data, error } = await supabase
       .from("quotes")
       .update({ status: "invoiced" })
       .eq("id", id)
+      .eq("status", from)
       .neq("status", "invoiced")
       .is("invoice_id", null)
       .select("*");
@@ -1344,3 +1347,116 @@ export const paymentsStore = {
     if (error) throw error;
   },
 };
+
+// A private link to view an issued invoice online (migration-025).
+export type InvoiceLink = { invoiceId: string; token: string; createdAt: string; firstViewedAt: string | null; lastViewedAt: string | null; viewCount: number };
+
+type InvoiceLinkRow = { invoice_id: string; token: string; created_at: string; first_viewed_at: string | null; last_viewed_at: string | null; view_count: number };
+
+const linkFromRow = (r: InvoiceLinkRow): InvoiceLink => ({
+  invoiceId: r.invoice_id,
+  token: r.token,
+  createdAt: r.created_at,
+  firstViewedAt: r.first_viewed_at,
+  lastViewedAt: r.last_viewed_at,
+  viewCount: r.view_count,
+});
+
+// 32 random bytes as base64url: 43 characters nobody can guess.
+function newLinkToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export const invoiceLinksStore = {
+  async forInvoice(invoiceId: string): Promise<InvoiceLink | null> {
+    const { data, error } = await supabase.from("invoice_links").select("*").eq("invoice_id", invoiceId).maybeSingle();
+    if (error) throw error;
+    return data ? linkFromRow(data as InvoiceLinkRow) : null;
+  },
+  // The invoice's link, made the first time it's needed. Two tabs making it
+  // at once both end up with the one that was saved.
+  async ensure(invoiceId: string): Promise<InvoiceLink> {
+    const existing = await this.forInvoice(invoiceId);
+    if (existing) return existing;
+    const user_id = await currentUserId();
+    const { error } = await supabase.from("invoice_links").insert({ invoice_id: invoiceId, user_id, token: newLinkToken() });
+    if (error && error.code !== "23505") throw error;
+    const made = await this.forInvoice(invoiceId);
+    if (!made) throw new Error("Couldn't make the link.");
+    return made;
+  },
+  // A new token for the invoice: the old link stops working at once (sent to
+  // the wrong address, say). The open counts stay with the invoice.
+  async replace(invoiceId: string): Promise<InvoiceLink> {
+    const { error } = await supabase.from("invoice_links").update({ token: newLinkToken() }).eq("invoice_id", invoiceId);
+    if (error) throw error;
+    const made = await this.forInvoice(invoiceId);
+    if (!made) throw new Error("Couldn't replace the link.");
+    return made;
+  },
+};
+
+export const invoiceLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/i/${token}`;
+
+// A private link to a sent quote, where the customer can accept or decline
+// it (migration-026).
+export type QuoteLink = {
+  quoteId: string;
+  token: string;
+  firstViewedAt: string | null;
+  lastViewedAt: string | null;
+  viewCount: number;
+  response: "accepted" | "declined" | null;
+  respondedAt: string | null;
+  responderName: string | null;
+};
+
+type QuoteLinkRow = {
+  quote_id: string;
+  token: string;
+  first_viewed_at: string | null;
+  last_viewed_at: string | null;
+  view_count: number;
+  response: "accepted" | "declined" | null;
+  responded_at: string | null;
+  responder_name: string | null;
+};
+
+const quoteLinkFromRow = (r: QuoteLinkRow): QuoteLink => ({
+  quoteId: r.quote_id,
+  token: r.token,
+  firstViewedAt: r.first_viewed_at,
+  lastViewedAt: r.last_viewed_at,
+  viewCount: r.view_count,
+  response: r.response,
+  respondedAt: r.responded_at,
+  responderName: r.responder_name,
+});
+
+export const quoteLinksStore = {
+  async forQuote(quoteId: string): Promise<QuoteLink | null> {
+    const { data, error } = await supabase.from("quote_links").select("*").eq("quote_id", quoteId).maybeSingle();
+    if (error) throw error;
+    return data ? quoteLinkFromRow(data as QuoteLinkRow) : null;
+  },
+  async ensure(quoteId: string): Promise<QuoteLink> {
+    const existing = await this.forQuote(quoteId);
+    if (existing) return existing;
+    const user_id = await currentUserId();
+    const { error } = await supabase.from("quote_links").insert({ quote_id: quoteId, user_id, token: newLinkToken() });
+    if (error && error.code !== "23505") throw error;
+    const made = await this.forQuote(quoteId);
+    if (!made) throw new Error("Couldn't make the link.");
+    return made;
+  },
+  async replace(quoteId: string): Promise<QuoteLink> {
+    const { error } = await supabase.from("quote_links").update({ token: newLinkToken() }).eq("quote_id", quoteId);
+    if (error) throw error;
+    const made = await this.forQuote(quoteId);
+    if (!made) throw new Error("Couldn't replace the link.");
+    return made;
+  },
+};
+
+export const quoteLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/q/${token}`;

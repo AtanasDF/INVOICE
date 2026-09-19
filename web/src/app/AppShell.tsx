@@ -7,9 +7,13 @@ import { AuthProvider, useAuth } from "@/lib/authContext";
 import { safeNext } from "@/lib/safeNext";
 import { supabase } from "@/lib/supabaseClient";
 import { useWakeLock } from "@/lib/wakeLock";
+import PaidCelebration from "@/components/PaidCelebration";
 
 function Header() {
   const { user } = useAuth();
+  // A customer opening an invoice link sees the invoice, not the app.
+  const path = usePathname();
+  if (path.startsWith("/i/") || path.startsWith("/q/")) return null;
   return (
     <header className="border-b bg-white text-neutral-900 print:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
@@ -55,7 +59,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   // password) -- unlike /login, being authenticated here must NOT
   // bounce them away before they finish.
   const isResetPasswordPage = pathname === "/reset-password";
-  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice";
+  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice" || pathname.startsWith("/i/") || pathname.startsWith("/q/");
 
   useEffect(() => {
     if (loading) return;
@@ -76,7 +80,7 @@ function Gate({ children }: { children: React.ReactNode }) {
 function FeedbackButton() {
   const { user } = useAuth();
   const pathname = usePathname();
-  if (!user || pathname === "/feedback") return null;
+  if (!user || pathname === "/feedback" || pathname.startsWith("/i/") || pathname.startsWith("/q/")) return null;
   return (
     <Link
       href="/feedback"
@@ -97,6 +101,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Gate>{children}</Gate>
       </main>
       <FeedbackButton />
+      <PaidCelebration />
     </AuthProvider>
   );
 }

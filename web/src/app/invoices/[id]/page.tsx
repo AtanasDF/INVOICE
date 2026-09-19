@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
+import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoiceLink, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoiceLinkUrl, invoiceLinksStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
 import { invoiceBalance, invoiceVat, statusFromPayments, syncedStatus } from "@/lib/invoiceBalance";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
+import TextCustomer from "@/components/TextCustomer";
 import { NumberInput, parseAmount } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
+import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
+import { celebratePaid } from "@/components/PaidCelebration";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -20,131 +23,7 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
-const signedMoney = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
-
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
-
-// The issued invoice as the customer sees it: on screen, printed, and as
-// the PDF that's emailed or shared (forPdf drops notes meant for the owner).
-function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf }: {
-  invoice: Invoice;
-  client: Client | null;
-  profile: BusinessProfile | null;
-  creditNotes: CreditNote[];
-  payments: InvoicePayment[];
-  forPdf?: boolean;
-}) {
-  const vatRegistered = invoiceVat(invoice, profile?.vatRegistered ?? false);
-  const totals = computeInvoiceTotals(invoice.items, vatRegistered);
-  const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
-  const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
-  return (
-    <>
-      <div className="flex items-start justify-between">
-        {profile?.businessName && (
-          <div>
-            <p className="text-lg font-bold">{profile.businessName}</p>
-            {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
-            {vatRegistered && profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
-          </div>
-        )}
-        <div className="text-right">
-          <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
-          <p className="text-sm text-neutral-500">Date: {longDate(invoice.date)}</p>
-          {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <p className="text-sm font-medium text-neutral-500">Billed to</p>
-        <p className="font-medium">{client?.name || "—"}</p>
-        {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
-        {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}
-        {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
-      </div>
-
-      <table className="mt-6 w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            <th className="py-2">Description</th>
-            <th className="py-2 text-right">Qty</th>
-            <th className="py-2 text-right">Unit price</th>
-            {vatRegistered && <th className="py-2 text-right">VAT</th>}
-            <th className="py-2 text-right">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoice.items.map((it, idx) => (
-            <tr key={idx} className="border-b">
-              <td className="py-2">{it.description}</td>
-              <td className="py-2 text-right">{it.quantity}</td>
-              <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
-              {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
-              <td className="py-2 text-right">{signedMoney(it.quantity * it.unitPrice)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="mt-4 space-y-1 text-sm">
-        {vatRegistered && (
-          <>
-            <div className="flex justify-end text-neutral-600">
-              <span>Subtotal (excl. VAT): £{totals.subtotal.toFixed(2)}</span>
-            </div>
-            {totals.vatByRate.map((v) => (
-              <div key={v.kind} className="flex justify-end text-neutral-600">
-                <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
-              </div>
-            ))}
-            <div className="flex justify-end text-neutral-600">
-              <span>Total: £{totals.total.toFixed(2)}</span>
-            </div>
-          </>
-        )}
-        {creditNotes.map((c) => (
-          <div key={c.id} className="flex justify-end text-neutral-500">
-            <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
-          </div>
-        ))}
-        {payments.map((p) => (
-          <div key={p.id} className="flex justify-end text-neutral-500">
-            <span>Payment received {longDate(p.date)}: −£{p.amount.toFixed(2)}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex justify-end">
-        <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
-          <div className="text-2xl font-extrabold">Amount due: £{amountDue.toFixed(2)}</div>
-          {invoice.dueDate && invoice.status !== "paid" && (
-            <div className="text-base font-bold text-neutral-700">Due: {longDate(invoice.dueDate)}</div>
-          )}
-          {invoice.status === "paid" && <div className="text-base font-bold text-green-700">Paid</div>}
-          {invoice.status === "partial" && paidSoFar === 0 && !forPdf && (
-            <div className="mt-1 max-w-xs text-xs font-normal text-neutral-500 print:hidden">
-              Marked part-paid before payments were recorded: record what came in below and the balance updates.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {invoice.notes && (
-        <div className="mt-6 border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
-      )}
-
-      {profile?.bankDetails && (
-        <div className="mt-4 rounded-lg border bg-neutral-50 p-4 text-sm">
-          <p className="font-semibold">How to pay</p>
-          <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
-        </div>
-      )}
-  
-    </>
-  );
-}
 
 const sum = (rows: { amount: number }[]) => rows.reduce((s, r) => s + r.amount, 0);
 const money = (n: number) => (Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -169,6 +48,10 @@ export default function InvoiceViewPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [payments, setPayments] = useState<InvoicePayment[]>([]);
+  const [link, setLink] = useState<InvoiceLink | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [showPayForm, setShowPayForm] = useState(false);
   const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [payAmount, setPayAmount] = useState("");
@@ -235,16 +118,18 @@ export default function InvoiceViewPage() {
       if (cancelled) return;
       setInvoice(inv);
       if (inv) {
-        const [allClients, notes, biz, paid] = await Promise.all([
+        const [allClients, notes, biz, paid, existingLink] = await Promise.all([
           clientsStore.all(),
           creditNotesStore.forInvoice(inv.id),
           businessProfileStore.get(),
           paymentsStore.forInvoice(inv.id),
+          invoiceLinksStore.forInvoice(inv.id).catch(() => null),
         ]);
         if (cancelled) return;
         setClients(allClients);
         setCreditNotes(notes);
         setPayments(paid);
+        setLink(existingLink);
         setProfile(biz);
         setEditDueDate(inv.dueDate ?? "");
         setEditPaymentTerms(inv.paymentTerms);
@@ -293,9 +178,15 @@ export default function InvoiceViewPage() {
   // just from opening the page.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
     const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
-    if (!next) return;
+    if (!next) return null;
     await invoicesStore.update(inv.id, { status: next });
     setInvoice((prev) => (prev && prev.id === inv.id ? { ...prev, status: next } : prev));
+    return next;
+  }
+
+  function celebrate(pays: InvoicePayment[]) {
+    if (!invoice) return;
+    celebratePaid({ amount: sum(pays), from: client?.name, number: invoice.number });
   }
 
   // Fresh from the database, so another tab's payment is counted before
@@ -334,7 +225,13 @@ export default function InvoiceViewPage() {
     } finally {
       setPaySaving(false);
     }
-    if (saved) await syncStatus(invoice, saved.notes, saved.pays, invoiceVat(invoice, vatRegistered)).catch((err) => setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it."));
+    if (!saved) return;
+    const done = saved;
+    const next = await syncStatus(invoice, done.notes, done.pays, invoiceVat(invoice, vatRegistered)).catch((err) => {
+      setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it.");
+      return null;
+    });
+    if (next === "paid") celebrate(done.pays);
   }
 
   // Records whatever is still owed as received today. An invoice marked
@@ -349,6 +246,7 @@ export default function InvoiceViewPage() {
       if (invoice.status === "partial" && pays.length === 0) {
         await invoicesStore.update(invoice.id, { status: "paid" });
         setInvoice({ ...invoice, status: "paid" });
+        celebrate(pays);
         return;
       }
       let all = pays;
@@ -357,12 +255,15 @@ export default function InvoiceViewPage() {
         all = [...pays, added];
         setPayments(all);
       }
-      await syncStatus(invoice, notes, all, invoiceVat(invoice, vatRegistered));
+      const next = await syncStatus(invoice, notes, all, invoiceVat(invoice, vatRegistered));
       // Nothing was owed (a £0 balance after a deposit): the figures alone
       // don't make it paid, the owner saying so does.
       if (due <= 0 && all.length === pays.length) {
         await invoicesStore.update(invoice.id, { status: "paid" });
         setInvoice((prev) => (prev ? { ...prev, status: "paid" } : prev));
+        celebrate(all);
+      } else if (next === "paid") {
+        celebrate(all);
       }
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : "Could not mark it paid.");
@@ -380,6 +281,42 @@ export default function InvoiceViewPage() {
       await syncStatus(invoice, notes, pays, invoiceVat(invoice, vatRegistered), true);
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Could not remove the payment.");
+    }
+  }
+
+  async function ensureLink(): Promise<string> {
+    if (!invoice) return "";
+    const made = await invoiceLinksStore.ensure(invoice.id);
+    setLink(made);
+    return invoiceLinkUrl(made.token);
+  }
+
+  // For a link sent to the wrong person: the old one stops working at once.
+  async function replaceLink() {
+    if (!invoice || !window.confirm("The current link will stop working straight away, for anyone who has it. Make a new one?")) return;
+    setLinkError(null);
+    setLinkBusy(true);
+    try {
+      setLink(await invoiceLinksStore.replace(invoice.id));
+      setLinkCopied(false);
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : "Couldn't replace the link.");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function copyLink() {
+    setLinkError(null);
+    setLinkBusy(true);
+    try {
+      const url = await ensureLink();
+      await navigator.clipboard.writeText(url).catch(() => {});
+      setLinkCopied(true);
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : "Couldn't make the link.");
+    } finally {
+      setLinkBusy(false);
     }
   }
 
@@ -719,6 +656,8 @@ export default function InvoiceViewPage() {
   const paidSoFar = sum(payments);
   const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
   const paid = invoice.status === "paid";
+  // Closed by credit notes alone: nothing was paid to thank them for.
+  const creditedInFull = paidSoFar === 0 && Math.round(creditNoteTotal * 100) >= Math.round(totals.total * 100);
   const overdue = isOverdue(invoice.status, invoice.dueDate);
 
   return (
@@ -795,8 +734,45 @@ export default function InvoiceViewPage() {
 
       <InvoiceReminders invoice={invoice} client={client} amountDue={amountDue} hasPayments={payments.length > 0} />
 
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        <h2 className="font-semibold">View online</h2>
+        {link ? (
+          <>
+            <p className="mt-1 text-sm text-neutral-600">
+              {link.viewCount > 0
+                ? `Opened ${link.viewCount === 1 ? "once" : `${link.viewCount} times`}: first ${new Date(link.firstViewedAt!).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}${link.viewCount > 1 ? `, last ${new Date(link.lastViewedAt!).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}` : ""}.`
+                : "Not opened yet."}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input readOnly aria-label="Invoice link" value={invoiceLinkUrl(link.token)} className="min-w-0 flex-1 rounded-lg border bg-neutral-50 px-3 py-2 text-xs text-neutral-700" onFocus={(e) => e.target.select()} />
+              <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+                {linkCopied ? "Copied" : "Copy link"}
+              </button>
+              <a href={`${invoiceLinkUrl(link.token)}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
+                Open
+              </a>
+            </div>
+            <button onClick={replaceLink} disabled={linkBusy} className="mt-2 text-xs font-medium text-neutral-500 underline disabled:opacity-50">
+              Stop this link and make a new one
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-neutral-600">
+              A private link your customer can open to see the invoice and download it. You&apos;ll see when they open it. It&apos;s added to the email automatically when you send it from here.
+            </p>
+            <button onClick={copyLink} disabled={linkBusy} className="mt-2 rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+              {linkBusy ? "Making the link…" : "Make and copy the link"}
+            </button>
+          </>
+        )}
+        {linkError && <p className="mt-2 text-sm text-red-600">{linkError}</p>}
+      </div>
+
       <SendInvoicePanel
         sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} forPdf />}
+        viewUrl={link ? invoiceLinkUrl(link.token) : ""}
+        ensureViewUrl={ensureLink}
         pdfKey={JSON.stringify([invoice, client, profile, creditNotes, payments])}
         signInNext={`/invoices/${invoice.id}`}
         missingName="Add your business name in Settings first, so the customer knows who it's from."
@@ -817,6 +793,20 @@ export default function InvoiceViewPage() {
           bank: paid ? [] : bankRowsFromText(profile?.bankDetails ?? ""),
         }}
       />
+
+      {client && (
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+          <h2 className="mb-3 font-semibold">Text {client.name}</h2>
+          <TextCustomer
+            key={invoice.status}
+            client={client}
+            from={profile?.businessName ?? ""}
+            presets={paid && !creditedInFull ? ["thanks", "done"] : ["done", "onMyWay", "late", "arrived"]}
+            link={link ? invoiceLinkUrl(link.token) : ""}
+            makeLink={ensureLink}
+          />
+        </div>
+      )}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex items-center justify-between">

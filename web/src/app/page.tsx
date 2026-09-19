@@ -26,6 +26,7 @@ import Tip from "@/components/Tip";
 import TaxSoFar from "@/components/TaxSoFar";
 import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
+import { showOnAppIcon } from "@/lib/appBadge";
 
 function ScanIcon() {
   return (
@@ -227,6 +228,10 @@ export default function Dashboard() {
     () => bills.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= 3).length,
     [bills, today]
   );
+
+  useEffect(() => {
+    if (!loading) showOnAppIcon(overdueInvoices.length + dueRecurringCount + billsDueSoon);
+  }, [loading, overdueInvoices.length, dueRecurringCount, billsDueSoon]);
 
   async function markBillPaid(bill: Receipt) {
     setBillsError(null);

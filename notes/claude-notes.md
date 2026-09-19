@@ -39,7 +39,31 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-024 as of 2026-09-19 (backup 012:
+- Live Supabase is at migration-026 as of 2026-09-19: quote_links (grants as
+  invoice_links; record_quote_link_view and respond_to_quote_link execute for
+  service_role only). Verified rolled back: owner can't fake an answer or call respond,
+  other user sees 0, accept records the trimmed name, a second answer is refused, reopen
+  then answer again works, draft/expired/bad answers refused, first view once.
+- Vercel's firewall put the live site into a challenge ("Vercel Security Checkpoint",
+  x-vercel-mitigated: challenge) for scripted requests on 2026-09-19 evening, most likely
+  after this session's many curl polls. Browsers pass it on their own. Don't poll the live
+  site with curl in loops; check in the browser pane. If it persists for real visitors,
+  look at Vercel > Firewall (Attack Challenge Mode / bot protection).
+- When the Mac's display sleeps, every Chrome tab is "hidden" and in-page timers are
+  throttled, so window.__runSql2 (which waits with setTimeout) hangs. Instead: set the
+  Monaco text by JS, click Run with the computer tool (find the Run button's ref), wait
+  with the tool, then read [role=gridcell] by JS.
+- Next 16 runs one dev server per folder; a second on another port refuses to start.
+- Migration-025 as of 2026-09-19: invoice_links (authenticated:
+  select; insert only invoice_id/user_id/token; update only token; anon nothing;
+  record_invoice_link_view execute for service_role only). Verified rolled back.
+- Next 16 serves notFound() from a dynamic page as a soft 404 (status 200) once it has
+  started streaming, and skips the page's generateMetadata: put noindex in a segment
+  layout (as src/app/i/layout.tsx does).
+- Testing server-rendered pages without the real DB: start `next dev` with
+  NEXT_PUBLIC_SUPABASE_URL=http://localhost:5555 (and fake keys) and run
+  `harness/mock-server.mjs` there; env vars already set beat .env.local.
+- Migration-024 as of 2026-09-19 (backup 012:
   invoices_backup_20260919_m024, verified 0/0 — the invoices table had no rows):
   invoices.vat_registered, set by assign_invoice_number (still security definer,
   search_path public, execute for authenticated/service_role only). Verified rolled back:
@@ -152,6 +176,12 @@ changes.
   own address. Visitors get "Sign in or sign up to send", which returns to their draft.
 - Camera permission can't be remembered by the site: iOS Safari asks per visit unless
   aA → Website Settings → Camera → Allow. Batch mode keeps the stream open instead.
+- Address lookup is free by default (postcodes.io + OpenStreetMap/Photon); Royal Mail
+  (Ideal Postcodes) only for signed-in users and only if Atanas adds a key. getAddress.io
+  shut down in Feb 2026 after a court case; never build our own copy of an address file
+  from lookup results. OS Places isn't in the OS free allowance.
+- "Paid" moment, home-screen badge and customer texts added as Atanas's "surprise me"
+  (2026-09-19); texts open the phone's Messages/WhatsApp, the app sends nothing.
 
 ## Testing without Atanas's documents
 
@@ -183,6 +213,15 @@ changes.
   `.env.local`.
 - The SQL editor asks "Potential issue detected" before any query containing delete; a
   rolled-back test block needs that confirmed by a click.
+- Camera suites (scratchpad `harness/`): `test-far.mjs` (far/torn/shaky/off-centre
+  receipts, dark objects, a white box on a bill, 45°, and a stubbed `ImageCapture` still:
+  upright/sideways/nudged/noise/hang/moved/blurred), `test-batch-swap.mjs` and
+  `test-far-recheck.mjs` (signed-in /scan with the fake camera via `camera-signed.mjs`),
+  `test-lens.mjs` (stubbed iPhone lens zoom). Clips are made by `gen-far*.py`.
+- WebKit (checked in source, 2026-09-19): iOS `getCapabilities().zoom` is 0.5-min(max/2,
+  10) on multi-lens phones, 1 = main lens; `takePhoto` without imageWidth/Height returns
+  the smallest max photo size of the active format, with them the smallest >= both; the
+  JPEG isn't rotated by WebKit (EXIF only). ImageCapture is in Safari 18.4+.
 
 ## References
 

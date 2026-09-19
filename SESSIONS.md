@@ -188,6 +188,40 @@ and what is left open. Dates are session dates (Europe/London).
   check 4/4 (issued-before-registration shows no VAT everywhere). Backup 012 (invoices)
   verified 0/0 (the table has no rows yet). Review: no defects. Migration-024 applied
   and verified (rolled back, next number untouched); merged (f65e123).
+- Tax branch brought up to date with main (merged, uses each invoice's VAT setting);
+  still unmerged for Atanas. invoiceVat treats a missing flag as unknown (ec2613a).
+- Inbox import stores documents in the photo bucket too (6daf2a7). The live DB has no
+  receipts, clients, invoices or quotes yet, so nothing to move.
+- "View online" invoice links (research #5), branch `feature/invoice-links`: private
+  /i/<43-char token> page (invoice_links, migration-025, new table), server-rendered with
+  the service role, shows only what the PDF shows, noindex/no-referrer, soft 404 for
+  unknown/draft (Next 16 streams, so status stays 200 with noindex, as documented).
+  Opened is reported by the page's script (link scanners don't count), once per visitor
+  per half hour, not from the owner's signed-in browser; first open pushes the owner.
+  Email gets a "View invoice online" button (route accepts only this app's /i/ links).
+  Security review: no leak or auth hole; fixed the owner's own email copy counting as the
+  customer (#o), exact 43-char tokens + per-visitor limit first, atomic counting in SQL,
+  blocked-storage crash, credit notes scoped by owner; added "Stop this link" and a
+  column-level insert grant. End to end 18/18. Migration-025 applied and verified
+  (rolled back); merged (54a4e35); live: unknown links show not-found with noindex.
+- From Atanas on his phone, fixed on main:
+  - Pinch on the camera zoomed the whole page (58aa368): the camera screen now claims its
+    touches (touch-action none + Safari gesture events cancelled) and a pinch drives the
+    lens zoom, or the cropped zoom up to 3x. Headless pinch 4/4; auto-zoom/tips unchanged.
+  - Camera permission asked every time: a site can't make Safari remember it. The how-to
+    (Settings > Safari > Camera > Allow, or aA > Website Settings) now shows as a tip
+    whenever Safari had to ask (judged by the grant taking > 700ms), not once ever in grey.
+  - Quotes on the Free page (f57ec09): Invoice | Quote switch, quote layout (valid until,
+    no terms/bank/CIS), quote email/PDF wording, Save to account -> Quotes > New prefilled
+    with add-customer. Headless 10/10.
+- Accept a quote online (merged 803fcbd): /q/<token> with Accept/Decline (confirmed, name
+  recorded), quote email "View and accept online", owner sees opens and "Accepted online
+  by <name>", push on first open and on answer. Review fixes: reopened quotes can be
+  answered again, emailing a draft no longer marks it sent before the send works, owner
+  status changes check the status the page showed, DB hiccup says try again; owner's #o
+  copy shows no buttons. End to end 18/18; quotes 34/34 and deposits 17/17 unchanged.
+  Migration-026 applied and verified (rolled back). Live: checked in the browser pane
+  (curl gets Vercel's security checkpoint, see notes).
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
@@ -195,6 +229,68 @@ and what is left open. Dates are session dates (Europe/London).
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked
   against known figures; dashboard checked with a mocked database; screenshot sent.
+- From Atanas on his phone (19/09, later): "the camera doesn't recognise receipts from far, it
+  zooms a bit, asks me to move closer when it should do it itself"; "add the address
+  thing wherever you add an address, postcode or street and number, UK only"; "choose
+  three or more things and surprise me, check other apps for ideas".
+  - Research workflow (5 agents): scanner techniques + 8 ranked feature ideas (customer
+    texts, CIS-aware tax pot, mileage, rebill materials, offline capture queue, app-icon
+    badge + Monday push, a 'Paid!' moment, SA103 summary). WebKit source checked: iOS
+    exposes lens zoom (0.5-10 on multi-lens phones, 1 = main lens) and, since 18.4,
+    ImageCapture.takePhoto (asked-for size picks the smallest max photo size >= it).
+  - Scanner, branch `feature/far-scan` (c5f758b): page candidates down to 1.2% of the
+    frame when they look like paper (lighter than around, clear of the edge, aspect <= 8),
+    torn/curled receipts via convex hull, zoom by the page's span up to 4x on the lens
+    (2.5x crop), "Move closer" only when zoom can't help ("Hold still — zooming in",
+    "Move the page to the middle" otherwise), and the shot is the camera's own ~12MP
+    still (turned upright by matching thumbnails, page re-found in it, video frame as
+    fallback). Headless with synthetic clips: far receipt 7/7, torn 2/2, shaky 1/1,
+    off-centre 2/2, dark object ignored, still upright/sideways/noise/hang 10/10, lens
+    zoom 3/4 (jumps to 4x in one step, fine), old auto-zoom 9/10 (edge page no longer
+    zooms, correct), pinch 4/4, camera tip 2/2. Review workflow running.
+  - Address finder, branch `feature/address-finder` (72b5f42): search box above every
+    address field (Free page business/customer, clients new/edit, Settings). Free now:
+    postcodes.io + OpenStreetMap (Photon); post town from the postcode (London districts,
+    built-up area), 'just the postcode' partial that keeps a typed first line. With
+    `IDEAL_POSTCODES_API_KEY`, signed-in users get Royal Mail PAF (paid per lookup, never
+    for the anonymous Free page); tested with Ideal's public test key. Free page 12/12,
+    signed-in forms 10/10. Review workflow running.
+  - Scanner review (3 lenses + refuters): 12 confirmed, all fixed (e5d97d5): still used
+    only if the page is re-found near the video's corners and as sharp; orientation from
+    the decoder, a sideways still turned only with a clear margin; flash after the photo
+    ("Hold still — taking the photo…"); Back/retry drops an in-flight capture; batch
+    disarms at capture start (test fails on c5f758b, passes after); corners ordered by
+    angle (45° receipts); white boxes on coloured bills rejected (edges around); no zoom
+    mid-photo. Re-check workflow running.
+  - Address review: 11 confirmed, fixed (7b9aa26): Royal Mail calls capped per account
+    (20/5 min, 100/day) + charged-only backstop, free lookup when capped or Ideal fails;
+    upstream errors not cached as "no matches"; Enter never submits the form; pending
+    Royal Mail pick shown, latest form state used; "just the postcode" keeps typed lines as
+    typed; street picks keep the typed house number and no stray postcode; council names
+    not used as towns; 16px input on phones. Unit 22/22, pages 12/12 + 12/12.
+  - Surprises, branch `feature/delight` (491299c): a "Paid" moment (tick, amount, customer,
+    "£X in this month", haptic tick) when an invoice is marked paid in full; the home-screen
+    icon badge = overdue invoices + recurring due + bills due in 3 days (dashboard, and the
+    daily push carries it); "Text <customer>" on issued invoices, sent/accepted quotes and
+    clients with a phone (On my way / Running late / I've arrived / Job done with the
+    invoice link on request / Thanks for paying) via Messages or WhatsApp. Mocked
+    click-through 7/7 + 12/12. Review running. Offline scan queue considered and left for
+    later: it needs a caching service worker, too risky to ship untested on an iPhone.
+  - Second reviews: delight (8 confirmed: honest Paid figure, taps pass through the card,
+    UK number formats and extensions, 'Mrs Jones' greetings, current link after "Stop this
+    link", credited-in-full not thanked, bad stored numbers correctable) fixed in 221b43b;
+    address re-check (7: stale Enter pick, free fallback past the cap, daily overall cap,
+    merge rules, towns by built-up area, new postcodes usable as typed) fixed in 447194b;
+    scanner re-check (3: dead scanner after a mode switch mid-photo, borderline batch
+    re-captures, corner order flipping at 45°) fixed in fc609b4 (mode-switch test fails
+    before, passes after). Final check of those fixes: 3 more (a page straightened while
+    tracked saved sideways; council names for towns with no built-up area; the text card
+    resetting when the first link is made), fixed in 8e195da, 8333f86, a391a15.
+  - Merged all three to main (1fdfe6c) after a trial branch: build/tsc/eslint clean; far
+    35/35 (incl. straighten 2/2), batch 2/2, re-check 2/2, address 12/12 + 12/12, Paid 8/8,
+    texts 12/12, quotes 34/34, deposits 17/17, payments 13/13 (the removal check raced the
+    status write in the test; waits for it now), reminders 5/5, lines 7/7, company 22/22,
+    VAT 4/4, Free quote 10/10, share 3/3, tips 7/7, invoice links 18/18, quote links 18/18.
 
 **Open**
 

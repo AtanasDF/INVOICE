@@ -1,10 +1,12 @@
 import { supabase } from "@/lib/supabaseClient";
+import { RECEIPTS_BUCKET } from "@/lib/receiptsBucket";
+
+export { RECEIPTS_BUCKET };
 
 // Receipt photos and PDFs live in a private storage bucket, one folder per
 // account; the receipt row keeps "storage:<path>" in image_data_url, where
 // the photo itself used to be. Rows from before (and inbox imports) still
 // hold a data: URL, and both kinds keep working.
-export const RECEIPTS_BUCKET = "receipts";
 const PREFIX = "storage:";
 // A week: the app lives on a phone home screen and iOS resumes it without
 // reloading, so links signed on Monday must still work on Friday.

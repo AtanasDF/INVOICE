@@ -117,7 +117,7 @@ export async function GET(req: Request) {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-            JSON.stringify({ title: "Invoice & Expenses", body: parts.join(" and "), url: "/" })
+            JSON.stringify({ title: "Invoice & Expenses", body: parts.join(" and "), url: "/", badge: due.overdueInvoices + due.dueRecurring + due.dueBills })
           );
           notified += 1;
         } catch (err) {

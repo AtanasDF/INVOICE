@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useSearchParams } from "next/navigation";
-import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
+import { Client, ClientKind, Invoice, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
 import CompanyNameInput from "@/components/CompanyNameInput";
+import AddressFinder from "@/components/AddressFinder";
+import TextCustomer from "@/components/TextCustomer";
+import { phoneLinks } from "@/lib/customerText";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -53,6 +56,8 @@ export default function ClientsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [textingId, setTextingId] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState("");
 
   useEffect(() => {
     Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
@@ -60,6 +65,7 @@ export default function ClientsPage() {
       setInvoices(inv);
       setLoading(false);
     });
+    businessProfileStore.get().then((p) => setBusinessName(p.businessName), () => {});
   }, []);
 
   function invoicesForClient(clientId: string) {
@@ -237,12 +243,15 @@ export default function ClientsPage() {
                       value={draft.email}
                       onChange={(e) => setDraft({ ...draft, email: e.target.value })}
                     />
-                    <textarea
-                      className="w-full rounded-lg border px-3 py-2 text-sm"
-                      placeholder="Billing address"
-                      value={draft.address}
-                      onChange={(e) => setDraft({ ...draft, address: e.target.value })}
-                    />
+                    <div className="space-y-1.5">
+                      <AddressFinder address={draft.address} onAddress={(address) => setDraft({ ...draft, address })} />
+                      <textarea
+                        className="w-full rounded-lg border px-3 py-2 text-sm"
+                        placeholder="Billing address"
+                        value={draft.address}
+                        onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
@@ -274,8 +283,8 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-4">
-                    <div>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 font-medium">
                         {c.name}
                         {c.archived && (
@@ -287,7 +296,12 @@ export default function ClientsPage() {
                         {tab === "client" && !c.remindersEnabled && " · Reminders off"}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {phoneLinks(c.phone) && (
+                        <button onClick={() => setTextingId(textingId === c.id ? null : c.id)} className="text-sm font-medium text-blue-600">
+                          {textingId === c.id ? "Close" : "Text"}
+                        </button>
+                      )}
                       {tab === "client" && clientInvoices.length > 0 && (
                         <button
                           onClick={() => setExpandedClientId(expanded ? null : c.id)}
@@ -306,6 +320,11 @@ export default function ClientsPage() {
                         Remove
                       </button>
                     </div>
+                  </div>
+                )}
+                {textingId === c.id && !editing && (
+                  <div className="border-t p-4">
+                    <TextCustomer client={c} from={businessName} presets={["onMyWay", "late", "arrived"]} />
                   </div>
                 )}
                 {expanded && !editing && (

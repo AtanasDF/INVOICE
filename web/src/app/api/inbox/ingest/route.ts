@@ -4,6 +4,7 @@ import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument } from "@/lib/scanExtrac
 import { documentDetailsFromScan } from "@/lib/scanClient";
 import { getFxRate } from "@/lib/fx";
 import type { DocumentType } from "@/lib/storage";
+import { storeImageForUser } from "@/lib/receiptImagesServer";
 
 export const runtime = "nodejs";
 
@@ -171,7 +172,7 @@ export async function POST(req: Request) {
           original_vat_amount: originalVatAmount,
           original_currency: originalCurrency,
           fx_rate: fxRate,
-          image_data_url: `data:${attachment.mimeType};base64,${attachment.base64}`,
+          image_data_url: await storeImageForUser(admin, userId, attachment.mimeType, attachment.base64),
           notes,
           starred: false,
           needs_review: true,

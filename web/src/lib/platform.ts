@@ -88,16 +88,3 @@ export function writeAutoZoom(on: boolean) {
     // private mode / storage blocked -- the choice just won't persist
   }
 }
-
-const CAMERA_HINT_KEY = "camera-hint-seen";
-
-// True the first time the camera opens on this device, and marks it seen.
-export function consumeCameraHint(): boolean {
-  try {
-    if (localStorage.getItem(CAMERA_HINT_KEY)) return false;
-    localStorage.setItem(CAMERA_HINT_KEY, "1");
-  } catch {
-    // private mode / storage blocked -- the hint may show again next time
-  }
-  return true;
-}
