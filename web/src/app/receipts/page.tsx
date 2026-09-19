@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import ScanOrAdd from "@/components/ScanOrAdd";
 import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileStore, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
@@ -302,22 +302,20 @@ export default function ReceiptsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Receipts</h1>
           <p className="mt-1 text-neutral-600">
             Receipts, supplier invoices and credit notes you&apos;ve captured.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           {receipts.length > 0 && (
             <button onClick={exportReceipts} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Export CSV
             </button>
           )}
-          <Link href="/receipts/new" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-            + New receipt
-          </Link>
+          <ScanOrAdd scanHref="/scan" scanLabel="Scan receipts" addHref="/receipts/new" />
         </div>
       </div>
 
@@ -368,7 +366,7 @@ export default function ReceiptsPage() {
               {hasActiveFilters ? (
                 "No receipts match these filters."
               ) : (
-                <>No receipts yet. <Link href="/receipts/new" className="text-blue-600 underline">Add one</Link>, or <Link href="/scan" className="text-blue-600 underline">scan one</Link> instead.</>
+                "No receipts yet. Scan a few at once, or add one manually."
               )}
             </p>
           )}

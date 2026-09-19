@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import ScanOrAdd from "@/components/ScanOrAdd";
 import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
@@ -68,6 +68,7 @@ export default function ClientsPage() {
     () => clients.filter((c) => c.kind === tab && (showArchived || !c.archived)),
     [clients, tab, showArchived]
   );
+  const archivedCount = clients.filter((c) => c.kind === tab && c.archived).length;
 
   function startEdit(c: Client) {
     setEditingId(c.id);
@@ -139,22 +140,20 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Clients & suppliers</h1>
           <p className="mt-1 text-neutral-600">
             Clients are who you invoice. Suppliers are who invoices or receipts come from.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           {visibleClients.length > 0 && (
             <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Export CSV
             </button>
           )}
-          <Link href={`/clients/new?kind=${tab}`} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-            + New {tab === "client" ? "client" : "supplier"}
-          </Link>
+          <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab}`} addHref={`/clients/new?kind=${tab}`} />
         </div>
       </div>
 
@@ -173,10 +172,6 @@ export default function ClientsPage() {
             Suppliers
           </button>
         </div>
-        <label className="flex items-center gap-2 text-sm text-neutral-600">
-          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-          Show archived
-        </label>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -185,9 +180,9 @@ export default function ClientsPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {visibleClients.length === 0 && (
+          {visibleClients.length === 0 && archivedCount === 0 && (
             <p className="text-sm text-neutral-500">
-              No {tab}s saved yet. <Link href={`/clients/new?kind=${tab}`} className="text-blue-600 underline">Add one</Link>.
+              No {tab}s yet. Scan a business card, letter or invoice to add one, or add one manually.
             </p>
           )}
           {visibleClients.map((c) => {
@@ -308,6 +303,11 @@ export default function ClientsPage() {
               </div>
             );
           })}
+          {archivedCount > 0 && (
+            <button type="button" onClick={() => setShowArchived((v) => !v)} className="text-sm font-medium text-neutral-500">
+              {showArchived ? "Hide archived" : `${archivedCount} archived`}
+            </button>
+          )}
         </div>
       )}
     </div>

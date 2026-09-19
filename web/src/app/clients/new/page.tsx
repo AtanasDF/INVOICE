@@ -3,6 +3,24 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ClientKind, clientsStore } from "@/lib/storage";
+import { supabase } from "@/lib/supabaseClient";
+import type { ScannedContact } from "@/lib/contactExtraction";
+import CaptureButton from "@/components/CaptureButton";
+import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
+import { CameraIcon } from "@/components/icons";
+
+async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Please sign in again.");
+  const res = await fetch("/api/contact-scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ image: file.dataUrl }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { contacts?: ScannedContact[]; error?: string };
+  if (!res.ok || !body.contacts) throw new Error(body.error || `Couldn't read that (${res.status}).`);
+  return body.contacts;
+}
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -20,6 +38,40 @@ export default function NewClientPage() {
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1");
+  const [reading, setReading] = useState(false);
+  const [readError, setReadError] = useState<string | null>(null);
+  const [found, setFound] = useState<ScannedContact[]>([]);
+  const [picked, setPicked] = useState<number | null>(null);
+
+  function fill(c: ScannedContact, i: number) {
+    setPicked(i);
+    setIsCompany(c.isCompany);
+    setName(c.name);
+    setEmail(c.email ?? "");
+    setAddress(c.address ?? "");
+    setVatNumber(c.vatNumber ?? "");
+    setContactPerson(c.contactPerson ?? "");
+  }
+
+  async function onScanned(file: CapturedFile) {
+    setCapturing(false);
+    setReading(true);
+    setReadError(null);
+    try {
+      const contacts = await readContacts(file);
+      if (!contacts.length) throw new Error("No names or companies found on that. Try a clearer photo, or type them in.");
+      // A supplier is usually who sent the document; a client who it was sent to.
+      const preferred = kind === "supplier" ? "issuer" : "recipient";
+      const best = Math.max(0, contacts.findIndex((c) => c.role === preferred));
+      setFound(contacts);
+      fill(contacts[best], best);
+    } catch (err) {
+      setReadError(err instanceof Error ? err.message : "Couldn't read that.");
+    } finally {
+      setReading(false);
+    }
+  }
 
   async function addClient(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +98,10 @@ export default function NewClientPage() {
     }
   }
 
+  if (capturing) {
+    return <DocumentCapture onCapture={onScanned} onClose={() => setCapturing(false)} />;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -53,6 +109,40 @@ export default function NewClientPage() {
         <p className="mt-1 text-neutral-600">
           Clients are who you invoice. Suppliers are who invoices or receipts come from.
         </p>
+      </div>
+
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <CaptureButton
+          onOpen={() => setCapturing(true)}
+          onCapture={onScanned}
+          disabled={reading}
+          className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          <CameraIcon className="h-5 w-5" />
+          {reading ? "Reading…" : found.length ? "Scan again" : "Scan to fill in"}
+        </CaptureButton>
+        <p className="mt-2 text-xs text-neutral-500">
+          A business card, letterhead, invoice, email or any photo with their details. Names, addresses, emails and VAT numbers are picked out for you.
+        </p>
+        {readError && <p className="mt-2 text-sm text-red-600">{readError}</p>}
+        {found.length > 1 && (
+          <div className="mt-3">
+            <p className="text-xs text-neutral-500">Found on the page — tap the one you want</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {found.map((c, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => fill(c, i)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${picked === i ? "bg-neutral-900 text-white" : "border text-neutral-700"}`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {found.length > 0 && !reading && <p className="mt-2 text-sm text-neutral-600">Filled in from your scan — check the details below.</p>}
       </div>
 
       <form onSubmit={addClient} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

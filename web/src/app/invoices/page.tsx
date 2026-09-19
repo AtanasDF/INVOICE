@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ScanOrAdd from "@/components/ScanOrAdd";
 import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
@@ -130,20 +131,18 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>
           <p className="mt-1 text-neutral-600">Create and revisit the invoices you have sent.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           {invoices.length > 0 && (
             <button onClick={exportInvoices} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Export CSV
             </button>
           )}
-          <Link href="/invoices/new" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-            + New invoice
-          </Link>
+          <ScanOrAdd scanHref="/invoices/new?scan=1" scanLabel="Scan an invoice" addHref="/invoices/new" />
         </div>
       </div>
 
@@ -202,7 +201,7 @@ export default function InvoicesPage() {
               {hasActiveFilters ? (
                 "No invoices match these filters."
               ) : (
-                <>No invoices yet. <Link href="/invoices/new" className="text-blue-600 underline">Create one</Link>.</>
+                "No invoices yet. Scan one you've sent before to copy it, or add one manually."
               )}
             </p>
           )}

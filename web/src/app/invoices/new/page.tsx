@@ -67,7 +67,8 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [showCapture, setShowCapture] = useState(false);
+  // "Scan an invoice" on the list opens straight into the camera.
+  const [showCapture, setShowCapture] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1");
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [imported, setImported] = useState(!!draft);
