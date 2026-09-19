@@ -276,6 +276,21 @@ and what is left open. Dates are session dates (Europe/London).
     invoice link on request / Thanks for paying) via Messages or WhatsApp. Mocked
     click-through 7/7 + 12/12. Review running. Offline scan queue considered and left for
     later: it needs a caching service worker, too risky to ship untested on an iPhone.
+  - Second reviews: delight (8 confirmed: honest Paid figure, taps pass through the card,
+    UK number formats and extensions, 'Mrs Jones' greetings, current link after "Stop this
+    link", credited-in-full not thanked, bad stored numbers correctable) fixed in 221b43b;
+    address re-check (7: stale Enter pick, free fallback past the cap, daily overall cap,
+    merge rules, towns by built-up area, new postcodes usable as typed) fixed in 447194b;
+    scanner re-check (3: dead scanner after a mode switch mid-photo, borderline batch
+    re-captures, corner order flipping at 45°) fixed in fc609b4 (mode-switch test fails
+    before, passes after). Final check of those fixes: 3 more (a page straightened while
+    tracked saved sideways; council names for towns with no built-up area; the text card
+    resetting when the first link is made), fixed in 8e195da, 8333f86, a391a15.
+  - Merged all three to main (1fdfe6c) after a trial branch: build/tsc/eslint clean; far
+    35/35 (incl. straighten 2/2), batch 2/2, re-check 2/2, address 12/12 + 12/12, Paid 8/8,
+    texts 12/12, quotes 34/34, deposits 17/17, payments 13/13 (the removal check raced the
+    status write in the test; waits for it now), reminders 5/5, lines 7/7, company 22/22,
+    VAT 4/4, Free quote 10/10, share 3/3, tips 7/7, invoice links 18/18, quote links 18/18.
 
 **Open**
 
