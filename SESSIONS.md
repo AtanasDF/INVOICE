@@ -23,6 +23,12 @@ and what is left open. Dates are session dates (Europe/London).
 - Health check: `tsc`, `eslint`, `npm run build` clean on `main` at b70d091; live site loads;
   Atanas signed in to the app in the browser pane. `test-docs/` (gitignored) created for real
   test documents.
+- Shipped to main (24b3373, 5646bfd, 8138fca): scanned template becomes the next invoice
+  (number +1, today's date, Next invoice button); both extractors told to read rough and
+  handwritten documents; batch scanner (stack, review, join pages, read 3 at a time, Save and
+  next / Skip) with green lock-on fill; camera-first buttons on Invoices, Receipts, Clients;
+  scan-to-fill for clients/suppliers via new `/api/contact-scan`; Show archived removed.
+  Batch capture and review tested locally against a fake camera stream; live tests next.
 
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
