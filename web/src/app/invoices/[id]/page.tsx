@@ -158,8 +158,9 @@ export default function InvoiceViewPage() {
   const client = clients.find((c) => c.id === invoice?.clientId) || null;
   // Archived clients dropped from the draft picker, except the one
   // already assigned to this draft, so its current value doesn't vanish
-  // if it was archived after the draft was created.
-  const billableClients = clients.filter((c) => c.kind === "client" && (!c.archived || c.id === draftClientId));
+  // if it was archived after the draft was created. That one may also be a
+  // supplier: quotes can go to suppliers, and become invoices.
+  const billableClients = clients.filter((c) => c.id === invoice?.clientId || c.id === draftClientId || (c.kind === "client" && !c.archived));
 
   async function changeStatus(next: InvoiceStatus) {
     if (!invoice) return;
@@ -692,7 +693,7 @@ export default function InvoiceViewPage() {
             </button>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => setEditingDetails((v) => !v)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             {editingDetails ? "Cancel" : "Edit details"}
           </button>

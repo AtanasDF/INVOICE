@@ -3,17 +3,18 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import QuoteDocument, { quoteTotal } from "@/components/quote/QuoteDocument";
+import QuoteDocument, { money, quoteTotal } from "@/components/quote/QuoteDocument";
 import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
-import SendInvoicePanel from "@/components/SendInvoicePanel";
-import TextCustomer from "@/components/TextCustomer";
+import QuoteSendCard from "@/components/quote/QuoteSendCard";
+import { customerContact, customerKind } from "@/components/quote/CustomerPicker";
 import { longDate } from "@/components/invoice/InvoiceDocument";
+import { greetingName } from "@/lib/customerText";
 import { BusinessProfile, Client, Invoice, Quote, QuoteLink, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quoteLinkUrl, quoteLinksStore, quotesStore } from "@/lib/storage";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
-import { quoteStatusBadgeClass, quoteStatusLabel, termsLength } from "@/lib/quoteStatus";
+import { quoteStatusBadgeClass, quoteStatusLabel, shortDate, termsLength } from "@/lib/quoteStatus";
 import { errorText } from "@/lib/errorText";
 import { depositDeductions, depositGross, depositLines, depositTag } from "@/lib/quoteDeposit";
 
@@ -148,7 +149,6 @@ export default function QuotePage() {
   // A deposit still to invoice: asked for, quote accepted, none made yet.
   const depositDue = q.status === "accepted" && depositAmount && !q.depositClaimed && !depositInvoice ? depositAmount : null;
   const openDeposit = depositInvoice && depositInvoice.status !== "paid" && depositInvoice.status !== "draft" ? depositInvoice : null;
-  const money = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const setStatus = (status: Open) => {
     // A deposit invoice outlives the deal: its reminders keep going until
@@ -262,10 +262,10 @@ export default function QuotePage() {
       router.push(`/invoices/${invoice.id}`);
     });
 
-  // A quote can only be answered once it's sent, so sharing its link (by
-  // email or copied) marks a draft as sent first.
-  // Copying marks a draft sent first; emailing leaves that to a send that
-  // worked (onSent), so a failed email doesn't lock the draft.
+  // A quote can only be answered once it's sent, so sharing its link marks
+  // a draft as sent. Copying it or putting it in a text does that first;
+  // emailing leaves it to a send that worked (onSent), so a failed email
+  // doesn't lock the draft.
   async function ensureLink(markSent = false): Promise<string> {
     if (markSent && q.status === "draft" && (await quotesStore.markSent(q.id))) setQuote((prev) => (prev && prev.status === "draft" ? { ...prev, status: "sent" } : prev));
     const made = await quoteLinksStore.ensure(q.id);
@@ -285,6 +285,13 @@ export default function QuotePage() {
     } finally {
       setLinkBusy(false);
     }
+  }
+
+  // Putting the link in a text or WhatsApp shares it, so it sends a draft
+  // just as copying it does.
+  async function linkForText(): Promise<string> {
+    if (q.status === "draft" && !window.confirm("Adding the link sends the quote: it's marked as sent and can't be edited after. Carry on?")) return "";
+    return ensureLink(true);
   }
 
   async function replaceLink() {
@@ -317,35 +324,111 @@ export default function QuotePage() {
           saveLabel="Save changes"
           onSave={saveEdit}
           onCancel={() => setEditing(false)}
+          onClientAdded={(c) => {
+            // A refresh started before the add would drop the new customer.
+            genRef.current++;
+            setClients((prev) => [...prev.filter((p) => p.id !== c.id), c]);
+          }}
         />
       </div>
     );
   }
 
+  const sending = q.status === "draft" || q.status === "sent" || q.status === "accepted";
+  const answeredOnline = link?.response && (link.response === "declined" ? q.status === "declined" : q.status === "accepted" || q.status === "invoiced") ? link : null;
+  const contact = client ? customerContact(client) : "";
+  const validUntil = q.validUntil ? longDate(q.validUntil) : "";
+  const url = link ? quoteLinkUrl(link.token) : "";
+
+  const linkSection = (
+    <>
+      {link ? (
+        <>
+          <p className="mt-1 text-sm text-neutral-600">
+            {link.viewCount > 0
+              ? `Opened ${link.viewCount === 1 ? "once" : `${link.viewCount} times`}: first ${when(link.firstViewedAt!)}${link.viewCount > 1 ? `, last ${when(link.lastViewedAt!)}` : ""}.`
+              : "Not opened yet."}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input readOnly aria-label="Quote link" value={url} className="min-w-0 flex-1 rounded-lg border bg-neutral-50 px-3 py-2 text-xs text-neutral-700" onFocus={(e) => e.target.select()} />
+            <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+              {linkCopied ? "Copied" : "Copy link"}
+            </button>
+            <a href={`${url}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
+              Open
+            </a>
+          </div>
+          <button onClick={replaceLink} disabled={linkBusy} className="mt-2 text-xs font-medium text-neutral-500 underline disabled:opacity-50">
+            Stop this link and make a new one
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-neutral-600">
+            A private link where your customer can see the quote and accept or decline it. You&apos;ll see when they open it and get a notification when they answer. Emails include it, and a text or WhatsApp can.
+          </p>
+          <button onClick={copyLink} disabled={linkBusy} className="mt-2 rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+            {linkBusy ? "Making the link…" : "Make and copy the link"}
+          </button>
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4 print:hidden">
-        <div>
-          <Link href="/quotes" className="text-sm text-neutral-500">← Quotes</Link>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold">Quote {q.number}</h1>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${quoteStatusBadgeClass(q, today)}`}>{quoteStatusLabel(q, today)}</span>
+      <div className="print:hidden">
+        <Link href="/quotes" className="text-sm text-neutral-500">← Quotes</Link>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold">Quote {q.number}</h1>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${quoteStatusBadgeClass(q, today)}`}>{quoteStatusLabel(q, today)}</span>
+            </div>
+            <p className="mt-1 text-neutral-600">Dated {longDate(q.date)}</p>
           </div>
-          <p className="mt-1 text-neutral-600">
-            {client?.name ?? "No client"} · £{total.toFixed(2)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {q.status === "draft" && (
-            <button onClick={() => setEditing(true)} disabled={busy} className={SECONDARY}>Edit</button>
-          )}
-          <button onClick={() => window.print()} className={SECONDARY}>Print</button>
+          <div className="flex shrink-0 gap-2">
+            {q.status === "draft" && (
+              <button onClick={() => setEditing(true)} disabled={busy} className={SECONDARY}>Edit</button>
+            )}
+            {!sending && <button onClick={() => window.print()} className={SECONDARY}>Print</button>}
+          </div>
         </div>
       </div>
 
       {error && <p className="text-sm text-red-600 print:hidden">{error}</p>}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        <p className="text-xs text-neutral-500">For</p>
+        <p className="font-medium">{client?.name ?? "No client"}</p>
+        {client && <p className="text-sm text-neutral-600">{customerKind(client)}</p>}
+        {contact && <p className="break-words text-sm text-neutral-500">{contact}</p>}
+        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 sm:grid-cols-3">
+          <div className="col-span-2 sm:col-span-1">
+            <dt className="text-xs text-neutral-500">Total{vatRegistered ? " incl. VAT" : ""}</dt>
+            <dd className="text-2xl font-bold">{money(total)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-neutral-500">Deposit</dt>
+            <dd className="font-semibold">
+              {depositAmount ? money(depositAmount) : "None"}
+              {depositAmount && q.deposit?.kind === "percent" ? <span className="font-normal text-neutral-500"> ({q.deposit.value}%)</span> : null}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-neutral-500">Valid until</dt>
+            <dd className="font-semibold">{q.validUntil ? shortDate(q.validUntil) : "No end date"}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        {answeredOnline && (
+          <p className={`mb-2 text-sm font-medium ${answeredOnline.response === "accepted" ? "text-green-800" : "text-neutral-700"}`}>
+            {answeredOnline.response === "accepted" ? "Accepted" : "Declined"} online{answeredOnline.responderName ? ` by ${answeredOnline.responderName}` : ""}
+            {answeredOnline.respondedAt ? `, ${when(answeredOnline.respondedAt)}` : ""}.
+          </p>
+        )}
         {q.status === "invoiced" ? (
           invoiceId ? (
             <p className="text-sm text-neutral-700">
@@ -385,21 +468,23 @@ export default function QuotePage() {
             </p>
             <div className="flex flex-wrap gap-2">
               {depositDue && (
-                <button onClick={toDepositInvoice} disabled={busy} className={PRIMARY}>
+                <button onClick={toDepositInvoice} disabled={busy} className={`${PRIMARY} w-full sm:w-auto`}>
                   {busy ? "Working…" : "Invoice the deposit"}
                 </button>
               )}
-              {(q.status === "accepted" || q.status === "sent" || q.status === "draft") && (
-                <button onClick={toInvoice} disabled={busy} className={q.status === "accepted" && !depositDue ? PRIMARY : SECONDARY}>
+              {q.status === "sent" && <button onClick={() => setStatus("accepted")} disabled={busy} className={`${PRIMARY} w-full sm:w-auto`}>Accepted</button>}
+              {q.status === "accepted" && (
+                <button onClick={toInvoice} disabled={busy} className={depositDue ? SECONDARY : `${PRIMARY} w-full sm:w-auto`}>
                   {busy ? "Working…" : depositInvoice ? "Invoice the balance" : "Turn into invoice"}
                 </button>
               )}
               {q.status === "draft" && <button onClick={() => setStatus("sent")} disabled={busy} className={SECONDARY}>Mark as sent</button>}
+              {q.status === "draft" && <button onClick={() => setStatus("accepted")} disabled={busy} className={SECONDARY}>Accepted</button>}
+              {(q.status === "draft" || q.status === "sent") && <button onClick={() => setStatus("declined")} disabled={busy} className={SECONDARY}>Declined</button>}
               {(q.status === "draft" || q.status === "sent") && (
-                <>
-                  <button onClick={() => setStatus("accepted")} disabled={busy} className={q.status === "sent" ? PRIMARY : SECONDARY}>Accepted</button>
-                  <button onClick={() => setStatus("declined")} disabled={busy} className={SECONDARY}>Declined</button>
-                </>
+                <button onClick={toInvoice} disabled={busy} className={SECONDARY}>
+                  {busy ? "Working…" : depositInvoice ? "Invoice the balance" : "Turn into invoice"}
+                </button>
               )}
               {q.status === "accepted" && <button onClick={() => setStatus("sent")} disabled={busy} className={SECONDARY}>Not accepted after all</button>}
               {q.status === "declined" && <button onClick={() => setStatus("sent")} disabled={busy} className={SECONDARY}>Reopen</button>}
@@ -429,68 +514,25 @@ export default function QuotePage() {
         )}
       </div>
 
-      <div className="rounded-xl border bg-white p-6 text-neutral-900 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
-        <QuoteDocument quote={q} client={client} profile={profile} />
-      </div>
-
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
-        <h2 className="font-semibold">View and accept online</h2>
-        {link ? (
-          <>
-            {link.response && (link.response === "declined" ? q.status === "declined" : q.status === "accepted" || q.status === "invoiced") && (
-              <p className={`mt-1 text-sm font-medium ${link.response === "accepted" ? "text-green-800" : "text-neutral-700"}`}>
-                {link.response === "accepted" ? "Accepted" : "Declined"} online{link.responderName ? ` by ${link.responderName}` : ""}
-                {link.respondedAt ? `, ${when(link.respondedAt)}` : ""}.
-              </p>
-            )}
-            <p className="mt-1 text-sm text-neutral-600">
-              {link.viewCount > 0
-                ? `Opened ${link.viewCount === 1 ? "once" : `${link.viewCount} times`}: first ${when(link.firstViewedAt!)}${link.viewCount > 1 ? `, last ${when(link.lastViewedAt!)}` : ""}.`
-                : "Not opened yet."}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <input readOnly aria-label="Quote link" value={quoteLinkUrl(link.token)} className="min-w-0 flex-1 rounded-lg border bg-neutral-50 px-3 py-2 text-xs text-neutral-700" onFocus={(e) => e.target.select()} />
-              <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
-                {linkCopied ? "Copied" : "Copy link"}
-              </button>
-              <a href={`${quoteLinkUrl(link.token)}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
-                Open
-              </a>
-            </div>
-            <button onClick={replaceLink} disabled={linkBusy} className="mt-2 text-xs font-medium text-neutral-500 underline disabled:opacity-50">
-              Stop this link and make a new one
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="mt-1 text-sm text-neutral-600">
-              A private link where your customer can see the quote and accept or decline it. You&apos;ll see when they open it and get a notification when they answer. It&apos;s added to the email automatically when you send it from here.
-            </p>
-            <button onClick={copyLink} disabled={linkBusy} className="mt-2 rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
-              {linkBusy ? "Making the link…" : "Make and copy the link"}
-            </button>
-          </>
-        )}
-      </div>
-
-      {(q.status === "draft" || q.status === "sent" || q.status === "accepted") && (
-        <SendInvoicePanel
-          docType="quote"
+      {/* Payment options (taking the deposit or the total from the customer's
+          link) belong beside sending, once there's a payment provider. */}
+      {sending ? (
+        <QuoteSendCard
           sheet={<QuoteDocument quote={q} client={client} profile={profile} />}
           pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
-          resetKey={q.id}
-          viewUrl={link ? quoteLinkUrl(link.token) : ""}
+          quoteId={q.id}
+          // A draft's link shows nothing to the customer, so it isn't put in
+          // shared text until the quote has gone (the email makes its own).
+          viewUrl={q.status === "draft" ? "" : url}
           ensureViewUrl={() => ensureLink()}
-          signInNext={`/quotes/${q.id}`}
-          missingName="Add your business name in Settings first, so the customer knows who it's from."
           fields={{
             issuerName: profile?.businessName ?? "",
             issuerEmail: "",
-            customerName: client?.name ?? "",
+            customerName: client ? greetingName(client.name, client.isCompany, client.contactPerson) || client.name : "",
             customerEmail: client?.email ?? "",
             number: q.number,
-            total: `£${total.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            dueDate: q.validUntil ? longDate(q.validUntil) : "",
+            total: money(total),
+            dueDate: validUntil,
             bank: [],
           }}
           onSent={() => {
@@ -501,15 +543,28 @@ export default function QuotePage() {
               })
               .catch((err) => setError(errorText(err, "Sent, but the quote couldn't be marked as sent.")));
           }}
-        />
+          client={client}
+          textLink={q.status === "draft" ? "" : url}
+          makeTextLink={linkForText}
+          summary={{ total: money(total), validUntil }}
+        >
+          <div className="mt-5 border-t pt-4">
+            <h3 className="text-sm font-semibold">View and accept online</h3>
+            {linkSection}
+          </div>
+        </QuoteSendCard>
+      ) : (
+        link && (
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+            <h2 className="font-semibold">View and accept online</h2>
+            {linkSection}
+          </div>
+        )
       )}
 
-      {client && (q.status === "sent" || q.status === "accepted") && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
-          <h2 className="mb-3 font-semibold">Text {client.name}</h2>
-          <TextCustomer client={client} from={profile?.businessName ?? ""} presets={["onMyWay", "late", "arrived"]} />
-        </div>
-      )}
+      <div className="overflow-x-auto rounded-xl border bg-white p-4 text-neutral-900 shadow-sm sm:p-6 print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none">
+        <QuoteDocument quote={q} client={client} profile={profile} />
+      </div>
     </div>
   );
 }

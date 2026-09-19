@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
-import { addDays } from "@/lib/freeInvoiceDraft";
+import CustomerPicker, { NewCustomerStart } from "@/components/quote/CustomerPicker";
+import ClearFormButton from "@/components/ClearFormButton";
+import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
 import { depositGross } from "@/lib/quoteDeposit";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
@@ -22,15 +24,24 @@ export type QuoteFormValue = {
 const BLANK_LINE: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 const INPUT = "w-full rounded-lg border px-3 py-2";
 
-export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel }: {
+const NO_ONE: NewCustomerStart = { name: "", email: "", address: "" };
+
+// newCustomer: a customer to add (one brought over from the Free page),
+// opened in the picker to start with. onClear: offered on a new quote.
+export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel, onClientAdded, newCustomer = null, onClear }: {
   initial: QuoteFormValue;
   clients: Client[];
   vatRegistered: boolean;
   saveLabel: string;
   onSave: (value: QuoteFormValue) => Promise<void>;
   onCancel?: () => void;
+  onClientAdded: (client: Client) => void;
+  newCustomer?: NewCustomerStart | null;
+  onClear?: () => void;
 }) {
   const [v, setV] = useState<QuoteFormValue>(initial.items.length ? initial : { ...initial, items: [{ ...BLANK_LINE }] });
+  const anyone = () => clients.some((c) => !c.archived);
+  const [adding, setAdding] = useState<NewCustomerStart | null>(() => newCustomer ?? (anyone() || clients.some((c) => c.id === initial.clientId) ? null : NO_ONE));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<QuoteFormValue>) => setV((prev) => ({ ...prev, ...patch }));
@@ -38,9 +49,9 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   const lines = v.items.filter((l) => l.description.trim() || l.unitPrice);
   const totals = computeInvoiceTotals(lines, vatRegistered);
   const depositShown = depositGross({ deposit: v.deposit, items: lines }, vatRegistered);
-  const billable = clients.filter((c) => c.kind === "client" && (!c.archived || c.id === v.clientId));
 
   async function save() {
+    if (adding) return setError("Finish adding the new customer (Add customer), or cancel it, first.");
     if (!v.clientId) return setError("Pick who the quote is for.");
     if (!v.number.trim()) return setError("Give the quote a number.");
     if (!lines.length) return setError("Add at least one line.");
@@ -60,13 +71,17 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
 
   return (
     <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-      <div>
-        <label className="text-xs text-neutral-500">For</label>
-        <select className={INPUT} value={v.clientId} onChange={(e) => set({ clientId: e.target.value })}>
-          <option value="">Pick a client…</option>
-          {billable.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
+      <CustomerPicker
+        people={clients}
+        value={v.clientId}
+        onChange={(clientId) => set({ clientId })}
+        onAdded={onClientAdded}
+        adding={adding}
+        onAdding={(start) => {
+          setAdding(start);
+          setError(null);
+        }}
+      />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-neutral-500">Quote number</label>
@@ -166,6 +181,19 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           <button type="button" onClick={onCancel} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             Cancel
           </button>
+        )}
+        {onClear && (
+          <ClearFormButton
+            className="ml-auto"
+            disabled={saving || !(v.clientId || lines.length || v.notes || v.deposit || adding?.name)}
+            onClear={() => {
+              const today = todayIso();
+              setV({ clientId: "", number: v.number, date: today, validUntil: defaultValidUntil(today), items: [{ ...BLANK_LINE }], notes: "", deposit: null });
+              setAdding(anyone() ? null : NO_ONE);
+              setError(null);
+              onClear();
+            }}
+          />
         )}
       </div>
     </div>
