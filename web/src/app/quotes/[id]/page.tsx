@@ -11,6 +11,7 @@ import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileSt
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, termsLength } from "@/lib/quoteStatus";
+import { errorText } from "@/lib/errorText";
 
 type Open = Exclude<QuoteStatus, "invoiced">;
 
@@ -56,7 +57,7 @@ export default function QuotePage() {
         setProfile(d.profile);
         setOrphan(d.orphan);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load the quote."))
+      .catch((err) => setError(errorText(err, "Could not load the quote.")))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -66,7 +67,7 @@ export default function QuotePage() {
     try {
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(errorText(err, "Something went wrong."));
       await load().catch(() => {});
     } finally {
       setBusy(false);

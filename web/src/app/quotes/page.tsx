@@ -7,6 +7,7 @@ import { quoteTotal } from "@/components/quote/QuoteDocument";
 import { quoteStatusBadgeClass, quoteStatusLabel } from "@/lib/quoteStatus";
 import { todayIso } from "@/lib/freeInvoiceDraft";
 import Tip from "@/components/Tip";
+import { errorText } from "@/lib/errorText";
 
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -23,7 +24,7 @@ export default function QuotesPage() {
         setClients(c);
         setProfile(biz);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load quotes."))
+      .catch((err) => setError(errorText(err, "Could not load quotes.")))
       .finally(() => setLoading(false));
   }, []);
 

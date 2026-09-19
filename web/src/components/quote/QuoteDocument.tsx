@@ -38,20 +38,20 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
         <thead>
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Description</th>
-            <th className="py-2 text-right">Qty</th>
-            <th className="py-2 text-right">Unit price</th>
-            {vatRegistered && <th className="py-2 text-right">VAT</th>}
-            <th className="py-2 text-right">Amount</th>
+            <th className="py-2 pl-3 text-right">Qty</th>
+            <th className="py-2 pl-3 text-right">Unit price</th>
+            {vatRegistered && <th className="py-2 pl-3 text-right">VAT</th>}
+            <th className="py-2 pl-3 text-right">Amount</th>
           </tr>
         </thead>
         <tbody>
           {quote.items.map((it, idx) => (
             <tr key={idx} className="border-b">
               <td className="py-2">{it.description}</td>
-              <td className="py-2 text-right">{it.quantity}</td>
-              <td className="py-2 text-right">{money(it.unitPrice)}</td>
-              {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
-              <td className="py-2 text-right">{money(it.quantity * it.unitPrice)}</td>
+              <td className="py-2 pl-3 text-right">{it.quantity}</td>
+              <td className="py-2 pl-3 text-right">{money(it.unitPrice)}</td>
+              {vatRegistered && <td className="py-2 pl-3 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
+              <td className="py-2 pl-3 text-right">{money(it.quantity * it.unitPrice)}</td>
             </tr>
           ))}
         </tbody>

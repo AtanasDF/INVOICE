@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import QuoteForm, { QuoteFormValue, defaultValidUntil } from "@/components/quote/QuoteForm";
 import { Client, businessProfileStore, clientsStore, nextQuoteNumber, quotesStore } from "@/lib/storage";
 import { todayIso } from "@/lib/freeInvoiceDraft";
+import { errorText } from "@/lib/errorText";
 
 export default function NewQuotePage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function NewQuotePage() {
           initial: { clientId: "", number: nextQuoteNumber(quotes), date, validUntil: defaultValidUntil(date), items: [], notes: "" },
         });
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load your clients."));
+      .catch((err) => setError(errorText(err, "Could not load your clients.")));
   }, []);
 
   async function save(v: QuoteFormValue) {

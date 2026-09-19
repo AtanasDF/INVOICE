@@ -5,6 +5,7 @@ import { NumberInput } from "@/components/free-invoice/fields";
 import { addDays } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem } from "@/lib/storage";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
+import { errorText } from "@/lib/errorText";
 
 export type QuoteFormValue = {
   clientId: string;
@@ -44,7 +45,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
     try {
       await onSave({ ...v, number: v.number.trim(), items: lines });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the quote.");
+      setError(errorText(err, "Could not save the quote."));
       setSaving(false);
     }
   }
