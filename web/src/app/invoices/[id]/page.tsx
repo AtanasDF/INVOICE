@@ -273,6 +273,21 @@ export default function InvoiceViewPage() {
     return invoiceLinkUrl(made.token);
   }
 
+  // For a link sent to the wrong person: the old one stops working at once.
+  async function replaceLink() {
+    if (!invoice || !window.confirm("The current link will stop working straight away, for anyone who has it. Make a new one?")) return;
+    setLinkError(null);
+    setLinkBusy(true);
+    try {
+      setLink(await invoiceLinksStore.replace(invoice.id));
+      setLinkCopied(false);
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : "Couldn't replace the link.");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
   async function copyLink() {
     setLinkError(null);
     setLinkBusy(true);
@@ -713,7 +728,13 @@ export default function InvoiceViewPage() {
               <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
                 {linkCopied ? "Copied" : "Copy link"}
               </button>
+              <a href={`${invoiceLinkUrl(link.token)}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
+                Open
+              </a>
             </div>
+            <button onClick={replaceLink} disabled={linkBusy} className="mt-2 text-xs font-medium text-neutral-500 underline disabled:opacity-50">
+              Stop this link and make a new one
+            </button>
           </>
         ) : (
           <>

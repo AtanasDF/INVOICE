@@ -15,9 +15,16 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
 
   // Sent from the browser, after the page has actually run: email link
   // scanners fetch the HTML but rarely run it, so they don't count as
-  // opening it. The owner's own browser (signed in here) doesn't either.
+  // opening it. Nor does the owner: their copy of the email links here with
+  // #o, and a browser signed in to the app is taken to be theirs.
   useEffect(() => {
-    const signedIn = Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k));
+    if (window.location.hash === "#o") return;
+    let signedIn = false;
+    try {
+      signedIn = Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k));
+    } catch {
+      // Storage blocked (Safari "Block All Cookies"): treat as signed out.
+    }
     if (signedIn) return;
     fetch("/api/invoice-links/seen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }), keepalive: true }).catch(() => {});
   }, [token]);

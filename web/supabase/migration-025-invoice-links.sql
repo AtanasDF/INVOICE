@@ -27,9 +27,9 @@ begin
   if not exists (select 1 from pg_constraint where conrelid = 'public.invoice_links'::regclass and conname = 'invoice_links_token_key') then
     alter table public.invoice_links add constraint invoice_links_token_key unique (token);
   end if;
-  -- 32 random bytes, base64url: long enough that links can't be guessed.
+  -- 32 random bytes, base64url: exactly 43 characters nobody can guess.
   if not exists (select 1 from pg_constraint where conrelid = 'public.invoice_links'::regclass and conname = 'invoice_links_token_check') then
-    alter table public.invoice_links add constraint invoice_links_token_check check (token ~ '^[A-Za-z0-9_-]{43,}$');
+    alter table public.invoice_links add constraint invoice_links_token_check check (token ~ '^[A-Za-z0-9_-]{43}$');
   end if;
 end $$;
 
@@ -59,17 +59,47 @@ begin
   if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'invoice_links' and policyname = 'invoice_links_owner_insert') then
     create policy invoice_links_owner_insert on public.invoice_links for insert with check (auth.uid() = user_id);
   end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'invoice_links' and policyname = 'invoice_links_owner_update') then
+    create policy invoice_links_owner_update on public.invoice_links for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
 end $$;
 
+-- The owner can see and make their links, and replace a link's token (which
+-- kills the old link, e.g. one sent to the wrong address); only the token,
+-- never the view counts.
 revoke all on public.invoice_links from anon;
 revoke all on public.invoice_links from authenticated;
 grant select, insert on public.invoice_links to authenticated;
+grant update (token) on public.invoice_links to authenticated;
+
+-- One open of a link, counted in the database so opens at the same moment
+-- all count, and only the one that makes the count 1 is the first (it sends
+-- the owner a notification). Called by the server with the service role.
+create or replace function public.record_invoice_link_view(p_token text)
+returns table (invoice_id uuid, user_id uuid, first_view boolean)
+language sql
+set search_path = public
+as $$
+  update public.invoice_links
+     set view_count = view_count + 1,
+         last_viewed_at = now(),
+         first_viewed_at = coalesce(first_viewed_at, now())
+   where token = p_token
+  returning invoice_id, user_id, view_count = 1;
+$$;
+
+revoke all on function public.record_invoice_link_view(text) from public;
+revoke execute on function public.record_invoice_link_view(text) from anon, authenticated;
+grant execute on function public.record_invoice_link_view(text) to service_role;
 
 -- ── Checks after running ────────────────────────────────────────────
 --   select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.invoice_links'::regclass;
 --   select grantee, string_agg(privilege_type, ',') from information_schema.role_table_grants
 --     where table_name = 'invoice_links' and grantee in ('anon', 'authenticated') group by grantee;
---     -> authenticated INSERT,SELECT; anon none
+--     -> authenticated INSERT,SELECT (+ UPDATE on token only, column_privileges); anon none
+--   select grantee from information_schema.routine_privileges where routine_name = 'record_invoice_link_view';
+--     -> service_role (and postgres) only
 --   Rolled back: owner creates a link for own invoice and sees it; another user sees 0 and
---   can't make one for it; owner can't update view_count; a short token is refused; anon
---   refused.
+--   can't make one for it; owner can replace the token but not update view_count; a
+--   42- or 44-character token is refused; anon refused; record_invoice_link_view counts
+--   and reports the first view once.

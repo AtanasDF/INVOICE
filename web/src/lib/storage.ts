@@ -1383,6 +1383,15 @@ export const invoiceLinksStore = {
     if (!made) throw new Error("Couldn't make the link.");
     return made;
   },
+  // A new token for the invoice: the old link stops working at once (sent to
+  // the wrong address, say). The open counts stay with the invoice.
+  async replace(invoiceId: string): Promise<InvoiceLink> {
+    const { error } = await supabase.from("invoice_links").update({ token: newLinkToken() }).eq("invoice_id", invoiceId);
+    if (error) throw error;
+    const made = await this.forInvoice(invoiceId);
+    if (!made) throw new Error("Couldn't replace the link.");
+    return made;
+  },
 };
 
 export const invoiceLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/i/${token}`;

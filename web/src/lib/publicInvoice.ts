@@ -13,7 +13,7 @@ export type PublicInvoice = {
 // the issued invoice and only the fields its PDF already carries. Drafts
 // and unknown or malformed tokens get nothing.
 export async function loadPublicInvoice(token: string): Promise<PublicInvoice | null> {
-  if (!/^[A-Za-z0-9_-]{43,}$/.test(token)) return null;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
@@ -34,8 +34,8 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
       ? admin.from("clients").select("name, email, address, vat_number, is_company").eq("id", inv.client_id).eq("user_id", link.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
     admin.from("business_profile").select("business_name, address, vat_number, vat_registered, bank_details").eq("user_id", link.user_id).maybeSingle(),
-    admin.from("credit_notes").select("date, amount, reason").eq("invoice_id", inv.id),
-    admin.from("invoice_payments").select("date, amount").eq("invoice_id", inv.id).order("date"),
+    admin.from("credit_notes").select("date, amount, reason").eq("invoice_id", inv.id).eq("user_id", link.user_id),
+    admin.from("invoice_payments").select("date, amount").eq("invoice_id", inv.id).eq("user_id", link.user_id).order("date"),
   ]);
 
   return {

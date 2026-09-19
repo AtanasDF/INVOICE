@@ -32,7 +32,7 @@ function ownInvoiceLink(value: unknown, origin: string): string {
   if (typeof value !== "string") return "";
   try {
     const u = new URL(value);
-    return u.origin === origin && /^\/i\/[A-Za-z0-9_-]{43,}$/.test(u.pathname) && !u.search && !u.hash ? origin + u.pathname : "";
+    return u.origin === origin && /^\/i\/[A-Za-z0-9_-]{43}$/.test(u.pathname) && !u.search && !u.hash ? origin + u.pathname : "";
   } catch {
     return "";
   }
@@ -130,7 +130,9 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         from: `"${fromName}" <${fromAddress}>`,
         to: [to],
-        ...(copyToSelf ? { cc: [accountEmail] } : {}),
+        // With a view link, the owner's copy goes separately (below) so its
+        // link can be marked as theirs and their opens aren't counted.
+        ...(copyToSelf && !input.viewUrl ? { cc: [accountEmail] } : {}),
         ...(replyTo ? { reply_to: replyTo } : {}),
         subject: invoiceEmailSubject(input),
         html: invoiceEmailHtml(input),
@@ -151,8 +153,25 @@ export async function POST(req: Request) {
         : "The email couldn't be sent. Try again in a minute.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
+  let copied = copyToSelf && !input.viewUrl;
+  if (copyToSelf && input.viewUrl) {
+    const own = { ...input, viewUrl: `${input.viewUrl}#o` };
+    const copyRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: `"${fromName}" <${fromAddress}>`,
+        to: [accountEmail],
+        subject: `Copy: ${invoiceEmailSubject(input)}`,
+        html: invoiceEmailHtml(own),
+        text: invoiceEmailText(own),
+        attachments: [{ filename, content: pdf }],
+      }),
+    }).catch(() => null);
+    copied = !!copyRes?.ok;
+  }
   // One line per send in the server log, so misuse can be traced to an
   // account, without putting a client's address or bank numbers in the logs.
   console.log("send-invoice sent", JSON.stringify({ user: user.id, toDomain: to.split("@")[1], issuerName, number: input.number, total: input.total, bankRows: bank.length }));
-  return NextResponse.json({ sent: true, to, copied: copyToSelf });
+  return NextResponse.json({ sent: true, to, copied });
 }
