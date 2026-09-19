@@ -178,6 +178,15 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   ~3200x1800 because Safari otherwise returns its smallest size; it's used only if it
   matches the screen, the page is re-found near the video's corners and it's as sharp,
   else the video frame. WebKit facts behind this are in `notes/claude-notes.md`.
+- Bent paper (2026-09-19): a page's corners are where straight lines fitted to its sides
+  meet (`fitCorners`: cv.fitLine, Huber, two passes over the outline points along each
+  side's middle), used only where further out than the simplified outline's corner by
+  2-30% of the shorter side (a near-rectangular page keeps its corners as before). A
+  dog-eared corner goes back to the page's real corner instead of one end of the fold
+  (which flipped as the page moved). Outline, movement check and crop use the per-corner
+  median of the last 3 detections; a page missed for up to 2 ticks keeps its outline and
+  count; a tick whose own reading is off the median never fires the shot. A curled page's
+  curved sides are not flattened (a 4-point warp).
 
 ## Environment variables
 
