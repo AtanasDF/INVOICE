@@ -1,5 +1,5 @@
 import { parsePrintedDate } from "@/lib/documentDate";
-import { extractStructured, type ScanEngine, type ScanPage } from "@/lib/extractors";
+import { extractStructured, nullableEnum, type ScanEngine, type ScanPage } from "@/lib/extractors";
 import { CURRENCIES } from "@/lib/fx";
 
 export type InvoiceLineKind = "labour" | "materials" | "other";
@@ -98,11 +98,7 @@ export const INVOICE_TEMPLATE_SCHEMA: Record<string, unknown> = strictObject({
   dateAsPrinted: nullable("The invoice date copied EXACTLY as printed, character for character. Null if not printed."),
   dueDateAsPrinted: nullable("The due date copied EXACTLY as printed. Null if no due date is printed."),
   paymentTerms: nullable("Payment terms as printed, e.g. \"Payment due within 14 days\"."),
-  currency: {
-    type: ["string", "null"],
-    enum: [...CURRENCIES, null],
-    description: "The currency the amounts are in, from its symbol or code. Null if GBP (£ or unmarked).",
-  },
+  currency: nullableEnum(CURRENCIES, "The currency the amounts are in, from its symbol or code. Null if GBP (£ or unmarked)."),
   showsVat: { type: "boolean", description: "True if VAT is itemised anywhere (a VAT line, VAT rate, or VAT number)." },
   cis: {
     type: "boolean",

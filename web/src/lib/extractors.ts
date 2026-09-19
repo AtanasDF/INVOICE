@@ -23,6 +23,13 @@ export type ExtractStructuredOptions = {
 
 type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
 
+// Claude's strict tool schemas reject an enum under a ["string","null"]
+// type ("Enum value ... does not match declared type"), which failed every
+// Claude scan; a nullable choice is an anyOf of the choice and null.
+export function nullableEnum(values: readonly string[], description: string) {
+  return { anyOf: [{ type: "string", enum: [...values] }, { type: "null" }], description };
+}
+
 export const CUT_OFF = "The reading was cut off before the document was finished. Try scanning fewer pages at once.";
 export const NOT_STRUCTURED = "The model didn't return structured data. Try again.";
 export const ENGINE_BUSY = "The scanner is busy right now. Try again in a minute.";

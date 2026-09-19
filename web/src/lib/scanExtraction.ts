@@ -1,7 +1,7 @@
 import { CATEGORIES } from "@/lib/categories";
 import { CURRENCIES } from "@/lib/fx";
 import { NormalisedDates, normaliseScanDates } from "@/lib/documentDate";
-import { extractStructured, type ScanEngine } from "@/lib/extractors";
+import { extractStructured, nullableEnum, type ScanEngine } from "@/lib/extractors";
 import { ROUGH_DOCUMENTS } from "@/lib/invoiceTemplate";
 import type { DocumentDetails } from "@/lib/storage";
 
@@ -152,25 +152,19 @@ export function buildExtractionSchema(categories: string[]): Record<string, unkn
           "Always positive, even on a credit note.",
       },
       totalAmountConfidence: confidence,
-      currency: {
-        type: ["string", "null"],
-        enum: [...CURRENCIES, null],
-        description:
-          "The currency totalAmount/vatAmount are actually in, from its symbol or code on the document " +
+      currency: nullableEnum(
+        CURRENCIES,
+        "The currency totalAmount/vatAmount are actually in, from its symbol or code on the document " +
           '(e.g. "$" or "USD" -> USD). Null if it\'s GBP (£, or no currency marked at all -- the default ' +
           'assumption for a UK document) or if you genuinely can\'t tell which currency a symbol like "$" ' +
-          "refers to.",
-      },
+          "refers to."
+      ),
       vatAmount: {
         type: ["number", "null"],
         description: "VAT/tax portion only, not the total. Always positive, even on a credit note.",
       },
       vatAmountConfidence: confidence,
-      category: {
-        type: ["string", "null"],
-        enum: [...categories, null],
-        description: "Best-guess overall expense category, or null if unclear.",
-      },
+      category: nullableEnum(categories, "Best-guess overall expense category, or null if unclear."),
       lineItems: {
         type: "array",
         description: "Every distinct item/line on the document, in printed order.",
