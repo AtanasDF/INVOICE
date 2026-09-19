@@ -7,7 +7,7 @@ import QuoteDocument, { quoteTotal } from "@/components/quote/QuoteDocument";
 import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import { longDate } from "@/components/invoice/InvoiceDocument";
-import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quotesStore } from "@/lib/storage";
+import { BusinessProfile, Client, Invoice, Quote, QuoteLink, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quoteLinkUrl, quoteLinksStore, quotesStore } from "@/lib/storage";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
@@ -40,7 +40,8 @@ async function fetchQuote(id: string) {
       depositInvoice = depositOrphan;
     }
   }
-  return { quote, clients, profile, orphan, depositInvoice, depositOrphan };
+  const link = quote ? await quoteLinksStore.forQuote(quote.id).catch(() => null) : null;
+  return { quote, clients, profile, orphan, depositInvoice, depositOrphan, link };
 }
 
 export default function QuotePage() {
@@ -54,6 +55,9 @@ export default function QuotePage() {
   const [orphan, setOrphan] = useState<Invoice | null | undefined>(undefined);
   const [depositInvoice, setDepositInvoice] = useState<Invoice | null>(null);
   const [depositOrphan, setDepositOrphan] = useState<Invoice | null | undefined>(undefined);
+  const [link, setLink] = useState<QuoteLink | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -73,6 +77,7 @@ export default function QuotePage() {
       setOrphan(d.orphan);
       setDepositInvoice(d.depositInvoice);
       setDepositOrphan(d.depositOrphan);
+      setLink(d.link);
     });
   }, [id]);
 
@@ -85,6 +90,7 @@ export default function QuotePage() {
         setOrphan(d.orphan);
         setDepositInvoice(d.depositInvoice);
         setDepositOrphan(d.depositOrphan);
+        setLink(d.link);
       })
       .catch((err) => setError(errorText(err, "Could not load the quote.")))
       .finally(() => setLoading(false));
@@ -255,6 +261,45 @@ export default function QuotePage() {
       router.push(`/invoices/${invoice.id}`);
     });
 
+  // A quote can only be answered once it's sent, so sharing its link (by
+  // email or copied) marks a draft as sent first.
+  async function ensureLink(): Promise<string> {
+    if (q.status === "draft" && (await quotesStore.markSent(q.id))) setQuote((prev) => (prev && prev.status === "draft" ? { ...prev, status: "sent" } : prev));
+    const made = await quoteLinksStore.ensure(q.id);
+    setLink(made);
+    return quoteLinkUrl(made.token);
+  }
+
+  async function copyLink() {
+    if (q.status === "draft" && !window.confirm("Sharing the link sends the quote: it's marked as sent and can't be edited after. Carry on?")) return;
+    setLinkBusy(true);
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(await ensureLink()).catch(() => {});
+      setLinkCopied(true);
+    } catch (err) {
+      setError(errorText(err, "Couldn't make the link."));
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function replaceLink() {
+    if (!window.confirm("The current link will stop working straight away, for anyone who has it. Make a new one?")) return;
+    setLinkBusy(true);
+    setError(null);
+    try {
+      setLink(await quoteLinksStore.replace(q.id));
+      setLinkCopied(false);
+    } catch (err) {
+      setError(errorText(err, "Couldn't replace the link."));
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+
   if (editing) {
     return (
       <div className="space-y-6">
@@ -385,12 +430,54 @@ export default function QuotePage() {
         <QuoteDocument quote={q} client={client} profile={profile} />
       </div>
 
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        <h2 className="font-semibold">View and accept online</h2>
+        {link ? (
+          <>
+            {link.response && (
+              <p className={`mt-1 text-sm font-medium ${link.response === "accepted" ? "text-green-800" : "text-neutral-700"}`}>
+                {link.response === "accepted" ? "Accepted" : "Declined"} online{link.responderName ? ` by ${link.responderName}` : ""}
+                {link.respondedAt ? `, ${when(link.respondedAt)}` : ""}.
+              </p>
+            )}
+            <p className="mt-1 text-sm text-neutral-600">
+              {link.viewCount > 0
+                ? `Opened ${link.viewCount === 1 ? "once" : `${link.viewCount} times`}: first ${when(link.firstViewedAt!)}${link.viewCount > 1 ? `, last ${when(link.lastViewedAt!)}` : ""}.`
+                : "Not opened yet."}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input readOnly aria-label="Quote link" value={quoteLinkUrl(link.token)} className="min-w-0 flex-1 rounded-lg border bg-neutral-50 px-3 py-2 text-xs text-neutral-700" onFocus={(e) => e.target.select()} />
+              <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+                {linkCopied ? "Copied" : "Copy link"}
+              </button>
+              <a href={`${quoteLinkUrl(link.token)}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
+                Open
+              </a>
+            </div>
+            <button onClick={replaceLink} disabled={linkBusy} className="mt-2 text-xs font-medium text-neutral-500 underline disabled:opacity-50">
+              Stop this link and make a new one
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-neutral-600">
+              A private link where your customer can see the quote and accept or decline it. You&apos;ll see when they open it and get a notification when they answer. It&apos;s added to the email automatically when you send it from here.
+            </p>
+            <button onClick={copyLink} disabled={linkBusy} className="mt-2 rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+              {linkBusy ? "Making the link…" : "Make and copy the link"}
+            </button>
+          </>
+        )}
+      </div>
+
       {(q.status === "draft" || q.status === "sent" || q.status === "accepted") && (
         <SendInvoicePanel
           docType="quote"
           sheet={<QuoteDocument quote={q} client={client} profile={profile} />}
           pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
           resetKey={q.id}
+          viewUrl={link ? quoteLinkUrl(link.token) : ""}
+          ensureViewUrl={ensureLink}
           signInNext={`/quotes/${q.id}`}
           missingName="Add your business name in Settings first, so the customer knows who it's from."
           fields={{
