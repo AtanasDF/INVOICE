@@ -114,6 +114,16 @@ and what is left open. Dates are session dates (Europe/London).
   code reviewed twice (3 fixes: export can't silently drop photos, unsigned photos stay
   references, 7-day links for the iPhone home-screen app).
 
+- Quotes, on branch `feature/quotes` (pushed, not merged; migration-020 not yet applied):
+  /quotes list, new, and a quote page with print, Send it (email as Quote-Q-0001.pdf with
+  "valid until" wording and no bank details, share, download), Mark as sent / Accepted /
+  Declined / Reopen, and Turn into invoice (claims the quote so a double tap can't make two
+  invoices, makes a draft invoice tagged "from Q-0001" with the client's terms, links it).
+  Drafts are editable, sent quotes aren't. migration-020 is a new table only: RLS owner
+  policy, no delete grant, a trigger so a quote can only point at its own client/invoice
+  (FK checks bypass RLS), invoice link SET NULL so removing that draft invoice frees the
+  quote. Review workflow running.
+
 **Open**
 
 - Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
