@@ -36,7 +36,7 @@ export function invoiceEmailText(i: InvoiceEmailInput): string {
     i.message ||
       `Please find attached ${word(i)}${i.number ? ` ${i.number}` : ""} for ${i.total}${i.dueDate ? `, ${i.docType === "quote" ? "valid until" : "due"} ${i.dueDate}` : ""}.`,
     "",
-    ...(i.viewUrl ? [`View it online: ${i.viewUrl}`, ""] : []),
+    ...(i.viewUrl ? [`${i.docType === "quote" ? "View and accept it online" : "View it online"}: ${i.viewUrl}`, ""] : []),
     ...(i.bank.length ? ["Payment details:", ...i.bank.map(([k, v]) => `${k}: ${v}`), ""] : []),
     "Thank you,",
     i.issuerName,
@@ -66,7 +66,7 @@ export function invoiceEmailHtml(i: InvoiceEmailInput): string {
 ${i.number ? row(Word(i), i.number) : ""}${i.dueDate ? row(i.docType === "quote" ? "Valid until" : "Due", i.dueDate) : ""}${row(i.docType === "quote" ? "Total" : "Amount due", i.total, true)}
 </table>
 </td></tr>
-${i.viewUrl ? `<tr><td style="padding:18px 28px 0"><a href="${esc(i.viewUrl)}" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px">View ${word(i)} online</a></td></tr>` : ""}
+${i.viewUrl ? `<tr><td style="padding:18px 28px 0"><a href="${esc(i.viewUrl)}" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px">${i.docType === "quote" ? "View and accept online" : `View ${word(i)} online`}</a></td></tr>` : ""}
 ${i.bank.length ? `<tr><td style="padding:18px 28px 0"><p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#737373">Payment details</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${i.bank.map(([k, v]) => row(k, v)).join("")}</table></td></tr>` : ""}
 <tr><td style="padding:22px 28px 28px;font-size:14px;color:#525252">The ${word(i)} is attached as a PDF.${i.issuerEmail ? ` Reply to this email to reach ${esc(i.issuerName)}.` : ""}</td></tr>
 </table>

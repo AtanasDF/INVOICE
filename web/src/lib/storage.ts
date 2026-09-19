@@ -1395,3 +1395,65 @@ export const invoiceLinksStore = {
 };
 
 export const invoiceLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/i/${token}`;
+
+// A private link to a sent quote, where the customer can accept or decline
+// it (migration-026).
+export type QuoteLink = {
+  quoteId: string;
+  token: string;
+  firstViewedAt: string | null;
+  lastViewedAt: string | null;
+  viewCount: number;
+  response: "accepted" | "declined" | null;
+  respondedAt: string | null;
+  responderName: string | null;
+};
+
+type QuoteLinkRow = {
+  quote_id: string;
+  token: string;
+  first_viewed_at: string | null;
+  last_viewed_at: string | null;
+  view_count: number;
+  response: "accepted" | "declined" | null;
+  responded_at: string | null;
+  responder_name: string | null;
+};
+
+const quoteLinkFromRow = (r: QuoteLinkRow): QuoteLink => ({
+  quoteId: r.quote_id,
+  token: r.token,
+  firstViewedAt: r.first_viewed_at,
+  lastViewedAt: r.last_viewed_at,
+  viewCount: r.view_count,
+  response: r.response,
+  respondedAt: r.responded_at,
+  responderName: r.responder_name,
+});
+
+export const quoteLinksStore = {
+  async forQuote(quoteId: string): Promise<QuoteLink | null> {
+    const { data, error } = await supabase.from("quote_links").select("*").eq("quote_id", quoteId).maybeSingle();
+    if (error) throw error;
+    return data ? quoteLinkFromRow(data as QuoteLinkRow) : null;
+  },
+  async ensure(quoteId: string): Promise<QuoteLink> {
+    const existing = await this.forQuote(quoteId);
+    if (existing) return existing;
+    const user_id = await currentUserId();
+    const { error } = await supabase.from("quote_links").insert({ quote_id: quoteId, user_id, token: newLinkToken() });
+    if (error && error.code !== "23505") throw error;
+    const made = await this.forQuote(quoteId);
+    if (!made) throw new Error("Couldn't make the link.");
+    return made;
+  },
+  async replace(quoteId: string): Promise<QuoteLink> {
+    const { error } = await supabase.from("quote_links").update({ token: newLinkToken() }).eq("quote_id", quoteId);
+    if (error) throw error;
+    const made = await this.forQuote(quoteId);
+    if (!made) throw new Error("Couldn't replace the link.");
+    return made;
+  },
+};
+
+export const quoteLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/q/${token}`;
