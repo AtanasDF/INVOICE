@@ -11,7 +11,7 @@ import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import TextCustomer from "@/components/TextCustomer";
 import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
-import { invoiceCharge, withKinds } from "@/lib/cis";
+import { creditOffDue, invoiceCharge, withKinds } from "@/lib/cis";
 import { NumberInput, parseAmount } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
@@ -181,7 +181,8 @@ export default function InvoiceViewPage() {
   // owed, credited in full included), after each change made here, never
   // just from opening the page.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
-    const next = syncedStatus(inv.status, { total: invoiceCharge(inv, vat).due, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
+    const charge = invoiceCharge(inv, vat);
+    const next = syncedStatus(inv.status, { total: charge.due, credited: creditOffDue(charge, sum(notes)), paid: sum(pays) }, pays.length, fromPayments);
     if (!next) return null;
     await invoicesStore.update(inv.id, { status: next });
     setInvoice((prev) => (prev && prev.id === inv.id ? { ...prev, status: next } : prev));
@@ -199,7 +200,8 @@ export default function InvoiceViewPage() {
     const [pays, notes] = await Promise.all([paymentsStore.forInvoice(invoice!.id), creditNotesStore.forInvoice(invoice!.id)]);
     setPayments(pays);
     setCreditNotes(notes);
-    const due = invoiceBalance({ total: invoiceCharge(invoice!, invoiceVat(invoice!, vatRegistered)).due, credited: sum(notes), paid: sum(pays), status: invoice!.status });
+    const charge = invoiceCharge(invoice!, invoiceVat(invoice!, vatRegistered));
+    const due = invoiceBalance({ total: charge.due, credited: creditOffDue(charge, sum(notes)), paid: sum(pays), status: invoice!.status });
     return { pays, notes, due };
   }
 
@@ -498,8 +500,8 @@ export default function InvoiceViewPage() {
       if (invoice) {
         // If the figures (this credit included) are what made it paid, it
         // follows them back; a status set by hand stays.
-        const total = invoiceCharge(invoice, invoiceVat(invoice, vatRegistered)).due;
-        const setByFigures = statusFromPayments({ total, credited: sum(creditNotes), paid: sum(payments) }) === invoice.status;
+        const charge = invoiceCharge(invoice, invoiceVat(invoice, vatRegistered));
+        const setByFigures = statusFromPayments({ total: charge.due, credited: creditOffDue(charge, sum(creditNotes)), paid: sum(payments) }) === invoice.status;
         await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, invoiceVat(invoice, vatRegistered), setByFigures);
       }
     } catch {
@@ -666,10 +668,10 @@ export default function InvoiceViewPage() {
   const totals = invoiceCharge(invoice, invoiceVat(invoice, vatRegistered));
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
   const paidSoFar = sum(payments);
-  const amountDue = invoiceBalance({ total: totals.due, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
+  const amountDue = invoiceBalance({ total: totals.due, credited: creditOffDue(totals, creditNoteTotal), paid: paidSoFar, status: invoice.status });
   const paid = invoice.status === "paid";
   // Closed by credit notes alone: nothing was paid to thank them for.
-  const creditedInFull = paidSoFar === 0 && Math.round(creditNoteTotal * 100) >= Math.round(totals.due * 100);
+  const creditedInFull = paidSoFar === 0 && Math.round(creditNoteTotal * 100) >= Math.round(totals.total * 100);
   const overdue = isOverdue(invoice.status, invoice.dueDate);
 
   return (
@@ -795,7 +797,7 @@ export default function InvoiceViewPage() {
           customerEmail: client?.email ?? "",
           number: invoice.number,
           total: paid
-            ? `£${money(Math.max(0, totals.due - creditNoteTotal))}, paid`
+            ? `£${money(Math.max(0, totals.due - creditOffDue(totals, creditNoteTotal)))}, paid`
             : paidSoFar > 0
               ? `£${money(amountDue)} (after £${money(paidSoFar)} received)`
               : `£${money(amountDue)}`,
@@ -900,6 +902,12 @@ export default function InvoiceViewPage() {
               />
             </div>
             <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="Reason (optional)" value={cnReason} onChange={(e) => setCnReason(e.target.value)} />
+            {invoice.cisRate !== null && (
+              <p className="text-xs text-neutral-500">
+                Credit the value of the work, before CIS: what the contractor pays drops by the same share. To cancel the whole invoice,
+                credit its total of £{money(totals.total)}.
+              </p>
+            )}
             {cnError && <p className="text-sm text-red-600">{cnError}</p>}
             <button disabled={cnSaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
               {cnSaving ? "Saving…" : "Save credit note"}

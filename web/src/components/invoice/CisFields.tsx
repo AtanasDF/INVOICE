@@ -65,7 +65,7 @@ export function CisSummary({ items, rate, total }: { items: InvoiceItem[]; rate:
     <>
       <div className="flex justify-end text-neutral-600">
         <span>
-          CIS deduction ({rate}% of £{labourNet(items).toFixed(2)} labour):{" "}
+          CIS deduction ({rate}% of £{Math.max(0, labourNet(items)).toFixed(2)} labour):{" "}
           <span className="whitespace-nowrap">−£{cis.toFixed(2)}</span>
         </span>
       </div>

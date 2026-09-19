@@ -25,7 +25,7 @@ import Tip from "@/components/Tip";
 import TaxSoFar from "@/components/TaxSoFar";
 import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
-import { invoiceCharge } from "@/lib/cis";
+import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 
 function ScanIcon() {
@@ -168,8 +168,8 @@ export default function Dashboard() {
       const outstanding = invoices
         .filter((inv) => inv.status === "sent" || inv.status === "partial")
         .map((inv) => {
-          const gross = invoiceCharge(inv, invoiceVat(inv, profile.vatRegistered)).due;
-          const amountDue = invoiceBalance({ total: gross, credited: creditByInvoice.get(inv.id) ?? 0, paid: paidByInvoice.get(inv.id) ?? 0, status: inv.status });
+          const charge = invoiceCharge(inv, invoiceVat(inv, profile.vatRegistered));
+          const amountDue = invoiceBalance({ total: charge.due, credited: creditOffDue(charge, creditByInvoice.get(inv.id) ?? 0), paid: paidByInvoice.get(inv.id) ?? 0, status: inv.status });
           const clientName = clients.find((c) => c.id === inv.clientId)?.name || "No client";
           return { invoice: inv, amountDue, clientName };
         });

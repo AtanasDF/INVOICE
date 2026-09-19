@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { VatLineItem } from "@/lib/vat";
-import { invoiceCharge } from "@/lib/cis";
+import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
 
 export const runtime = "nodejs";
@@ -120,13 +120,14 @@ export async function GET(req: Request) {
       };
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
       // What the customer pays: the total less any CIS they keep back.
-      const gross = invoiceCharge({ items, cisRate: inv.cis_rate }, inv.vat_registered ?? profile?.vat_registered ?? false).due;
+      const charge = invoiceCharge({ items, cisRate: inv.cis_rate }, inv.vat_registered ?? profile?.vat_registered ?? false);
+      const gross = charge.due;
       const paid = paidByInvoice.get(inv.id) ?? 0;
       // Marked part-paid with nothing recorded: the balance isn't known.
       if (inv.status === "partial" && paid === 0) continue;
       // Each to the penny first, so a half-penny total can't leave 1p to chase.
       const pence = (n: number) => Math.round(n * 100);
-      const amountDue = (pence(gross) - pence(creditByInvoice.get(inv.id) ?? 0) - pence(paid)) / 100;
+      const amountDue = (pence(gross) - pence(creditOffDue(charge, creditByInvoice.get(inv.id) ?? 0)) - pence(paid)) / 100;
       // Credited or paid in full: nothing to chase.
       if (amountDue <= 0) continue;
       const businessName = profile?.business_name?.trim() ?? "";

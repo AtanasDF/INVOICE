@@ -4,7 +4,7 @@ import { longDate } from "@/components/invoice/InvoiceDocument";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 import { VAT_RATE_LABELS } from "@/lib/vat";
-import { invoiceCharge, labourNet } from "@/lib/cis";
+import { creditOffDue, invoiceCharge, labourNet } from "@/lib/cis";
 
 // A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
 const signedMoney = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
@@ -23,7 +23,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   const totals = invoiceCharge(invoice, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
-  const amountDue = invoiceBalance({ total: totals.due, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
+  const amountDue = invoiceBalance({ total: totals.due, credited: creditOffDue(totals, creditNoteTotal), paid: paidSoFar, status: invoice.status });
   const cis = invoice.cisRate !== null;
   return (
     <>
@@ -101,7 +101,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
             )}
             <div className="flex justify-end text-neutral-600">
               <span>
-                CIS deduction ({invoice.cisRate}% of £{labourNet(invoice.items).toFixed(2)} labour):{" "}
+                CIS deduction ({invoice.cisRate}% of £{Math.max(0, labourNet(invoice.items)).toFixed(2)} labour):{" "}
                 <span className="whitespace-nowrap">−£{totals.cis.toFixed(2)}</span>
               </span>
             </div>

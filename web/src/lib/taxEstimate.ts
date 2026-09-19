@@ -92,7 +92,7 @@ export type TaxEstimate = {
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
-// Tax on the year's profit so far, as if the year ended today: sales
+// Tax built up on the year's profit so far (see the note by `share`): sales
 // invoices issued this tax year (not drafts) less their credit notes, minus
 // every checked receipt. Invoices count when issued, not when paid.
 export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, today }: {
@@ -110,32 +110,29 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   let cisDeducted = 0;
   let invoicesCounted = 0;
   const byId = new Map(invoices.map((inv) => [inv.id, inv]));
-  const creditedOn = new Map<string, number>();
-  for (const c of creditNotes) creditedOn.set(c.invoiceId, (creditedOn.get(c.invoiceId) ?? 0) + c.amount);
   for (const inv of invoices) {
     if (inv.status === "draft" || !inYear(inv.date)) continue;
     // Each invoice under the VAT setting it was issued with.
     const t = invoiceCharge(inv, invoiceVat(inv, vatRegistered));
     income += t.subtotal;
     vatCharged += t.totalVat;
-    // A credit note cancels the matching share of the CIS too: nothing is
-    // kept back on money the customer no longer owes.
-    if (t.cis > 0 && t.due > 0) cisDeducted += t.cis * Math.max(0, 1 - (creditedOn.get(inv.id) ?? 0) / t.due);
+    cisDeducted += t.cis;
     invoicesCounted++;
   }
-  // A credit note comes off what the customer pays (the total less any
-  // CIS), so it takes that share of the invoice's net and VAT with it.
-  // Credits beyond the whole invoice take nothing more off.
+  // A credit note is the value of the work credited: it takes that share of
+  // the invoice's net, VAT and CIS with it, and never more than the whole
+  // invoice.
   const creditedShare = new Map<string, number>();
   for (const c of creditNotes) {
     const inv = byId.get(c.invoiceId);
     if (!inv || inv.status === "draft" || !inYear(c.date)) continue;
     const t = invoiceCharge(inv, invoiceVat(inv, vatRegistered));
     const used = creditedShare.get(inv.id) ?? 0;
-    const share = Math.max(0, Math.min(t.due > 0 ? c.amount / t.due : 1, 1 - used));
+    const share = Math.max(0, Math.min(t.total > 0 ? c.amount / t.total : 1, 1 - used));
     creditedShare.set(inv.id, used + share);
     income -= t.subtotal * share;
     vatCharged -= t.totalVat * share;
+    if (inYear(inv.date)) cisDeducted -= t.cis * share;
   }
 
   // Without VAT registration the VAT on a cost can't be reclaimed, so it is
@@ -151,12 +148,18 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   }
 
   const profit = income - expenses;
-  const it = incomeTax(profit);
-  const ni = class4(profit);
   const days = Math.round((Date.parse(today) - Date.parse(year.start)) / 86_400_000) + 1;
   const yearDays = Math.round((Date.parse(year.end) - Date.parse(year.start)) / 86_400_000) + 1;
   const projectedProfit = days >= 30 ? (profit * yearDays) / days : null;
   const projectedTax = projectedProfit === null ? 0 : incomeTax(projectedProfit) + class4(projectedProfit);
+  // The year's allowances and bands belong to the whole year: tax on the
+  // profit so far with all of them would understate what's building up,
+  // and CIS (kept back from the first pound) would look like a refund for
+  // most of the year. So once there's a month to go on, it's the share of
+  // the whole year's projected tax built up so far.
+  const share = days / yearDays;
+  const it = projectedProfit === null ? incomeTax(profit) : incomeTax(projectedProfit) * share;
+  const ni = projectedProfit === null ? class4(profit) : class4(projectedProfit) * share;
 
   return {
     year,

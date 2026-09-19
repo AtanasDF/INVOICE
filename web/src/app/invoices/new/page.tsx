@@ -108,8 +108,12 @@ export default function NewInvoicePage() {
   const [cisRate, setCisRateState] = useState<number | null>(() => (draft?.cis.enabled ? draft.cis.rate : null));
   // Once CIS is set by hand, picking a client or copying an invoice leaves it.
   const cisTouchedRef = useRef(!!draft?.cis.enabled);
+  // CIS a scanned invoice showed: picking the customer afterwards keeps it
+  // unless their own history says otherwise.
+  const cisFromScanRef = useRef(false);
   function setCisRate(rate: number | null) {
     cisTouchedRef.current = true;
+    cisFromScanRef.current = false;
     setCisRateState(rate);
   }
   // A client's CIS rate is the one on the last invoice made out to them.
@@ -156,6 +160,7 @@ export default function NewInvoicePage() {
     clearFreeInvoiceDraft();
     setItems([{ ...BLANK_ITEM }]);
     cisTouchedRef.current = false;
+    cisFromScanRef.current = false;
     setCisRateState(clientCisRate(clientId));
     setNotes("");
     setPaymentTerms("");
@@ -217,7 +222,10 @@ export default function NewInvoicePage() {
 
   function onClientChange(id: string) {
     setClientId(id);
-    if (!cisTouchedRef.current) setCisRateState(clientCisRate(id));
+    if (!cisTouchedRef.current) {
+      const known = clientCisRate(id);
+      setCisRateState((current) => known ?? (cisFromScanRef.current ? current : null));
+    }
     const client = clients.find((c) => c.id === id);
     if (client?.paymentTerms && !paymentTerms) applyTerms(client.paymentTerms);
   }
@@ -407,7 +415,8 @@ export default function NewInvoicePage() {
     // invoiced at.
     if (!cisTouchedRef.current) {
       const known = clientCisRate(forClientId, lists.pastInvoices);
-      setCisRateState(!typed && t.cis ? (known ?? 20) : known);
+      cisFromScanRef.current = !typed && t.cis;
+      setCisRateState(cisFromScanRef.current ? (known ?? 20) : known);
     }
 
     const replaceLines = !typed || t.lineItems.length > 0;

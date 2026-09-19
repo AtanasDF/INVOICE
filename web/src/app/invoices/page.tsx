@@ -5,9 +5,8 @@ import ScanOrAdd from "@/components/ScanOrAdd";
 import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
-import { invoiceCharge } from "@/lib/cis";
+import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { downloadCsv } from "@/lib/exportCsv";
-import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
@@ -43,12 +42,18 @@ export default function InvoicesPage() {
   // Gross (incl. VAT) less any CIS the contractor keeps back -- what the
   // client actually pays, matching the "Amount due" figure on the invoice
   // itself, not just the line items' raw subtotal.
-  function total(inv: Invoice) {
-    return invoiceCharge(inv, invoiceVat(inv, profile?.vatRegistered ?? false)).due;
+  function charge(inv: Invoice) {
+    return invoiceCharge(inv, invoiceVat(inv, profile?.vatRegistered ?? false));
   }
 
+  function total(inv: Invoice) {
+    return charge(inv).due;
+  }
+
+  // CIS kept back on what's still invoiced: a credit note cancels its share.
   function cis(inv: Invoice) {
-    return invoiceCharge(inv, invoiceVat(inv, profile?.vatRegistered ?? false)).cis;
+    const c = charge(inv);
+    return c.total > 0 ? Math.round(c.cis * Math.max(0, 1 - credited(inv) / c.total) * 100) / 100 : 0;
   }
 
   const creditNotesByInvoice = useMemo(() => {
@@ -65,7 +70,7 @@ export default function InvoicesPage() {
   // "Amount due", so the list never claims a client owes more than
   // the invoice itself says.
   function netTotal(inv: Invoice) {
-    return total(inv) - credited(inv);
+    return Math.max(0, Math.round((total(inv) - creditOffDue(charge(inv), credited(inv))) * 100) / 100);
   }
 
   function paidSoFar(inv: Invoice) {
@@ -73,7 +78,7 @@ export default function InvoicesPage() {
   }
 
   function balance(inv: Invoice) {
-    return invoiceBalance({ total: total(inv), credited: credited(inv), paid: paidSoFar(inv), status: inv.status });
+    return invoiceBalance({ total: total(inv), credited: creditOffDue(charge(inv), credited(inv)), paid: paidSoFar(inv), status: inv.status });
   }
 
   const billableClients = useMemo(() => clients.filter((c) => c.kind === "client"), [clients]);
@@ -109,7 +114,7 @@ export default function InvoicesPage() {
       const legacy = inv.status === "partial" && pays.length === 0;
       const due = legacy
         ? 0
-        : invoiceBalance({ total: total(inv), credited: notes.reduce((s, c) => s + c.amount, 0), paid: pays.reduce((s, p) => s + p.amount, 0), status: inv.status });
+        : invoiceBalance({ total: total(inv), credited: creditOffDue(charge(inv), notes.reduce((s, c) => s + c.amount, 0)), paid: pays.reduce((s, p) => s + p.amount, 0), status: inv.status });
       let all = pays;
       if (due > 0) {
         const added = await paymentsStore.add({ invoiceId: inv.id, date: new Date().toISOString().slice(0, 10), amount: due, method: null, note: "Marked as paid" });
@@ -140,7 +145,7 @@ export default function InvoicesPage() {
       if (filterFrom && inv.date < filterFrom) return false;
       if (filterTo && inv.date > filterTo) return false;
       if (filterClientId && inv.clientId !== filterClientId) return false;
-      if (!isNaN(minTotal) && computeInvoiceTotals(inv.items, invoiceVat(inv, vatRegistered)).total < minTotal) return false;
+      if (!isNaN(minTotal) && invoiceCharge(inv, invoiceVat(inv, vatRegistered)).due < minTotal) return false;
       if (search && !inv.number.toLowerCase().includes(search)) return false;
       if (filterStatus === "overdue" && !isOverdue(inv.status, inv.dueDate)) return false;
       if (filterStatus !== "" && filterStatus !== "overdue" && inv.status !== filterStatus) return false;

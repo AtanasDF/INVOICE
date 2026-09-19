@@ -79,8 +79,9 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
         </p>
       </div>
       <p className="mt-3 text-xs text-neutral-500">
-        An estimate for a sole trader in England, Wales or Northern Ireland with no other income: invoices count when issued, not
-        when paid, and every checked receipt counts as a business cost. CIS counts from your CIS invoices; HMRC goes by what
+        An estimate for a sole trader in England, Wales or Northern Ireland with no other income: the share of the whole year&apos;s
+        tax built up so far if the year carries on like this. Invoices count when issued, not when paid, and every checked receipt
+        counts as a business cost. CIS counts from your CIS invoices; HMRC goes by what
         contractors report on their monthly statements. Scottish rates, a job or other income, and payments on account change the
         real bill.
       </p>
