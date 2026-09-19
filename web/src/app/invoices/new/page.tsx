@@ -10,6 +10,8 @@ import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDay
 import { CameraIcon } from "@/components/icons";
 import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
+import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
+import { matchSupplier } from "@/lib/supplierMatch";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -27,6 +29,21 @@ type ScanApiResult = {
   lineItems: ScanLineItem[];
   notes: string | null;
 };
+
+// Printed terms win over the printed date gap, which catches invoices that
+// only show a due date.
+function copiedTermsDays(t: InvoiceTemplate): number | null {
+  if (t.paymentTerms) {
+    if (/receipt|immediate/i.test(t.paymentTerms)) return 0;
+    const m = /(\d+)\s*days?/i.exec(t.paymentTerms);
+    if (m) return Number(m[1]);
+  }
+  if (!t.date || !t.dueDate) return null;
+  const gap = (Date.parse(t.dueDate) - Date.parse(t.date)) / 86_400_000;
+  return Number.isFinite(gap) && gap >= 0 ? Math.round(gap) : null;
+}
+
+type ScannedCustomer = { name: string; email: string; address: string };
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
@@ -67,8 +84,13 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // "Scan an invoice" on the list opens straight into the camera.
-  const [showCapture, setShowCapture] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1");
+  // "Scan an invoice" on the list opens straight into the camera to copy an
+  // invoice sent before; the in-page button reads a source document instead.
+  const [copyMode] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1");
+  const [capture, setCapture] = useState<"copy" | "attach" | null>(() => (copyMode ? "copy" : null));
+  const [copied, setCopied] = useState<{ currency: string | null } | null>(null);
+  const [newCustomer, setNewCustomer] = useState<ScannedCustomer | null>(null);
+  const [addingClient, setAddingClient] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [imported, setImported] = useState(!!draft);
@@ -125,7 +147,11 @@ export default function NewInvoicePage() {
   // vat-treated for a different client. Falls back to standard-rated,
   // since most things are.
   function learnedVatRate(forClientId: string, description: string): VatRateKind {
-    if (!forClientId || !description.trim()) return "standard";
+    return pastVatRate(forClientId, description) ?? "standard";
+  }
+
+  function pastVatRate(forClientId: string, description: string): VatRateKind | null {
+    if (!forClientId || !description.trim()) return null;
     let best: { vatRate: VatRateKind; date: string } | null = null;
     for (const inv of pastInvoices) {
       if (inv.clientId !== forClientId) continue;
@@ -134,7 +160,7 @@ export default function NewInvoicePage() {
         if (!best || inv.date > best.date) best = { vatRate: item.vatRate, date: inv.date };
       }
     }
-    return best?.vatRate ?? "standard";
+    return best?.vatRate ?? null;
   }
 
   function onClientChange(id: string) {
@@ -186,7 +212,7 @@ export default function NewInvoicePage() {
   }
 
   async function onDocumentCaptured(file: CapturedFile) {
-    setShowCapture(false);
+    setCapture(null);
     setScanning(true);
     setScanError(null);
     try {
@@ -220,6 +246,88 @@ export default function NewInvoicePage() {
     }
   }
 
+  async function onInvoiceCopied(file: CapturedFile) {
+    setCapture(null);
+    setScanning(true);
+    setScanError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in again.");
+      const res = await fetch("/api/invoice-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ images: [file.dataUrl], engine: "claude" }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; error?: string };
+      if (!res.ok || !body.template) throw new Error(body.error || "Couldn't read the invoice.");
+      applyCopy(body.template);
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : "Couldn't read the invoice.");
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  function applyCopy(t: InvoiceTemplate) {
+    const name = t.customer.name?.trim() ?? "";
+    const match = name ? matchSupplier(name, billableClients) : null;
+    const forClientId = match?.id ?? "";
+    if (match) onClientChange(match.id);
+    setNewCustomer(!match && name ? { name, email: t.customer.email ?? "", address: t.customer.address ?? "" } : null);
+
+    if (t.lineItems.length) {
+      setItems(
+        t.lineItems.map((li) => ({
+          description: li.description,
+          quantity: li.quantity,
+          unitPrice: li.unitPrice,
+          vatRate: pastVatRate(forClientId, li.description) ?? (t.showsVat ? "standard" : "zero"),
+        }))
+      );
+    }
+
+    // A new invoice: dated today whatever the scan says.
+    const today = new Date().toISOString().slice(0, 10);
+    if (date !== today) onDateChange(today);
+    const days = copiedTermsDays(t);
+    if (days !== null) {
+      setPaymentTerms(days === 0 ? "Upon receipt" : `${days} days`);
+      setDueDate(addDays(today, days));
+      // Otherwise a later date change would reset the due date to 30 days.
+      setDueDateManual(days !== 30);
+    }
+
+    if (t.notes) setNotes((prev) => prev || t.notes || "");
+    setCopied({ currency: t.currency && t.currency !== "GBP" ? t.currency : null });
+  }
+
+  async function addScannedClient() {
+    if (!newCustomer) return;
+    setAddingClient(true);
+    setError(null);
+    try {
+      const c = await clientsStore.add({
+        name: newCustomer.name,
+        isCompany: true,
+        email: newCustomer.email,
+        address: newCustomer.address,
+        kind: "client",
+        vatNumber: "",
+        paymentTerms: "",
+        defaultCurrency: "",
+        contactPerson: "",
+        remindersEnabled: true,
+      });
+      setClients((prev) => [...prev, c]);
+      setClientId(c.id);
+      setNewCustomer(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add the client.");
+    } finally {
+      setAddingClient(false);
+    }
+  }
+
   const totals = computeInvoiceTotals(items, profile?.vatRegistered ?? false);
 
   async function save() {
@@ -249,17 +357,17 @@ export default function NewInvoicePage() {
 
   return (
     <div className="space-y-6">
-      {showCapture && (
+      {capture && (
         <DocumentCapture
-          onCapture={onDocumentCaptured}
-          onClose={() => setShowCapture(false)}
+          onCapture={capture === "copy" ? onInvoiceCopied : onDocumentCaptured}
+          onClose={() => setCapture(null)}
         />
       )}
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">New invoice</h1>
         <CaptureButton
-          onOpen={() => setShowCapture(true)}
+          onOpen={() => setCapture("attach")}
           onCapture={onDocumentCaptured}
           disabled={scanning}
           className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
@@ -267,11 +375,30 @@ export default function NewInvoicePage() {
           {scanning ? "Reading document…" : (<><CameraIcon /> Scan or attach a document</>)}
         </CaptureButton>
       </div>
+      {copyMode ? (
+        <div className="-mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600">
+          <span>
+            {copied
+              ? "Copied from your scan: customer, lines and terms. Dated today — check everything before saving."
+              : "Scan an invoice you've sent before to copy it."}
+            {copied?.currency && ` Amounts were in ${copied.currency}; this account invoices in £, so check them.`}
+          </span>
+          <CaptureButton
+            onOpen={() => setCapture("copy")}
+            onCapture={onInvoiceCopied}
+            disabled={scanning}
+            className="font-medium underline disabled:opacity-50"
+          >
+            {scanning ? "Reading invoice…" : copied ? "Scan again" : "Scan an invoice"}
+          </CaptureButton>
+        </div>
+      ) : (
+        <p className="text-xs text-neutral-500 -mt-4">
+          Scanning fills in the date, line items, and notes from a source document (a timesheet, delivery note,
+          etc.) — the client is always your own choice below, never guessed.
+        </p>
+      )}
       {scanError && <p className="text-sm text-red-600">{scanError}</p>}
-      <p className="text-xs text-neutral-500 -mt-4">
-        Scanning fills in the date, line items, and notes from a source document (a timesheet, delivery note,
-        etc.) — the client is always your own choice below, never guessed.
-      </p>
       {imported && draft && (
         <p className="text-sm text-blue-600">
           Imported from your free invoice.
@@ -282,6 +409,19 @@ export default function NewInvoicePage() {
       )}
 
       <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        {newCustomer && !clientId && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
+            <span>{newCustomer.name} isn&apos;t one of your clients yet</span>
+            <button
+              type="button"
+              onClick={addScannedClient}
+              disabled={addingClient}
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {addingClient ? "Adding…" : "Add as new client"}
+            </button>
+          </div>
+        )}
         <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => onClientChange(e.target.value)}>
           <option value="">Select a client or company</option>
           {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
