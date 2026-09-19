@@ -292,6 +292,34 @@ and what is left open. Dates are session dates (Europe/London).
     status write in the test; waits for it now), reminders 5/5, lines 7/7, company 22/22,
     VAT 4/4, Free quote 10/10, share 3/3, tips 7/7, invoice links 18/18, quote links 18/18.
 
+- Tax estimate with CIS and Self Assessment dates (Atanas: "do it live with the CIS and the
+  payment dates added"), merged to main (66c5fbc):
+  - CIS on account invoices: `invoices.cis_rate` (migration-027, backup 013; applied and
+    verified in his Chrome: backup 0/0 both ways, column + check, rolled-back exercise as
+    authenticated, nothing left) and a labour/materials kind per line. The contractor keeps
+    back the rate from labour; `invoiceCharge().due` is what's owed everywhere (balances,
+    status, Mark as paid, reminders, dashboard, list, emails, PDF, online view). Credit
+    notes are the value of the work and take their share off (`creditOffDue`); the CIS line
+    shows CIS on what's still billed so the invoice adds up. Client rate remembered from
+    their last invoice; Free-page imports and scanned copies keep CIS.
+  - Tax card: share of the whole year's projected tax built up so far, less CIS kept back
+    (refund message only when the year's CIS exceeds its tax); next Self Assessment date
+    and what it's for; this year's bill date. Push 14 days before 31 Jan / 31 Jul.
+  - Reviews: 7 + 2 confirmed and fixed (negative CIS from deposit lines, credit notes,
+    mid-year refund message, scanned CIS lost on client pick, list/CSV, invoice not adding
+    up after a credit, first-month rule). Unit 56/56, CIS click-through 14/14, reminders
+    route with CIS, all older suites unchanged.
+- Atanas's next list (19/09 evening, from his iPhone): link receipts to existing suppliers
+  (never create unless told), date prompts on UK documents, overlapping date fields, slow
+  reading, "Upload from files" under every camera button (several files), remove "Fit the
+  page inside the corners", split several invoices in one scan, compact receipt cards,
+  due filters, clear-form buttons, and a quotes overhaul (all contacts, company/private,
+  send every way, request quotes from suppliers, compare suppliers' quotes by item).
+  In progress: `feature/scan-fixes` (upload from files, live supplier matching + at save,
+  no day/month prompt on GBP documents, iPhone date field width), `feature/receipts-list`
+  (agent: compact cards, filters, link-to-supplier banner), `feature/bent-paper` (agent:
+  line-fit corners and smoothing for bent/curled paper, hint removal).
+
 **Open**
 
 - Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,

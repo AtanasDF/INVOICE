@@ -53,5 +53,6 @@ export function depositDeductions(depositInvoice: Pick<Invoice, "items" | "numbe
     quantity: -1,
     unitPrice: round(it.quantity * it.unitPrice * keep),
     vatRate: it.vatRate,
+    kind: it.kind,
   }));
 }

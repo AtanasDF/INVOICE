@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { selfAssessmentNotice } from "@/lib/taxEstimate";
 
 export const runtime = "nodejs";
 
@@ -85,14 +86,13 @@ export async function GET(req: Request) {
     for (const row of dueRecurring ?? []) bump(row.user_id, "dueRecurring");
     for (const row of dueBills ?? []) bump(row.user_id, "dueBills");
 
-    if (dueByUser.size === 0) {
+    const saNotice = selfAssessmentNotice(today);
+    if (dueByUser.size === 0 && !saNotice) {
       return NextResponse.json({ notified: 0, checked: 0, usersWithReminders: 0 });
     }
 
-    const { data: subs, error: subsErr } = await admin
-      .from("push_subscriptions")
-      .select("id, user_id, endpoint, p256dh, auth_key")
-      .in("user_id", Array.from(dueByUser.keys()));
+    const subsQuery = admin.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth_key");
+    const { data: subs, error: subsErr } = saNotice ? await subsQuery : await subsQuery.in("user_id", Array.from(dueByUser.keys()));
     if (subsErr) {
       return NextResponse.json({ error: subsErr.message }, { status: 500 });
     }
@@ -102,8 +102,7 @@ export async function GET(req: Request) {
 
     await Promise.all(
       (subs ?? []).map(async (sub) => {
-        const due = dueByUser.get(sub.user_id);
-        if (!due) return;
+        const due = dueByUser.get(sub.user_id) ?? { overdueInvoices: 0, dueRecurring: 0, dueBills: 0 };
         const parts: string[] = [];
         if (due.overdueInvoices > 0) {
           parts.push(`${due.overdueInvoices} overdue ${due.overdueInvoices === 1 ? "invoice" : "invoices"}`);
@@ -114,10 +113,12 @@ export async function GET(req: Request) {
         if (due.dueBills > 0) {
           parts.push(`${due.dueBills} ${due.dueBills === 1 ? "bill" : "bills"} due soon`);
         }
+        if (!parts.length && !saNotice) return;
+        const body = [saNotice ? `${saNotice}.` : "", parts.length ? `${saNotice ? "Also " : ""}${parts.join(" and ")}` : ""].filter(Boolean).join(" ");
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-            JSON.stringify({ title: "Invoice & Expenses", body: parts.join(" and "), url: "/", badge: due.overdueInvoices + due.dueRecurring + due.dueBills })
+            JSON.stringify({ title: "Invoice & Expenses", body, url: "/", badge: due.overdueInvoices + due.dueRecurring + due.dueBills })
           );
           notified += 1;
         } catch (err) {

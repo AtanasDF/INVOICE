@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-026, backup 012 (all applied). Supabase grants anon/authenticated everything
+   migration-027, backup 013 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -94,6 +94,13 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   lines per VAT rate, whole-penny prices); the final invoice adds the deposit invoice's
   lines negated (quantity -1), less anything credited against it. Maths in
   `src/lib/quoteDeposit.ts`.
+- CIS on sales invoices (migration-027): `invoices.cis_rate` (20/30, null = not CIS) and
+  each line's `kind` ("labour" | "materials", unmarked = labour) in `items`. The contractor
+  keeps back the rate from the labour; `invoiceCharge()` (`src/lib/cis.ts`) gives the
+  totals plus `cis` and `due` (total less CIS). Everything about what the customer owes
+  (balances, status from payments, "Mark as paid", reminders, dashboard, list, emails, the
+  issued/public invoice) goes by `due`; turnover and VAT by the totals. Credit notes come
+  off `due`. The tax card counts CIS on this year's invoices as tax already paid.
 - `invoice_payments` (migration-023): money received against a sales invoice (date,
   amount, method). The app sets the invoice status from credit notes and payments
   (`src/lib/invoiceBalance.ts`: paid once nothing is owed, credited in full included;

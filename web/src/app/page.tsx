@@ -14,7 +14,6 @@ import {
   receiptsStore,
   recurringExpensesStore,
 } from "@/lib/storage";
-import { computeInvoiceTotals } from "@/lib/vat";
 import { isOverdue } from "@/lib/invoiceStatus";
 import { FolderIcon, RepeatIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
@@ -24,7 +23,10 @@ import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
 import Tip from "@/components/Tip";
 import UploadFilesButton from "@/components/UploadFilesButton";
+import TaxSoFar from "@/components/TaxSoFar";
+import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
+import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 
 function ScanIcon() {
@@ -70,6 +72,7 @@ export default function Dashboard() {
 
   const [outstandingInvoices, setOutstandingInvoices] = useState<{ invoice: Invoice; amountDue: number; clientName: string }[]>([]);
   const [monthTotal, setMonthTotal] = useState(0);
+  const [tax, setTax] = useState<TaxEstimate | null>(null);
   const [monthVat, setMonthVat] = useState(0);
   const [showOverdueBanner, setShowOverdueBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -154,6 +157,7 @@ export default function Dashboard() {
       // nobody's confirmed yet shouldn't silently skew these totals
       // before it's actually been checked.
       const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth && !r.needsReview);
+      setTax(estimateTax({ invoices, creditNotes, receipts, vatRegistered: profile.vatRegistered, today }));
       setMonthTotal(monthReceipts.reduce((s, r) => s + r.amount, 0));
       setMonthVat(monthReceipts.reduce((s, r) => s + r.vatAmount, 0));
 
@@ -165,8 +169,8 @@ export default function Dashboard() {
       const outstanding = invoices
         .filter((inv) => inv.status === "sent" || inv.status === "partial")
         .map((inv) => {
-          const gross = computeInvoiceTotals(inv.items, invoiceVat(inv, profile.vatRegistered)).total;
-          const amountDue = invoiceBalance({ total: gross, credited: creditByInvoice.get(inv.id) ?? 0, paid: paidByInvoice.get(inv.id) ?? 0, status: inv.status });
+          const charge = invoiceCharge(inv, invoiceVat(inv, profile.vatRegistered));
+          const amountDue = invoiceBalance({ total: charge.due, credited: creditOffDue(charge, creditByInvoice.get(inv.id) ?? 0), paid: paidByInvoice.get(inv.id) ?? 0, status: inv.status });
           const clientName = clients.find((c) => c.id === inv.clientId)?.name || "No client";
           return { invoice: inv, amountDue, clientName };
         });
@@ -454,6 +458,8 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {tax && <TaxSoFar estimate={tax} />}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>

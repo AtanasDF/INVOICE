@@ -10,6 +10,8 @@ import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue }
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import TextCustomer from "@/components/TextCustomer";
+import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
+import { creditOffDue, invoiceCharge, withKinds } from "@/lib/cis";
 import { NumberInput, parseAmount } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
@@ -96,6 +98,7 @@ export default function InvoiceViewPage() {
   const [draftDueDate, setDraftDueDate] = useState("");
   const [draftPaymentTerms, setDraftPaymentTerms] = useState("");
   const [draftItems, setDraftItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
+  const [draftCisRate, setDraftCisRate] = useState<number | null>(null);
   const [draftNotes, setDraftNotes] = useState("");
   const [draftTagsInput, setDraftTagsInput] = useState("");
   const [draftSaving, setDraftSaving] = useState(false);
@@ -140,6 +143,7 @@ export default function InvoiceViewPage() {
         setDraftDueDate(inv.dueDate ?? "");
         setDraftPaymentTerms(inv.paymentTerms);
         setDraftItems(inv.items.length ? inv.items : [{ ...BLANK_ITEM }]);
+        setDraftCisRate(inv.cisRate);
         setDraftNotes(inv.notes);
         setDraftTagsInput(inv.tags.join(", "));
       }
@@ -177,7 +181,8 @@ export default function InvoiceViewPage() {
   // owed, credited in full included), after each change made here, never
   // just from opening the page.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
-    const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
+    const charge = invoiceCharge(inv, vat);
+    const next = syncedStatus(inv.status, { total: charge.due, credited: creditOffDue(charge, sum(notes)), paid: sum(pays) }, pays.length, fromPayments);
     if (!next) return null;
     await invoicesStore.update(inv.id, { status: next });
     setInvoice((prev) => (prev && prev.id === inv.id ? { ...prev, status: next } : prev));
@@ -195,7 +200,8 @@ export default function InvoiceViewPage() {
     const [pays, notes] = await Promise.all([paymentsStore.forInvoice(invoice!.id), creditNotesStore.forInvoice(invoice!.id)]);
     setPayments(pays);
     setCreditNotes(notes);
-    const due = invoiceBalance({ total: computeInvoiceTotals(invoice!.items, invoiceVat(invoice!, vatRegistered)).total, credited: sum(notes), paid: sum(pays), status: invoice!.status });
+    const charge = invoiceCharge(invoice!, invoiceVat(invoice!, vatRegistered));
+    const due = invoiceBalance({ total: charge.due, credited: creditOffDue(charge, sum(notes)), paid: sum(pays), status: invoice!.status });
     return { pays, notes, due };
   }
 
@@ -362,7 +368,8 @@ export default function InvoiceViewPage() {
       await invoicesStore.updateDraft(invoice.id, {
         clientId: draftClientId,
         date: draftDate,
-        items: draftItems,
+        items: withKinds(draftItems, draftCisRate),
+        cisRate: draftCisRate,
         dueDate: draftDueDate || null,
         paymentTerms: draftPaymentTerms,
         notes: draftNotes,
@@ -405,7 +412,8 @@ export default function InvoiceViewPage() {
       await invoicesStore.updateDraft(invoice.id, {
         clientId: draftClientId,
         date: draftDate,
-        items: draftItems,
+        items: withKinds(draftItems, draftCisRate),
+        cisRate: draftCisRate,
         dueDate: draftDueDate || null,
         paymentTerms: draftPaymentTerms,
         notes: draftNotes,
@@ -445,6 +453,7 @@ export default function InvoiceViewPage() {
         date: today,
         number: draftPlaceholderNumber(),
         items: invoice.items,
+        cisRate: invoice.cisRate,
         notes: invoice.notes,
         dueDate: addDays(today, 30),
         paymentTerms: invoice.paymentTerms,
@@ -491,8 +500,8 @@ export default function InvoiceViewPage() {
       if (invoice) {
         // If the figures (this credit included) are what made it paid, it
         // follows them back; a status set by hand stays.
-        const total = computeInvoiceTotals(invoice.items, invoiceVat(invoice, vatRegistered)).total;
-        const setByFigures = statusFromPayments({ total, credited: sum(creditNotes), paid: sum(payments) }) === invoice.status;
+        const charge = invoiceCharge(invoice, invoiceVat(invoice, vatRegistered));
+        const setByFigures = statusFromPayments({ total: charge.due, credited: creditOffDue(charge, sum(creditNotes)), paid: sum(payments) }) === invoice.status;
         await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, invoiceVat(invoice, vatRegistered), setByFigures);
       }
     } catch {
@@ -539,6 +548,8 @@ export default function InvoiceViewPage() {
           </div>
           <input className="w-full rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
 
+          <CisToggle rate={draftCisRate} onChange={setDraftCisRate} />
+
           <div className="space-y-2">
             <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">
               <span className={vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
@@ -579,6 +590,7 @@ export default function InvoiceViewPage() {
                   </select>
                 )}
                 <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
+                {draftCisRate !== null && <LineKind item={it} onChange={(kind) => updateDraftItem(idx, { kind })} />}
               </div>
             ))}
             <button onClick={addDraftLine} className="text-sm font-medium text-blue-600">+ Add line</button>
@@ -622,6 +634,7 @@ export default function InvoiceViewPage() {
                 </button>
               </div>
             </div>
+            <CisSummary items={draftItems} rate={draftCisRate} total={draftTotals.total} />
           </div>
         </div>
 
@@ -651,10 +664,11 @@ export default function InvoiceViewPage() {
   }
 
   // ── Sent / Partial / Paid: locked, print-ready view ───────────────
-  const totals = computeInvoiceTotals(invoice.items, invoiceVat(invoice, vatRegistered));
+  // What the customer pays: the total less any CIS the contractor keeps back.
+  const totals = invoiceCharge(invoice, invoiceVat(invoice, vatRegistered));
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
   const paidSoFar = sum(payments);
-  const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
+  const amountDue = invoiceBalance({ total: totals.due, credited: creditOffDue(totals, creditNoteTotal), paid: paidSoFar, status: invoice.status });
   const paid = invoice.status === "paid";
   // Closed by credit notes alone: nothing was paid to thank them for.
   const creditedInFull = paidSoFar === 0 && Math.round(creditNoteTotal * 100) >= Math.round(totals.total * 100);
@@ -783,7 +797,7 @@ export default function InvoiceViewPage() {
           customerEmail: client?.email ?? "",
           number: invoice.number,
           total: paid
-            ? `£${money(Math.max(0, totals.total - creditNoteTotal))}, paid`
+            ? `£${money(Math.max(0, totals.due - creditOffDue(totals, creditNoteTotal)))}, paid`
             : paidSoFar > 0
               ? `£${money(amountDue)} (after £${money(paidSoFar)} received)`
               : `£${money(amountDue)}`,
@@ -888,6 +902,12 @@ export default function InvoiceViewPage() {
               />
             </div>
             <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="Reason (optional)" value={cnReason} onChange={(e) => setCnReason(e.target.value)} />
+            {invoice.cisRate !== null && (
+              <p className="text-xs text-neutral-500">
+                Credit the value of the work, before CIS: what the contractor pays drops by the same share. To cancel the whole invoice,
+                credit its total of £{money(totals.total)}.
+              </p>
+            )}
             {cnError && <p className="text-sm text-red-600">{cnError}</p>}
             <button disabled={cnSaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
               {cnSaving ? "Saving…" : "Save credit note"}

@@ -23,7 +23,7 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
   if (!link) return null;
   const { data: inv } = await admin
     .from("invoices")
-    .select("id, client_id, date, number, items, notes, due_date, payment_terms, status, vat_registered, user_id")
+    .select("id, client_id, date, number, items, notes, due_date, payment_terms, status, vat_registered, cis_rate, user_id")
     .eq("id", link.invoice_id)
     .eq("user_id", link.user_id)
     .maybeSingle();
@@ -53,6 +53,7 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
       status: inv.status,
       tags: [],
       vatRegistered: inv.vat_registered ?? null,
+      cisRate: inv.cis_rate ?? null,
     },
     client: client
       ? {
