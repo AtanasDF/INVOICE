@@ -28,10 +28,10 @@ type WorkQuad = { pts: Quad; w: number; h: number };
 // Everything OpenCV needs per tick, allocated once per work-frame size
 // and reused: allocating and freeing seven Mats every tick was most of
 // the per-frame cost on a phone.
-type WorkMats = { w: number; h: number; src: Mat; gray: Mat; blurred: Mat; edges: Mat; kernel: Mat; contours: MatVector; hierarchy: Mat };
+type WorkMats = { w: number; h: number; src: Mat; gray: Mat; blurred: Mat; edges: Mat; kernel: Mat; contours: MatVector; hierarchy: Mat; mask: Mat };
 type Status = "starting" | "live" | "denied" | "timeout" | "unsupported";
 type CvStatus = "loading" | "ready" | "failed";
-type Coach = "line" | "closer" | "hold";
+type Coach = "line" | "zooming" | "centre" | "closer" | "hold";
 type ZoomRange = { min: number; max: number; step: number };
 // zoom / focusMode / pointsOfInterest are in the Media Capture spec and
 // implemented by Chromium, but not yet in lib.dom.d.ts.
@@ -42,13 +42,31 @@ export type CapturedFile = { dataUrl: string; mediaType: string };
 type BarcodeDetectorResult = { rawValue: string };
 type BarcodeDetectorInstance = { detect: (source: CanvasImageSource) => Promise<BarcodeDetectorResult[]> };
 type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+type PhotoRange = { min: number; max: number };
+type ImageCaptureInstance = {
+  takePhoto: (settings?: { imageWidth?: number; imageHeight?: number }) => Promise<Blob>;
+  getPhotoCapabilities?: () => Promise<PhotoCaps>;
+};
+type ImageCaptureCtor = new (track: MediaStreamTrack) => ImageCaptureInstance;
+type PhotoCaps = { imageWidth?: PhotoRange; imageHeight?: PhotoRange };
 
 const DETECT_INTERVAL_MS = 150;
 const WORK_WIDTH = 480;
-// A four-corner contour has to cover this share of the work frame to be
-// a candidate at all -- low enough that a page fitted inside the
-// brackets from arm's length still counts.
+// A four-corner contour covering this share of the work frame counts as
+// the page -- low enough that a page fitted inside the brackets from
+// arm's length still counts.
 const MIN_CONTOUR_AREA = 0.06;
+// Smaller ones, down to FAR_MIN_AREA (a till receipt on a table from
+// standing height), count only if they look like paper: clearly lighter
+// than what is around them, clear of the frame edge, solid, and no longer
+// than a till roll. That is what auto-zoom then zooms in on.
+const FAR_MIN_AREA = 0.012;
+const PAPER_CONTRAST = 18;
+const EDGE_MARGIN = 0.015;
+const MAX_ASPECT = 8;
+const MIN_SOLIDITY = 0.85;
+const MIN_RECTANGULARITY = 0.9;
+const MAX_EDGES_AROUND = 0.2;
 // Auto-capture gates (empirical). A quad must hold still for STABLE_MS
 // with each corner drifting under MOVE_TOLERANCE of the work-frame width
 // per tick, cover at least MIN_COVERAGE of the work frame, and the frame
@@ -73,17 +91,21 @@ const FOCUS_RING_MS = 800;
 // the frame (or the detector lost it while pages were swapped) and this
 // long has passed, so one page is never taken twice.
 const REARM_MS = 900;
-// Auto-zoom: a page held still while covering less than AUTO_ZOOM_BELOW
-// of the view is zoomed toward AUTO_ZOOM_TARGET, never past AUTO_ZOOM_MAX
-// and never so far that its corners come within FIT_MARGIN of the edge.
-// A page lost for AUTO_ZOOM_LOST_MS zooms back out so the next one can be
-// found. The cooldown lets detection settle after each step, so it can't
-// hunt in and out.
-const AUTO_ZOOM_BELOW = 0.28;
-const AUTO_ZOOM_TARGET = 0.55;
-const AUTO_ZOOM_MAX = 2;
+const TAKEN_MOVED = 0.2;
+const TAKEN_SHRUNK = 0.6;
+// Auto-zoom: a page held still while spanning less than AUTO_ZOOM_BELOW
+// of the view (see spanOf) is zoomed toward AUTO_ZOOM_TARGET, never past the lens's
+// AUTO_ZOOM_MAX_LENS (the camera's own zoom keeps real detail) or the
+// cropped AUTO_ZOOM_MAX, and never so far that its corners come within
+// FIT_MARGIN of the edge. A page lost for AUTO_ZOOM_LOST_MS zooms back out
+// so the next one can be found. The cooldown lets detection settle after
+// each step, so it can't hunt in and out.
+const AUTO_ZOOM_BELOW = 0.5;
+const AUTO_ZOOM_TARGET = 0.75;
+const AUTO_ZOOM_MAX = 2.5;
+const AUTO_ZOOM_MAX_LENS = 4;
 const AUTO_ZOOM_MIN_STEP = 1.15;
-const AUTO_ZOOM_SETTLE_MS = 450;
+const AUTO_ZOOM_SETTLE_MS = 350;
 const AUTO_ZOOM_LOST_MS = 1500;
 // A pinch without the camera's own zoom crops the picture: past 3× there's
 // too little of the photo left to read.
@@ -114,6 +136,28 @@ const SAFARI_CAMERA_TIP =
 // A grant Safari already remembers comes back at once; anything slower means
 // someone had to tap Allow.
 const ASKED_AFTER_MS = 700;
+// The shot is a still from the camera where the browser can take one
+// (Safari 18.4+, Chrome): several times a video frame's pixels, which is
+// what makes a receipt from further away readable. Safari hands back its
+// smallest still unless asked, and its largest can be 48MP, so it's asked
+// for about 12MP and at most PHOTO_MAX_SIDE of that is kept. The still is
+// used only if it clearly shows what was on screen (PHOTO_MATCH, a
+// correlation of small greyscale thumbnails), otherwise the video frame is.
+const PHOTO_ASK = { imageWidth: 3200, imageHeight: 1800 };
+const PHOTO_MAX_SIDE = 3200;
+const PHOTO_MIN_GAIN = 1.2;
+const PHOTO_TIMEOUT_MS = 3000;
+const PHOTO_MATCH = 0.6;
+// A still on its side is turned whichever way matches the screen by at
+// least this much more than the other, or not used.
+const TURN_MARGIN = 0.1;
+// A still this much less sharp than the video frame (the phone moved while
+// it was taken) isn't used.
+const STILL_SHARPNESS = 0.6;
+const THUMB_SIDE = 40;
+// Corners found again in the still may move this share of the frame's
+// diagonal from where the video had them (the phone moving a little).
+const REFINE_TOLERANCE = 0.05;
 
 // A4 portrait frame, centred, as four corner brackets -- the thing to
 // line the page up with whether or not edge detection is running.
@@ -142,19 +186,35 @@ function drawGuide(ctx: CanvasRenderingContext2D, w: number, h: number, color: s
   ctx.stroke();
 }
 
+// Corners in order round the quad, clockwise on screen from the top-left.
+// Going by angle about the centre never repeats a corner, as picking the
+// extremes of x+y and x-y separately can for a page lying at about 45°.
 function orderPoints(pts: Point[]): Quad {
-  const sums = pts.map((p) => p.x + p.y);
-  const diffs = pts.map((p) => p.x - p.y);
-  const tl = pts[sums.indexOf(Math.min(...sums))];
-  const br = pts[sums.indexOf(Math.max(...sums))];
-  const tr = pts[diffs.indexOf(Math.max(...diffs))];
-  const bl = pts[diffs.indexOf(Math.min(...diffs))];
-  return [tl, tr, br, bl];
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  const round = [...pts].sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+  const start = round.reduce((best, p, i) => (p.x + p.y < round[best].x + round[best].y ? i : best), 0);
+  return [0, 1, 2, 3].map((k) => round[(start + k) % 4]) as Quad;
 }
 
 function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
+
+// The quad's corners in the order of ref's, whichever corner orderPoints
+// started from (for a page near 45° that can change from one frame to the
+// next), and how far the furthest corner is from its match.
+function alignTo(q: Quad, ref: Quad): { q: Quad; off: number } {
+  let best = { q, off: Infinity };
+  for (let k = 0; k < 4; k++) {
+    const shifted = [0, 1, 2, 3].map((i) => q[(i + k) % 4]) as Quad;
+    const off = Math.max(...shifted.map((p, i) => dist(p, ref[i])));
+    if (off < best.off) best = { q: shifted, off };
+  }
+  return best;
+}
+
+const centre = (q: Point[]) => ({ x: q.reduce((s, p) => s + p.x, 0) / q.length, y: q.reduce((s, p) => s + p.y, 0) / q.length });
 
 // The most a centred zoom can enlarge the frame before any corner of the
 // quad comes within FIT_MARGIN of the edge.
@@ -170,12 +230,267 @@ function scaleQuad(quad: WorkQuad, w: number, h: number): Quad {
   return quad.pts.map((p) => ({ x: (p.x / quad.w) * w, y: (p.y / quad.h) * h })) as Quad;
 }
 
+// How much of the frame the page spans along whichever axis it fills most:
+// a till receipt can run the full height of the view while covering little
+// of its area, so zooming goes by this rather than by area.
+function spanOf(q: Quad, w: number, h: number): number {
+  const xs = q.map((p) => p.x / w);
+  const ys = q.map((p) => p.y / h);
+  return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+}
+
+function createMats(cv: CVModule, w: number, h: number): WorkMats {
+  return {
+    w,
+    h,
+    src: new cv.Mat(h, w, cv.CV_8UC4),
+    gray: new cv.Mat(),
+    blurred: new cv.Mat(),
+    edges: new cv.Mat(),
+    kernel: cv.Mat.ones(3, 3, cv.CV_8U),
+    contours: new cv.MatVector(),
+    hierarchy: new cv.Mat(),
+    mask: new cv.Mat(h, w, cv.CV_8U),
+  };
+}
+
+function deleteMats(m: WorkMats) {
+  m.src.delete();
+  m.gray.delete();
+  m.blurred.delete();
+  m.edges.delete();
+  m.kernel.delete();
+  m.contours.delete();
+  m.hierarchy.delete();
+  m.mask.delete();
+}
+
+function polygonArea(pts: Point[]): number {
+  let twice = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    twice += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(twice) / 2;
+}
+
+function matPoints(m: Mat): Point[] {
+  const pts: Point[] = [];
+  for (let j = 0; j < m.rows; j++) pts.push({ x: m.data32S[j * 2], y: m.data32S[j * 2 + 1] });
+  return pts;
+}
+
+// Four corners for a contour that is a page: straight away when it
+// simplifies to four, otherwise from its convex hull, which rides over a
+// torn edge or a curled corner of a receipt.
+function quadOf(cv: CVModule, c: Mat): Point[] | null {
+  const approx = new cv.Mat();
+  const hull = new cv.Mat();
+  try {
+    cv.approxPolyDP(c, approx, 0.02 * cv.arcLength(c, true), true);
+    if (approx.rows === 4 && cv.isContourConvex(approx)) return matPoints(approx);
+    cv.convexHull(c, hull, false, true);
+    const hullArea = cv.contourArea(hull);
+    if (hullArea <= 0 || Math.abs(cv.contourArea(c)) / hullArea < MIN_SOLIDITY) return null;
+    cv.approxPolyDP(hull, approx, 0.04 * cv.arcLength(hull, true), true);
+    if (approx.rows === 4) return matPoints(approx);
+    const box = cv.minAreaRect(hull);
+    if (hullArea < MIN_RECTANGULARITY * box.size.width * box.size.height) return null;
+    return cv.RotatedRect.points(box).map((p: Point) => ({ x: p.x, y: p.y }));
+  } finally {
+    approx.delete();
+    hull.delete();
+  }
+}
+
+function fillPolygon(cv: CVModule, mask: Mat, pts: Point[], value: number) {
+  const poly = cv.matFromArray(pts.length, 1, cv.CV_32SC2, pts.flatMap((p) => [Math.round(p.x), Math.round(p.y)]));
+  cv.fillConvexPoly(mask, poly, new cv.Scalar(value));
+  poly.delete();
+}
+
+// A small four-corner shape is taken for a page only if it looks like one
+// (see FAR_MIN_AREA): the middle of it clearly lighter than a band around
+// it, clear of the frame edge, not implausibly long and thin, and with
+// little printed round it -- a white box on a coloured bill has text all
+// around; a receipt on a table doesn't.
+function looksLikePaper(cv: CVModule, m: WorkMats, pts: Point[]): boolean {
+  const mx = EDGE_MARGIN * m.w;
+  const my = EDGE_MARGIN * m.h;
+  if (pts.some((p) => p.x < mx || p.y < my || p.x > m.w - mx || p.y > m.h - my)) return false;
+  const [tl, tr, br, bl] = orderPoints(pts);
+  const across = (dist(tl, tr) + dist(bl, br)) / 2;
+  const down = (dist(tl, bl) + dist(tr, br)) / 2;
+  if (Math.max(across, down) > MAX_ASPECT * Math.min(across, down)) return false;
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  const scaled = (k: number) => [tl, tr, br, bl].map((p) => ({ x: cx + (p.x - cx) * k, y: cy + (p.y - cy) * k }));
+  const meanOf = (outer: Point[], hole: Point[] | null) => {
+    m.mask.setTo(new cv.Scalar(0));
+    fillPolygon(cv, m.mask, outer, 255);
+    if (hole) fillPolygon(cv, m.mask, hole, 0);
+    return cv.mean(m.gray, m.mask)[0];
+  };
+  const inside = meanOf(scaled(0.6), null);
+  const around = meanOf(scaled(1.4), scaled(1.1));
+  const printedAround = cv.mean(m.edges, m.mask)[0] / 255;
+  return inside - around >= PAPER_CONTRAST && printedAround <= MAX_EDGES_AROUND;
+}
+
+// Every page in m.gray, largest first: four-corner shapes big enough to be
+// a page outright, and smaller ones that look like paper.
+function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false): { pts: Point[]; area: number }[] {
+  cv.GaussianBlur(m.gray, m.blurred, new cv.Size(5, 5), 0);
+  cv.Canny(m.blurred, m.edges, 50, 150);
+  cv.dilate(m.edges, m.edges, m.kernel);
+  cv.findContours(m.edges, m.contours, m.hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+  const frame = m.w * m.h;
+  const found: { pts: Point[]; area: number }[] = [];
+  for (let i = 0; i < m.contours.size(); i++) {
+    const c = m.contours.get(i);
+    const box = cv.boundingRect(c);
+    if (box.width * box.height >= frame * FAR_MIN_AREA) {
+      const pts = quadOf(cv, c);
+      const area = pts ? polygonArea(pts) : 0;
+      if (pts && area >= frame * FAR_MIN_AREA) found.push({ pts, area });
+    }
+    c.delete();
+  }
+  found.sort((a, b) => b.area - a.area);
+  const pages: { pts: Point[]; area: number }[] = [];
+  for (const f of found) {
+    if (f.area < frame * MIN_CONTOUR_AREA && !looksLikePaper(cv, m, f.pts)) continue;
+    pages.push(f);
+    if (firstOnly) break;
+  }
+  return pages;
+}
+
+function findPage(cv: CVModule, m: WorkMats): { pts: Point[]; area: number } | null {
+  return pageCandidates(cv, m, true)[0] ?? null;
+}
+
+// Variance of the Laplacian inside the quad's bounding box: how sharp it is.
+function sharpnessIn(cv: CVModule, gray: Mat, pts: Point[], w: number, h: number): number {
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  const x0 = Math.max(0, Math.floor(Math.min(...xs)));
+  const y0 = Math.max(0, Math.floor(Math.min(...ys)));
+  const x1 = Math.min(w, Math.ceil(Math.max(...xs)));
+  const y1 = Math.min(h, Math.ceil(Math.max(...ys)));
+  if (x1 - x0 < 3 || y1 - y0 < 3) return 0;
+  const roi = gray.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0));
+  const lap = new cv.Mat();
+  const mean = new cv.Mat();
+  const stddev = new cv.Mat();
+  try {
+    cv.Laplacian(roi, lap, cv.CV_64F);
+    cv.meanStdDev(lap, mean, stddev);
+    return stddev.data64F[0] ** 2;
+  } finally {
+    roi.delete();
+    lap.delete();
+    mean.delete();
+    stddev.delete();
+  }
+}
+
+// The grey of a canvas at the work width, ready for pageCandidates.
+function workGrey(cv: CVModule, source: HTMLCanvasElement): WorkMats | null {
+  const w = WORK_WIDTH;
+  const h = Math.max(1, Math.round((source.height / source.width) * WORK_WIDTH));
+  const small = document.createElement("canvas");
+  small.width = w;
+  small.height = h;
+  const ctx = small.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(source, 0, 0, w, h);
+  const m = createMats(cv, w, h);
+  m.src.data.set(ctx.getImageData(0, 0, w, h).data);
+  cv.cvtColor(m.src, m.gray, cv.COLOR_RGBA2GRAY);
+  return m;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([promise, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+}
+
+// A region of a still, turned by a quarter-turn multiple, drawn at
+// outW x outH. The region is in the turned still's own pixels.
+function drawTurned(bitmap: ImageBitmap, turn: number, x: number, y: number, w: number, h: number, outW: number, outH: number): HTMLCanvasElement | null {
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(outW));
+  c.height = Math.max(1, Math.round(outH));
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingQuality = "high";
+  const turnedW = turn % 180 ? bitmap.height : bitmap.width;
+  const turnedH = turn % 180 ? bitmap.width : bitmap.height;
+  ctx.scale(c.width / w, c.height / h);
+  ctx.translate(-x, -y);
+  if (turn === 90) ctx.translate(turnedW, 0);
+  else if (turn === 180) ctx.translate(turnedW, turnedH);
+  else if (turn === 270) ctx.translate(0, turnedH);
+  ctx.rotate((turn * Math.PI) / 180);
+  ctx.drawImage(bitmap, 0, 0);
+  return c;
+}
+
+// Halved step by step on the way down, so every thumbnail pixel averages
+// its whole patch rather than sampling a few pixels of it.
+function greyThumb(source: HTMLCanvasElement, w: number, h: number): number[] {
+  let src = source;
+  while (src.width > w * 2 && src.height > h * 2) {
+    const half = document.createElement("canvas");
+    half.width = Math.max(w, Math.round(src.width / 2));
+    half.height = Math.max(h, Math.round(src.height / 2));
+    const hctx = half.getContext("2d");
+    if (!hctx) return [];
+    hctx.imageSmoothingQuality = "high";
+    hctx.drawImage(src, 0, 0, half.width, half.height);
+    src = half;
+  }
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return [];
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(src, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const out: number[] = [];
+  for (let i = 0; i < d.length; i += 4) out.push(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+  return out;
+}
+
+// Pearson correlation: how alike two thumbnails are, whatever the
+// difference in exposure between a video frame and a processed still.
+function likeness(a: number[], b: number[]): number {
+  if (!a.length || a.length !== b.length) return 0;
+  const mean = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length;
+  const ma = mean(a);
+  const mb = mean(b);
+  let ab = 0;
+  let aa = 0;
+  let bb = 0;
+  for (let i = 0; i < a.length; i++) {
+    ab += (a[i] - ma) * (b[i] - mb);
+    aa += (a[i] - ma) ** 2;
+    bb += (b[i] - mb) ** 2;
+  }
+  return aa && bb ? ab / Math.sqrt(aa * bb) : 0;
+}
+
 // The part of the camera frame the user can actually see: object-cover
 // trims whichever axis overflows the viewfinder, and the CSS zoom
 // fallback trims further around the centre. Detection, the overlay and
 // the capture all work in this region so the green outline lands on the
 // document and the captured image is exactly what was on screen.
-function visibleRegion(video: HTMLVideoElement, zoom: number) {
+type Region = { sx: number; sy: number; sw: number; sh: number };
+
+function visibleRegion(video: HTMLVideoElement, zoom: number): Region {
   const vw = video.videoWidth;
   const vh = video.videoHeight;
   const cover = Math.max(video.clientWidth / vw, video.clientHeight / vh);
@@ -237,6 +552,9 @@ export default function DocumentCapture({
   const capturedRef = useRef(false);
   const armedRef = useRef(true);
   const seenClearRef = useRef(false);
+  // The page a batch capture took, to tell when it has left the frame.
+  const takenRef = useRef<{ pts: Quad; coverage: number } | null>(null);
+  const lastCoverageRef = useRef(0);
   const rearmAtRef = useRef(0);
   const reviewingRef = useRef(false);
   const shotIdRef = useRef(0);
@@ -267,6 +585,7 @@ export default function DocumentCapture({
   const [autoOn, setAutoOn] = useState(readAutoCapture);
   const [autoZoomOn, setAutoZoomOn] = useState(readAutoZoom);
   const [flash, setFlash] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [focusPoint, setFocusPoint] = useState<Point | null>(null);
   const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null);
@@ -299,6 +618,9 @@ export default function DocumentCapture({
   const lostSinceRef = useRef<number | null>(null);
   const zoomCooldownRef = useRef(0);
   const statusRef = useRef<Status>("starting");
+  // The camera's stills, set up when the stream starts so a capture can
+  // take one straight away.
+  const photoRef = useRef<{ track: MediaStreamTrack; capture: ImageCaptureInstance; caps: PhotoCaps | null } | null>(null);
 
   useWakeLock(status === "live");
 
@@ -344,6 +666,12 @@ export default function DocumentCapture({
     return hw ? hwZoomValueRef.current / Math.max(hw.min, 1) : cssZoomRef.current;
   }
 
+  // The furthest auto-zoom goes, relative to no zoom.
+  function autoZoomMax(): number {
+    const hw = hwZoomRef.current;
+    return hw ? Math.min(AUTO_ZOOM_MAX_LENS, hw.max / Math.max(hw.min, 1)) : AUTO_ZOOM_MAX;
+  }
+
   // Corners found before a zoom are wrong after it: a shutter tap before the
   // next detection would crop the wrong part of the page. Forget them.
   function forgetPage() {
@@ -364,7 +692,7 @@ export default function DocumentCapture({
     }
     const base = Math.max(hw.min, 1);
     const stepped = hw.step > 0 ? Math.round((base * level) / hw.step) * hw.step : base * level;
-    const value = Math.min(hw.max, base * AUTO_ZOOM_MAX, Math.max(hw.min, stepped));
+    const value = Math.min(hw.max, base * AUTO_ZOOM_MAX_LENS, Math.max(hw.min, stepped));
     hwZoomValueRef.current = value;
     setZoom(value);
     const advanced: AdvancedConstraints = { zoom: value };
@@ -388,13 +716,7 @@ export default function DocumentCapture({
     const m = matsRef.current;
     if (!m) return;
     matsRef.current = null;
-    m.src.delete();
-    m.gray.delete();
-    m.blurred.delete();
-    m.edges.delete();
-    m.kernel.delete();
-    m.contours.delete();
-    m.hierarchy.delete();
+    deleteMats(m);
   }, []);
 
   const stopStream = useCallback(() => {
@@ -520,6 +842,16 @@ export default function DocumentCapture({
           return;
         }
         streamRef.current = stream;
+        // A capture on the previous stream (the scanner mode switched mid-
+        // photo) was dropped; this one starts clear.
+        capturedRef.current = false;
+        armedRef.current = true;
+        seenClearRef.current = false;
+        rearmAtRef.current = 0;
+        setSaving(false);
+        setFlash(false);
+        setWaitingNext(false);
+        resetStable();
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
@@ -533,6 +865,22 @@ export default function DocumentCapture({
           // focusMode unsupported here -- the stream's own default stands
         }
         if (cancelled) return;
+        photoRef.current = null;
+        const ImageCaptureGlobal = (window as unknown as { ImageCapture?: ImageCaptureCtor }).ImageCapture;
+        if (ImageCaptureGlobal && track) {
+          try {
+            const photo = { track, capture: new ImageCaptureGlobal(track), caps: null as PhotoCaps | null };
+            photoRef.current = photo;
+            photo.capture.getPhotoCapabilities?.().then(
+              (c) => {
+                photo.caps = c;
+              },
+              () => {}
+            );
+          } catch {
+            photoRef.current = null;
+          }
+        }
         const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { zoom?: ZoomRange }) | undefined;
         if (caps?.zoom && caps.zoom.max > caps.zoom.min) {
           const current = (track.getSettings() as { zoom?: number }).zoom ?? caps.zoom.min;
@@ -613,17 +961,7 @@ export default function DocumentCapture({
       const m = matsRef.current;
       if (m && m.w === w && m.h === h) return m;
       freeMats();
-      const mats: WorkMats = {
-        w,
-        h,
-        src: new cv.Mat(h, w, cv.CV_8UC4),
-        gray: new cv.Mat(),
-        blurred: new cv.Mat(),
-        edges: new cv.Mat(),
-        kernel: cv.Mat.ones(3, 3, cv.CV_8U),
-        contours: new cv.MatVector(),
-        hierarchy: new cv.Mat(),
-      };
+      const mats = createMats(cv, w, h);
       matsRef.current = mats;
       return mats;
     }
@@ -666,104 +1004,85 @@ export default function DocumentCapture({
       wctx.drawImage(video, sx, sy, sw, sh, 0, 0, workW, workH);
 
       try {
-        const { src, gray, blurred, edges, kernel, contours, hierarchy } = ensureMats(cv, workW, workH);
+        const mats = ensureMats(cv, workW, workH);
+        const { src, gray } = mats;
         src.data.set(wctx.getImageData(0, 0, workW, workH).data);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-        cv.Canny(blurred, edges, 50, 150);
-        cv.dilate(edges, edges, kernel);
-        cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-
-        let best: Point[] | null = null;
-        let bestArea = workW * workH * MIN_CONTOUR_AREA;
-        for (let i = 0; i < contours.size(); i++) {
-          const c = contours.get(i);
-          const peri = cv.arcLength(c, true);
-          const approx = new cv.Mat();
-          cv.approxPolyDP(c, approx, 0.02 * peri, true);
-          if (approx.rows === 4 && cv.isContourConvex(approx)) {
-            const area = Math.abs(cv.contourArea(approx));
-            if (area > bestArea) {
-              bestArea = area;
-              const pts: Point[] = [];
-              for (let j = 0; j < 4; j++) {
-                pts.push({ x: approx.data32S[j * 2], y: approx.data32S[j * 2 + 1] });
-              }
-              best = pts;
-            }
-          }
-          approx.delete();
-          c.delete();
-        }
+        const page = findPage(cv, mats);
+        const best = page?.pts ?? null;
+        const bestArea = page?.area ?? 0;
 
         // Variance of the Laplacian over the unblurred grey inside the
         // quad's bounding box -- the sharpness the auto-capture gate uses.
-        let sharpness = 0;
-        if (best) {
-          const xs = best.map((p) => p.x);
-          const ys = best.map((p) => p.y);
-          const x0 = Math.max(0, Math.min(...xs));
-          const y0 = Math.max(0, Math.min(...ys));
-          const rect = new cv.Rect(x0, y0, Math.min(workW, Math.max(...xs)) - x0, Math.min(workH, Math.max(...ys)) - y0);
-          const roi = gray.roi(rect);
-          const lap = new cv.Mat();
-          const mean = new cv.Mat();
-          const stddev = new cv.Mat();
-          cv.Laplacian(roi, lap, cv.CV_64F);
-          cv.meanStdDev(lap, mean, stddev);
-          sharpness = stddev.data64F[0] ** 2;
-          roi.delete();
-          lap.delete();
-          mean.delete();
-          stddev.delete();
-        }
+        const sharpness = best ? sharpnessIn(cv, gray, best, workW, workH) : 0;
+        const last = lastQuadRef.current;
+        const aligned = best ? (last ? alignTo(orderPoints(best), last) : { q: orderPoints(best), off: 0 }) : null;
+        const ordered = aligned?.q ?? null;
+        const coverage = bestArea / (workW * workH);
+        lastCoverageRef.current = coverage;
+        const span = ordered ? spanOf(ordered, workW, workH) : 0;
+        // A till receipt running most of the way down the view is big
+        // enough whatever its area.
+        const bigEnough = coverage >= MIN_COVERAGE || span >= AUTO_ZOOM_BELOW;
 
         diagRef.current.lastTickMs = Math.round(performance.now() - tickStart);
         diagRef.current.sharpness = Math.round(sharpness);
         diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
         if (best) diagRef.current.quads++;
 
+        // The page taken counts as gone when nothing is found, when what's
+        // found is somewhere else (a receipt waiting in a pile at the edge),
+        // or has shrunk well below what was taken -- not on a frame where
+        // the same page reads a hair under the capture size.
         if (!armedRef.current) {
-          if (!best) seenClearRef.current = true;
+          const taken = takenRef.current;
+          const gone =
+            !ordered ||
+            !taken ||
+            dist(centre(ordered), centre(taken.pts)) > TAKEN_MOVED * workW ||
+            coverage < TAKEN_SHRUNK * taken.coverage;
+          if (gone) seenClearRef.current = true;
           if (seenClearRef.current && performance.now() >= rearmAtRef.current) {
             armedRef.current = true;
             setWaitingNext(false);
           }
         }
 
-        if (best) {
-          const ordered = orderPoints(best);
+        if (best && ordered) {
           quadRef.current = { pts: ordered, w: workW, h: workH };
 
           const now = performance.now();
-          const last = lastQuadRef.current;
-          const moved = last !== null && ordered.some((p, i) => dist(p, last[i]) > MOVE_TOLERANCE * workW);
+          const moved = last !== null && aligned!.off > MOVE_TOLERANCE * workW;
           lastQuadRef.current = ordered;
-          const coverage = bestArea / (workW * workH);
-          if (moved || coverage < MIN_COVERAGE) {
+          if (moved || !bigEnough) {
             lockedRef.current = false;
             stableSinceRef.current = null;
             peakSharpRef.current = 0;
           }
           lostSinceRef.current = null;
-          if (autoZoomRef.current && !userZoomedRef.current && now >= zoomCooldownRef.current && !moved && coverage < AUTO_ZOOM_BELOW) {
+          // How much further auto-zoom may go, how far this page allows
+          // before a corner nears the edge, and so the step it would take.
+          const level = zoomLevel();
+          const room = autoZoomRef.current && !userZoomedRef.current ? autoZoomMax() / level : 1;
+          const fit = fitFactor(ordered, workW, workH);
+          const step = Math.min(room, fit, AUTO_ZOOM_TARGET / span);
+          const canZoom = span < AUTO_ZOOM_BELOW && step >= AUTO_ZOOM_MIN_STEP;
+          if (canZoom && !capturedRef.current && now >= zoomCooldownRef.current && !moved) {
             if (smallSinceRef.current === null) smallSinceRef.current = now;
             else if (now - smallSinceRef.current >= AUTO_ZOOM_SETTLE_MS) {
               smallSinceRef.current = null;
-              const level = zoomLevel();
-              const next = Math.min(AUTO_ZOOM_MAX, level * Math.min(Math.sqrt(AUTO_ZOOM_TARGET / coverage), fitFactor(ordered, workW, workH)));
-              if (next / level >= AUTO_ZOOM_MIN_STEP) {
-                zoomToRef.current(next);
-                zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
-                resetStable();
-                return;
-              }
+              zoomToRef.current(level * step);
+              zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
+              resetStable();
+              setCoach("zooming");
+              return;
             }
           } else {
             smallSinceRef.current = null;
           }
-          if (coverage < MIN_COVERAGE) {
-            setCoach("closer");
+          if (!bigEnough) {
+            // Only ask the person to move when zooming can't do it for them.
+            setCoach(canZoom ? "zooming" : room >= AUTO_ZOOM_MIN_STEP && fit < AUTO_ZOOM_MIN_STEP ? "centre" : "closer");
           } else {
             if (stableSinceRef.current === null) stableSinceRef.current = now;
             peakSharpRef.current = Math.max(peakSharpRef.current, sharpness);
@@ -784,7 +1103,7 @@ export default function DocumentCapture({
           setCoach("line");
           smallSinceRef.current = null;
           const now = performance.now();
-          if (autoZoomRef.current && !userZoomedRef.current && now >= zoomCooldownRef.current && zoomLevel() > 1) {
+          if (autoZoomRef.current && !userZoomedRef.current && !capturedRef.current && now >= zoomCooldownRef.current && zoomLevel() > 1) {
             if (lostSinceRef.current === null) lostSinceRef.current = now;
             else if (now - lostSinceRef.current >= AUTO_ZOOM_LOST_MS) {
               lostSinceRef.current = null;
@@ -823,6 +1142,7 @@ export default function DocumentCapture({
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     pinchStepRef.current = (ratio, level) => {
+      if (capturedRef.current) return;
       const hw = hwZoomRef.current;
       if (hw) {
         const base = Math.max(hw.min, 1);
@@ -885,6 +1205,7 @@ export default function DocumentCapture({
   }, [useNative]);
 
   function applyZoom(value: number) {
+    if (capturedRef.current) return;
     forgetPage();
     userZoomedRef.current = true;
     hwZoomValueRef.current = value;
@@ -924,30 +1245,125 @@ export default function DocumentCapture({
     })();
   }
 
-  // The visible region of the current frame, perspective-warped to the
-  // detected quad when there is one. Reads refs only: the auto-capture
-  // path calls it from inside the long-lived detection effect.
+  // The camera's own still of what is on screen: upright, cropped to the
+  // visible region, and at most PHOTO_MAX_SIDE. Null when the browser can't
+  // take one, it has no more pixels than the video, or it doesn't clearly
+  // show what the screen did (see PHOTO_MATCH).
+  async function stillOfRegion(video: HTMLVideoElement, region: Region, frame: HTMLCanvasElement): Promise<HTMLCanvasElement | null> {
+    const photo = photoRef.current;
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!photo || !track || photo.track !== track) return null;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const caps = photo.caps;
+    const widest = Math.max(caps?.imageWidth?.max ?? 0, caps?.imageHeight?.max ?? 0);
+    if (widest && widest < PHOTO_MIN_GAIN * Math.max(vw, vh)) return null;
+    let bitmap: ImageBitmap;
+    try {
+      const within = (want: number, r?: PhotoRange) => (r && r.max > 0 ? Math.max(r.min, Math.min(r.max, want)) : undefined);
+      const imageWidth = within(PHOTO_ASK.imageWidth, caps?.imageWidth);
+      const imageHeight = within(PHOTO_ASK.imageHeight, caps?.imageHeight);
+      const blob = await withTimeout(photo.capture.takePhoto(imageWidth && imageHeight ? { imageWidth, imageHeight } : undefined), PHOTO_TIMEOUT_MS);
+      bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    } catch {
+      return null;
+    }
+    try {
+      // The video shows the middle of what the sensor sees, so it is the
+      // still cropped to the video's shape; the visible region is then the
+      // same crop of that.
+      const place = (turn: number) => {
+        const tw = turn % 180 ? bitmap.height : bitmap.width;
+        const th = turn % 180 ? bitmap.width : bitmap.height;
+        const k = Math.min(tw / vw, th / vh);
+        return { k, x: (tw - vw * k) / 2 + region.sx * k, y: (th - vh * k) / 2 + region.sy * k, w: region.sw * k, h: region.sh * k };
+      };
+      const long = Math.max(region.sw, region.sh);
+      const thumbW = Math.max(1, Math.round((THUMB_SIDE * region.sw) / long));
+      const thumbH = Math.max(1, Math.round((THUMB_SIDE * region.sh) / long));
+      const target = greyThumb(frame, thumbW, thumbH);
+      const score = (turn: number) => {
+        const p = place(turn);
+        const c = drawTurned(bitmap, turn, p.x, p.y, p.w, p.h, thumbW * 4, thumbH * 4);
+        return c ? likeness(greyThumb(c, thumbW, thumbH), target) : 0;
+      };
+      // The decoder applies the camera's orientation, so a still the same
+      // way round as the video is taken as it comes. One on its side is
+      // turned whichever way clearly matches the screen better; a centred
+      // page on a plain table can look much the same either way up, and
+      // then the video frame is used instead of a guess.
+      let turn = 0;
+      if (bitmap.width > bitmap.height !== vw > vh) {
+        const [a, b] = [score(90), score(270)];
+        if (Math.abs(a - b) < TURN_MARGIN) return null;
+        turn = a > b ? 90 : 270;
+      }
+      const p = place(turn);
+      if (p.k < PHOTO_MIN_GAIN || score(turn) < PHOTO_MATCH) return null;
+      const f = Math.min(1, PHOTO_MAX_SIDE / Math.max(p.w, p.h));
+      return drawTurned(bitmap, turn, p.x, p.y, p.w, p.h, p.w * f, p.h * f);
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  // The page's corners in the still: the page found again there, near where
+  // the video had it, and about as sharp. Null (use the video frame) when
+  // it isn't there, has moved too far, or the still is blurred -- the phone
+  // moved between the frame and the still.
+  function cornersInStill(cv: CVModule, still: HTMLCanvasElement, frame: HTMLCanvasElement, quad: WorkQuad): Quad | null {
+    const s = workGrey(cv, still);
+    const f = workGrey(cv, frame);
+    try {
+      if (!s || !f) return null;
+      const guess = scaleQuad(quad, s.w, s.h);
+      const limit = REFINE_TOLERANCE * Math.hypot(s.w, s.h);
+      let best: { pts: Quad; off: number } | null = null;
+      for (const c of pageCandidates(cv, s)) {
+        const { q: pts, off } = alignTo(orderPoints(c.pts), guess);
+        if (off <= limit && (!best || off < best.off)) best = { pts, off };
+      }
+      if (!best) return null;
+      const sharpStill = sharpnessIn(cv, s.gray, best.pts, s.w, s.h);
+      const sharpFrame = sharpnessIn(cv, f.gray, scaleQuad(quad, f.w, f.h), f.w, f.h);
+      if (sharpStill < STILL_SHARPNESS * sharpFrame) return null;
+      return scaleQuad({ pts: best.pts, w: s.w, h: s.h }, still.width, still.height);
+    } catch {
+      return null;
+    } finally {
+      if (s) deleteMats(s);
+      if (f) deleteMats(f);
+    }
+  }
+
+  // The visible region of the current frame -- or of the camera's still of
+  // it -- perspective-warped to the detected quad when there is one. Reads
+  // refs only: the auto-capture path calls it from inside the long-lived
+  // detection effect.
   async function renderCapture(): Promise<string | null> {
     const video = videoRef.current;
     if (!video || video.videoWidth === 0) return null;
-    const { sx, sy, sw, sh } = visibleRegion(video, cssZoomRef.current);
-    const full = document.createElement("canvas");
-    full.width = Math.round(sw);
-    full.height = Math.round(sh);
-    const fctx = full.getContext("2d");
-    if (!fctx) return null;
-    fctx.drawImage(video, sx, sy, sw, sh, 0, 0, full.width, full.height);
-
+    const region = visibleRegion(video, cssZoomRef.current);
     const quad = quadRef.current;
+    const frame = document.createElement("canvas");
+    frame.width = Math.round(region.sw);
+    frame.height = Math.round(region.sh);
+    const fctx = frame.getContext("2d");
+    if (!fctx) return null;
+    fctx.drawImage(video, region.sx, region.sy, region.sw, region.sh, 0, 0, frame.width, frame.height);
+
     const cv = cvRef.current;
-    if (!quad || !cv) return full.toDataURL("image/jpeg", 0.92);
+    if (!quad || !cv) return frame.toDataURL("image/jpeg", 0.92);
+    const still = await stillOfRegion(video, region, frame);
+    const corners = still ? cornersInStill(cv, still, frame, quad) : null;
+    const full = corners && still ? still : frame;
 
     try {
       const src = cv.imread(full);
       // The quad rescaled from the 480px work frame to the full-resolution
       // frame before the output size is measured, so a page captured from
       // further away still uses every native pixel available.
-      const [tl, tr, br, bl] = scaleQuad(quad, full.width, full.height);
+      const [tl, tr, br, bl] = corners ?? scaleQuad(quad, full.width, full.height);
       const outW = Math.round(Math.max(dist(br, bl), dist(tr, tl)));
       const outH = Math.round(Math.max(dist(tr, br), dist(tl, bl)));
 
@@ -977,15 +1393,36 @@ export default function DocumentCapture({
   // Straight to the parent with no review step; the pages strip there
   // offers a retake.
   async function capture() {
-    setFlash(true);
+    // The flash comes once the photo is actually taken: the camera's still
+    // can take a moment, and the hint asks the person to hold still till
+    // then. Anything that stops the stream meanwhile (Back, a retry) drops
+    // the capture.
+    const stream = streamRef.current;
+    setSaving(true);
+    if (multi) {
+      armedRef.current = false;
+      seenClearRef.current = false;
+      rearmAtRef.current = Infinity;
+      takenRef.current = quadRef.current ? { pts: quadRef.current.pts, coverage: lastCoverageRef.current } : null;
+    }
     let dataUrl: string;
     try {
-      const [image] = await Promise.all([renderCapture(), new Promise((r) => setTimeout(r, FLASH_MS))]);
+      const image = await renderCapture();
+      if (streamRef.current !== stream) return;
       if (!image) throw new Error("Could not read this image.");
-      dataUrl = await downscaleImageDataUrl(image);
+      setFlash(true);
+      const [scaled] = await Promise.all([downscaleImageDataUrl(image), new Promise((r) => setTimeout(r, FLASH_MS))]);
+      if (streamRef.current !== stream) return;
+      dataUrl = scaled;
     } catch (err) {
+      if (streamRef.current !== stream) return;
       setFlash(false);
+      setSaving(false);
       capturedRef.current = false;
+      if (multi) {
+        armedRef.current = true;
+        rearmAtRef.current = 0;
+      }
       resetStable();
       showFailure(err instanceof Error ? err.message : "Could not read this image.");
       return;
@@ -993,8 +1430,8 @@ export default function DocumentCapture({
     if (multi) {
       addShots([{ dataUrl, mediaType: "image/jpeg" }]);
       setFlash(false);
-      armedRef.current = false;
-      seenClearRef.current = false;
+      setSaving(false);
+      // Swapping pages while it saved counts as the page having left.
       rearmAtRef.current = performance.now() + REARM_MS;
       setWaitingNext(true);
       resetStable();
@@ -1111,18 +1548,23 @@ export default function DocumentCapture({
     return () => clearInterval(id);
   }, [debug, cvStatus, coach]);
 
-  const hint =
-    multi && waitingNext
+  const hint = saving
+    ? "Hold still — taking the photo…"
+    : multi && waitingNext
       ? `Got it — ${shots.length} scanned. Next document…`
       : cvStatus === "failed"
       ? "Fit the page inside the corners and tap to capture"
       : !hasQuad
         ? "Fit the page inside the corners"
-        : !autoOn
-          ? "Ready — tap to capture"
-          : coach === "closer"
-            ? "Move closer"
-            : "Hold still…";
+        : coach === "zooming"
+          ? "Hold still — zooming in"
+          : coach === "centre"
+            ? "Move the page to the middle"
+            : coach === "closer"
+              ? "Move closer"
+              : !autoOn
+                ? "Ready — tap to capture"
+                : "Hold still…";
   const cvLine =
     cvStatus === "loading" ? "Edge detection: loading…" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
 
