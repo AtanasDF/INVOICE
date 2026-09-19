@@ -36,8 +36,28 @@ and what is left open. Dates are session dates (Europe/London).
   dropped. Scan routes allow 300s. Live check on a synthetic handwritten invoice: Claude and
   Gemini both read vendor, number, date, total, lines and bank details correctly.
 - Signature on the free invoice: draw or photo, remembered on the device (5b63563).
-- Email sending: on branch `wip/email-send` (not main). PDF builds locally; needs a visual
-  check, a live send, and Atanas's Resend account + sending domain + `RESEND_API_KEY`.
+- Email sending: built on `wip/email-send`, merged to main (b9952b2) after two review
+  rounds. Preview has a Send by email box; the invoice goes as a browser-made A4 PDF (page
+  breaks under rows) with a fixed, escaped HTML summary; signed-in only; copy to the
+  account's own address. Inert until `RESEND_API_KEY` (+ `EMAIL_FROM` on a verified domain)
+  is set in Vercel. Checked: PDF render, email HTML, not-configured and sign-in paths. Not
+  checked: a real send, a multi-page PDF by eye (browser pane was hidden).
+- Live end-to-end (synthetic camera, nothing saved): batch of 2 on /scan read correctly by
+  Claude (handwritten + spreadsheet), Free-page template scan gave number 31, today's date,
+  14-day terms. Found and fixed there: CIS wrongly switched on by separate labour/materials
+  lines (909d9cc). Test draft removed from the live Free page afterwards.
+- Review workflow (5 reviewers + 5 refuters): 16 of 24 findings confirmed and fixed
+  (e8d6593, b4ef461); a second check of those fixes found 8 more, fixed (62e7680, b9952b2).
+- CLAUDE.md and notes updated: Claude non-strict extraction and why, batch scanning, email
+  rules and env vars, how to test without real documents.
+
+**Open**
+
+- Atanas: Resend account + verified sending domain + `RESEND_API_KEY`/`EMAIL_FROM` in
+  Vercel; his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
+  signature pad and scan-to-fill on the iPhone.
+- Session hygiene: this session started in another project's folder (MM INVOICES AUTO);
+  nothing there was read or changed. Start the next Invoicer session in `Desktop/INVOICE`.
 
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
