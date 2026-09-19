@@ -131,7 +131,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   clients with `is_company` true.
 - A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
   and in the push cron from 3 days before `due_date`.
-- Suppliers are `clients` rows with `kind = 'supplier'`.
+- Suppliers are `clients` rows with `kind = 'supplier'`. A scanned document is linked to a
+  supplier only when the form showed it (read-time match) or the names are exactly the same
+  at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
+  marks "No supplier" picked on purpose, so the receipts list doesn't offer to link it.
 
 ## Scanning and extraction
 
@@ -159,6 +162,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   re-arms auto-capture only after the page leaves the frame, and reviews/join-pages in
   `BatchReview`; `/scan` reads the documents three at a time and walks them with Save and
   next / Skip. The Free-page template scan and single-document flows stay one-shot.
+- "Upload from files" (`UploadFilesButton`) hands files to the reading page in memory
+  (`scanHandoff.ts`) with `upload=1` in the address; the page takes them only for its own
+  path, and says they didn't come through (instead of opening the camera) if a full page
+  load emptied memory. /scan reads with Gemini unless `scan-engine` is "claude".
 - Camera: `src/components/DocumentCapture.tsx`. OpenCV is **not bundled**: a prebuild
   script copies it to `public/vendor/opencv-5.0.0.js` (gitignored, immutable cache
   header) and `src/lib/opencv.ts` loads it as a script and awaits `window.cv`. Never
