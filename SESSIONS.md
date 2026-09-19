@@ -129,8 +129,18 @@ and what is left open. Dates are session dates (Europe/London).
   /quotes and /quotes/new load for Atanas's account (no data created).
 - iCloud had made " 2" copies of 31 generated files in web/.next (broke tsc); moved to the
   session scratchpad, not deleted.
-- Next: company lookup (Companies House, free, needs a key Atanas registers for), asked
-  for by Atanas from his phone.
+- Company lookup (asked for by Atanas from his phone), branch `feature/company-lookup`:
+  typing a company name on the Free page (business and customer), new/edit client and
+  Settings offers matches from the Companies House register; picking fills name,
+  registered address and (Free page) company number. Free API, 600 requests / 5 min per
+  key; route caches 10 min, 60 per visitor and 450 overall per 5 min. Off (plain inputs,
+  no mention) until `COMPANIES_HOUSE_API_KEY` is in Vercel. Route 7/7 and UI 18/18 with a
+  stubbed register; review running. His Chrome has the Companies House Developer Hub
+  open (cookies: analytics rejected) at "Sign in / Register".
+- "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
+  merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
+  the year ended today, full-year projection, VAT owed if registered. Maths checked
+  against known figures; dashboard checked with a mocked database; screenshot sent.
 
 **Open**
 
