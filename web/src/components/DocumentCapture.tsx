@@ -91,6 +91,8 @@ const FOCUS_RING_MS = 800;
 // the frame (or the detector lost it while pages were swapped) and this
 // long has passed, so one page is never taken twice.
 const REARM_MS = 900;
+const TAKEN_MOVED = 0.2;
+const TAKEN_SHRUNK = 0.6;
 // Auto-zoom: a page held still while spanning less than AUTO_ZOOM_BELOW
 // of the view (see spanOf) is zoomed toward AUTO_ZOOM_TARGET, never past the lens's
 // AUTO_ZOOM_MAX_LENS (the camera's own zoom keeps real detail) or the
@@ -198,6 +200,21 @@ function orderPoints(pts: Point[]): Quad {
 function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
+
+// The quad's corners in the order of ref's, whichever corner orderPoints
+// started from (for a page near 45° that can change from one frame to the
+// next), and how far the furthest corner is from its match.
+function alignTo(q: Quad, ref: Quad): { q: Quad; off: number } {
+  let best = { q, off: Infinity };
+  for (let k = 0; k < 4; k++) {
+    const shifted = [0, 1, 2, 3].map((i) => q[(i + k) % 4]) as Quad;
+    const off = Math.max(...shifted.map((p, i) => dist(p, ref[i])));
+    if (off < best.off) best = { q: shifted, off };
+  }
+  return best;
+}
+
+const centre = (q: Point[]) => ({ x: q.reduce((s, p) => s + p.x, 0) / q.length, y: q.reduce((s, p) => s + p.y, 0) / q.length });
 
 // The most a centred zoom can enlarge the frame before any corner of the
 // quad comes within FIT_MARGIN of the edge.
@@ -535,6 +552,9 @@ export default function DocumentCapture({
   const capturedRef = useRef(false);
   const armedRef = useRef(true);
   const seenClearRef = useRef(false);
+  // The page a batch capture took, to tell when it has left the frame.
+  const takenRef = useRef<{ pts: Quad; coverage: number } | null>(null);
+  const lastCoverageRef = useRef(0);
   const rearmAtRef = useRef(0);
   const reviewingRef = useRef(false);
   const shotIdRef = useRef(0);
@@ -822,6 +842,16 @@ export default function DocumentCapture({
           return;
         }
         streamRef.current = stream;
+        // A capture on the previous stream (the scanner mode switched mid-
+        // photo) was dropped; this one starts clear.
+        capturedRef.current = false;
+        armedRef.current = true;
+        seenClearRef.current = false;
+        rearmAtRef.current = 0;
+        setSaving(false);
+        setFlash(false);
+        setWaitingNext(false);
+        resetStable();
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
@@ -985,8 +1015,11 @@ export default function DocumentCapture({
         // Variance of the Laplacian over the unblurred grey inside the
         // quad's bounding box -- the sharpness the auto-capture gate uses.
         const sharpness = best ? sharpnessIn(cv, gray, best, workW, workH) : 0;
-        const ordered = best ? orderPoints(best) : null;
+        const last = lastQuadRef.current;
+        const aligned = best ? (last ? alignTo(orderPoints(best), last) : { q: orderPoints(best), off: 0 }) : null;
+        const ordered = aligned?.q ?? null;
         const coverage = bestArea / (workW * workH);
+        lastCoverageRef.current = coverage;
         const span = ordered ? spanOf(ordered, workW, workH) : 0;
         // A till receipt running most of the way down the view is big
         // enough whatever its area.
@@ -997,10 +1030,18 @@ export default function DocumentCapture({
         diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
         if (best) diagRef.current.quads++;
 
-        // Only a page that could be captured counts as still there: a
-        // receipt waiting in a pile at the edge mustn't stop re-arming.
+        // The page taken counts as gone when nothing is found, when what's
+        // found is somewhere else (a receipt waiting in a pile at the edge),
+        // or has shrunk well below what was taken -- not on a frame where
+        // the same page reads a hair under the capture size.
         if (!armedRef.current) {
-          if (!bigEnough) seenClearRef.current = true;
+          const taken = takenRef.current;
+          const gone =
+            !ordered ||
+            !taken ||
+            dist(centre(ordered), centre(taken.pts)) > TAKEN_MOVED * workW ||
+            coverage < TAKEN_SHRUNK * taken.coverage;
+          if (gone) seenClearRef.current = true;
           if (seenClearRef.current && performance.now() >= rearmAtRef.current) {
             armedRef.current = true;
             setWaitingNext(false);
@@ -1011,8 +1052,7 @@ export default function DocumentCapture({
           quadRef.current = { pts: ordered, w: workW, h: workH };
 
           const now = performance.now();
-          const last = lastQuadRef.current;
-          const moved = last !== null && ordered.some((p, i) => dist(p, last[i]) > MOVE_TOLERANCE * workW);
+          const moved = last !== null && aligned!.off > MOVE_TOLERANCE * workW;
           lastQuadRef.current = ordered;
           if (moved || !bigEnough) {
             lockedRef.current = false;
@@ -1280,8 +1320,7 @@ export default function DocumentCapture({
       const limit = REFINE_TOLERANCE * Math.hypot(s.w, s.h);
       let best: { pts: Quad; off: number } | null = null;
       for (const c of pageCandidates(cv, s)) {
-        const pts = orderPoints(c.pts);
-        const off = Math.max(...pts.map((p, i) => dist(p, guess[i])));
+        const { q: pts, off } = alignTo(orderPoints(c.pts), guess);
         if (off <= limit && (!best || off < best.off)) best = { pts, off };
       }
       if (!best) return null;
@@ -1364,6 +1403,7 @@ export default function DocumentCapture({
       armedRef.current = false;
       seenClearRef.current = false;
       rearmAtRef.current = Infinity;
+      takenRef.current = quadRef.current ? { pts: quadRef.current.pts, coverage: lastCoverageRef.current } : null;
     }
     let dataUrl: string;
     try {
