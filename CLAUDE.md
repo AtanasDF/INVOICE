@@ -11,6 +11,8 @@ it is his real accounting record. Read this file before doing anything.
 - `worker/` — separate Cloudflare Worker for email inbox import (deploy steps were handed
   to Atanas; unconfirmed whether done).
 - Live at https://invoice-omega-rust.vercel.app, auto-deployed from `main` by Vercel.
+  Only `main` deploys (`web/vercel.json` `git.deploymentEnabled`): the Hobby plan allows
+  100 deployments a day, and branch previews used them up on 2026-09-19.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
 - `scanner-research.md` — competitor research and the scanner follow-up plan.
 - `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
@@ -259,7 +261,6 @@ them against the original before deleting.
   (haptic), "Text <customer>", the home-screen badge (needs notifications allowed).
 - Offline scan queue (keep captures on the phone until there's signal) is not built: it
   needs a caching service worker; worth doing only with an iPhone to test on.
-- "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the
   business name and bank details from there), `invoice_next_number` at 357358,

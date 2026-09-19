@@ -369,6 +369,13 @@ payment options come later. No schema change; not merged to main.
     13/13, quotes 34/34, deposits 17/17, address 12/12 + 12/12, tax 5/5, reminders 5/5,
     lines 7/7, VAT 4/4, Free quote 10/10, share 3/3, tips 7/7; auto-zoom 9/10 and lens 3/4
     as before (known expectations). iCloud's " 2" duplicates are gitignored now.
+- Not live yet: Vercel refused the deploy of that merge (ddabd01) and of 678a192 with
+  "Deployment rate limited — retry in 24 hours". Every feature-branch push had also made a
+  preview deployment, and the day's work passed the Hobby plan's 100 deployments a day
+  (148 GitHub deployment records in 24h). `web/vercel.json` now deploys only main
+  (`git.deploymentEnabled`: `"**": false, "main": true`; `*` wouldn't match `feature/x`).
+  The oldest deployment in the window was 23:30Z on 18/09, so the next push to main after
+  about 23:30Z (00:30 BST) should deploy; check the commit status on GitHub after pushing.
 - Companies House key: steps given; the Developer Hub and Vercel env pages left open in his
   Chrome for a helper. Lookup switches on once `COMPANIES_HOUSE_API_KEY` is set + redeployed.
 - On branches, next to merge: `feature/clear-forms` (Clear form beside Save on client,
@@ -376,7 +383,13 @@ payment options come later. No schema change; not merged to main.
   that saved the form), `feature/quotes-ux` (agent: pick any client or supplier, new
   company/private customer inline, one Send card with email/text/WhatsApp/PDF; 48/48 new,
   older quote suites pass), `feature/torch` (torch button in the scanner, on by itself in
-  low light unless switched by hand; 10/10).
+  low light unless switched by hand; 10/10). Review workflow over all three running.
+- Agents started: `feature/multi-docs` (several documents in one photo or PDF split into
+  separate documents, cropped/split; "Save all ready"; "already paid" read off the
+  document, the assumption behind "receipt should be created in order to take payment"),
+  `feature/quote-requests` (ask suppliers for prices by email with a private link, gather
+  replies per request, compare per item with delivery counted, best single vs best split,
+  order lists; migration-028 new tables only, to be applied and verified before merging).
 
 **Open**
 
