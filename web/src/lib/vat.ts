@@ -47,24 +47,26 @@ export type InvoiceTotals = {
  * charge VAT at all.
  */
 export function computeInvoiceTotals(items: VatLineItem[], vatRegistered: boolean): InvoiceTotals {
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  // Worked in whole pence: each rate's net rounded, its VAT rounded once
+  // from that, and the total the sum of the two. Every screen, PDF, email
+  // and balance then agrees to the penny (half-pennies from 5% VAT or
+  // half quantities used to print one way and be owed the other).
+  const pence = (n: number) => Math.round(n * 100);
 
   if (!vatRegistered) {
+    const subtotal = pence(items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)) / 100;
     return { subtotal, vatByRate: [], totalVat: 0, total: subtotal };
   }
 
-  const byRate = new Map<VatRateKind, { net: number; vat: number }>();
-  for (const item of items) {
-    const net = item.quantity * item.unitPrice;
-    const vat = net * VAT_RATES[item.vatRate];
-    const entry = byRate.get(item.vatRate) ?? { net: 0, vat: 0 };
-    entry.net += net;
-    entry.vat += vat;
-    byRate.set(item.vatRate, entry);
-  }
+  const byRate = new Map<VatRateKind, number>();
+  for (const item of items) byRate.set(item.vatRate, (byRate.get(item.vatRate) ?? 0) + item.quantity * item.unitPrice);
 
-  const vatByRate = VAT_RATE_KINDS.filter((k) => byRate.has(k)).map((kind) => ({ kind, ...byRate.get(kind)! }));
-  const totalVat = vatByRate.reduce((s, e) => s + e.vat, 0);
+  const vatByRate = VAT_RATE_KINDS.filter((k) => byRate.has(k)).map((kind) => {
+    const net = pence(byRate.get(kind)!);
+    return { kind, net: net / 100, vat: Math.round(net * VAT_RATES[kind]) / 100 };
+  });
+  const subtotalPence = vatByRate.reduce((s, e) => s + pence(e.net), 0);
+  const vatPence = vatByRate.reduce((s, e) => s + pence(e.vat), 0);
 
-  return { subtotal, vatByRate, totalVat, total: subtotal + totalVat };
+  return { subtotal: subtotalPence / 100, vatByRate, totalVat: vatPence / 100, total: (subtotalPence + vatPence) / 100 };
 }

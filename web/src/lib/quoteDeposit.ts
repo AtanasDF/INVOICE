@@ -2,9 +2,6 @@ import type { Invoice, InvoiceItem, Quote } from "@/lib/storage";
 import { VAT_RATES, VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
 
 const round = (n: number) => Math.round(n * 100) / 100;
-// Unit prices keep four decimals (as New invoice does for VAT-inclusive
-// prices), so a deposit's net lines add back up to the exact pence.
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export const depositTag = (quoteNumber: string) => `deposit for ${quoteNumber}`;
 
@@ -33,7 +30,10 @@ export function depositLines(quote: Pick<Quote, "deposit" | "items" | "number">,
     return {
       description: several ? `${label}, ${VAT_RATE_LABELS[r.kind]} part` : label,
       quantity: 1,
-      unitPrice: round4(share / (1 + VAT_RATES[r.kind])),
+      // Whole pence: with VAT rounded per rate, a VAT-inclusive deposit can
+      // come out a penny either side (no net in pence makes £333.33 at
+      // 20%); the final invoice takes off exactly what this one charged.
+      unitPrice: round(share / (1 + VAT_RATES[r.kind])),
       vatRate: r.kind,
     };
   });
@@ -51,7 +51,7 @@ export function depositDeductions(depositInvoice: Pick<Invoice, "items" | "numbe
   return depositInvoice.items.map((it) => ({
     description: `Less deposit${ref}${depositInvoice.items.length > 1 ? `, ${VAT_RATE_LABELS[it.vatRate]} part` : ""}`,
     quantity: -1,
-    unitPrice: round4(it.quantity * it.unitPrice * keep),
+    unitPrice: round(it.quantity * it.unitPrice * keep),
     vatRate: it.vatRate,
   }));
 }

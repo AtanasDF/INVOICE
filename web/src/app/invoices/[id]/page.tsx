@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
-import { invoiceBalance, syncedStatus } from "@/lib/invoiceBalance";
+import { invoiceBalance, statusFromPayments, syncedStatus } from "@/lib/invoiceBalance";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -245,7 +245,6 @@ export default function InvoiceViewPage() {
         setClients(allClients);
         setCreditNotes(notes);
         setPayments(paid);
-        syncStatus(inv, notes, paid, biz.vatRegistered).catch(() => {});
         setProfile(biz);
         setEditDueDate(inv.dueDate ?? "");
         setEditPaymentTerms(inv.paymentTerms);
@@ -290,8 +289,9 @@ export default function InvoiceViewPage() {
   }
 
   // The status follows credit notes and payments (paid once nothing is
-  // owed, credited in full included). Run after every change and on load,
-  // so a status write that failed is put right the next time the page opens.
+  // owed, credited in full included), after each change made here. Not on
+  // opening the page: totals use today's VAT setting, which may not be the
+  // one the invoice was issued under.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
     const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
     if (!next) return;
@@ -359,6 +359,12 @@ export default function InvoiceViewPage() {
         setPayments(all);
       }
       await syncStatus(invoice, notes, all, vatRegistered);
+      // Nothing was owed (a £0 balance after a deposit): the figures alone
+      // don't make it paid, the owner saying so does.
+      if (due <= 0 && all.length === pays.length) {
+        await invoicesStore.update(invoice.id, { status: "paid" });
+        setInvoice((prev) => (prev ? { ...prev, status: "paid" } : prev));
+      }
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : "Could not mark it paid.");
     } finally {
@@ -546,7 +552,13 @@ export default function InvoiceViewPage() {
     setCreditNotes((prev) => prev.filter((c) => c.id !== id));
     try {
       await creditNotesStore.remove(id);
-      if (invoice) await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, vatRegistered);
+      if (invoice) {
+        // If the figures (this credit included) are what made it paid, it
+        // follows them back; a status set by hand stays.
+        const total = computeInvoiceTotals(invoice.items, vatRegistered).total;
+        const setByFigures = statusFromPayments({ total, credited: sum(creditNotes), paid: sum(payments) }) === invoice.status;
+        await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, vatRegistered, setByFigures);
+      }
     } catch {
       // best-effort local update above; a reload will resync if this failed
     }
