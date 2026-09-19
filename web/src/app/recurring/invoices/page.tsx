@@ -15,6 +15,7 @@ import {
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
+import { NumberInput } from "@/components/free-invoice/fields";
 
 function RecurringTabs() {
   return (
@@ -171,42 +172,45 @@ export default function RecurringInvoicesPage() {
         </select>
 
         <div className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
+          <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">
             <span className={profile?.vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
             <span className="col-span-2 text-right">Qty</span>
             <span className="col-span-3 text-right">Unit price</span>
             {profile?.vatRegistered && <span className="col-span-2">VAT</span>}
           </div>
           {lineItems.map((it, idx) => (
-            <div key={idx} className="grid grid-cols-12 gap-2">
+            <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
               <input
-                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-6"} rounded-lg border px-3 py-2`}
+                className={`col-span-12 ${profile?.vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
                 placeholder="Description (e.g. Monthly retainer)"
                 value={it.description}
                 onChange={(e) => updateLineItem(idx, { description: e.target.value })}
               />
-              <input
-                className="col-span-2 rounded-lg border px-3 py-2"
+              <NumberInput
+                className={`${profile?.vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`}
                 placeholder="Qty"
+                aria-label="Quantity"
                 value={it.quantity}
-                onChange={(e) => updateLineItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                onChange={(quantity) => updateLineItem(idx, { quantity })}
               />
-              <input
-                className="col-span-3 rounded-lg border px-3 py-2"
+              <NumberInput
+                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
                 placeholder="Unit price"
+                aria-label="Unit price"
                 value={it.unitPrice}
-                onChange={(e) => updateLineItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+                onChange={(unitPrice) => updateLineItem(idx, { unitPrice })}
               />
               {profile?.vatRegistered && (
                 <select
-                  className="col-span-2 rounded-lg border px-1 py-2 text-xs"
+                  aria-label="VAT rate"
+                  className="col-span-4 rounded-lg border px-1 py-2 text-xs sm:col-span-2"
                   value={it.vatRate}
                   onChange={(e) => updateLineItem(idx, { vatRate: e.target.value as VatRateKind })}
                 >
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button type="button" onClick={() => removeLine(idx)} className="col-span-1 text-sm text-red-600">✕</button>
+              <button type="button" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
             </div>
           ))}
           <button type="button" onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>

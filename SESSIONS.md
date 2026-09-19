@@ -151,6 +151,19 @@ and what is left open. Dates are session dates (Europe/London).
   Tests: unit 19, cron against a stubbed DB 6/6, invoice card 5/5. Backup 010 verified
   (0/0 both ways), migration-021 applied and verified (columns, one kind check, rolled-back
   behaviour). Merged (4057539). Atanas has no invoices, so nothing is due a final notice.
+- Bug fixed on main (7590517): the draft-invoice editor and recurring invoices still parsed
+  Qty/Unit price per keystroke ("12.5" became 125, "-" became 0); both now use
+  NumberInput, and all three line editors stack on a phone. Typed-in check 7/7.
+- iCloud made " 2" copies of generated files in web/.next twice (broke tsc); moved to the
+  session scratchpad each time, not deleted.
+- Quote deposits (rest of research #7), branch `feature/quote-deposits`: deposit as % or
+  £ on a quote, printed on it; accepted → "Invoice the deposit" (draft, due in 7 days,
+  split by VAT rate, tag `deposit for Q-...`, claimed/recovered like the final invoice);
+  "Invoice the balance" = quote lines + the deposit invoice's lines negated, refused
+  while the deposit invoice is still a draft. Negative line amounts print as −£.
+  Assumptions to confirm with Atanas: deposit due in 7 days; deposit only once
+  accepted. Unit 9/9, click-through 15/15. Backup 011 (quotes) verified 0/0; migration-022
+  waits for the review.
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked

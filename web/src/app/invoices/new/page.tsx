@@ -663,30 +663,30 @@ export default function NewInvoicePage() {
         />
 
         <div className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
+          <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">
             <span className={profile?.vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
             <span className="col-span-2 text-right">Qty</span>
             <span className="col-span-3 text-right">Unit price</span>
             {profile?.vatRegistered && <span className="col-span-2">VAT</span>}
           </div>
           {items.map((it, idx) => (
-            <div key={idx} className="grid grid-cols-12 gap-2">
+            <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
               <input
-                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-6"} rounded-lg border px-3 py-2`}
+                className={`col-span-12 ${profile?.vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
                 placeholder="Description (e.g. Monthly work, 12-30 June)"
                 value={it.description}
                 onChange={(e) => updateItem(idx, { description: e.target.value })}
                 onBlur={() => onDescriptionBlur(idx)}
               />
               <NumberInput
-                className="col-span-2 rounded-lg border px-3 py-2 text-right"
+                className={`${profile?.vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`}
                 placeholder="Qty"
                 aria-label="Quantity"
                 value={it.quantity}
                 onChange={(quantity) => updateItem(idx, { quantity })}
               />
               <NumberInput
-                className="col-span-3 rounded-lg border px-3 py-2 text-right"
+                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
                 placeholder="Unit price"
                 aria-label="Unit price"
                 value={it.unitPrice}
@@ -694,14 +694,15 @@ export default function NewInvoicePage() {
               />
               {profile?.vatRegistered && (
                 <select
-                  className="col-span-2 rounded-lg border px-1 py-2 text-xs"
+                  aria-label="VAT rate"
+                  className="col-span-4 rounded-lg border px-1 py-2 text-xs sm:col-span-2"
                   value={it.vatRate}
                   onChange={(e) => updateItem(idx, { vatRate: e.target.value as VatRateKind })}
                 >
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button onClick={() => removeLine(idx)} className="col-span-1 text-sm text-red-600">✕</button>
+              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
             </div>
           ))}
           <button onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>
