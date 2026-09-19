@@ -176,6 +176,12 @@ and what is left open. Dates are session dates (Europe/London).
   double-tap guard, overpayment/date checks, penny rounding, reminder wording "£X to
   pay"). Unit 10/10, click-through 13/13, reminder job 8/8. Migration-023 applied and
   verified (rolled back); merged (3508bb9); full build clean.
+- Whole-day cross-feature review (4 lenses + refuters, 8 agents): 5 distinct confirmed,
+  fixed on main (c48e3ae): penny-exact totals in computeInvoiceTotals (Total and Amount
+  due could differ by 1p on 5% VAT), removing a credit note now undoes the paid status it
+  set, Mark as paid works on a £0 balance, no status rewrite on page open, Settings text.
+  All suites re-run on main: 98 click-through checks. Open from it: invoice totals use
+  the current VAT setting, not the one at issue (pre-existing) -> saving it per invoice.
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
