@@ -188,6 +188,10 @@ and what is left open. Dates are session dates (Europe/London).
   check 4/4 (issued-before-registration shows no VAT everywhere). Backup 012 (invoices)
   verified 0/0 (the table has no rows yet). Review: no defects. Migration-024 applied
   and verified (rolled back, next number untouched); merged (f65e123).
+- Tax branch brought up to date with main (merged, uses each invoice's VAT setting);
+  still unmerged for Atanas. invoiceVat treats a missing flag as unknown (ec2613a).
+- Inbox import stores documents in the photo bucket too (6daf2a7). The live DB has no
+  receipts, clients, invoices or quotes yet, so nothing to move.
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.

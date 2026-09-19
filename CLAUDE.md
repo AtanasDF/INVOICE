@@ -83,7 +83,7 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   `amount` and `vat_amount`. Extra pages live in `receipt_pages` (page 1 stays in
   `receipts.image_data_url`); `create_receipt_with_pages` inserts both atomically.
   `receipts.amount` is net (ex VAT) in GBP. `image_data_url` (and receipt_pages') holds
-  either an inline data: URL (older rows, inbox imports) or `storage:<uid>/<folder>/<n>.<ext>`
+  either an inline data: URL (older rows, or when storage was unreachable) or `storage:<uid>/<folder>/<n>.<ext>`
   in the private `receipts` bucket (migration-019), turned into 7-day signed URLs on read.
 - `quotes` (migration-020): priced offers to a client, status draft/sent/accepted/
   declined/invoiced, editable only as drafts. Turn into invoice claims the quote (status
@@ -194,9 +194,9 @@ them against the original before deleting.
   carry everything.
 - (Done 2026-09-19: duplicate warning, line-total check and usual category per supplier
   on saving scans. The shared rate limiter is on the branch above.)
-- (Done 2026-09-19: new receipt photos/PDFs go to the private `receipts` bucket, rows keep
-  `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`. Old inline rows and
-  inbox imports still store base64; moving those is a later job.)
+- (Done 2026-09-19: receipt photos/PDFs go to the private `receipts` bucket, rows keep
+  `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`, and
+  `receiptImagesServer.ts` for the inbox import. No inline rows exist in the live DB.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
 - "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
