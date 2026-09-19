@@ -88,6 +88,47 @@ export function mergeAddress(existing: string, match: AddressMatch): string {
   return [...kept.filter((l) => !incoming.has(l.toLowerCase())), ...lines].join("\n");
 }
 
+export type AddressParts = { line1: string; line2: string; town: string; postcode: string };
+
+const POSTCODE_LINE = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
+
+// An address as the fields show it. Stored text is one part per line, but
+// older records (and scans) put it all on one line with commas, so both read
+// back the same way.
+export function splitAddress(text: string): AddressParts {
+  const rows = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const parts = (rows.length === 1 ? rows[0].split(",") : rows).map((l) => l.trim()).filter(Boolean);
+  const empty = { line1: "", line2: "", town: "", postcode: "" };
+  if (!parts.length) return empty;
+  let postcode = "";
+  const last = parts[parts.length - 1];
+  if (POSTCODE_LINE.test(last)) {
+    postcode = normalisePostcode(last) ?? last.toUpperCase();
+    parts.pop();
+  } else if (ENDS_WITH_POSTCODE.test(last.toUpperCase())) {
+    // "Bristol BS1 4DJ" on one line: the town keeps the rest of it.
+    const at = last.toUpperCase().search(ENDS_WITH_POSTCODE);
+    postcode = normalisePostcode(last.slice(at)) ?? last.slice(at).trim().toUpperCase();
+    parts[parts.length - 1] = last.slice(0, at).trim();
+    if (!parts[parts.length - 1]) parts.pop();
+  }
+  if (!parts.length) return { ...empty, postcode };
+  // One part on its own is a town ("London") unless it has a number in it,
+  // which makes it a street ("12 Mill Lane").
+  if (parts.length === 1) return /\d/.test(parts[0]) ? { ...empty, line1: parts[0], postcode } : { ...empty, town: parts[0], postcode };
+  const town = parts.pop()!;
+  return { line1: parts[0] ?? "", line2: parts.slice(1).join(", "), town, postcode };
+}
+
+export function joinAddress(p: AddressParts): string {
+  return [p.line1, p.line2, p.town, p.postcode].map((l) => l.trim()).filter(Boolean).join("\n");
+}
+
+// A picked address's lines as fields: the postcode last, the town before it.
+export function partsFromLines(lines: string[]): AddressParts {
+  return splitAddress(lines.join("\n"));
+}
+
 export type PafAddress = {
   line_1?: string;
   line_2?: string;

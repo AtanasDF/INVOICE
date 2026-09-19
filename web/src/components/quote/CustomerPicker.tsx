@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import AddressFinder from "@/components/AddressFinder";
+import AddressFields from "@/components/AddressFields";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import { INPUT } from "@/components/free-invoice/fields";
 import { Client, clientsStore } from "@/lib/storage";
@@ -263,11 +263,12 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
               <input id={`${id}-vat`} className={INPUT} autoComplete="off" placeholder="GB123456789" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
             </div>
           )}
-          <div className="space-y-1.5">
-            <label className="text-xs text-neutral-500" htmlFor={`${id}-address`}>Address</label>
-            <AddressFinder address={address} onAddress={setAddress} />
-            <textarea id={`${id}-address`} rows={3} className={INPUT} placeholder={isCompany ? "Billing address" : "Their address, or where the work is"} value={address} onChange={(e) => setAddress(e.target.value)} />
-          </div>
+          <AddressFields
+            address={address}
+            onAddress={setAddress}
+            label="Address"
+            streetPlaceholder={isCompany ? "House number and street" : "Number and street, or where the work is"}
+          />
         </>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}

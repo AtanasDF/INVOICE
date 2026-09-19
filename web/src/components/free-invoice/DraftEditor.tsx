@@ -8,7 +8,7 @@ import LayoutPicker from "@/components/free-invoice/LayoutPicker";
 import SignaturePad from "@/components/free-invoice/SignaturePad";
 import Tip from "@/components/Tip";
 import CompanyNameInput, { useCompanyLookup } from "@/components/CompanyNameInput";
-import AddressFinder from "@/components/AddressFinder";
+import AddressFields from "@/components/AddressFields";
 import type { CompanyMatch } from "@/lib/companyLookup";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
@@ -50,16 +50,8 @@ function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey
             {f.hint && <p className="mt-1 text-xs text-neutral-500">{f.hint}</p>}
           </div>
         ) : f.finder ? (
-          <div key={String(f.key)} className="col-span-2 space-y-1.5">
-            <span id={`${labelBase}-${String(f.key)}`} className="text-xs text-neutral-500">{f.label}</span>
-            <AddressFinder address={value[f.key] ?? ""} onAddress={(a) => onChange({ ...value, [f.key]: a || null })} />
-            <textarea
-              rows={3}
-              className={INPUT}
-              aria-labelledby={`${labelBase}-${String(f.key)}`}
-              value={value[f.key] ?? ""}
-              onChange={(e) => onChange({ ...value, [f.key]: e.target.value || null })}
-            />
+          <div key={String(f.key)} className="col-span-2">
+            <AddressFields address={value[f.key] ?? ""} onAddress={(a) => onChange({ ...value, [f.key]: a || null })} label={f.label} />
           </div>
         ) : (
         <div key={String(f.key)} className={f.span || f.multiline ? "col-span-2" : ""}>
