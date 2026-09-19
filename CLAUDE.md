@@ -164,8 +164,9 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   header) and `src/lib/opencv.ts` loads it as a script and awaits `window.cv`. Never
   `import()` the package: its `module.exports` is a Promise and Turbopack's interop makes
   the import reject. The capture screen shows "Edge detection unavailable: <reason>" on
-  failure, and tapping the hint pill shows a readout (engine state, video size, ticks,
-  quads, coverage, sharpness).
+  failure, and tapping the hint pill (an invisible strip beside Back while there's no
+  hint) shows a readout (engine state, video size, ticks, quads, coverage, sharpness).
+  No hint shows until a page is found (Atanas: "everyone knows what to do").
 - iOS defaults to the in-app scanner (`scanner-mode` in localStorage; `native` opts back
   into the OS camera). `CaptureButton` is the label-wrapped capture input on the native
   path so one tap opens the camera.

@@ -1702,14 +1702,15 @@ export default function DocumentCapture({
     return () => clearInterval(id);
   }, [debug, cvStatus, coach]);
 
+  // Nothing to say until a page is found: the corners on screen show where
+  // it goes (Atanas: everyone knows what to do), and first-timers get the
+  // scanner-auto tip.
   const hint = saving
     ? "Hold still — taking the photo…"
     : multi && waitingNext
       ? `Got it — ${shots.length} scanned. Next document…`
-      : cvStatus === "failed"
-      ? "Fit the page inside the corners and tap to capture"
-      : !hasQuad
-        ? "Fit the page inside the corners"
+      : cvStatus === "failed" || !hasQuad
+        ? null
         : coach === "zooming"
           ? "Hold still — zooming in"
           : coach === "centre"
@@ -1719,6 +1720,7 @@ export default function DocumentCapture({
               : !autoOn
                 ? "Ready — tap to capture"
                 : "Hold still…";
+  const pill = [pageLabel, hint].filter(Boolean).join(" · ");
   const cvLine =
     cvStatus === "loading" ? "Edge detection: loading…" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
 
@@ -1865,11 +1867,14 @@ export default function DocumentCapture({
               <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-white line-clamp-2">{shownFailure}</div>
             ) : (
               status === "live" && (
+                // With nothing to say it's an invisible strip, still there
+                // to tap for the readout -- which matters most exactly when
+                // no page is being found.
                 <div
                   onClick={() => setDebug((d) => !d)}
-                  className="pointer-events-auto min-w-0 flex-1 rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2"
+                  className={`pointer-events-auto min-w-0 flex-1 ${pill ? "rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2" : "h-10"}`}
                 >
-                  {pageLabel ? `${pageLabel} · ${hint}` : hint}
+                  {pill}
                 </div>
               )
             )}
