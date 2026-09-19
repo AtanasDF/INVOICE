@@ -330,7 +330,9 @@ export default function SettingsPage() {
             <h2 className="font-semibold">Payment reminders</h2>
             <p className="mt-1 text-sm text-neutral-600">
               Three fixed reminders go out per invoice — 3 days before it&apos;s due, on the due date, and 7 days
-              after — to any client with reminders turned on (see their entry under Clients). Edit the wording
+              after — to any client with reminders turned on (see their entry under Clients). They come from your
+              business name, replies go to your email, and your bank details are added underneath. Invoices marked
+              part-paid get none, since the app doesn&apos;t know the balance. Edit the wording
               below; leave a box blank to use the default text. Use <code>{"{{client_name}}"}</code>,{" "}
               <code>{"{{invoice_number}}"}</code>, <code>{"{{amount_due}}"}</code>, and <code>{"{{due_date}}"}</code>{" "}
               anywhere in the text.

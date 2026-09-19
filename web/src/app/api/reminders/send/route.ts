@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 // Triggered daily by vercel.json's cron config -- same mechanism and same
 // CRON_SECRET as /api/notifications/check, no separate secret needed for
-// this route. For every sent-or-partial invoice with a due date, checks
+// this route. For every sent (not part-paid) invoice with a due date, checks
 // whether today matches one of the three fixed reminder points (3 days
 // before due / on due date / 7 days after) and, if so and the client
 // hasn't opted out, emails them via Resend.
@@ -17,6 +17,13 @@ export const runtime = "nodejs";
 // deployment's normal state until the account holder adds one -- the
 // rest of the feature (schema, per-client opt-out, editable templates,
 // idempotency log) is real and ready for the moment it is.
+
+function longDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+const SUBJECT: Record<ReminderKind, string> = { before: "payment reminder", due: "due today", after: "overdue" };
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
@@ -48,7 +55,9 @@ export async function GET(req: Request) {
     const { data: invoices, error: invErr } = await admin
       .from("invoices")
       .select("id, user_id, client_id, number, items, due_date")
-      .in("status", ["sent", "partial"])
+      // Part-paid invoices are left out: the app doesn't record how much has
+      // been paid, so a reminder would ask for the full amount.
+      .eq("status", "sent")
       .not("due_date", "is", null);
     if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 });
 
@@ -76,13 +85,25 @@ export async function GET(req: Request) {
     const [{ data: clients, error: clientsErr }, { data: profiles, error: profilesErr }, { data: creditNotes, error: cnErr }, { data: alreadySent, error: sentErr }] =
       await Promise.all([
         admin.from("clients").select("id, name, email, reminders_enabled").in("id", clientIds),
-        admin.from("business_profile").select("user_id, vat_registered, reminder_text_before, reminder_text_due, reminder_text_after").in("user_id", userIds),
+        admin
+          .from("business_profile")
+          .select("user_id, vat_registered, business_name, bank_details, reminder_text_before, reminder_text_due, reminder_text_after")
+          .in("user_id", userIds),
         admin.from("credit_notes").select("invoice_id, amount").in("invoice_id", invoiceIds),
         admin.from("invoice_reminders_sent").select("invoice_id, kind").in("invoice_id", invoiceIds),
       ]);
     if (clientsErr || profilesErr || cnErr || sentErr) {
       return NextResponse.json({ error: (clientsErr ?? profilesErr ?? cnErr ?? sentErr)?.message }, { status: 500 });
     }
+
+    // Replies go to the account owner, not to the app's sending address.
+    const ownerEmails = new Map<string, string>();
+    await Promise.all(
+      userIds.map(async (id) => {
+        const { data } = await admin.auth.admin.getUserById(id);
+        if (data.user?.email) ownerEmails.set(id, data.user.email);
+      })
+    );
 
     const clientById = new Map((clients ?? []).map((c) => [c.id, c]));
     const profileByUser = new Map((profiles ?? []).map((p) => [p.user_id, p]));
@@ -109,21 +130,32 @@ export async function GET(req: Request) {
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
       const gross = computeInvoiceTotals(items, profile?.vat_registered ?? false).total;
       const amountDue = gross - (creditByInvoice.get(inv.id) ?? 0);
-      const body = renderReminderTemplate(template, {
-        clientName: client.name,
-        invoiceNumber: inv.number,
-        amountDue: amountDue.toFixed(2),
-        dueDate: inv.due_date,
-      });
+      const businessName = profile?.business_name?.trim() ?? "";
+      const bank = profile?.bank_details?.trim() ?? "";
+      const body = [
+        renderReminderTemplate(template, {
+          clientName: client.name,
+          invoiceNumber: inv.number,
+          amountDue: amountDue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          dueDate: longDate(inv.due_date),
+        }),
+        bank && `How to pay:\n${bank}`,
+        businessName,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      const replyTo = ownerEmails.get(inv.user_id);
+      const fromName = `${businessName.replace(/["<>\\\r\n]/g, "") || "Your supplier"} via Invoicer`;
 
       try {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            from: "Payment reminders <reminders@invoiceover.com>",
+            from: `"${fromName}" <reminders@invoiceover.com>`,
             to: [client.email],
-            subject: `Invoice ${inv.number}`,
+            ...(replyTo ? { reply_to: replyTo } : {}),
+            subject: `Invoice ${inv.number}: ${SUBJECT[inv.kind]}`,
             text: body,
           }),
         });
