@@ -192,6 +192,15 @@ and what is left open. Dates are session dates (Europe/London).
   still unmerged for Atanas. invoiceVat treats a missing flag as unknown (ec2613a).
 - Inbox import stores documents in the photo bucket too (6daf2a7). The live DB has no
   receipts, clients, invoices or quotes yet, so nothing to move.
+- "View online" invoice links (research #5), branch `feature/invoice-links`: private
+  /i/<43-char token> page (invoice_links, migration-025, new table), server-rendered with
+  the service role, shows only what the PDF shows, noindex/no-referrer, soft 404 for
+  unknown/draft (Next 16 streams, so status stays 200 with noindex, as documented).
+  Opened is reported by the page's script (link scanners don't count), once per visitor
+  per half hour, not from the owner's signed-in browser; first open pushes the owner.
+  Email gets a "View invoice online" button (route accepts only this app's /i/ links).
+  Tested end to end with the dev server pointed at a local fake database: 13/13.
+  Security review running; migration not applied yet.
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
