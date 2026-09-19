@@ -97,6 +97,7 @@ export default function FreeInvoiceBuilder() {
   function startBlank() {
     setDraft(defaultDraft());
     setNote(null);
+    setTab("edit");
     setStage("editor");
   }
 
@@ -140,6 +141,7 @@ export default function FreeInvoiceBuilder() {
     setPages([]);
     setNote(null);
     setReadError(null);
+    setTab("edit");
     setStage("start");
   }
 

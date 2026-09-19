@@ -111,13 +111,25 @@ export function defaultDraft(): FreeInvoiceDraft {
   };
 }
 
-// The last run of digits moves on by one, keeping its zero padding, so
-// "INV-0042" becomes "INV-0043" and "2026/30" becomes "2026/31".
+// A label printed in front of the number ("No. 30", "Invoice #30") is not
+// part of it.
+export function stripNumberLabel(number: string): string {
+  return number.trim().replace(/^(?:invoice\s*)?(?:(?:no|nr|num|number)\b\.?|#)\s*[:.]?\s*(?=\d)/i, "").trim();
+}
+
+// The sequence moves on by one, keeping its zero padding: "INV-0042"
+// becomes "INV-0043" and "2026/30" becomes "2026/31". When the last digit
+// run is a year after a sequence ("042/2026"), the sequence moves, not the
+// year. A number with no digits can't be continued, so it comes back empty
+// rather than repeated.
 export function nextInvoiceNumber(number: string): string {
-  const m = /^(.*?)(\d+)(\D*)$/.exec(number.trim());
-  if (!m) return number.trim();
-  const next = String(Number(m[2]) + 1).padStart(m[2].length, "0");
-  return `${m[1]}${next}${m[3]}`;
+  const n = stripNumberLabel(number);
+  const runs = [...n.matchAll(/\d+/g)];
+  if (!runs.length) return "";
+  const last = runs[runs.length - 1];
+  const target = runs.length > 1 && /^(19|20)\d\d$/.test(last[0]) ? runs[runs.length - 2] : last;
+  const next = String(Number(target[0]) + 1).padStart(target[0].length, "0");
+  return n.slice(0, target.index) + next + n.slice(target.index! + target[0].length);
 }
 
 function daysBetween(from: string, to: string): number | null {
@@ -143,7 +155,8 @@ function presetTerms(printed: string | null, days: number | null): string | null
 export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
   const base = defaultDraft();
   const printedGap = t.date && t.dueDate ? daysBetween(t.date, t.dueDate) : null;
-  const paymentTerms = presetTerms(t.paymentTerms, printedGap) ?? base.paymentTerms;
+  // A printed gap that isn't one of the presets is kept as custom terms.
+  const paymentTerms = presetTerms(t.paymentTerms, printedGap) ?? (printedGap !== null ? `${printedGap} days` : base.paymentTerms);
   const gap = termsDays(paymentTerms) ?? printedGap ?? 14;
   const lines = t.lineItems.map((l) => ({
     description: l.description,

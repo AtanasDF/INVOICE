@@ -69,23 +69,37 @@ export default function SignaturePad({ value, onChange }: { value: string | null
   const [drawing, setDrawing] = useState(!value);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showPad = drawing || !value;
 
+  // Sized whenever the pad is on screen with a real width: it can mount
+  // inside a hidden tab (width 0) or be resized by a rotation, and either
+  // leaves the buffer wrong for the finger. Resizing clears the canvas.
   useEffect(() => {
-    if (!drawing) return;
+    if (!showPad) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = canvas.clientWidth * ratio;
-    canvas.height = canvas.clientHeight * ratio;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.scale(ratio, ratio);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 2.4;
-    inkRef.current = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-  }, [drawing]);
+    const setup = (initial: boolean) => {
+      const ratio = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * ratio);
+      const h = Math.round(canvas.clientHeight * ratio);
+      if (!w || !h || (canvas.width === w && canvas.height === h)) return;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.4;
+      inkRef.current = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+      if (!initial) setDirty(false);
+    };
+    setup(true);
+    const ro = new ResizeObserver(() => setup(false));
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, [showPad]);
 
   function point(e: React.PointerEvent<HTMLCanvasElement>): Point {
     const r = e.currentTarget.getBoundingClientRect();
@@ -146,7 +160,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
   function save() {
     const canvas = canvasRef.current;
     const ink = inkRef.current;
-    if (!canvas || !dirty || ink.maxX < ink.minX) return;
+    if (!canvas || !dirty || ink.maxX < ink.minX || !canvas.width || !canvas.clientWidth) return;
     const ratio = canvas.width / canvas.clientWidth;
     const pad = 6;
     const sx = Math.max(0, (ink.minX - pad) * ratio);
@@ -177,7 +191,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
 
   const photoInput = <input ref={fileRef} type="file" accept="image/*" onChange={onPhoto} className="hidden" />;
 
-  if (!drawing && value) {
+  if (!showPad && value) {
     return (
       <div className="space-y-2">
         <div className="flex h-24 items-center justify-center rounded-lg border bg-white p-2">

@@ -91,7 +91,7 @@ export const INVOICE_TEMPLATE_SCHEMA: Record<string, unknown> = strictObject({
     },
     "Whoever the invoice is addressed to. An example customer only."
   ),
-  invoiceNumber: nullable("The invoice number exactly as printed, e.g. INV-0042."),
+  invoiceNumber: nullable("The invoice number exactly as printed, e.g. INV-0042, without a label in front of it such as \"No.\", \"#\" or \"Invoice no.\"."),
   numberingPrefix: nullable(
     "The non-numeric prefix of the invoice number, e.g. \"INV-\" from INV-0042. Null if the number is digits only."
   ),

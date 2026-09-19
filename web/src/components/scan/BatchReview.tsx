@@ -7,6 +7,15 @@ export type Shot = CapturedFile & { id: number; joinPrev: boolean };
 
 // Consecutive shots marked "joinPrev" are further pages of the document
 // before them.
+// Removing a document's first page makes its next page the new first
+// page, rather than letting it fall into the document before.
+export function removeShot(shots: Shot[], id: number): Shot[] {
+  const i = shots.findIndex((x) => x.id === id);
+  if (i < 0) return shots;
+  const promote = !shots[i].joinPrev || i === 0;
+  return shots.filter((x) => x.id !== id).map((x, j) => (j === 0 || (promote && j === i) ? { ...x, joinPrev: false } : x));
+}
+
 export function groupShots(shots: Shot[]): CapturedFile[][] {
   const docs: CapturedFile[][] = [];
   for (const s of shots) {
@@ -82,7 +91,7 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
                     )}
                     <button
                       type="button"
-                      onClick={() => onChange(shots.filter((x) => x.id !== s.id).map((x, j) => (j === 0 ? { ...x, joinPrev: false } : x)))}
+                      onClick={() => onChange(removeShot(shots, s.id))}
                       className="text-xs font-medium text-neutral-600"
                     >
                       Remove
