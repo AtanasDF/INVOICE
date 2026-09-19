@@ -2,7 +2,7 @@
 --
 -- No backup needed: this only creates two new tables (quote_requests,
 -- quote_request_suppliers), their constraints, triggers and owner policies,
--- and three functions; no existing table is altered. Safe to re-run.
+-- and the functions below; no existing table is altered. Safe to re-run.
 --
 -- Asking suppliers to price a list of items. A request holds the list
 -- (items: [{id, description, quantity, unit, note}]), when it's needed and
@@ -38,7 +38,7 @@ create table if not exists public.quote_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   title text not null,
-  items jsonb not null default '[]'::jsonb,
+  items jsonb not null,
   notes text not null default '',
   needed_by date,
   site_address text not null default '',
@@ -209,6 +209,31 @@ grant update (token, sent_at) on public.quote_request_suppliers to authenticated
 
 grant select, insert, update on public.quote_requests, public.quote_request_suppliers to service_role;
 
+-- ── Prices as stored, whoever writes them ───────────────────────────
+-- Only the request's own item ids, each {price: number >= 0 or null,
+-- unavailable: bool, note: text <= 300}; a line marked unavailable has no
+-- price. CASE, not AND, guards the cast: SQL doesn't promise AND's order.
+create or replace function public.quote_request_clean_prices(p_prices jsonb, p_items jsonb) returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select coalesce(jsonb_object_agg(e.key, jsonb_build_object(
+           'price', case when coalesce(e.value -> 'unavailable' = 'true'::jsonb, false) then 'null'::jsonb
+                         when jsonb_typeof(e.value -> 'price') <> 'number' then 'null'::jsonb
+                         when (e.value ->> 'price')::numeric >= 0 and (e.value ->> 'price')::numeric < 10000000 then e.value -> 'price'
+                         else 'null'::jsonb end,
+           'unavailable', coalesce(e.value -> 'unavailable' = 'true'::jsonb, false),
+           'note', left(coalesce(e.value ->> 'note', ''), 300))), '{}'::jsonb)
+    from jsonb_each(case when jsonb_typeof(p_prices) = 'object' then p_prices else '{}'::jsonb end) e
+   where jsonb_typeof(e.value) = 'object'
+     and exists (select 1 from jsonb_array_elements(case when jsonb_typeof(p_items) = 'array' then p_items else '[]'::jsonb end) i where i ->> 'id' = e.key)
+$$;
+
+revoke all on function public.quote_request_clean_prices(jsonb, jsonb) from public;
+revoke execute on function public.quote_request_clean_prices(jsonb, jsonb) from anon;
+grant execute on function public.quote_request_clean_prices(jsonb, jsonb) to authenticated, service_role;
+
 -- ── The owner's entry: typed in, or read from the supplier's document ──
 -- p_seen_responded_at is the answer time the owner's page showed (null for
 -- none): if the supplier answered online meanwhile, nothing is changed.
@@ -267,11 +292,7 @@ begin
          source = case when p_status = 'waiting' then null else p_source end,
          responded_at = case when p_status = 'waiting' then null else now() end,
          responder_name = null,
-         prices = case when p_status <> 'replied' then '{}'::jsonb else (
-           select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb)
-             from jsonb_each(case when jsonb_typeof(p_prices) = 'object' then p_prices else '{}'::jsonb end) e
-            where jsonb_typeof(e.value) = 'object'
-              and exists (select 1 from jsonb_array_elements(v_request.items) i where i ->> 'id' = e.key)) end,
+         prices = case when p_status = 'replied' then public.quote_request_clean_prices(p_prices, v_request.items) else '{}'::jsonb end,
          delivery = case when p_status = 'replied' then p_delivery end,
          vat_included = (p_status = 'replied' and coalesce(p_vat_included, false)),
          valid_until = case when p_status = 'replied' then p_valid_until end,
@@ -317,11 +338,7 @@ begin
          source = 'online',
          responded_at = now(),
          responder_name = nullif(left(btrim(coalesce(p_name, '')), 120), ''),
-         prices = case when p_status <> 'replied' then '{}'::jsonb else (
-           select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb)
-             from jsonb_each(case when jsonb_typeof(p_prices) = 'object' then p_prices else '{}'::jsonb end) e
-            where jsonb_typeof(e.value) = 'object'
-              and exists (select 1 from jsonb_array_elements(v_request.items) i where i ->> 'id' = e.key)) end,
+         prices = case when p_status = 'replied' then public.quote_request_clean_prices(p_prices, v_request.items) else '{}'::jsonb end,
          delivery = case when p_status = 'replied' then p_delivery end,
          vat_included = (p_status = 'replied' and coalesce(p_vat_included, false)),
          valid_until = case when p_status = 'replied' then p_valid_until end,
@@ -352,8 +369,12 @@ grant execute on function public.submit_quote_request_response(text, text, jsonb
 --     where table_name in ('quote_requests', 'quote_request_suppliers') and grantee = 'authenticated' and privilege_type <> 'SELECT' order by 1, 3, 2;
 --     -> the insert/update columns above, nothing else
 --   select routine_name, grantee from information_schema.routine_privileges
---     where routine_name in ('record_quote_request_response', 'submit_quote_request_response') order by 1, 2;
---     -> record_: authenticated (+ postgres, service_role); submit_: service_role (+ postgres)
+--     where routine_name in ('record_quote_request_response', 'submit_quote_request_response', 'quote_request_clean_prices') order by 1, 2;
+--     -> record_: authenticated (+ postgres, service_role); submit_: service_role (+ postgres);
+--        clean_prices: authenticated, service_role (+ postgres)
+--   select public.quote_request_clean_prices('{"a":{"price":5,"note":"x"},"b":{"price":-1},"c":{"price":"7"},"d":{"price":3,"unavailable":true},"zz":{"price":1}}',
+--     '[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"}]');
+--     -> a price 5, b/c/d price null, d unavailable, no zz
 --   Rolled back, as authenticated: owner makes a request and adds own supplier, can't add another
 --   account's client (23503) or a row on another account's request (FK), can't delete (42501),
 --   can't update status/prices directly (42501); record_ with the right seen time writes manual

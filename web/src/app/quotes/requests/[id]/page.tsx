@@ -65,6 +65,8 @@ export default function QuoteRequestPage() {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  // Shown as well as copied: the clipboard can be refused.
+  const [shownLink, setShownLink] = useState<string | null>(null);
   const today = todayIso();
 
   const apply = (d: Awaited<ReturnType<typeof fetchAll>>) => {
@@ -204,6 +206,7 @@ export default function QuoteRequestPage() {
     run(async () => {
       if (!row.sentAt) await requestSuppliersStore.markSent(row.id);
       await navigator.clipboard.writeText(requestLinkUrl(row.token)).catch(() => {});
+      setShownLink(row.id);
       setCopied(row.id);
       setTimeout(() => setCopied((c) => (c === row.id ? null : c)), 2000);
     });
@@ -318,6 +321,15 @@ export default function QuoteRequestPage() {
                       </button>
                     )}
                   </div>
+                )}
+                {shownLink === row.id && row.status === "waiting" && (
+                  <input
+                    readOnly
+                    aria-label={`${nameOf(row)}'s link`}
+                    value={requestLinkUrl(row.token)}
+                    onFocus={(e) => e.target.select()}
+                    className="mt-2 w-full rounded-lg border bg-neutral-50 px-3 py-2 text-xs text-neutral-700"
+                  />
                 )}
                 {(row.documentPath || open) && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">

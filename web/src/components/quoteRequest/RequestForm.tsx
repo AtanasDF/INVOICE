@@ -8,6 +8,7 @@ import type { Client } from "@/lib/storage";
 import type { RequestItem } from "@/lib/quoteCompare";
 import { RequestInput, newItemId } from "@/lib/quoteRequests";
 import { errorText } from "@/lib/errorText";
+import { todayIso } from "@/lib/freeInvoiceDraft";
 
 const INPUT = "w-full rounded-lg border px-3 py-2";
 const blankLine = (): RequestItem => ({ id: newItemId(), description: "", quantity: 1, unit: "", note: "" });
@@ -37,6 +38,7 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
     if (!v.title.trim()) return setError("Give the request a name, e.g. the job it's for.");
     if (!items.length) return setError("Add at least one item.");
     if (items.some((l) => !(l.quantity > 0))) return setError("Every item needs a quantity above 0.");
+    if (v.neededBy && v.neededBy < todayIso() && v.neededBy !== initial.neededBy) return setError("The needed-by date is in the past: suppliers couldn't answer.");
     if (suppliers && !picked.length) return setError("Pick at least one supplier to ask.");
     setSaving(true);
     setError(null);
