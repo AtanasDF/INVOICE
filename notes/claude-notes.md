@@ -39,7 +39,13 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-023 as of 2026-09-19: invoice_payments (new table; RLS
+- Live Supabase is at migration-024 as of 2026-09-19 (backup 012:
+  invoices_backup_20260919_m024, verified 0/0 — the invoices table had no rows):
+  invoices.vat_registered, set by assign_invoice_number (still security definer,
+  search_path public, execute for authenticated/service_role only). Verified rolled back:
+  issued with the profile's flag, unchanged after flipping Settings, re-issue refused,
+  invoice_next_number restored (357358).
+- Migration-023 as of 2026-09-19: invoice_payments (new table; RLS
   owner policy; authenticated select/insert/update/delete, anon nothing; trigger
   invoice_payments_same_owner; invoice FK RESTRICT). Verified rolled back: owner records
   and removes, zero refused, other user sees 0 and can't pay into it, anon refused, an

@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-023, backup 011 (all applied). Supabase grants anon/authenticated everything
+   migration-024, backup 012 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -72,7 +72,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 
 - `invoices` and `credit_notes` are Atanas's own **sales** invoices (sequential numbering
   via `assign_invoice_number`, status draft/sent/partial/paid). Do not mix received
-  documents into them.
+  documents into them. `invoices.vat_registered` (migration-024) is the VAT setting the
+  invoice was issued under, saved by `assign_invoice_number`; drafts keep null. Total an
+  issued invoice with `computeInvoiceTotals(items, invoiceVat(invoice, accountVat))`,
+  never the account's current setting. Totals are penny-exact (VAT rounded per rate).
 - Scanned supplier receipts, invoices and credit notes are **expense documents in
   `receipts`**: `document_type` (receipt | invoice | credit_note | other),
   `invoice_number`, `due_date`, `paid`, `details` jsonb, `credit_of_receipt_id`

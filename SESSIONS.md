@@ -186,7 +186,8 @@ and what is left open. Dates are session dates (Europe/London).
   vat_registered written by assign_invoice_number at issue (migration-024), backfilled
   for issued invoices, invoiceVat() used wherever an issued invoice is totalled. Mocked
   check 4/4 (issued-before-registration shows no VAT everywhere). Backup 012 (invoices)
-  verified 0/0 (the table has no rows yet). Migration waits for the review.
+  verified 0/0 (the table has no rows yet). Review: no defects. Migration-024 applied
+  and verified (rolled back, next number untouched); merged (f65e123).
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
