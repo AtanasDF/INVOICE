@@ -167,6 +167,15 @@ and what is left open. Dates are session dates (Europe/London).
   (4-decimal lines), negative-balance guard, two-tab link warning, and New invoice no
   longer suggesting a "Less deposit" line. Unit 13/13, click-through 17/17. Backup 011
   verified 0/0; migration-022 applied and verified (rolled back); merged (66cb528).
+- Payments against invoices (open item), branch `feature/payments`: invoice_payments
+  (migration-023, new table, no backup needed); status follows payments; invoice/PDF list
+  payments and show the balance; Mark as paid records the balance; reminders chase the
+  balance of part-paid invoices (skip legacy part-paid with no payments); dashboard,
+  list, CSV and export use it. Click-through 9/9, reminder job 8/8. Review running.
+- Noted, not changed: RESTRICT foreign keys to clients (migrations 014/015, and quotes)
+  would likely block deleting a whole user account from the Supabase dashboard, since a
+  cascade can hit a RESTRICT before the referencing row is gone. No in-app account
+  deletion exists; worth a NO ACTION review if one is ever added.
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked
