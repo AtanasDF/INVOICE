@@ -18,6 +18,7 @@ import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, p
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { DEFAULT_REMINDER_TEXT } from "@/lib/reminderTemplates";
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
+import { inlineImage } from "@/lib/receiptImages";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -195,12 +196,16 @@ export default function SettingsPage() {
         recurringExpensesStore.all(),
         businessProfileStore.get(),
       ]);
+      // Stored photos are fetched and inlined, so the export holds the
+      // images themselves rather than links that expire.
+      const receiptsWithImages = await Promise.all(receipts.map(async (r) => ({ ...r, imageDataUrl: await inlineImage(r.imageDataUrl) })));
+      const pagesWithImages = await Promise.all(receiptPages.map(async (p) => ({ ...p, imageDataUrl: (await inlineImage(p.imageDataUrl)) ?? "" })));
       downloadJson(`my-data-export-${new Date().toISOString().slice(0, 10)}.json`, {
         exportedAt: new Date().toISOString(),
         businessProfile: profile,
         clients,
-        receipts,
-        receiptPages,
+        receipts: receiptsWithImages,
+        receiptPages: pagesWithImages,
         invoices,
         creditNotes,
         recurringExpenses,
