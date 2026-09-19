@@ -109,6 +109,11 @@ and what is left open. Dates are session dates (Europe/London).
   rolled-back block). Branch merged (338a286). Live: the free scanner's limit now counts in
   rate_limit_hits (hashed keys), and /clients/new has a Phone field.
 
+- Receipt photos to storage (4349606): migration-019 applied and verified (SQL, rolled
+  back) and live (own-folder upload 200, other folder 403, signed read, public refused);
+  code reviewed twice (3 fixes: export can't silently drop photos, unsigned photos stay
+  references, 7-day links for the iPhone home-screen app).
+
 **Open**
 
 - Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
