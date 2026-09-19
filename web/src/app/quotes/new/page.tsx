@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import QuoteForm, { QuoteFormValue, defaultValidUntil } from "@/components/quote/QuoteForm";
+import type { NewCustomerStart } from "@/components/quote/CustomerPicker";
 import { Client, InvoiceItem, businessProfileStore, clientsStore, nextQuoteNumber, quotesStore } from "@/lib/storage";
 import { clearFreeInvoiceDraft, readFreeInvoiceDraft, todayIso } from "@/lib/freeInvoiceDraft";
 import { errorText } from "@/lib/errorText";
+import { looksLikeCompany } from "@/lib/reminderTemplates";
 
 export default function NewQuotePage() {
   const router = useRouter();
@@ -16,7 +18,7 @@ export default function NewQuotePage() {
   // aren't one of the account's clients yet, opens as a new customer in the
   // form's picker (one way to add them, with its same-name check).
   const [imported, setImported] = useState(false);
-  const [newCustomer, setNewCustomer] = useState<{ name: string; address: string; email: string } | null>(null);
+  const [newCustomer, setNewCustomer] = useState<NewCustomerStart | null>(null);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), quotesStore.all(), businessProfileStore.get()])
@@ -31,7 +33,7 @@ export default function NewQuotePage() {
             .filter((l) => l.description.trim() || l.unitPrice)
             .map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, vatRate: l.vatRate }));
           setImported(true);
-          if (!match && name) setNewCustomer({ name, address: draft.customer.address ?? "", email: draft.customer.email ?? "" });
+          if (!match && name) setNewCustomer({ name, address: draft.customer.address ?? "", email: draft.customer.email ?? "", isCompany: looksLikeCompany(name) || undefined });
           setData({
             clients,
             vatRegistered: biz.vatRegistered,

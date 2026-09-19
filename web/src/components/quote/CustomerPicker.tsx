@@ -24,7 +24,7 @@ export function customerContact(c: Client): string {
   return [c.isCompany && c.contactPerson ? `Attn: ${c.contactPerson}` : "", c.email, c.phone].filter(Boolean).join(" · ");
 }
 
-export type NewCustomerStart = { name: string; email: string; address: string };
+export type NewCustomerStart = { name: string; email: string; address: string; isCompany?: boolean };
 
 // Who a quote is for: anyone in Clients & suppliers, clients first, or
 // someone new added on the spot. An archived one stays shown only while it's
@@ -155,7 +155,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
   onSaved: (c: Client) => void;
   onCancel?: () => void;
 }) {
-  const [isCompany, setIsCompany] = useState<boolean | null>(null);
+  const [isCompany, setIsCompany] = useState<boolean | null>(start.isCompany ?? null);
   const [name, setName] = useState(start.name);
   const [contactPerson, setContactPerson] = useState("");
   const [email, setEmail] = useState(start.email);
