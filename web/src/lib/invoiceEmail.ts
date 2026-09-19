@@ -39,7 +39,7 @@ export function invoiceEmailHtml(i: InvoiceEmailInput): string {
   const intro = i.message
     ? esc(i.message).replace(/\n/g, "<br>")
     : `Please find attached invoice${i.number ? ` <strong>${esc(i.number)}</strong>` : ""}. The details are below.`;
-  return `<!doctype html><html lang="en-GB"><body style="margin:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#171717">
+  return `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#171717">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e5e5e5;border-radius:14px">
 <tr><td style="padding:28px 28px 8px">
