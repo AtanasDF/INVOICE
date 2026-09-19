@@ -39,7 +39,16 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-024 as of 2026-09-19 (backup 012:
+- Live Supabase is at migration-025 as of 2026-09-19: invoice_links (authenticated:
+  select; insert only invoice_id/user_id/token; update only token; anon nothing;
+  record_invoice_link_view execute for service_role only). Verified rolled back.
+- Next 16 serves notFound() from a dynamic page as a soft 404 (status 200) once it has
+  started streaming, and skips the page's generateMetadata: put noindex in a segment
+  layout (as src/app/i/layout.tsx does).
+- Testing server-rendered pages without the real DB: start `next dev` with
+  NEXT_PUBLIC_SUPABASE_URL=http://localhost:5555 (and fake keys) and run
+  `harness/mock-server.mjs` there; env vars already set beat .env.local.
+- Migration-024 as of 2026-09-19 (backup 012:
   invoices_backup_20260919_m024, verified 0/0 — the invoices table had no rows):
   invoices.vat_registered, set by assign_invoice_number (still security definer,
   search_path public, execute for authenticated/service_role only). Verified rolled back:

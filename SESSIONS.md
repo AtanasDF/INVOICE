@@ -199,8 +199,11 @@ and what is left open. Dates are session dates (Europe/London).
   Opened is reported by the page's script (link scanners don't count), once per visitor
   per half hour, not from the owner's signed-in browser; first open pushes the owner.
   Email gets a "View invoice online" button (route accepts only this app's /i/ links).
-  Tested end to end with the dev server pointed at a local fake database: 13/13.
-  Security review running; migration not applied yet.
+  Security review: no leak or auth hole; fixed the owner's own email copy counting as the
+  customer (#o), exact 43-char tokens + per-visitor limit first, atomic counting in SQL,
+  blocked-storage crash, credit notes scoped by owner; added "Stop this link" and a
+  column-level insert grant. End to end 18/18. Migration-025 applied and verified
+  (rolled back); merged (54a4e35); live: unknown links show not-found with noindex.
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.

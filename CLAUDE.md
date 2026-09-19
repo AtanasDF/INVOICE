@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-024, backup 012 (all applied). Supabase grants anon/authenticated everything
+   migration-025, backup 012 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -101,6 +101,14 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   page (never just from opening it). An invoice marked
   paid/part-paid by hand before payments existed keeps its status. "Mark as paid" records
   the balance as a payment. An invoice with payments can't be deleted (RESTRICT).
+- `invoice_links` (migration-025): a private link per issued invoice, `/i/<43-char token>`,
+  made when the owner copies it or emails the invoice. The page (`src/app/i/[token]`) reads
+  with the service role on the server (`src/lib/publicInvoice.ts`, every query scoped to
+  the link's owner) and shows only what the PDF shows; noindex/no-referrer via
+  `src/app/i/layout.tsx`. Opens are counted by `record_invoice_link_view` (service role
+  only) from the page's own script, never for `#o` (the owner's email copy) or a
+  signed-in browser; the first open pushes the owner. Owners may change only the token
+  ("Stop this link"). The send route accepts only this app's own /i/ links.
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
