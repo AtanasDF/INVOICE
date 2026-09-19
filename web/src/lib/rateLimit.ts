@@ -52,9 +52,13 @@ export async function allowShared(key: string, limit: number, windowMs: number):
     // Keys can hold a visitor's IP address; only a keyed hash is stored.
     const { createHmac } = await import("node:crypto");
     const stored = createHmac("sha256", serviceKey).update(key).digest("hex").slice(0, 32);
-    const { data, error } = await admin.rpc("hit_rate_limit", { p_key: stored, p_limit: limit, p_window_seconds: Math.round(windowMs / 1000) });
-    if (error || typeof data !== "boolean") return allow(key, limit, windowMs);
-    return data;
+    // A slow database mustn't hold up the public route; past 1.5s the
+    // per-instance count decides.
+    const rpc = admin.rpc("hit_rate_limit", { p_key: stored, p_limit: limit, p_window_seconds: Math.round(windowMs / 1000) });
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+    const result = await Promise.race([rpc, timeout]);
+    if (!result || result.error || typeof result.data !== "boolean") return allow(key, limit, windowMs);
+    return result.data;
   } catch {
     return allow(key, limit, windowMs);
   }
