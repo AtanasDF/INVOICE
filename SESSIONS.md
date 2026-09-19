@@ -182,6 +182,11 @@ and what is left open. Dates are session dates (Europe/London).
   set, Mark as paid works on a £0 balance, no status rewrite on page open, Settings text.
   All suites re-run on main: 98 click-through checks. Open from it: invoice totals use
   the current VAT setting, not the one at issue (pre-existing) -> saving it per invoice.
+- VAT setting saved per invoice, branch `feature/invoice-vat-snapshot`: invoices.
+  vat_registered written by assign_invoice_number at issue (migration-024), backfilled
+  for issued invoices, invoiceVat() used wherever an issued invoice is totalled. Mocked
+  check 4/4 (issued-before-registration shows no VAT everywhere). Backup 012 (invoices)
+  verified 0/0 (the table has no rows yet). Migration waits for the review.
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
