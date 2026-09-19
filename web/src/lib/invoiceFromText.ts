@@ -1,12 +1,16 @@
 import { extractStructured, nullableEnum, type ScanEngine } from "@/lib/extractors";
+import { CURRENCIES } from "@/lib/fx";
 import type { InvoiceLineKind, InvoiceTemplate } from "@/lib/invoiceTemplate";
+
+export type TypedVat = "plus" | "included" | "none" | null;
 
 type TypedInvoice = {
   customerName: string | null;
   customerEmail: string | null;
   customerAddress: string | null;
   lines: { description: string; quantity: number; unitPrice: number; kind: InvoiceLineKind }[];
-  vat: "plus" | "included" | "none" | null;
+  vat: TypedVat;
+  currency: string | null;
   paymentTerms: string | null;
   notes: string | null;
 };
@@ -36,10 +40,11 @@ const SCHEMA: Record<string, unknown> = {
       },
     },
     vat: nullableEnum(["plus", "included", "none"], "plus = VAT to be added on top (\"plus VAT\", \"+VAT\"); included = the prices already include VAT (\"inc VAT\"); none = no VAT (\"no VAT\", \"not VAT registered\"). Null if VAT isn't mentioned."),
+    currency: nullableEnum(CURRENCIES, "The currency if one other than pounds is named (\"€800\", \"800 euros\" -> EUR). Null for pounds or when none is named."),
     paymentTerms: nullable("Payment terms if said, e.g. \"14 days\" or \"Upon receipt\"."),
     notes: nullable("Anything else the user wants printed on the invoice (a PO number, a thank-you). Null otherwise."),
   },
-  required: ["customerName", "customerEmail", "customerAddress", "lines", "vat", "paymentTerms", "notes"],
+  required: ["customerName", "customerEmail", "customerAddress", "lines", "vat", "currency", "paymentTerms", "notes"],
 };
 
 const PROMPT =
@@ -48,9 +53,10 @@ const PROMPT =
   "another currency is named. Never invent a customer, a price or a line that wasn't said; leave unknowns null. " +
   "What they typed:\n\n";
 
-// Prices said to include VAT are brought back to net at the standard rate,
-// since invoice lines here are always net.
-export async function invoiceFromText(text: string, engine: ScanEngine): Promise<InvoiceTemplate> {
+// Prices are returned exactly as said; the VAT treatment travels alongside
+// so the page can set each line's rate (and bring inc-VAT prices back to
+// net) knowing whether the account is VAT registered.
+export async function invoiceFromText(text: string, engine: ScanEngine): Promise<{ template: InvoiceTemplate; vat: TypedVat }> {
   const out = await extractStructured<TypedInvoice>({
     engine,
     name: "record_typed_invoice",
@@ -61,8 +67,7 @@ export async function invoiceFromText(text: string, engine: ScanEngine): Promise
     maxTokens: 4000,
     effort: "low",
   });
-  const included = out.vat === "included";
-  return {
+  const template: InvoiceTemplate = {
     issuer: { name: null, address: null, email: null, phone: null, website: null, vatNumber: null, companyNumber: null, utr: null },
     bank: { accountName: null, sortCode: null, accountNumber: null, iban: null, reference: null },
     customer: { name: out.customerName, address: out.customerAddress, email: out.customerEmail },
@@ -71,17 +76,18 @@ export async function invoiceFromText(text: string, engine: ScanEngine): Promise
     date: null,
     dueDate: null,
     paymentTerms: out.paymentTerms,
-    currency: null,
-    showsVat: out.vat === "plus" || included,
+    currency: out.currency && out.currency !== "GBP" ? out.currency : null,
+    showsVat: out.vat === "plus" || out.vat === "included",
     cis: false,
     lineItems: (out.lines ?? []).map((l) => ({
       description: l.description,
       quantity: l.quantity || 1,
-      unitPrice: included ? Math.round((l.unitPrice / 1.2) * 10000) / 10000 : l.unitPrice,
+      unitPrice: l.unitPrice,
       kind: l.kind,
     })),
     notes: out.notes,
     footer: null,
     layout: { headerAlignment: "left", metaPosition: "right", hasLogo: false, style: "modern" },
   };
+  return { template, vat: out.vat ?? null };
 }

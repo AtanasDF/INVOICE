@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
-import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
+import { VAT_RATES, VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays, todayIso } from "@/lib/freeInvoiceDraft";
@@ -13,6 +13,7 @@ import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { matchSupplier } from "@/lib/supplierMatch";
+import type { TypedVat } from "@/lib/invoiceFromText";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -50,6 +51,7 @@ function copiedTermsDays(t: InvoiceTemplate): number | null {
 }
 
 type ScannedCustomer = { name: string; email: string; address: string };
+type Lists = { clients: Client[]; pastInvoices: Invoice[]; vatRegistered: boolean };
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
@@ -109,7 +111,7 @@ export default function NewInvoicePage() {
   // A copy is applied against the loaded lists, not the render the photo
   // was taken in: with ?scan=1 the camera can beat the load, and matching
   // against an empty client list would offer to add an existing client.
-  const listsRef = useRef<Promise<{ clients: Client[]; pastInvoices: Invoice[] }> | null>(null);
+  const listsRef = useRef<Promise<Lists> | null>(null);
   const copiedNotesRef = useRef("");
   // Days from the invoice date to the due date, when copied terms set it.
   const [termsLength, setTermsLength] = useState<number | null>(() => (draft?.paymentTerms ? termsLengthOf(draft.paymentTerms) : null));
@@ -119,7 +121,7 @@ export default function NewInvoicePage() {
       setClients(c);
       setPastInvoices(inv);
       setProfile(biz);
-      return { clients: c, pastInvoices: inv };
+      return { clients: c, pastInvoices: inv, vatRegistered: biz.vatRegistered };
     });
     listsRef.current = load;
   }, []);
@@ -290,7 +292,7 @@ export default function NewInvoicePage() {
       });
       const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; error?: string };
       if (!res.ok || !body.template) throw new Error(body.error || "Couldn't read the invoice.");
-      const lists = await (listsRef.current ?? Promise.resolve({ clients, pastInvoices }));
+      const lists = await (listsRef.current ?? Promise.resolve(fallbackLists()));
       applyCopy(body.template, lists);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Couldn't read the invoice.");
@@ -313,11 +315,16 @@ export default function NewInvoicePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ text: typed }),
       });
-      const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; error?: string };
+      const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; vat?: TypedVat; error?: string };
       if (!res.ok || !body.template) throw new Error(body.error || "Couldn't turn that into an invoice.");
-      const lists = await (listsRef.current ?? Promise.resolve({ clients, pastInvoices }));
-      applyCopy(body.template, lists);
-      setTypedNote({ ok: true, text: "Filled in from what you typed, dated today. Check it before saving." });
+      const lists = await (listsRef.current ?? Promise.resolve(fallbackLists()));
+      const vat = body.vat ?? null;
+      applyCopy(body.template, lists, { vat });
+      const warnings = [
+        body.template.currency && `The amounts were in ${body.template.currency}; this account invoices in £, so check them.`,
+        vat === "included" && !lists.vatRegistered && "You're not VAT registered, so the prices were kept as typed.",
+      ].filter(Boolean);
+      setTypedNote({ ok: true, text: ["Filled in from what you typed, dated today. Check it before saving.", ...warnings].join(" ") });
     } catch (err) {
       setTypedNote({ ok: false, text: err instanceof Error ? err.message : "Couldn't turn that into an invoice." });
     } finally {
@@ -325,7 +332,23 @@ export default function NewInvoicePage() {
     }
   }
 
-  function applyCopy(t: InvoiceTemplate, lists: { clients: Client[]; pastInvoices: Invoice[] }) {
+  function fallbackLists(): Lists {
+    return { clients, pastInvoices, vatRegistered: profile?.vatRegistered ?? false };
+  }
+
+  // A scan shows whether VAT was charged, so its lines follow that; typed
+  // text says so only sometimes: said VAT wins over the learned rate, and
+  // unsaid VAT falls back to the page's usual default (standard), never to
+  // zero. Inc-VAT prices come back to net once the rate is known.
+  function lineVatRate(t: InvoiceTemplate, typed: { vat: TypedVat } | undefined, clientId: string, description: string, invoices: Invoice[]): VatRateKind {
+    if (typed?.vat === "none") return "zero";
+    if (typed?.vat === "plus" || typed?.vat === "included") return "standard";
+    const learned = pastVatRate(clientId, description, invoices);
+    if (learned) return learned;
+    return typed || t.showsVat ? "standard" : "zero";
+  }
+
+  function applyCopy(t: InvoiceTemplate, lists: Lists, typed?: { vat: TypedVat }) {
     const name = t.customer.name?.trim() ?? "";
     const billable = lists.clients.filter((c) => c.kind === "client" && !c.archived);
     const match = name ? matchSupplier(name, billable) : null;
@@ -336,12 +359,11 @@ export default function NewInvoicePage() {
 
     setItems(
       t.lineItems.length
-        ? t.lineItems.map((li) => ({
-            description: li.description,
-            quantity: li.quantity,
-            unitPrice: li.unitPrice,
-            vatRate: pastVatRate(forClientId, li.description, lists.pastInvoices) ?? (t.showsVat ? "standard" : "zero"),
-          }))
+        ? t.lineItems.map((li) => {
+            const vatRate = lineVatRate(t, typed, forClientId, li.description, lists.pastInvoices);
+            const net = typed?.vat === "included" && lists.vatRegistered ? li.unitPrice / (1 + VAT_RATES[vatRate]) : li.unitPrice;
+            return { description: li.description, quantity: li.quantity, unitPrice: Math.round(net * 10000) / 10000, vatRate };
+          })
         : [{ ...BLANK_ITEM }]
     );
 
@@ -360,7 +382,11 @@ export default function NewInvoicePage() {
     const copiedNotes = t.notes ?? "";
     const previousCopy = copiedNotesRef.current;
     copiedNotesRef.current = copiedNotes;
-    setNotes((prev) => (!prev.trim() || prev === previousCopy ? copiedNotes : prev));
+    // Notes from an imported free invoice go with the rest of the import.
+    const replaceImport = imported;
+    setNotes((prev) => (replaceImport || !prev.trim() || prev === previousCopy ? copiedNotes : prev));
+    // What's filled in now replaces the import; the Free page keeps its draft.
+    setImported(false);
     setCopied({ currency: t.currency && t.currency !== "GBP" ? t.currency : null });
   }
 

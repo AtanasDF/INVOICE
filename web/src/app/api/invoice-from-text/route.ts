@@ -27,8 +27,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const template = await invoiceFromText(text, "claude");
-    return NextResponse.json({ template });
+    const { template, vat } = await invoiceFromText(text, "claude");
+    return NextResponse.json({ template, vat });
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     if (RELAYED_ERRORS.has(message)) return NextResponse.json({ error: message }, { status: 502 });
