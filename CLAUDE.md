@@ -162,6 +162,15 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 - iOS defaults to the in-app scanner (`scanner-mode` in localStorage; `native` opts back
   into the OS camera). `CaptureButton` is the label-wrapped capture input on the native
   path so one tap opens the camera.
+- Far receipts (2026-09-19): `pageCandidates` takes four-corner shapes down to 1.2% of the
+  work frame, but under 6% only if `looksLikePaper` (lighter than a ring around it, little
+  printed round it, clear of the edge, aspect <= 8); torn/curled receipts via convex hull.
+  Auto-zoom goes by the page's span (`spanOf`), up to 4x on the lens (iOS exposes zoom
+  0.5-10, 1 = main lens) or 2.5x cropped; "Move closer" only when zoom can't help. The shot
+  is the camera's own still where `ImageCapture` exists (Safari 18.4+, Chrome), asked for
+  ~3200x1800 because Safari otherwise returns its smallest size; it's used only if it
+  matches the screen, the page is re-found near the video's corners and it's as sharp,
+  else the video frame. WebKit facts behind this are in `notes/claude-notes.md`.
 
 ## Environment variables
 
@@ -181,6 +190,14 @@ Gemini billing is a Google AI Studio prepaid balance on billing account
 Hub, creates a Live application and a REST API key) switches on the company name lookup
 (`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
 Settings. Without it those fields are plain inputs and nothing mentions the lookup.
+UK address lookup (`/api/address-search`, `AddressFinder` above every address field) is
+free by default: postcodes.io (postcode check, place, post town from the built-up area)
+and OpenStreetMap via photon.komoot.io (houses and streets; not every UK house is there,
+so a postcode can always be used on its own). Optional `IDEAL_POSTCODES_API_KEY` (not
+set) gives signed-in users Royal Mail's full address file; it's paid per postcode list or
+picked address, capped per account (20/5 min, 100/day) and overall (150/5 min, 400/day),
+and falls back to the free lookup when capped or failing. Set a daily limit and no auto
+top-up on the key in the Ideal Postcodes dashboard too.
 
 ## Who else works here
 
@@ -213,6 +230,11 @@ them against the original before deleting.
   `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`, and
   `receiptImagesServer.ts` for the inbox import. No inline rows exist in the live DB.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
+- Try on the iPhone (tested headless with synthetic clips and a mocked database only):
+  far receipts and the full-resolution still, the address finder, the "Paid" moment
+  (haptic), "Text <customer>", the home-screen badge (needs notifications allowed).
+- Offline scan queue (keep captures on the phone until there's signal) is not built: it
+  needs a caching service worker; worth doing only with an iPhone to test on.
 - "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the
