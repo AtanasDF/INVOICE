@@ -9,6 +9,7 @@ import {
   invoicesStore,
   pushSubscriptionsStore,
   quotesStore,
+  paymentsStore,
   receiptPagesStore,
   receiptsStore,
   recurringExpensesStore,
@@ -17,9 +18,10 @@ import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
-import { DEFAULT_REMINDER_TEXT } from "@/lib/reminderTemplates";
+import { DEFAULT_REMINDER_TEXT, REMINDER_SCHEDULE, ReminderKind } from "@/lib/reminderTemplates";
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
 import { inlineImage } from "@/lib/receiptImages";
+import CompanyNameInput from "@/components/CompanyNameInput";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -46,9 +48,8 @@ export default function SettingsPage() {
   const [invoiceNextNumber, setInvoiceNextNumber] = useState("1");
   const [vatRegistered, setVatRegistered] = useState(false);
   const [bankDetails, setBankDetails] = useState("");
-  const [reminderTextBefore, setReminderTextBefore] = useState("");
-  const [reminderTextDue, setReminderTextDue] = useState("");
-  const [reminderTextAfter, setReminderTextAfter] = useState("");
+  const [reminderTexts, setReminderTexts] = useState<Record<ReminderKind, string>>({ before: "", due: "", after: "", late: "", final: "" });
+  const [latePaymentInterest, setLatePaymentInterest] = useState(false);
   // Highest sequence number already used among existing invoices sharing
   // the current prefix -- lets the Next number field warn when it's set
   // lower than that, which would make the series look like it went
@@ -67,9 +68,14 @@ export default function SettingsPage() {
       setInvoiceNextNumber(String(p.invoiceNextNumber));
       setVatRegistered(p.vatRegistered);
       setBankDetails(p.bankDetails);
-      setReminderTextBefore(p.reminderTextBefore ?? "");
-      setReminderTextDue(p.reminderTextDue ?? "");
-      setReminderTextAfter(p.reminderTextAfter ?? "");
+      setReminderTexts({
+        before: p.reminderTextBefore ?? "",
+        due: p.reminderTextDue ?? "",
+        after: p.reminderTextAfter ?? "",
+        late: p.reminderTextLate ?? "",
+        final: p.reminderTextFinal ?? "",
+      });
+      setLatePaymentInterest(p.reminderLatePaymentInterest);
       const sequenceNumbers = invoices
         .map((inv) => parseSequenceNumber(inv.number, p.invoicePrefix))
         .filter((n): n is number => n !== null);
@@ -171,9 +177,12 @@ export default function SettingsPage() {
         invoiceNextNumber: parseInt(invoiceNextNumber, 10) || 1,
         vatRegistered,
         bankDetails,
-        reminderTextBefore: reminderTextBefore.trim() || null,
-        reminderTextDue: reminderTextDue.trim() || null,
-        reminderTextAfter: reminderTextAfter.trim() || null,
+        reminderTextBefore: reminderTexts.before.trim() || null,
+        reminderTextDue: reminderTexts.due.trim() || null,
+        reminderTextAfter: reminderTexts.after.trim() || null,
+        reminderTextLate: reminderTexts.late.trim() || null,
+        reminderTextFinal: reminderTexts.final.trim() || null,
+        reminderLatePaymentInterest: latePaymentInterest,
       });
       setSaved(true);
     } catch (err) {
@@ -187,13 +196,14 @@ export default function SettingsPage() {
     setExportError(null);
     setExporting(true);
     try {
-      const [clients, receipts, receiptPages, invoices, creditNotes, quotes, feedback, recurringExpenses, profile] = await Promise.all([
+      const [clients, receipts, receiptPages, invoices, creditNotes, quotes, payments, feedback, recurringExpenses, profile] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
         receiptPagesStore.all(),
         invoicesStore.all(),
         creditNotesStore.all(),
         quotesStore.all(),
+        paymentsStore.all(),
         feedbackStore.all(),
         recurringExpensesStore.all(),
         businessProfileStore.get(),
@@ -211,6 +221,7 @@ export default function SettingsPage() {
         invoices,
         creditNotes,
         quotes,
+        payments,
         recurringExpenses,
         feedback,
       });
@@ -238,10 +249,17 @@ export default function SettingsPage() {
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div>
             <label className="text-xs text-neutral-500">Business name</label>
-            <input
+            <CompanyNameInput
               className="w-full rounded-lg border px-3 py-2"
+              lookupPlaceholder="Limited company? Type to find it on Companies House"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
+              onChange={setBusinessName}
+              address={address}
+              onAddress={setAddress}
+              onPick={(c, fillAddress) => {
+                setBusinessName(c.name);
+                if (fillAddress) setAddress(fillAddress);
+              }}
             />
           </div>
           <div>
@@ -337,45 +355,42 @@ export default function SettingsPage() {
           <div>
             <h2 className="font-semibold">Payment reminders</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              Three fixed reminders go out per invoice — 3 days before it&apos;s due, on the due date, and 7 days
-              after — to any client with reminders turned on (see their entry under Clients). They come from your
-              business name, replies go to your email, and your bank details are added underneath. Invoices marked
-              part-paid get none, since the app doesn&apos;t know the balance. Edit the wording
-              below; leave a box blank to use the default text. Use <code>{"{{client_name}}"}</code>,{" "}
-              <code>{"{{invoice_number}}"}</code>, <code>{"{{amount_due}}"}</code>, and <code>{"{{due_date}}"}</code>{" "}
-              anywhere in the text.
+              Up to five reminders go out per unpaid invoice, each a little firmer: 3 days before it&apos;s due, on
+              the due date, then 7, 14 and 30 days after. They go to any client with reminders turned on (see their
+              entry under Clients), come from your business name, replies go to your email, and your bank details
+              are added underneath. Nothing more is sent after the final notice. Part-paid invoices are chased for
+              what&apos;s still owed once their payments are recorded; one marked part-paid with no payments recorded
+              gets none, since its balance isn&apos;t known. Edit the wording below; leave a box blank to use
+              the default text. Use <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>,{" "}
+              <code>{"{{amount_due}}"}</code>, <code>{"{{due_date}}"}</code> and <code>{"{{pay_by}}"}</code> (a week
+              from the day it&apos;s sent) anywhere in the text.
             </p>
           </div>
-          <div>
-            <label className="text-xs text-neutral-500">3 days before due</label>
-            <textarea
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder={DEFAULT_REMINDER_TEXT.before}
-              value={reminderTextBefore}
-              onChange={(e) => setReminderTextBefore(e.target.value)}
-              rows={2}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-500">On the due date</label>
-            <textarea
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder={DEFAULT_REMINDER_TEXT.due}
-              value={reminderTextDue}
-              onChange={(e) => setReminderTextDue(e.target.value)}
-              rows={2}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-500">7 days after due</label>
-            <textarea
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder={DEFAULT_REMINDER_TEXT.after}
-              value={reminderTextAfter}
-              onChange={(e) => setReminderTextAfter(e.target.value)}
-              rows={2}
-            />
-          </div>
+          {REMINDER_SCHEDULE.map((r) => (
+            <div key={r.kind}>
+              <label className="text-xs text-neutral-500">{r.label}</label>
+              <textarea
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                placeholder={DEFAULT_REMINDER_TEXT[r.kind]}
+                value={reminderTexts[r.kind]}
+                onChange={(e) => setReminderTexts((prev) => ({ ...prev, [r.kind]: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          ))}
+          <label className="flex items-start gap-2 border-t pt-3 text-sm">
+            <input className="mt-1" type="checkbox" checked={latePaymentInterest} onChange={(e) => setLatePaymentInterest(e.target.checked)} />
+            <span>
+              In the final notice to a business client, say you can claim late-payment interest
+              <span className="block text-xs text-neutral-500">
+                Under the Late Payment of Commercial Debts (Interest) Act 1998 a business can claim 8% a year above
+                the Bank of England base rate, plus £40, £70 or £100 compensation depending on the amount. It
+                doesn&apos;t apply to private individuals: only clients marked Company get it, so check private
+                customers are marked Individual under Clients. Leave this off if your own terms set a late-payment
+                interest rate, since that replaces the statutory one.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
@@ -453,7 +468,7 @@ export default function SettingsPage() {
         <div>
           <h2 className="font-semibold">Your data</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Download everything you&apos;ve stored — clients, receipts, invoices, credit notes, quotes, recurring expenses,
+            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, recurring expenses,
             and feedback — as a single JSON file, including any scanned images and PDFs attached to your receipts.
           </p>
         </div>

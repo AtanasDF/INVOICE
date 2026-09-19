@@ -1,5 +1,6 @@
 import type { CreditNote, Invoice, Receipt } from "@/lib/storage";
 import { computeInvoiceTotals } from "@/lib/vat";
+import { invoiceVat } from "@/lib/invoiceBalance";
 
 // England, Wales and Northern Ireland, 2026/27 (frozen at these figures
 // until 2030/31). Scotland sets its own income tax bands.
@@ -73,7 +74,8 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   const byId = new Map(invoices.map((inv) => [inv.id, inv]));
   for (const inv of invoices) {
     if (inv.status === "draft" || !inYear(inv.date)) continue;
-    const t = computeInvoiceTotals(inv.items, vatRegistered);
+    // Each invoice under the VAT setting it was issued with.
+    const t = computeInvoiceTotals(inv.items, invoiceVat(inv, vatRegistered));
     income += t.subtotal;
     vatCharged += t.totalVat;
     invoicesCounted++;
@@ -83,7 +85,7 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   for (const c of creditNotes) {
     const inv = byId.get(c.invoiceId);
     if (!inv || inv.status === "draft" || !inYear(c.date)) continue;
-    const t = computeInvoiceTotals(inv.items, vatRegistered);
+    const t = computeInvoiceTotals(inv.items, invoiceVat(inv, vatRegistered));
     const netShare = t.total > 0 ? t.subtotal / t.total : 1;
     income -= c.amount * netShare;
     vatCharged -= c.amount * (1 - netShare);

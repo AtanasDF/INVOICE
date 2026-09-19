@@ -7,6 +7,7 @@ import { Client, ClientKind, Invoice, clientsStore, invoicesStore } from "@/lib/
 import { downloadCsv } from "@/lib/exportCsv";
 import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
+import CompanyNameInput from "@/components/CompanyNameInput";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -211,12 +212,25 @@ export default function ClientsPage() {
                         Individual
                       </label>
                     </div>
-                    <input
-                      className="w-full rounded-lg border px-3 py-2 text-sm"
-                      placeholder={draft.isCompany ? "Company name" : "Full name"}
-                      value={draft.name}
-                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    />
+                    {draft.isCompany ? (
+                      <CompanyNameInput
+                        className="w-full rounded-lg border px-3 py-2 text-sm"
+                        placeholder="Company name"
+                        lookupPlaceholder="Company name (type to search Companies House)"
+                        value={draft.name}
+                        onChange={(name) => setDraft({ ...draft, name })}
+                        address={draft.address}
+                        onAddress={(address) => setDraft({ ...draft, address })}
+                        onPick={(c, fillAddress) => setDraft({ ...draft, name: c.name, address: fillAddress ?? draft.address })}
+                      />
+                    ) : (
+                      <input
+                        className="w-full rounded-lg border px-3 py-2 text-sm"
+                        placeholder="Full name"
+                        value={draft.name}
+                        onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                      />
+                    )}
                     <input
                       className="w-full rounded-lg border px-3 py-2 text-sm"
                       placeholder="Email"

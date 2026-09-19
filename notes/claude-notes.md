@@ -39,7 +39,35 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-020 as of 2026-09-19: `quotes` table (RLS owner policy;
+- Live Supabase is at migration-024 as of 2026-09-19 (backup 012:
+  invoices_backup_20260919_m024, verified 0/0 — the invoices table had no rows):
+  invoices.vat_registered, set by assign_invoice_number (still security definer,
+  search_path public, execute for authenticated/service_role only). Verified rolled back:
+  issued with the profile's flag, unchanged after flipping Settings, re-issue refused,
+  invoice_next_number restored (357358).
+- Migration-023 as of 2026-09-19: invoice_payments (new table; RLS
+  owner policy; authenticated select/insert/update/delete, anon nothing; trigger
+  invoice_payments_same_owner; invoice FK RESTRICT). Verified rolled back: owner records
+  and removes, zero refused, other user sees 0 and can't pay into it, anon refused, an
+  invoice with a payment can't be removed.
+- invoices.user_id and clients.user_id reference auth.users with NO cascade in the live
+  database (unlike schema.sql, which says cascade), so a user with invoices or clients
+  can't be deleted outright. Found 2026-09-19 with a throwaway user in a rolled-back
+  block; left as is (protective under the never-delete rule).
+- Migration-022 as of 2026-09-19 (backup 011:
+  quotes_backup_20260919_m022, verified 0/0, RLS): quotes.deposit_percent (0–100
+  exclusive) / deposit_amount (> 0), at most one; deposit_invoice_id → invoices ON DELETE
+  SET NULL; deposit_claimed; quotes_same_owner also checks the deposit invoice. Verified
+  rolled back: 30% saves, both or 100% refused, own deposit invoice links, another
+  account's refused, removing it unlinks and keeps the claim.
+- Migration-021 as of 2026-09-19 (backup 010:
+  business_profile_backup_20260919_m021 and invoice_reminders_sent_backup_20260919_m021,
+  verified 0/0 both ways, RLS on): business_profile.reminder_text_late /
+  reminder_text_final / reminder_late_payment_interest (default false), and the
+  invoice_reminders_sent kind check widened to before/due/after/late/final. Verified in a
+  rolled-back block: owner saves the new fields, late+final insert, bogus kind and a
+  duplicate refused.
+- Migration-020 as of 2026-09-19: `quotes` table (RLS owner policy;
   authenticated select/insert/update only, anon nothing, because Supabase's default
   privileges otherwise grant everything; trigger `quotes_same_owner` so a quote can only
   point at its own client/invoice; client FK RESTRICT, invoice FK SET NULL). Verified in a
@@ -101,6 +129,15 @@ changes.
   each followed by a refuter told to default to "not real"; fix what survives; re-check
   the fixes the same way until a round comes back clean. Every round found real bugs,
   several introduced by the previous round's fixes.
+
+- Companies House public data API (2026-09-19): free, key via the Developer Hub account
+  (Live application → Create new key → REST), HTTP Basic with the key as username,
+  600 requests / 5 min per key. Names come back in capitals; `tidyCompanyName` makes them
+  readable (keeps initials/acronyms). The registered office is often an accountant's, so
+  a pick only fills an empty address field and otherwise offers it.
+- Tax figures used by the tax-estimate branch (2026/27, England/Wales/NI): personal
+  allowance 12,570 (tapered £1 per £2 over 100,000), basic band 37,700, additional rate
+  from 125,140; Class 4 NI 6% on 12,570–50,270, 2% above; no Class 2. Frozen to 2030/31.
 
 ## Decisions
 

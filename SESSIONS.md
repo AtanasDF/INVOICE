@@ -129,8 +129,72 @@ and what is left open. Dates are session dates (Europe/London).
   /quotes and /quotes/new load for Atanas's account (no data created).
 - iCloud had made " 2" copies of 31 generated files in web/.next (broke tsc); moved to the
   session scratchpad, not deleted.
-- Next: company lookup (Companies House, free, needs a key Atanas registers for), asked
-  for by Atanas from his phone.
+- Company lookup (asked for by Atanas from his phone), branch `feature/company-lookup`:
+  typing a company name on the Free page (business and customer), new/edit client and
+  Settings offers matches from the Companies House register; picking fills name,
+  registered address and (Free page) company number. Free API, 600 requests / 5 min per
+  key; route caches 10 min, 60 per visitor, anonymous 120 and signed-in 180 per 5 min.
+  Off (plain inputs, no mention) until `COMPANIES_HOUSE_API_KEY` is in Vercel. Review: 8
+  small findings, all fixed (initials/IT/Co tidying, a pick no longer overwrites an
+  existing address but offers the registered office, split limits, plain input when off).
+  Route 7/7, UI 22/22 with a stubbed register. Merged (6bbb3ce); live route answers
+  configured:false and Settings renders a plain name input. His Chrome has the Companies House Developer Hub
+  open (cookies: analytics rejected) at "Sign in / Register".
+- Firmer reminders (research #6), branch `feature/firmer-reminders`: reminders now at -3,
+  0, +7, +14 ('late') and +30 ('final notice') days, each editable, `{{pay_by}}` a week
+  out; optional switch to state statutory late-payment interest + £40/£70/£100
+  compensation in the final notice, business clients only (the Act doesn't cover
+  consumers). Invoice page shows which reminders went out and the next one, or why none
+  will. Review: no blockers; fixed a missed cron day losing a reminder (3-day catch-up),
+  customers from New invoice marked Company only with a company suffix, interest wording
+  ("may be entitled", from the day after the due date), restore steps without deletes.
+  Tests: unit 19, cron against a stubbed DB 6/6, invoice card 5/5. Backup 010 verified
+  (0/0 both ways), migration-021 applied and verified (columns, one kind check, rolled-back
+  behaviour). Merged (4057539). Atanas has no invoices, so nothing is due a final notice.
+- Bug fixed on main (7590517): the draft-invoice editor and recurring invoices still parsed
+  Qty/Unit price per keystroke ("12.5" became 125, "-" became 0); both now use
+  NumberInput, and all three line editors stack on a phone. Typed-in check 7/7.
+- iCloud made " 2" copies of generated files in web/.next twice (broke tsc); moved to the
+  session scratchpad each time, not deleted.
+- Quote deposits (rest of research #7), branch `feature/quote-deposits`: deposit as % or
+  £ on a quote, printed on it; accepted → "Invoice the deposit" (draft, due in 7 days,
+  split by VAT rate, tag `deposit for Q-...`, claimed/recovered like the final invoice);
+  "Invoice the balance" = quote lines + the deposit invoice's lines negated, refused
+  while the deposit invoice is still a draft. Negative line amounts print as −£.
+  Assumptions to confirm with Atanas: deposit due in 7 days; deposit only once
+  accepted. Review: no blockers; fixed a credited deposit still being deducted, a warning
+  before declining with an open deposit invoice (its reminders keep going), 1p rounding
+  (4-decimal lines), negative-balance guard, two-tab link warning, and New invoice no
+  longer suggesting a "Less deposit" line. Unit 13/13, click-through 17/17. Backup 011
+  verified 0/0; migration-022 applied and verified (rolled back); merged (66cb528).
+- Payments against invoices (open item), branch `feature/payments`: invoice_payments
+  (migration-023, new table, no backup needed); status follows payments; invoice/PDF list
+  payments and show the balance; Mark as paid records the balance; reminders chase the
+  balance of part-paid invoices (skip legacy part-paid with no payments); dashboard,
+  list, CSV and export use it. Review: no blockers, 8 fixed (credit notes now set the
+  status too, legacy part-paid "Mark as paid" doesn't invent a payment, fresh reads and
+  double-tap guard, overpayment/date checks, penny rounding, reminder wording "£X to
+  pay"). Unit 10/10, click-through 13/13, reminder job 8/8. Migration-023 applied and
+  verified (rolled back); merged (3508bb9); full build clean.
+- Whole-day cross-feature review (4 lenses + refuters, 8 agents): 5 distinct confirmed,
+  fixed on main (c48e3ae): penny-exact totals in computeInvoiceTotals (Total and Amount
+  due could differ by 1p on 5% VAT), removing a credit note now undoes the paid status it
+  set, Mark as paid works on a £0 balance, no status rewrite on page open, Settings text.
+  All suites re-run on main: 98 click-through checks. Open from it: invoice totals use
+  the current VAT setting, not the one at issue (pre-existing) -> saving it per invoice.
+- VAT setting saved per invoice, branch `feature/invoice-vat-snapshot`: invoices.
+  vat_registered written by assign_invoice_number at issue (migration-024), backfilled
+  for issued invoices, invoiceVat() used wherever an issued invoice is totalled. Mocked
+  check 4/4 (issued-before-registration shows no VAT everywhere). Backup 012 (invoices)
+  verified 0/0 (the table has no rows yet). Review: no defects. Migration-024 applied
+  and verified (rolled back, next number untouched); merged (f65e123).
+- Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
+  cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
+  rolled back). No in-app account deletion exists; protective as it is.
+- "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
+  merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
+  the year ended today, full-year projection, VAT owed if registered. Maths checked
+  against known figures; dashboard checked with a mocked database; screenshot sent.
 
 **Open**
 

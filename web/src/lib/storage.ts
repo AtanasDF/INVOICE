@@ -140,6 +140,9 @@ export type Invoice = {
   paymentTerms: string;
   status: InvoiceStatus;
   tags: string[];
+  // The VAT setting it was issued under (migration-024); null while a draft,
+  // which follows the account's current setting.
+  vatRegistered: boolean | null;
 };
 
 export type CreditNote = {
@@ -535,6 +538,7 @@ type InvoiceRow = {
   payment_terms: string | null;
   status: InvoiceStatus | null;
   tags: string[] | null;
+  vat_registered?: boolean | null;
 };
 
 function invoiceFromRow(r: InvoiceRow): Invoice {
@@ -560,6 +564,7 @@ function invoiceFromRow(r: InvoiceRow): Invoice {
     // start as an editable draft.
     status: r.status ?? "sent",
     tags: r.tags ?? [],
+    vatRegistered: r.vat_registered ?? null,
   };
 }
 
@@ -574,7 +579,7 @@ export const invoicesStore = {
     if (error) throw error;
     return data ? invoiceFromRow(data as InvoiceRow) : null;
   },
-  async add(input: Omit<Invoice, "id">): Promise<Invoice> {
+  async add(input: Omit<Invoice, "id" | "vatRegistered">): Promise<Invoice> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("invoices")
@@ -660,7 +665,11 @@ export const invoicesStore = {
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("invoices").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      // invoice_payments.invoice_id is ON DELETE RESTRICT (migration-023).
+      if (error.code === "23503") throw new Error("This invoice has payments recorded against it, so it can't be removed.");
+      throw error;
+    }
   },
 };
 
@@ -754,6 +763,11 @@ export type BusinessProfile = {
   reminderTextBefore: string | null;
   reminderTextDue: string | null;
   reminderTextAfter: string | null;
+  reminderTextLate: string | null;
+  reminderTextFinal: string | null;
+  // Mention statutory late-payment interest in the final notice to
+  // business clients.
+  reminderLatePaymentInterest: boolean;
 };
 
 type BusinessProfileRow = {
@@ -771,6 +785,9 @@ type BusinessProfileRow = {
   reminder_text_before: string | null;
   reminder_text_due: string | null;
   reminder_text_after: string | null;
+  reminder_text_late: string | null;
+  reminder_text_final: string | null;
+  reminder_late_payment_interest: boolean | null;
 };
 
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
@@ -789,6 +806,9 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     reminderTextBefore: r.reminder_text_before,
     reminderTextDue: r.reminder_text_due,
     reminderTextAfter: r.reminder_text_after,
+    reminderTextLate: r.reminder_text_late ?? null,
+    reminderTextFinal: r.reminder_text_final ?? null,
+    reminderLatePaymentInterest: r.reminder_late_payment_interest ?? false,
   };
 }
 
@@ -807,6 +827,9 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   reminderTextBefore: null,
   reminderTextDue: null,
   reminderTextAfter: null,
+  reminderTextLate: null,
+  reminderTextFinal: null,
+  reminderLatePaymentInterest: false,
 };
 
 export const businessProfileStore = {
@@ -833,6 +856,9 @@ export const businessProfileStore = {
       reminder_text_before: input.reminderTextBefore || null,
       reminder_text_due: input.reminderTextDue || null,
       reminder_text_after: input.reminderTextAfter || null,
+      reminder_text_late: input.reminderTextLate || null,
+      reminder_text_final: input.reminderTextFinal || null,
+      reminder_late_payment_interest: input.reminderLatePaymentInterest,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
@@ -1061,8 +1087,13 @@ export const pushSubscriptionsStore = {
 
 export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "invoiced";
 
+// A deposit asked for on a quote: a share of its total or a fixed amount
+// (gross, incl. VAT).
+export type QuoteDeposit = { kind: "percent" | "amount"; value: number };
+
 // A priced offer to a client; accepting it can turn it into a draft
-// invoice, which invoiceId then points at.
+// invoice, which invoiceId then points at. A deposit, if asked for, is
+// invoiced on its own first (depositInvoiceId).
 export type Quote = {
   id: string;
   clientId: string;
@@ -1073,6 +1104,9 @@ export type Quote = {
   notes: string;
   status: QuoteStatus;
   invoiceId: string | null;
+  deposit: QuoteDeposit | null;
+  depositInvoiceId: string | null;
+  depositClaimed: boolean;
 };
 
 type QuoteRow = {
@@ -1085,6 +1119,10 @@ type QuoteRow = {
   notes: string | null;
   status: QuoteStatus;
   invoice_id: string | null;
+  deposit_percent: number | string | null;
+  deposit_amount: number | string | null;
+  deposit_invoice_id: string | null;
+  deposit_claimed: boolean | null;
 };
 
 function quoteFromRow(r: QuoteRow): Quote {
@@ -1098,7 +1136,19 @@ function quoteFromRow(r: QuoteRow): Quote {
     notes: r.notes ?? "",
     status: r.status,
     invoiceId: r.invoice_id,
+    deposit:
+      r.deposit_percent != null
+        ? { kind: "percent", value: Number(r.deposit_percent) }
+        : r.deposit_amount != null
+          ? { kind: "amount", value: Number(r.deposit_amount) }
+          : null,
+    depositInvoiceId: r.deposit_invoice_id ?? null,
+    depositClaimed: r.deposit_claimed ?? false,
   };
+}
+
+function depositColumns(d: QuoteDeposit | null) {
+  return { deposit_percent: d?.kind === "percent" ? d.value : null, deposit_amount: d?.kind === "amount" ? d.value : null };
 }
 
 // Q-0001, Q-0002...: one past the highest number already used.
@@ -1118,7 +1168,7 @@ export const quotesStore = {
     if (error) throw error;
     return data ? quoteFromRow(data as QuoteRow) : null;
   },
-  async add(input: Omit<Quote, "id" | "status" | "invoiceId">): Promise<Quote> {
+  async add(input: Omit<Quote, "id" | "status" | "invoiceId" | "depositInvoiceId" | "depositClaimed">): Promise<Quote> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("quotes")
@@ -1130,6 +1180,7 @@ export const quotesStore = {
         valid_until: input.validUntil || null,
         items: input.items,
         notes: input.notes,
+        ...depositColumns(input.deposit),
         status: "draft",
       })
       .select()
@@ -1142,7 +1193,7 @@ export const quotesStore = {
   },
   // The offer itself (lines, client, dates) is only editable as a draft;
   // once sent, only its status moves.
-  async updateDraft(id: string, patch: Partial<Pick<Quote, "clientId" | "number" | "date" | "validUntil" | "items" | "notes">>): Promise<void> {
+  async updateDraft(id: string, patch: Partial<Pick<Quote, "clientId" | "number" | "date" | "validUntil" | "items" | "notes" | "deposit">>): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
     if (patch.number !== undefined) dbPatch.number = patch.number;
@@ -1150,6 +1201,7 @@ export const quotesStore = {
     if (patch.validUntil !== undefined) dbPatch.valid_until = patch.validUntil || null;
     if (patch.items !== undefined) dbPatch.items = patch.items;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes;
+    if (patch.deposit !== undefined) Object.assign(dbPatch, depositColumns(patch.deposit));
     const { data, error } = await supabase.from("quotes").update(dbPatch).eq("id", id).eq("status", "draft").select("id");
     if (error) {
       if (error.code === "23505") throw new Error(`Quote number "${patch.number}" is already in use.`);
@@ -1189,10 +1241,106 @@ export const quotesStore = {
     const { error } = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", "invoiced").is("invoice_id", null);
     if (error) throw error;
   },
+  // The deposit invoice is claimed like the final one: deposit_claimed first,
+  // so a double tap or another tab can't make two; released if no invoice
+  // was made, linked once it was. Only an accepted quote with a deposit.
+  async claimDeposit(id: string): Promise<Quote | null> {
+    const { data, error } = await supabase
+      .from("quotes")
+      .update({ deposit_claimed: true })
+      .eq("id", id)
+      .eq("status", "accepted")
+      .eq("deposit_claimed", false)
+      .is("deposit_invoice_id", null)
+      .or("deposit_percent.not.is.null,deposit_amount.not.is.null")
+      .select("*");
+    if (error) throw error;
+    return data?.length ? quoteFromRow(data[0] as QuoteRow) : null;
+  },
+  async releaseDeposit(id: string): Promise<void> {
+    const { error } = await supabase.from("quotes").update({ deposit_claimed: false }).eq("id", id).is("deposit_invoice_id", null);
+    if (error) throw error;
+  },
+  // False if another deposit invoice was linked first (another tab).
+  async linkDeposit(id: string, invoiceId: string): Promise<boolean> {
+    const { data, error } = await supabase.from("quotes").update({ deposit_invoice_id: invoiceId, deposit_claimed: true }).eq("id", id).is("deposit_invoice_id", null).select("id");
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  },
   // Linking also sets invoiced: the invoice exists, even if the claim was
   // put back from another tab meanwhile.
-  async linkInvoice(id: string, invoiceId: string): Promise<void> {
-    const { error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null);
+  // False if another invoice was linked first (another tab).
+  async linkInvoice(id: string, invoiceId: string): Promise<boolean> {
+    const { data, error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null).select("id");
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  },
+};
+
+// The cron's log of reminders already emailed for an invoice (read-only for
+// the owner; only the service role writes it).
+export const remindersSentStore = {
+  async forInvoice(invoiceId: string): Promise<{ kind: string; sentAt: string }[]> {
+    const { data, error } = await supabase.from("invoice_reminders_sent").select("kind, sent_at").eq("invoice_id", invoiceId);
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ kind: r.kind as string, sentAt: r.sent_at as string }));
+  },
+};
+
+export type PaymentMethod = "bank" | "card" | "cash" | "cheque" | "other";
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  bank: "Bank transfer",
+  card: "Card",
+  cash: "Cash",
+  cheque: "Cheque",
+  other: "Other",
+};
+
+// Money received against a sales invoice (migration-023).
+export type InvoicePayment = {
+  id: string;
+  invoiceId: string;
+  date: string;
+  amount: number;
+  method: PaymentMethod | null;
+  note: string;
+};
+
+type InvoicePaymentRow = { id: string; invoice_id: string; date: string; amount: number | string; method: PaymentMethod | null; note: string | null };
+
+const paymentFromRow = (r: InvoicePaymentRow): InvoicePayment => ({
+  id: r.id,
+  invoiceId: r.invoice_id,
+  date: r.date,
+  amount: Number(r.amount),
+  method: r.method,
+  note: r.note ?? "",
+});
+
+export const paymentsStore = {
+  async all(): Promise<InvoicePayment[]> {
+    const { data, error } = await supabase.from("invoice_payments").select("*").order("date");
+    if (error) throw error;
+    return (data as InvoicePaymentRow[]).map(paymentFromRow);
+  },
+  async forInvoice(invoiceId: string): Promise<InvoicePayment[]> {
+    const { data, error } = await supabase.from("invoice_payments").select("*").eq("invoice_id", invoiceId).order("date");
+    if (error) throw error;
+    return (data as InvoicePaymentRow[]).map(paymentFromRow);
+  },
+  async add(input: Omit<InvoicePayment, "id">): Promise<InvoicePayment> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("invoice_payments")
+      .insert({ user_id, invoice_id: input.invoiceId, date: input.date, amount: input.amount, method: input.method, note: input.note })
+      .select()
+      .single();
+    if (error) throw error;
+    return paymentFromRow(data as InvoicePaymentRow);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from("invoice_payments").delete().eq("id", id);
     if (error) throw error;
   },
 };

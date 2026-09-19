@@ -1,6 +1,7 @@
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import type { BusinessProfile, Client, Quote } from "@/lib/storage";
 import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
+import { depositGross } from "@/lib/quoteDeposit";
 
 export const money = (n: number) => `£${(Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -12,6 +13,7 @@ export function quoteTotal(quote: Quote, vatRegistered: boolean): number {
 export default function QuoteDocument({ quote, client, profile }: { quote: Quote; client: Client | null; profile: BusinessProfile | null }) {
   const vatRegistered = profile?.vatRegistered ?? false;
   const totals = computeInvoiceTotals(quote.items, vatRegistered);
+  const deposit = depositGross(quote, vatRegistered);
   return (
     <>
       <div className="flex items-start justify-between gap-6">
@@ -70,6 +72,12 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
       <section className="mt-4 flex justify-end">
         <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
           <p className="text-2xl font-extrabold">Total: {money(totals.total)}</p>
+          {deposit !== null && deposit > 0 && (
+            <p className="text-sm text-neutral-700">
+              Deposit to book the work: {money(deposit)}
+              {quote.deposit?.kind === "percent" ? ` (${quote.deposit.value}%)` : ""}
+            </p>
+          )}
           {quote.validUntil && <p className="text-sm text-neutral-600">This quote is valid until {longDate(quote.validUntil)}.</p>}
         </div>
       </section>

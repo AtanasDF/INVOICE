@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-020, backup 009 (all applied). Supabase grants anon/authenticated everything
+   migration-024, backup 012 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -72,7 +72,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 
 - `invoices` and `credit_notes` are Atanas's own **sales** invoices (sequential numbering
   via `assign_invoice_number`, status draft/sent/partial/paid). Do not mix received
-  documents into them.
+  documents into them. `invoices.vat_registered` (migration-024) is the VAT setting the
+  invoice was issued under, saved by `assign_invoice_number`; drafts keep null. Total an
+  issued invoice with `computeInvoiceTotals(items, invoiceVat(invoice, accountVat))`,
+  never the account's current setting. Totals are penny-exact (VAT rounded per rate).
 - Scanned supplier receipts, invoices and credit notes are **expense documents in
   `receipts`**: `document_type` (receipt | invoice | credit_note | other),
   `invoice_number`, `due_date`, `paid`, `details` jsonb, `credit_of_receipt_id`
@@ -86,6 +89,23 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   declined/invoiced, editable only as drafts. Turn into invoice claims the quote (status
   invoiced, invoice_id null), makes a draft invoice tagged `from <quote number>` and links
   it; the quote page relinks by that tag if the link was lost. Quotes are never deleted.
+  Deposits (migration-022): `deposit_percent` or `deposit_amount` (gross), claimed via
+  `deposit_claimed`, invoiced on its own (`deposit_invoice_id`, tag `deposit for <number>`,
+  lines per VAT rate, 4-decimal unit prices); the final invoice adds the deposit invoice's
+  lines negated (quantity -1), less anything credited against it. Maths in
+  `src/lib/quoteDeposit.ts`.
+- `invoice_payments` (migration-023): money received against a sales invoice (date,
+  amount, method). The app sets the invoice status from credit notes and payments
+  (`src/lib/invoiceBalance.ts`: paid once nothing is owed, credited in full included;
+  part-paid while some is paid), re-checked on every invoice page load. An invoice marked
+  paid/part-paid by hand before payments existed keeps its status. "Mark as paid" records
+  the balance as a payment. An invoice with payments can't be deleted (RESTRICT).
+- Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
+  late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
+  +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
+  (invoice_id, kind) is claimed before sending). The statutory-interest line goes only in
+  the final notice, only with `business_profile.reminder_late_payment_interest`, only to
+  clients with `is_company` true.
 - A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
   and in the push cron from 3 days before `due_date`.
 - Suppliers are `clients` rows with `kind = 'supplier'`.
@@ -141,6 +161,10 @@ overrides the former. `/api/send-invoice` is signed-in only by design (an open r
 an invoice-fraud relay); the PDF is made in the browser (`src/lib/invoicePdf.ts`).
 Gemini billing is a Google AI Studio prepaid balance on billing account
 `015649-CDA16A-FCF373`.
+`COMPANIES_HOUSE_API_KEY` (not set yet; Atanas registers at the Companies House Developer
+Hub, creates a Live application and a REST API key) switches on the company name lookup
+(`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
+Settings. Without it those fields are plain inputs and nothing mentions the lookup.
 
 ## Who else works here
 
@@ -163,8 +187,8 @@ them against the original before deleting.
   Chrome only).
 - (Done 2026-09-19: backup 009 + migration-018 applied, verified and merged: clients.phone
   and the shared rate limit for the free scanner.)
-- Partial payments aren't recorded, so reminders skip part-paid invoices; a payments
-  record would let them chase the balance.
+- (Done 2026-09-19: payments are recorded per invoice; reminders chase the balance of
+  part-paid invoices.)
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
   carry everything.
 - (Done 2026-09-19: duplicate warning, line-total check and usual category per supplier
@@ -173,6 +197,7 @@ them against the original before deleting.
   `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`. Old inline rows and
   inbox imports still store base64; moving those is a later job.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
+- "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the
   business name and bank details from there), `invoice_next_number` at 357358,

@@ -1,35 +1,23 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { computeInvoiceTotals, VatLineItem } from "@/lib/vat";
-import { DEFAULT_REMINDER_TEXT, ReminderKind, renderReminderTemplate } from "@/lib/reminderTemplates";
+import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
 
 export const runtime = "nodejs";
 
 // Triggered daily by vercel.json's cron config -- same mechanism and same
 // CRON_SECRET as /api/notifications/check, no separate secret needed for
 // this route. For every sent (not part-paid) invoice with a due date, checks
-// whether today matches one of the three fixed reminder points (3 days
-// before due / on due date / 7 days after) and, if so and the client
-// hasn't opted out, emails them via Resend.
+// whether today falls in one of the fixed reminder windows (REMINDER_SCHEDULE:
+// 3 days before due, on the day, then 7, 14 and 30 days after, each with a
+// few catch-up days) and, if so and the client hasn't opted out, emails them
+// via Resend.
 //
 // Inert until RESEND_API_KEY is set: returns 200 with a "skipped" note
 // rather than erroring, since "no email provider configured yet" is this
 // deployment's normal state until the account holder adds one -- the
 // rest of the feature (schema, per-client opt-out, editable templates,
 // idempotency log) is real and ready for the moment it is.
-
-function longDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-}
-
-const SUBJECT: Record<ReminderKind, string> = { before: "payment reminder", due: "due today", after: "overdue" };
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -54,22 +42,19 @@ export async function GET(req: Request) {
 
     const { data: invoices, error: invErr } = await admin
       .from("invoices")
-      .select("id, user_id, client_id, number, items, due_date")
-      // Part-paid invoices are left out: the app doesn't record how much has
-      // been paid, so a reminder would ask for the full amount.
-      .eq("status", "sent")
+      .select("id, user_id, client_id, number, items, due_date, status, vat_registered")
+      // Part-paid ones too: they're chased for the balance, once payments
+      // say what it is (below).
+      .in("status", ["sent", "partial"])
       .not("due_date", "is", null);
     if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 });
 
-    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; kind: ReminderKind };
+    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; status: string; vat_registered: boolean | null; kind: ReminderKind };
 
     const candidates: DueInvoice[] = (invoices ?? [])
       .map((inv) => {
         const dueDate = inv.due_date as string;
-        let kind: ReminderKind | null = null;
-        if (addDays(dueDate, -3) === today) kind = "before";
-        else if (dueDate === today) kind = "due";
-        else if (addDays(dueDate, 7) === today) kind = "after";
+        const kind = reminderDueToday(dueDate, today);
         return kind ? { ...inv, due_date: dueDate, kind } : null;
       })
       .filter((x): x is DueInvoice => x !== null);
@@ -82,18 +67,21 @@ export async function GET(req: Request) {
     const userIds = Array.from(new Set(candidates.map((c) => c.user_id)));
     const invoiceIds = candidates.map((c) => c.id);
 
-    const [{ data: clients, error: clientsErr }, { data: profiles, error: profilesErr }, { data: creditNotes, error: cnErr }, { data: alreadySent, error: sentErr }] =
+    const [{ data: clients, error: clientsErr }, { data: profiles, error: profilesErr }, { data: creditNotes, error: cnErr }, { data: alreadySent, error: sentErr }, { data: payments, error: payErr }] =
       await Promise.all([
-        admin.from("clients").select("id, name, email, reminders_enabled").in("id", clientIds),
+        admin.from("clients").select("id, name, email, reminders_enabled, is_company").in("id", clientIds),
         admin
           .from("business_profile")
-          .select("user_id, vat_registered, business_name, bank_details, reminder_text_before, reminder_text_due, reminder_text_after")
+          .select(
+            "user_id, vat_registered, business_name, bank_details, reminder_text_before, reminder_text_due, reminder_text_after, reminder_text_late, reminder_text_final, reminder_late_payment_interest"
+          )
           .in("user_id", userIds),
         admin.from("credit_notes").select("invoice_id, amount").in("invoice_id", invoiceIds),
         admin.from("invoice_reminders_sent").select("invoice_id, kind").in("invoice_id", invoiceIds),
+        admin.from("invoice_payments").select("invoice_id, amount").in("invoice_id", invoiceIds),
       ]);
-    if (clientsErr || profilesErr || cnErr || sentErr) {
-      return NextResponse.json({ error: (clientsErr ?? profilesErr ?? cnErr ?? sentErr)?.message }, { status: 500 });
+    if (clientsErr || profilesErr || cnErr || sentErr || payErr) {
+      return NextResponse.json({ error: (clientsErr ?? profilesErr ?? cnErr ?? sentErr ?? payErr)?.message }, { status: 500 });
     }
 
     // Replies go to the account owner, not to the app's sending address.
@@ -110,42 +98,49 @@ export async function GET(req: Request) {
     const creditByInvoice = new Map<string, number>();
     for (const c of creditNotes ?? []) creditByInvoice.set(c.invoice_id, (creditByInvoice.get(c.invoice_id) ?? 0) + Number(c.amount));
     const sentSet = new Set((alreadySent ?? []).map((s) => `${s.invoice_id}:${s.kind}`));
+    const paidByInvoice = new Map<string, number>();
+    for (const p of payments ?? []) paidByInvoice.set(p.invoice_id, (paidByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount));
 
     let sentCount = 0;
     const failures: string[] = [];
 
     for (const inv of candidates) {
-      if (sentSet.has(`${inv.id}:${inv.kind}`)) continue;
+      // Already sent, or overtaken by a later one sent on a catch-up day.
+      if (laterReminders(inv.kind).some((k) => sentSet.has(`${inv.id}:${k}`))) continue;
       const client = clientById.get(inv.client_id ?? "");
       if (!client || !client.reminders_enabled || !client.email) continue;
       const profile = profileByUser.get(inv.user_id);
-      const templateOverride = profile
-        ? inv.kind === "before"
-          ? profile.reminder_text_before
-          : inv.kind === "due"
-            ? profile.reminder_text_due
-            : profile.reminder_text_after
-        : null;
-      const template = templateOverride || DEFAULT_REMINDER_TEXT[inv.kind];
+      const overrides: Record<ReminderKind, string | null | undefined> = {
+        before: profile?.reminder_text_before,
+        due: profile?.reminder_text_due,
+        after: profile?.reminder_text_after,
+        late: profile?.reminder_text_late,
+        final: profile?.reminder_text_final,
+      };
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
-      const gross = computeInvoiceTotals(items, profile?.vat_registered ?? false).total;
-      const amountDue = Math.round((gross - (creditByInvoice.get(inv.id) ?? 0)) * 100) / 100;
-      // Credited in full: nothing to chase.
+      const gross = computeInvoiceTotals(items, inv.vat_registered ?? profile?.vat_registered ?? false).total;
+      const paid = paidByInvoice.get(inv.id) ?? 0;
+      // Marked part-paid with nothing recorded: the balance isn't known.
+      if (inv.status === "partial" && paid === 0) continue;
+      // Each to the penny first, so a half-penny total can't leave 1p to chase.
+      const pence = (n: number) => Math.round(n * 100);
+      const amountDue = (pence(gross) - pence(creditByInvoice.get(inv.id) ?? 0) - pence(paid)) / 100;
+      // Credited or paid in full: nothing to chase.
       if (amountDue <= 0) continue;
       const businessName = profile?.business_name?.trim() ?? "";
-      const bank = profile?.bank_details?.trim() ?? "";
-      const body = [
-        renderReminderTemplate(template, {
-          clientName: client.name,
-          invoiceNumber: inv.number,
-          amountDue: amountDue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-          dueDate: longDate(inv.due_date),
-        }),
-        bank && `How to pay:\n${bank}`,
+      const body = reminderBody({
+        kind: inv.kind,
+        template: overrides[inv.kind] ?? null,
+        clientName: client.name,
+        clientIsCompany: client.is_company === true,
+        invoiceNumber: inv.number,
+        amountDue,
+        dueDate: inv.due_date,
+        today,
+        bank: profile?.bank_details?.trim() ?? "",
         businessName,
-      ]
-        .filter(Boolean)
-        .join("\n\n");
+        claimInterest: profile?.reminder_late_payment_interest === true,
+      });
       const replyTo = ownerEmails.get(inv.user_id);
       // Without the owner's address a reply would go to an inbox nobody reads.
       if (!replyTo) {
