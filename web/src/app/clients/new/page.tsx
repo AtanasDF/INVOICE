@@ -9,6 +9,7 @@ import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import { CameraIcon } from "@/components/icons";
 import CompanyNameInput from "@/components/CompanyNameInput";
+import AddressFinder from "@/components/AddressFinder";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -198,12 +199,15 @@ export default function NewClientPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <textarea
-          className="w-full rounded-lg border px-3 py-2"
-          placeholder="Billing address (optional)"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
+        <div className="space-y-1.5">
+          <AddressFinder address={address} onAddress={setAddress} />
+          <textarea
+            className="w-full rounded-lg border px-3 py-2"
+            placeholder="Billing address (optional)"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+        </div>
         <details className="rounded-lg border p-3" open>
           <summary className="cursor-pointer text-sm font-medium text-neutral-600">More details (optional)</summary>
           <div className="mt-3 grid grid-cols-2 gap-3">

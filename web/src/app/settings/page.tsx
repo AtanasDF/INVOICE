@@ -22,6 +22,7 @@ import { DEFAULT_REMINDER_TEXT, REMINDER_SCHEDULE, ReminderKind } from "@/lib/re
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
 import { inlineImage } from "@/lib/receiptImages";
 import CompanyNameInput from "@/components/CompanyNameInput";
+import AddressFinder from "@/components/AddressFinder";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -262,9 +263,11 @@ export default function SettingsPage() {
               }}
             />
           </div>
-          <div>
-            <label className="text-xs text-neutral-500">Business address (optional)</label>
+          <div className="space-y-1.5">
+            <label htmlFor="business-address" className="text-xs text-neutral-500">Business address (optional)</label>
+            <AddressFinder address={address} onAddress={setAddress} />
             <textarea
+              id="business-address"
               className="w-full rounded-lg border px-3 py-2"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
