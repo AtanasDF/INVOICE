@@ -4,7 +4,7 @@ import InvoiceDocument, { bankRows, formatMoney, longDate } from "@/components/i
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import { computeDraftTotals, FreeInvoiceDraft } from "@/lib/freeInvoiceDraft";
 
-export default function SendByEmail({ draft }: { draft: FreeInvoiceDraft }) {
+export default function SendByEmail({ draft, resetKey }: { draft: FreeInvoiceDraft; resetKey: number }) {
   const t = computeDraftTotals(draft);
   const due = draft.cis.enabled ? t.netPaymentDue : t.total;
   return (
@@ -12,6 +12,7 @@ export default function SendByEmail({ draft }: { draft: FreeInvoiceDraft }) {
       sheet={<InvoiceDocument draft={draft} />}
       pdfKey={JSON.stringify(draft)}
       signInNext="/free-invoice"
+      resetKey={resetKey}
       missingName="Add your business name first, so the customer knows who it's from."
       fields={{
         issuerName: draft.issuer.name ?? "",

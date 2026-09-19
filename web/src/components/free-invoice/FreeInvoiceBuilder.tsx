@@ -62,6 +62,9 @@ export default function FreeInvoiceBuilder() {
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [printing, setPrinting] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Bumped whenever a different invoice starts, so the send panel forgets
+  // the last one's recipient and "Sent".
+  const [invoiceGen, setInvoiceGen] = useState(0);
   const editing = stage === "editor" && !!draft;
   const pageChars = pages.reduce((s, p) => s + p.dataUrl.length, 0);
   // Read generation: adding a page mid-read starts a new one and the
@@ -99,6 +102,7 @@ export default function FreeInvoiceBuilder() {
 
   function startBlank() {
     setDraft(defaultDraft());
+    setInvoiceGen((g) => g + 1);
     setNote(null);
     setTab("edit");
     setStage("editor");
@@ -125,6 +129,7 @@ export default function FreeInvoiceBuilder() {
       if (!body) throw new Error(res.status === 413 ? TOO_LARGE : "Couldn't read the invoice.");
       if (!res.ok || !body.template) throw new Error(body.error ?? "Couldn't read the invoice.");
       setDraft(templateToDraft(body.template));
+      setInvoiceGen((g) => g + 1);
       setNote("filled");
       setPages([]);
       setTab("edit");
@@ -173,6 +178,7 @@ export default function FreeInvoiceBuilder() {
   function startNext() {
     if (!draft) return;
     setDraft(nextDraft(draft));
+    setInvoiceGen((g) => g + 1);
     setNote("next");
     setTab("edit");
     window.scrollTo({ top: 0 });
@@ -370,7 +376,7 @@ export default function FreeInvoiceBuilder() {
                 <ScaledPreview>
                   <InvoiceDocument draft={draft} />
                 </ScaledPreview>
-                <SendByEmail draft={draft} />
+                <SendByEmail draft={draft} resetKey={invoiceGen} />
               </div>
             </div>
           </div>

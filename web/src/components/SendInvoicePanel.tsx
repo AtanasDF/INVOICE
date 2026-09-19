@@ -39,6 +39,7 @@ export default function SendInvoicePanel({
   fields,
   signInNext,
   missingName,
+  resetKey = "",
   onSent,
 }: {
   sheet: ReactNode;
@@ -46,6 +47,9 @@ export default function SendInvoicePanel({
   fields: InvoiceEmailFields;
   signInNext: string;
   missingName: string;
+  // Changes when the page starts a different invoice, even one without a
+  // number yet.
+  resetKey?: string | number;
   onSent?: () => void;
 }) {
   const { user } = useAuth();
@@ -59,9 +63,10 @@ export default function SendInvoicePanel({
   // A new invoice number is a new invoice: the recipient, the message and
   // "Sent" all belonged to the old one. A send still in flight reports
   // under the number it was sent with.
-  const [statusFor, setStatusFor] = useState(fields.number);
-  if (statusFor !== fields.number) {
-    setStatusFor(fields.number);
+  const invoiceKey = `${fields.number}|${resetKey}`;
+  const [statusFor, setStatusFor] = useState(invoiceKey);
+  if (statusFor !== invoiceKey) {
+    setStatusFor(invoiceKey);
     setTypedTo(null);
     setMessage("");
     if (status.kind !== "working") setStatus({ kind: "idle" });
@@ -218,7 +223,7 @@ export default function SendInvoicePanel({
               Send me a copy ({accountEmail})
             </label>
           )}
-          {!fields.issuerEmail.trim() && <p className="text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}.</p>}
+          <p className="text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}.</p>
           {status.kind === "error" && <p className="text-sm text-red-600">{status.message}</p>}
           <button type="submit" disabled={working} className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto">
             {working ? status.step : "Send invoice"}

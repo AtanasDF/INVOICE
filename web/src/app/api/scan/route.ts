@@ -3,6 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
 import { SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument, parseDataUrl } from "@/lib/scanExtraction";
+import { allow } from "@/lib/rateLimit";
+
+const HOUR = 60 * 60 * 1000;
+// A batch of receipts is one read per document; a busy evening of scanning
+// fits well inside this, a runaway loop doesn't.
+const USER_PER_HOUR = 150;
+const GLOBAL_PER_HOUR = 600;
 
 export const runtime = "nodejs";
 // A multi-page invoice through claude-opus-5 can take well past the
@@ -20,6 +27,9 @@ export async function POST(req: Request) {
   const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
   if (!user) {
     return NextResponse.json({ error: "Sign in to scan documents." }, { status: 401 });
+  }
+  if (!allow(`scan:${user.id}`, USER_PER_HOUR, HOUR) || !allow("scan:global", GLOBAL_PER_HOUR, HOUR)) {
+    return NextResponse.json({ error: "Too many scans this hour. Try again later." }, { status: 429 });
   }
 
   // `image` is the older single-file shape, still sent by invoices/new.

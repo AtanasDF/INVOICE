@@ -8,6 +8,8 @@ export const maxDuration = 30;
 
 const HOUR = 60 * 60 * 1000;
 const USER_PER_HOUR = 30;
+const USER_PER_DAY = 100;
+const DAY = 24 * HOUR;
 const GLOBAL_PER_HOUR = 60;
 // Vercel caps the request body at 4.5MB; the PDF arrives base64-encoded.
 const MAX_PDF_CHARS = 4_000_000;
@@ -34,6 +36,9 @@ export async function POST(req: Request) {
   const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
   if (!user) return NextResponse.json({ error: "Sign in to send invoices by email.", code: "sign_in" }, { status: 401 });
+  if (!user.email_confirmed_at) {
+    return NextResponse.json({ error: "Confirm your email address first (check your inbox for the sign-up link), then send." }, { status: 403 });
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -44,9 +49,12 @@ export async function POST(req: Request) {
 
   const to = text(body.to, 254).toLowerCase();
   if (!EMAIL_RE.test(to)) return NextResponse.json({ error: "Enter a valid email address to send to." }, { status: 400 });
+  // Replies only ever go to the account's own, confirmed address: an email
+  // typed on the invoice is unproven, and letting it be the reply-to would
+  // let anyone put someone else's (or a fraudster's) address behind the
+  // app's domain.
   const accountEmail = user.email?.toLowerCase() ?? null;
-  const issuerEmail = text(body.issuerEmail, 254).toLowerCase();
-  const replyTo = EMAIL_RE.test(issuerEmail) ? issuerEmail : accountEmail;
+  const replyTo = accountEmail;
   const copyToSelf = body.copyToSelf === true && !!accountEmail && accountEmail !== to;
 
   const issuerName = line(body.issuerName, 120);
@@ -79,6 +87,9 @@ export async function POST(req: Request) {
   };
 
   const key = `send:user:${user.id}`;
+  if (!allow(`${key}:day`, USER_PER_DAY, DAY)) {
+    return NextResponse.json({ error: "That's the most emails for today. Try again tomorrow." }, { status: 429 });
+  }
   if (!allow(key, USER_PER_HOUR, HOUR)) {
     return NextResponse.json({ error: "Too many emails this hour. Try again later." }, { status: 429 });
   }
@@ -121,5 +132,7 @@ export async function POST(req: Request) {
         : "The email couldn't be sent. Try again in a minute.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
+  // One line per send in the server log, so misuse can be traced to an account.
+  console.log("send-invoice sent", JSON.stringify({ user: user.id, to, issuerName, number: input.number, total: input.total, bank: bank.map(([k, v]) => `${k}: ${v}`) }));
   return NextResponse.json({ sent: true, to, copied: copyToSelf });
 }

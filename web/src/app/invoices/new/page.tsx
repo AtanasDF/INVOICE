@@ -50,7 +50,9 @@ function copiedTermsDays(t: InvoiceTemplate): number | null {
   return Number.isFinite(gap) && gap >= 0 ? Math.round(gap) : null;
 }
 
-type ScannedCustomer = { name: string; email: string; address: string };
+// archivedId: an archived client of the same name, offered back rather
+// than duplicated.
+type ScannedCustomer = { name: string; email: string; address: string; archivedId?: string };
 type Lists = { clients: Client[]; pastInvoices: Invoice[]; vatRegistered: boolean };
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
@@ -323,6 +325,7 @@ export default function NewInvoicePage() {
       const warnings = [
         body.template.currency && `The amounts were in ${body.template.currency}; this account invoices in £, so check them.`,
         vat === "included" && !lists.vatRegistered && "You're not VAT registered, so the prices were kept as typed.",
+        vat === "plus" && !lists.vatRegistered && "You're not VAT registered, so no VAT is added (turn it on in Settings if you are).",
       ].filter(Boolean);
       setTypedNote({ ok: true, text: ["Filled in from what you typed, dated today. Check it before saving.", ...warnings].join(" ") });
     } catch (err) {
@@ -348,14 +351,24 @@ export default function NewInvoicePage() {
     return typed || t.showsVat ? "standard" : "zero";
   }
 
+  // A scan copies a whole invoice, so it starts clean: customer, lines,
+  // today's date, terms. Typed text changes only what it says: without a
+  // customer it keeps the one already picked, and it keeps the date and
+  // terms unless it names terms.
   function applyCopy(t: InvoiceTemplate, lists: Lists, typed?: { vat: TypedVat }) {
     const name = t.customer.name?.trim() ?? "";
     const billable = lists.clients.filter((c) => c.kind === "client" && !c.archived);
     const match = name ? matchSupplier(name, billable) : null;
-    const forClientId = match?.id ?? "";
-    setClientId(forClientId);
-    setNewCustomer(!match && name ? { name, email: t.customer.email ?? "", address: t.customer.address ?? "" } : null);
-    setAddClientError(null);
+    const archived = name && !match ? matchSupplier(name, lists.clients.filter((c) => c.kind === "client" && c.archived)) : null;
+    const keepClient = !!typed && !name;
+    const forClientId = keepClient ? clientId : (match?.id ?? "");
+    if (!keepClient) {
+      setClientId(forClientId);
+      setNewCustomer(
+        !match && name ? { name, email: t.customer.email ?? "", address: t.customer.address ?? "", archivedId: archived?.id } : null
+      );
+      setAddClientError(null);
+    }
 
     setItems(
       t.lineItems.length
@@ -370,24 +383,35 @@ export default function NewInvoicePage() {
             return {
               description: String(li.description ?? ""),
               quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
-              unitPrice: Math.round(net * 10000) / 10000,
+              // To the penny, so the printed unit price times the quantity
+              // is the printed line total.
+              unitPrice: Math.round(net * 100) / 100,
               vatRate,
             };
           })
         : [{ ...BLANK_ITEM }]
     );
 
-    // A new invoice: dated today whatever the scan says, due by the copied
-    // terms (or the client's own), which a later date change keeps following.
-    const today = todayIso();
-    setDate(today);
     const days = copiedTermsDays(t);
     const clientDays = match?.paymentTerms ? termsLengthOf(match.paymentTerms) : null;
-    const length = days ?? clientDays;
-    setPaymentTerms(days !== null ? (days === 0 ? "Upon receipt" : `${days} days`) : (match?.paymentTerms ?? ""));
-    setTermsLength(length);
-    setDueDate(addDays(today, length ?? 30));
-    setDueDateManual(false);
+    if (typed) {
+      const length = days ?? (match ? clientDays : null);
+      if (length !== null) {
+        setPaymentTerms(days !== null ? (days === 0 ? "Upon receipt" : `${days} days`) : (match?.paymentTerms ?? ""));
+        setTermsLength(length);
+        if (!dueDateManual) setDueDate(addDays(date, length));
+      }
+    } else {
+      // A new invoice: dated today whatever the scan says, due by the copied
+      // terms (or the client's own), which a later date change keeps following.
+      const today = todayIso();
+      setDate(today);
+      const length = days ?? clientDays;
+      setPaymentTerms(days !== null ? (days === 0 ? "Upon receipt" : `${days} days`) : (match?.paymentTerms ?? ""));
+      setTermsLength(length);
+      setDueDate(addDays(today, length ?? 30));
+      setDueDateManual(false);
+    }
 
     const copiedNotes = t.notes ?? "";
     const previousCopy = copiedNotesRef.current;
@@ -405,6 +429,14 @@ export default function NewInvoicePage() {
     setAddingClient(true);
     setAddClientError(null);
     try {
+      if (newCustomer.archivedId) {
+        const id = newCustomer.archivedId;
+        await clientsStore.unarchive(id);
+        setClients((prev) => prev.map((c) => (c.id === id ? { ...c, archived: false } : c)));
+        onClientChange(id);
+        setNewCustomer(null);
+        return;
+      }
       const c = await clientsStore.add({
         name: newCustomer.name,
         isCompany: true,
@@ -529,7 +561,11 @@ export default function NewInvoicePage() {
         <p className="text-sm text-blue-600">
           Imported from your free invoice.
           {draft.currencySymbol !== "£" &&
-            ` Amounts were entered in ${draft.currencySymbol}; this account invoices in £, so check them before saving.`}{" "}
+            ` Amounts were entered in ${draft.currencySymbol}; this account invoices in £, so check them before saving.`}
+          {draft.number &&
+            ` It was numbered ${draft.number} there; here it gets your account's next number when you mark it sent, so if ${draft.number} has already gone to the customer, don't send this one again.`}
+          {(draft.cis.enabled || (draft.vatRegistered && draft.reverseCharge)) &&
+            ` ${draft.cis.enabled ? "The CIS deduction" : "Reverse charge"} isn't carried across, so the total here can differ from the one the customer saw.`}{" "}
           <button type="button" onClick={discardImport} className="font-medium underline">Discard import</button>
         </p>
       )}
@@ -538,7 +574,9 @@ export default function NewInvoicePage() {
         {newCustomer && !clientId && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
             <span>
-              {newCustomer.name} isn&apos;t one of your clients yet
+              {newCustomer.archivedId
+                ? `${newCustomer.name} is an archived client`
+                : `${newCustomer.name} isn't one of your clients yet`}
               {addClientError && <span className="block text-red-600">{addClientError}</span>}
             </span>
             <button
@@ -547,7 +585,7 @@ export default function NewInvoicePage() {
               disabled={addingClient}
               className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {addingClient ? "Adding…" : "Add as new client"}
+              {addingClient ? "Adding…" : newCustomer.archivedId ? "Unarchive and use" : "Add as new client"}
             </button>
           </div>
         )}

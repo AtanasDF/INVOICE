@@ -161,16 +161,18 @@ export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
   // A printed gap that isn't one of the presets is kept as custom terms.
   const paymentTerms = presetTerms(t.paymentTerms, printedGap) ?? (printedGap !== null ? `${printedGap} days` : base.paymentTerms);
   const gap = termsDays(paymentTerms) ?? printedGap ?? 14;
+  // Read off a rough page, a line can lack a quantity or price; it must
+  // still be a valid line, or the saved draft is rejected on the next load.
   const lines = t.lineItems.map((l) => ({
-    description: l.description,
-    quantity: l.quantity,
-    unitPrice: l.unitPrice,
+    description: String(l.description ?? ""),
+    quantity: Number.isFinite(l.quantity) && l.quantity > 0 ? l.quantity : 1,
+    unitPrice: Number.isFinite(l.unitPrice) ? l.unitPrice : 0,
     vatRate: (t.showsVat ? "standard" : "zero") as VatRateKind,
-    kind: l.kind,
+    kind: (["labour", "materials", "other"] as const).includes(l.kind) ? l.kind : "other",
   }));
   return {
     ...base,
-    layout: t.layout.style,
+    layout: (["classic", "modern", "compact"] as const).includes(t.layout?.style) ? t.layout.style : base.layout,
     issuer: { ...t.issuer },
     bank: { ...t.bank },
     customer: { ...t.customer },
@@ -178,8 +180,8 @@ export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
     dueDate: addDays(base.date, gap),
     paymentTerms,
     currencySymbol: currencySymbol(t.currency),
-    vatRegistered: t.showsVat,
-    cis: { enabled: t.cis, rate: 20 },
+    vatRegistered: !!t.showsVat,
+    cis: { enabled: !!t.cis, rate: 20 },
     lines: lines.length ? lines : [emptyLine()],
     notes: t.notes ?? "",
     footer: t.footer ?? "",
@@ -208,9 +210,8 @@ function isStoredDraft(v: unknown): v is StoredDraft {
   if (!isObject(v) || v.version !== 1) return false;
   const lines = v.lines;
   if (!Array.isArray(lines)) return false;
-  if (!lines.every((l) => isObject(l) && typeof l.description === "string" && typeof l.quantity === "number" && typeof l.unitPrice === "number")) return false;
-  const cis = v.cis;
-  if (!isObject(cis) || typeof cis.enabled !== "boolean" || (cis.rate !== 20 && cis.rate !== 30)) return false;
+  // A malformed line is repaired on read rather than costing the whole draft.
+  if (!lines.every(isObject)) return false;
   return isObject(v.issuer) && isObject(v.bank) && isObject(v.customer);
 }
 
@@ -227,7 +228,14 @@ export function readFreeInvoiceDraft(): FreeInvoiceDraft | null {
       issuer: { ...base.issuer, ...stored.issuer },
       bank: { ...base.bank, ...stored.bank },
       customer: { ...base.customer, ...stored.customer },
-      lines: stored.lines.map((l) => ({ ...emptyLine(), ...l })),
+      cis: isObject(stored.cis) && typeof stored.cis.enabled === "boolean" && (stored.cis.rate === 20 || stored.cis.rate === 30) ? stored.cis : base.cis,
+      lines: stored.lines.map((l) => ({
+        ...emptyLine(),
+        ...l,
+        description: typeof l.description === "string" ? l.description : String(l.description ?? ""),
+        quantity: Number.isFinite(Number(l.quantity)) ? Number(l.quantity) : 1,
+        unitPrice: Number.isFinite(Number(l.unitPrice)) ? Number(l.unitPrice) : 0,
+      })),
     };
   } catch {
     clearFreeInvoiceDraft();

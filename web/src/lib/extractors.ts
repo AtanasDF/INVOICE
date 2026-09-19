@@ -72,21 +72,53 @@ async function extractWithClaude<T>(opts: ExtractStructuredOptions): Promise<T> 
   return conformToSchema(opts.schema, toolUse.input) as T;
 }
 
-// Non-strict tool use can drop a property or send "" for an absent one;
-// this walks the schema so callers always get every property, with
-// absent values as null (arrays as []).
+// Model output isn't strictly typed: non-strict tool use can drop a
+// property, send "" or null, a number as text, or an enum value off the
+// list. This walks the schema and returns exactly its shape: absent values
+// become null where the schema allows it and otherwise an empty value (0,
+// "", false, [], an object of those); numbers are parsed ("£1,200" ->
+// 1200); an off-list enum is matched ignoring case, else "other" or the
+// first option ("low" for a missing confidence).
 export function conformToSchema(schema: unknown, value: unknown): unknown {
   if (!schema || typeof schema !== "object") return value;
   const node = schema as Record<string, unknown>;
-  const types = Array.isArray(node.type) ? node.type : [node.type];
   const branches = Array.isArray(node.anyOf) ? (node.anyOf as Record<string, unknown>[]) : [];
-  const nullable = types.includes("null") || branches.some((b) => b.type === "null");
-  if (value === undefined || (value === "" && nullable)) return node.type === "array" ? [] : nullable ? null : value;
-  if (Array.isArray(value) && node.items) return value.map((v) => conformToSchema(node.items, v));
-  if (value && typeof value === "object" && node.properties) {
-    const props = node.properties as Record<string, unknown>;
-    const obj = value as Record<string, unknown>;
-    return Object.fromEntries(Object.keys(props).map((k) => [k, conformToSchema(props[k], obj[k])]));
+  const types = (Array.isArray(node.type) ? node.type : node.type !== undefined ? [node.type] : branches.map((b) => b.type)).filter(
+    (t): t is string => typeof t === "string"
+  );
+  const nullable = types.includes("null");
+  const concrete = types.find((t) => t !== "null") ?? (node.properties ? "object" : undefined);
+  const options = ((node.enum as unknown[] | undefined) ?? (branches.find((b) => Array.isArray(b.enum))?.enum as unknown[] | undefined))?.filter(
+    (v): v is string => typeof v === "string"
+  );
+  // "other" for a kind of thing, "low" for a confidence the model didn't give.
+  const fallbackOption = options && (options.includes("other") ? "other" : options.includes("low") ? "low" : options[0]);
+
+  if (value === undefined || value === null || (value === "" && nullable)) {
+    if (nullable) return null;
+    if (concrete === "array") return [];
+    if (concrete === "object") return conformToSchema(node, {});
+    if (concrete === "number" || concrete === "integer") return 0;
+    if (concrete === "boolean") return false;
+    if (concrete === "string") return fallbackOption ?? "";
+    return value;
+  }
+  if (concrete === "number" || concrete === "integer") {
+    const n = typeof value === "number" ? value : Number(String(value).replace(/[£$€,\s]/g, ""));
+    return Number.isFinite(n) ? n : nullable ? null : 0;
+  }
+  if (concrete === "boolean") return typeof value === "boolean" ? value : String(value).toLowerCase() === "true";
+  if (concrete === "string") {
+    const text = typeof value === "string" ? value : String(value);
+    if (!options || options.includes(text)) return text;
+    const match = options.find((o) => o.toLowerCase() === text.toLowerCase());
+    return match ?? (nullable ? null : fallbackOption);
+  }
+  if (concrete === "array") return Array.isArray(value) ? value.map((v) => conformToSchema(node.items, v)) : [];
+  if (concrete === "object") {
+    const props = node.properties as Record<string, unknown> | undefined;
+    const obj = typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+    return props ? Object.fromEntries(Object.keys(props).map((k) => [k, conformToSchema(props[k], obj[k])])) : obj;
   }
   return value;
 }
@@ -127,7 +159,7 @@ async function extractWithGemini<T>(opts: ExtractStructuredOptions): Promise<T> 
     throw new Error(interaction.errors?.[0]?.message || "The Gemini engine failed to read the document. Try again.");
   }
   try {
-    return JSON.parse(interaction.output_text ?? "") as T;
+    return conformToSchema(opts.schema, JSON.parse(interaction.output_text ?? "")) as T;
   } catch {
     throw new Error(NOT_STRUCTURED);
   }

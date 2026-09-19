@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { extractContacts } from "@/lib/contactExtraction";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, parseDataUrl } from "@/lib/scanExtraction";
+import { allow } from "@/lib/rateLimit";
+
+const HOUR = 60 * 60 * 1000;
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -14,6 +17,10 @@ export async function POST(req: Request) {
   const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
   if (!user) return NextResponse.json({ error: "Sign in to scan." }, { status: 401 });
+  // Every call is a paid model read.
+  if (!allow(`contact:${user.id}`, 60, HOUR) || !allow("contact:global", 300, HOUR)) {
+    return NextResponse.json({ error: "Too many scans this hour. Try again later." }, { status: 429 });
+  }
 
   let body: { image?: unknown; engine?: unknown };
   try {
