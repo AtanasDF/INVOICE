@@ -8,6 +8,7 @@ import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { findDuplicate } from "@/lib/duplicates";
+import ClearFormButton from "@/components/ClearFormButton";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -132,6 +133,29 @@ export default function NewReceiptPage() {
 
   function removeReceiptLine(idx: number) {
     setLineItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  const filled = !!(clientId || vendor || totalAmount || vatAmount || currency !== "GBP" || notes || lineItems.length || warrantyMonths || tagsInput || imageDataUrl);
+
+  function clearForm() {
+    setClientId("");
+    setDate(new Date().toISOString().slice(0, 10));
+    setVendor("");
+    setCategory(mostUsedCategory(receipts.map((r) => r.category)) ?? CATEGORIES[0]);
+    setTotalAmount("");
+    setVatAmount("");
+    setCurrency("GBP");
+    setFxRateInput("");
+    setFxError(null);
+    setNotes("");
+    setLineItems([]);
+    setWarrantyMonths("");
+    setTagsInput("");
+    setImageDataUrl(null);
+    if (fileRef.current) fileRef.current.value = "";
+    setError(null);
+    setPossibleDuplicate(null);
+    setConfirmedDuplicate(false);
   }
 
   function duplicateOf(): Receipt | null {
@@ -347,7 +371,7 @@ export default function NewReceiptPage() {
                   <option value="">No category</option>
                   {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <button onClick={() => removeReceiptLine(idx)} className="col-span-1 text-red-600">✕</button>
+                <button type="button" onClick={() => removeReceiptLine(idx)} aria-label={`Remove item ${idx + 1}`} className="col-span-1 text-red-600">✕</button>
               </div>
             ))}
           </div>
@@ -387,9 +411,12 @@ export default function NewReceiptPage() {
             </button>
           </div>
         )}
-        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? "Saving…" : "Save receipt"}
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {saving ? "Saving…" : "Save receipt"}
+          </button>
+          <ClearFormButton onClear={clearForm} disabled={saving || !filled} />
+        </div>
       </form>
     </div>
   );

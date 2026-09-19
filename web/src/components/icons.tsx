@@ -58,3 +58,12 @@ export function UploadIcon({ className = "h-4 w-4" }: IconProps) {
     </svg>
   );
 }
+
+export function TorchIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h10v3l-2 4v9a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-9L7 6V3Z" />
+      <path strokeLinecap="round" d="M7 6h10M12 13v2" />
+    </svg>
+  );
+}

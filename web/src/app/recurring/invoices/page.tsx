@@ -16,6 +16,7 @@ import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
+import ClearFormButton from "@/components/ClearFormButton";
 
 function RecurringTabs() {
   return (
@@ -69,6 +70,17 @@ export default function RecurringInvoicesPage() {
 
   function removeLine(idx: number) {
     setLineItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  const filled = !!(clientId || paymentTerms || notes || dayOfMonth !== "1") || lineItems.length !== 1 || !!lineItems[0].description || lineItems[0].unitPrice !== 0 || lineItems[0].quantity !== 1;
+
+  function clearForm() {
+    setClientId("");
+    setLineItems([{ ...BLANK_ITEM }]);
+    setPaymentTerms("");
+    setNotes("");
+    setDayOfMonth("1");
+    setError(null);
   }
 
   async function addRecurring(e: React.FormEvent) {
@@ -236,9 +248,12 @@ export default function RecurringInvoicesPage() {
           <div className="text-right text-sm text-neutral-600">Subtotal: £{totals.subtotal.toFixed(2)}</div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? "Saving…" : "Add recurring invoice"}
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {saving ? "Saving…" : "Add recurring invoice"}
+          </button>
+          <ClearFormButton onClear={clearForm} disabled={saving || !filled} />
+        </div>
       </form>
 
       {loading ? (
