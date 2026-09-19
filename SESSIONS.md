@@ -29,6 +29,15 @@ and what is left open. Dates are session dates (Europe/London).
   next / Skip) with green lock-on fill; camera-first buttons on Invoices, Receipts, Clients;
   scan-to-fill for clients/suppliers via new `/api/contact-scan`; Show archived removed.
   Batch capture and review tested locally against a fake camera stream; live tests next.
+- Found and fixed a pre-existing bug: every Claude read (the app's default engine) was failing,
+  first on an enum the API rejects, then on strict mode's 16-nullable-field limit (scan schema has
+  29). Claude now runs non-strict with the result conformed to the schema (a909165, 88adc98,
+  4d81744); an interim "" workaround made Opus 5 leak tool syntax into empty fields, so it was
+  dropped. Scan routes allow 300s. Live check on a synthetic handwritten invoice: Claude and
+  Gemini both read vendor, number, date, total, lines and bank details correctly.
+- Signature on the free invoice: draw or photo, remembered on the device (5b63563).
+- Email sending: on branch `wip/email-send` (not main). PDF builds locally; needs a visual
+  check, a live send, and Atanas's Resend account + sending domain + `RESEND_API_KEY`.
 
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
