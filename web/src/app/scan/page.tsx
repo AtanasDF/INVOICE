@@ -328,7 +328,9 @@ export default function ScanPage() {
     if (current.kind === "retake") next = pages.map((p, i) => (i === current.index ? file : p));
     else if (current.kind === "add") next = [...pages, file];
     else {
-      // A single new page (the iOS native camera) replaces the batch too.
+      // The iOS native camera can't ask before it opens (a confirm costs
+      // the tap iOS needs), so it asks now, before dropping queued documents.
+      if (remaining && !confirmStartNew()) return;
       dropBatch();
       resetDocument();
       next = [file];

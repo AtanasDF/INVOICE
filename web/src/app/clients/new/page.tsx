@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ClientKind, clientsStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -44,16 +44,24 @@ export default function NewClientPage() {
   const [found, setFound] = useState<ScannedContact[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
 
-  // Only what the scan actually found is written, so details typed by
-  // hand survive a scan that doesn't show them.
+  // What the last scan wrote into each field. A field still holding that
+  // value belongs to the scan and follows the next pick (cleared when the
+  // new contact lacks it); anything typed by hand is left alone unless the
+  // new contact has a value for it.
+  const scannedRef = useRef({ email: "", address: "", vatNumber: "", contactPerson: "" });
+
   function fill(c: ScannedContact, i: number) {
     setPicked(i);
     setIsCompany(c.isCompany);
     setName(c.name);
-    if (c.email) setEmail(c.email);
-    if (c.address) setAddress(c.address);
-    if (c.vatNumber) setVatNumber(c.vatNumber);
-    if (c.contactPerson) setContactPerson(c.contactPerson);
+    const prev = scannedRef.current;
+    const next = { email: c.email ?? "", address: c.address ?? "", vatNumber: c.vatNumber ?? "", contactPerson: c.contactPerson ?? "" };
+    const follow = (current: string, was: string, now: string) => (now || current === was ? now : current);
+    setEmail((v) => follow(v, prev.email, next.email));
+    setAddress((v) => follow(v, prev.address, next.address));
+    setVatNumber((v) => follow(v, prev.vatNumber, next.vatNumber));
+    setContactPerson((v) => follow(v, prev.contactPerson, next.contactPerson));
+    scannedRef.current = next;
   }
 
   async function onScanned(file: CapturedFile) {
