@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MINUTES, PRESET_LABELS, TextPreset, greeting, phoneLinks, presetText, smsHref, whatsAppHref } from "@/lib/customerText";
+import { MINUTES, PRESET_LABELS, TextPreset, greeting, greetingName, phoneLinks, presetText, smsHref, whatsAppHref } from "@/lib/customerText";
 import type { Client } from "@/lib/storage";
 
 const CHIP = "rounded-full border px-3 py-1 text-sm";
@@ -26,7 +26,8 @@ export default function TextCustomer({
 }) {
   const [preset, setPreset] = useState<TextPreset>(presets[0]);
   const [minutes, setMinutes] = useState(20);
-  const [link, setLink] = useState(existingLink);
+  const [made, setMade] = useState("");
+  const link = existingLink || made;
   const [edited, setEdited] = useState<string | null>(null);
   const [phone, setPhone] = useState(client.phone);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +36,8 @@ export default function TextCustomer({
   const hi = greeting(client.name, client.isCompany, client.contactPerson);
   const text = edited ?? presetText(preset, { hi, from, minutes, link });
   const number = phoneLinks(phone);
-  const first = hi.replace(/^Hi\s*|,$/g, "") || client.name;
+  const first = greetingName(client.name, client.isCompany, client.contactPerson) || client.name;
+  const storedWorks = phoneLinks(client.phone) !== null;
 
   function choose(p: TextPreset) {
     setPreset(p);
@@ -48,9 +50,9 @@ export default function TextCustomer({
     setMaking(true);
     setError(null);
     try {
-      const made = await makeLink();
-      setLink(made);
-      setEdited((e) => (e === null ? null : `${e.trimEnd()}\n${made}`));
+      const url = await makeLink();
+      setMade(url);
+      setEdited((e) => (e === null ? null : `${e.trimEnd()}\n${url}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't make the invoice link.");
     } finally {
@@ -82,7 +84,7 @@ export default function TextCustomer({
         <textarea
           id="text-customer-message"
           rows={3}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="w-full rounded-lg border px-3 py-2 text-base sm:text-sm"
           value={making ? "Making the invoice link…" : text}
           disabled={making}
           onChange={(e) => setEdited(e.target.value)}
@@ -94,11 +96,13 @@ export default function TextCustomer({
         )}
         {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       </div>
-      {!client.phone && (
+      {!storedWorks && (
         <div>
           <label className="text-xs text-neutral-500" htmlFor="text-customer-phone">{first}&apos;s mobile</label>
-          <input id="text-customer-phone" type="tel" className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="07700 900123" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          <p className="mt-1 text-xs text-neutral-500">Add it to the customer in Clients to skip this next time.</p>
+          <input id="text-customer-phone" type="tel" className="w-full rounded-lg border px-3 py-2 text-base sm:text-sm" placeholder="07700 900123" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <p className="mt-1 text-xs text-neutral-500">
+            {client.phone ? "The number saved for them doesn't look right; check it here, and in Clients." : "Add it to the customer in Clients to skip this next time."}
+          </p>
         </div>
       )}
       {number && !making ? (

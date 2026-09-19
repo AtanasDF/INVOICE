@@ -9,6 +9,7 @@ import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOv
 import Tip from "@/components/Tip";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import TextCustomer from "@/components/TextCustomer";
+import { phoneLinks } from "@/lib/customerText";
 
 function invoiceTotal(inv: Invoice) {
   return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -292,7 +293,7 @@ export default function ClientsPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      {c.phone && (
+                      {phoneLinks(c.phone) && (
                         <button onClick={() => setTextingId(textingId === c.id ? null : c.id)} className="text-sm font-medium text-blue-600">
                           {textingId === c.id ? "Close" : "Text"}
                         </button>

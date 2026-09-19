@@ -1,11 +1,18 @@
 // Ready-made texts to a customer, sent from the phone's own Messages or
 // WhatsApp: nothing goes through the app.
 
-// A UK number as dialled (+44…) and as WhatsApp wants it (44…, digits only).
+// A number as dialled (+44…) and as WhatsApp wants it (44…, digits only).
+// UK numbers however they're written: "07700 900123", "+44 (0)7700 900123",
+// "0044 7700…", "7700 900123", with any extension left off; a UK number
+// must come out at 12 digits. Other countries' numbers need their +code.
 export function phoneLinks(raw: string): { tel: string; wa: string } | null {
-  const digits = raw.replace(/[^\d+]/g, "");
-  const intl = digits.startsWith("+") ? digits.slice(1) : digits.startsWith("00") ? digits.slice(2) : digits.startsWith("0") ? `44${digits.slice(1)}` : digits;
-  if (!/^\d{10,15}$/.test(intl)) return null;
+  const bare = raw
+    .replace(/\s*(ext\.?|extension|x|#)\s*\d+\s*$/i, "")
+    .replace(/\(0\)/g, "")
+    .replace(/[^\d+]/g, "");
+  let intl = bare.startsWith("+") ? bare.slice(1) : bare.startsWith("00") ? bare.slice(2) : bare.startsWith("0") ? `44${bare.slice(1)}` : /^[1237]\d{9}$/.test(bare) ? `44${bare}` : bare;
+  if (intl.startsWith("440")) intl = `44${intl.slice(3)}`;
+  if (intl.startsWith("44") ? intl.length !== 12 : !/^[1-9]\d{7,14}$/.test(intl)) return null;
   return { tel: `+${intl}`, wa: intl };
 }
 
@@ -13,9 +20,21 @@ export function phoneLinks(raw: string): { tel: string; wa: string } | null {
 export const smsHref = (tel: string, text: string) => `sms:${tel}?&body=${encodeURIComponent(text)}`;
 export const whatsAppHref = (wa: string, text: string) => `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
 
-// "Hi Jane," for a person; a company's contact if there is one, else "Hi,".
+const TITLE = /^(mr|mrs|ms|miss|mx|dr|prof|rev|sir)\.?$/i;
+
+// Who the text greets: the first name of a person (a company's contact),
+// "Mrs Jones" as written when it starts with a title, and "John" from
+// "Smith, John".
+export function greetingName(name: string, isCompany: boolean, contactPerson: string): string {
+  const full = (isCompany ? contactPerson : name).trim();
+  const [before, after] = full.split(",").map((p) => p.trim());
+  const words = (after || before || "").split(/\s+/).filter(Boolean);
+  if (!words.length) return "";
+  return TITLE.test(words[0]) && words.length > 1 ? `${words[0]} ${words[words.length - 1]}` : words[0];
+}
+
 export function greeting(name: string, isCompany: boolean, contactPerson: string): string {
-  const who = (isCompany ? contactPerson : name).trim().split(/\s+/)[0];
+  const who = greetingName(name, isCompany, contactPerson);
   return who ? `Hi ${who},` : "Hi,";
 }
 

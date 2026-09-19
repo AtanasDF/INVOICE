@@ -46,7 +46,9 @@ export default function PaidCelebration() {
 
   if (!paid) return null;
   return (
-    <div role="status" onClick={() => setPaid(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm print:hidden">
+    // Taps go through to the page, so marking the next invoice paid isn't
+    // swallowed; only a tap on the card itself closes it early.
+    <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-white/40 print:hidden">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden">
         {PIECES.map((i) => (
           <span
@@ -65,15 +67,15 @@ export default function PaidCelebration() {
           />
         ))}
       </div>
-      <div className="paid-pop relative mx-6 w-full max-w-xs rounded-2xl border bg-white p-6 text-center text-neutral-900 shadow-xl">
+      <div onClick={() => setPaid(null)} className="paid-pop pointer-events-auto relative mx-6 w-full max-w-xs rounded-2xl border bg-white p-6 text-center text-neutral-900 shadow-xl">
         <svg aria-hidden viewBox="0 0 52 52" className="mx-auto h-16 w-16">
           <circle cx="26" cy="26" r="24" fill="#dcfce7" />
           <path className="paid-tick" d="M15 27l7 7 15-16" fill="none" stroke="#15803d" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <p className="mt-3 text-2xl font-bold">Paid</p>
         <p className="mt-1 text-sm text-neutral-600">
-          {money(paid.amount)}
-          {paid.from ? ` from ${paid.from}` : ""}
+          {paid.amount > 0 ? money(paid.amount) : "Marked as paid"}
+          {paid.from ? `${paid.amount > 0 ? " from" : ":"} ${paid.from}` : ""}
         </p>
         {paid.number && <p className="text-xs text-neutral-500">Invoice {paid.number}</p>}
         {month !== null && month > 0 && <p className="mt-3 text-xs font-medium text-neutral-700">{money(month)} in this month</p>}

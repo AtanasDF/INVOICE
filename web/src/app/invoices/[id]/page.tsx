@@ -186,7 +186,7 @@ export default function InvoiceViewPage() {
 
   function celebrate(pays: InvoicePayment[]) {
     if (!invoice) return;
-    celebratePaid({ amount: sum(pays) || computeInvoiceTotals(invoice.items, invoiceVat(invoice, vatRegistered)).total, from: client?.name, number: invoice.number });
+    celebratePaid({ amount: sum(pays), from: client?.name, number: invoice.number });
   }
 
   // Fresh from the database, so another tab's payment is counted before
@@ -656,6 +656,8 @@ export default function InvoiceViewPage() {
   const paidSoFar = sum(payments);
   const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
   const paid = invoice.status === "paid";
+  // Closed by credit notes alone: nothing was paid to thank them for.
+  const creditedInFull = paidSoFar === 0 && Math.round(creditNoteTotal * 100) >= Math.round(totals.total * 100);
   const overdue = isOverdue(invoice.status, invoice.dueDate);
 
   return (
@@ -796,10 +798,10 @@ export default function InvoiceViewPage() {
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
           <h2 className="mb-3 font-semibold">Text {client.name}</h2>
           <TextCustomer
-            key={invoice.status}
+            key={`${invoice.status}:${link?.token ?? ""}`}
             client={client}
             from={profile?.businessName ?? ""}
-            presets={paid ? ["thanks", "done"] : ["done", "onMyWay", "late", "arrived"]}
+            presets={paid && !creditedInFull ? ["thanks", "done"] : ["done", "onMyWay", "late", "arrived"]}
             link={link ? invoiceLinkUrl(link.token) : ""}
             makeLink={ensureLink}
           />

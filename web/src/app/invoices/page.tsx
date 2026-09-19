@@ -113,7 +113,7 @@ export default function InvoicesPage() {
       setPayments((prev) => [...prev.filter((p) => p.invoiceId !== inv.id), ...all]);
       await invoicesStore.update(inv.id, { status: "paid" });
       setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
-      celebratePaid({ amount: all.reduce((s, p) => s + p.amount, 0) || total(inv), from: clients.find((c) => c.id === inv.clientId)?.name, number: inv.number });
+      celebratePaid({ amount: all.reduce((s, p) => s + p.amount, 0), from: clients.find((c) => c.id === inv.clientId)?.name, number: inv.number });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update invoice.");
     } finally {
