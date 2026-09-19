@@ -69,7 +69,8 @@ end $$;
 -- never the view counts.
 revoke all on public.invoice_links from anon;
 revoke all on public.invoice_links from authenticated;
-grant select, insert on public.invoice_links to authenticated;
+grant select on public.invoice_links to authenticated;
+grant insert (invoice_id, user_id, token) on public.invoice_links to authenticated;
 grant update (token) on public.invoice_links to authenticated;
 
 -- One open of a link, counted in the database so opens at the same moment
