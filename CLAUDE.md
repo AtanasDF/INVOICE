@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-025, backup 012 (all applied). Supabase grants anon/authenticated everything
+   migration-026, backup 012 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -109,6 +109,13 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   only) from the page's own script, never for `#o` (the owner's email copy) or a
   signed-in browser; the first open pushes the owner. Owners may change only the token
   ("Stop this link"). The send route accepts only this app's own /i/ links.
+- `quote_links` (migration-026): the same for quotes, `/q/<token>`, plus Accept / Decline.
+  `respond_to_quote_link` (service role only) moves a quote from sent to accepted or
+  declined only while it's sent and within valid_until; the owner putting it back to sent
+  lets the customer answer again. Owner status changes pass the status the page showed
+  (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
+  answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
+  works; copying its link marks it sent first. The owner's `#o` copy shows no buttons.
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique

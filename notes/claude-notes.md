@@ -39,7 +39,22 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-025 as of 2026-09-19: invoice_links (authenticated:
+- Live Supabase is at migration-026 as of 2026-09-19: quote_links (grants as
+  invoice_links; record_quote_link_view and respond_to_quote_link execute for
+  service_role only). Verified rolled back: owner can't fake an answer or call respond,
+  other user sees 0, accept records the trimmed name, a second answer is refused, reopen
+  then answer again works, draft/expired/bad answers refused, first view once.
+- Vercel's firewall put the live site into a challenge ("Vercel Security Checkpoint",
+  x-vercel-mitigated: challenge) for scripted requests on 2026-09-19 evening, most likely
+  after this session's many curl polls. Browsers pass it on their own. Don't poll the live
+  site with curl in loops; check in the browser pane. If it persists for real visitors,
+  look at Vercel > Firewall (Attack Challenge Mode / bot protection).
+- When the Mac's display sleeps, every Chrome tab is "hidden" and in-page timers are
+  throttled, so window.__runSql2 (which waits with setTimeout) hangs. Instead: set the
+  Monaco text by JS, click Run with the computer tool (find the Run button's ref), wait
+  with the tool, then read [role=gridcell] by JS.
+- Next 16 runs one dev server per folder; a second on another port refuses to start.
+- Migration-025 as of 2026-09-19: invoice_links (authenticated:
   select; insert only invoice_id/user_id/token; update only token; anon nothing;
   record_invoice_link_view execute for service_role only). Verified rolled back.
 - Next 16 serves notFound() from a dynamic page as a soft 404 (status 200) once it has

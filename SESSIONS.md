@@ -214,8 +214,14 @@ and what is left open. Dates are session dates (Europe/London).
   - Quotes on the Free page (f57ec09): Invoice | Quote switch, quote layout (valid until,
     no terms/bank/CIS), quote email/PDF wording, Save to account -> Quotes > New prefilled
     with add-customer. Headless 10/10.
-- Quote links (accept a quote online), branch `feature/quote-links`: WIP, parked while the
-  above were done; migration-026 written, not applied.
+- Accept a quote online (merged 803fcbd): /q/<token> with Accept/Decline (confirmed, name
+  recorded), quote email "View and accept online", owner sees opens and "Accepted online
+  by <name>", push on first open and on answer. Review fixes: reopened quotes can be
+  answered again, emailing a draft no longer marks it sent before the send works, owner
+  status changes check the status the page showed, DB hiccup says try again; owner's #o
+  copy shows no buttons. End to end 18/18; quotes 34/34 and deposits 17/17 unchanged.
+  Migration-026 applied and verified (rolled back). Live: checked in the browser pane
+  (curl gets Vercel's security checkpoint, see notes).
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
