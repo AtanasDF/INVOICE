@@ -103,7 +103,7 @@ export const INVOICE_TEMPLATE_SCHEMA: Record<string, unknown> = strictObject({
   cis: {
     type: "boolean",
     description:
-      "True if labour and materials are separated, or a CIS deduction / \"CIS\" line appears, or the invoice mentions the Construction Industry Scheme.",
+      "True ONLY if a CIS deduction line appears or the invoice mentions CIS / the Construction Industry Scheme. Labour and materials on separate lines alone is NOT CIS.",
   },
   lineItems: {
     type: "array",
@@ -164,7 +164,8 @@ const PROMPT =
   "are day/month/year: 08/09/26 is 8 September 2026, never 9 August. Copy the invoice date and the due date " +
   "EXACTLY as printed, character for character, into dateAsPrinted and dueDateAsPrinted (null when not printed). " +
   "Record the payment terms as printed and the currency (null for GBP). Set showsVat when VAT is itemised. Set cis " +
-  "when labour and materials are separated, or a CIS deduction line appears. List every line item with quantity " +
+  "only when a CIS deduction line appears or CIS is mentioned -- separate labour and materials lines alone are not " +
+  "CIS, and a wrong cis deducts 20% from the next invoice. List every line item with quantity " +
   "and unit price and classify each as labour, materials or other. Copy any notes block and any footer small print " +
   "verbatim. For layout: say where the business block sits (left/centre/right), where the invoice number and date " +
   "block sits (right/left/below the business block), whether there is a graphic logo, and whether the overall " +
