@@ -37,7 +37,7 @@ export function NumberInput({ value, onChange, className = INPUT, ...rest }: {
 }) {
   const [text, setText] = useState(value === 0 ? "" : String(value));
   const [seen, setSeen] = useState(value);
-  if (value !== seen) {
+  if (!Object.is(value, seen)) {
     setSeen(value);
     if (parseAmount(text) !== value) setText(value === 0 ? "" : String(value));
   }

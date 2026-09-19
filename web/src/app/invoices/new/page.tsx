@@ -361,8 +361,18 @@ export default function NewInvoicePage() {
       t.lineItems.length
         ? t.lineItems.map((li) => {
             const vatRate = lineVatRate(t, typed, forClientId, li.description, lists.pastInvoices);
-            const net = typed?.vat === "included" && lists.vatRegistered ? li.unitPrice / (1 + VAT_RATES[vatRate]) : li.unitPrice;
-            return { description: li.description, quantity: li.quantity, unitPrice: Math.round(net * 10000) / 10000, vatRate };
+            // Model output isn't strictly typed: a missing or text price must
+            // not reach the form as NaN.
+            const price = Number(li.unitPrice);
+            const said = Number.isFinite(price) ? price : 0;
+            const quantity = Number(li.quantity);
+            const net = typed?.vat === "included" && lists.vatRegistered ? said / (1 + VAT_RATES[vatRate]) : said;
+            return {
+              description: String(li.description ?? ""),
+              quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+              unitPrice: Math.round(net * 10000) / 10000,
+              vatRate,
+            };
           })
         : [{ ...BLANK_ITEM }]
     );

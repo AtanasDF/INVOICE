@@ -100,8 +100,8 @@ export async function GET(req: Request) {
     const ownerEmails = new Map<string, string>();
     await Promise.all(
       userIds.map(async (id) => {
-        const { data } = await admin.auth.admin.getUserById(id);
-        if (data.user?.email) ownerEmails.set(id, data.user.email);
+        const { data, error } = await admin.auth.admin.getUserById(id);
+        if (!error && data.user?.email) ownerEmails.set(id, data.user.email);
       })
     );
 
@@ -129,7 +129,9 @@ export async function GET(req: Request) {
       const template = templateOverride || DEFAULT_REMINDER_TEXT[inv.kind];
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
       const gross = computeInvoiceTotals(items, profile?.vat_registered ?? false).total;
-      const amountDue = gross - (creditByInvoice.get(inv.id) ?? 0);
+      const amountDue = Math.round((gross - (creditByInvoice.get(inv.id) ?? 0)) * 100) / 100;
+      // Credited in full: nothing to chase.
+      if (amountDue <= 0) continue;
       const businessName = profile?.business_name?.trim() ?? "";
       const bank = profile?.bank_details?.trim() ?? "";
       const body = [
@@ -145,7 +147,26 @@ export async function GET(req: Request) {
         .filter(Boolean)
         .join("\n\n");
       const replyTo = ownerEmails.get(inv.user_id);
+      // Without the owner's address a reply would go to an inbox nobody reads.
+      if (!replyTo) {
+        failures.push(`${inv.id}: no owner email, not sent`);
+        continue;
+      }
       const fromName = `${businessName.replace(/["<>\\\r\n]/g, "") || "Your supplier"} via Invoicer`;
+
+      // Claim the slot before sending, so two overlapping runs can't both
+      // send it: only the run whose insert lands goes on. A failed send
+      // keeps its claim (it wasn't retried before either; the next slot
+      // for this invoice still goes out).
+      const { data: claimed, error: claimErr } = await admin
+        .from("invoice_reminders_sent")
+        .upsert({ user_id: inv.user_id, invoice_id: inv.id, kind: inv.kind }, { onConflict: "invoice_id,kind", ignoreDuplicates: true })
+        .select("invoice_id");
+      if (claimErr) {
+        failures.push(`${inv.id}: ${claimErr.message}`);
+        continue;
+      }
+      if (!claimed?.length) continue;
 
       try {
         const res = await fetch("https://api.resend.com/emails", {
@@ -154,7 +175,7 @@ export async function GET(req: Request) {
           body: JSON.stringify({
             from: `"${fromName}" <reminders@invoiceover.com>`,
             to: [client.email],
-            ...(replyTo ? { reply_to: replyTo } : {}),
+            reply_to: replyTo,
             subject: `Invoice ${inv.number}: ${SUBJECT[inv.kind]}`,
             text: body,
           }),
@@ -163,7 +184,6 @@ export async function GET(req: Request) {
           failures.push(`${inv.id}: ${res.status}`);
           continue;
         }
-        await admin.from("invoice_reminders_sent").insert({ user_id: inv.user_id, invoice_id: inv.id, kind: inv.kind });
         sentCount += 1;
       } catch (err) {
         failures.push(`${inv.id}: ${err instanceof Error ? err.message : "unknown error"}`);
