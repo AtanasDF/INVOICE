@@ -10,8 +10,9 @@ import type { ScanEngine } from "@/lib/extractors";
 import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { findDuplicate, sameNumber, sameSupplier } from "@/lib/duplicates";
-import { takeScanCapture } from "@/lib/scanHandoff";
+import { dropUploadMarker, leftOutNote, takeScanCapture, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
+import UploadFilesButton from "@/components/UploadFilesButton";
 import CaptureButton from "@/components/CaptureButton";
 import PagesStrip, { Capture } from "@/components/scan/PagesStrip";
 import DateConfirm from "@/components/scan/DateConfirm";
@@ -115,11 +116,14 @@ function headingFor(f: Form, mode: Mode): string {
 
 const ENGINE_KEY = "scan-engine";
 
+// Gemini unless Claude was picked: on the live site it read a receipt in
+// 3.7s to Claude's 9.6s, with the same result, and longer PDFs widen that
+// gap. Claude stays a tap away under "Read with".
 function readEngine(): ScanEngine {
   try {
-    return localStorage.getItem(ENGINE_KEY) === "gemini" ? "gemini" : "claude";
+    return localStorage.getItem(ENGINE_KEY) === "claude" ? "claude" : "gemini";
   } catch {
-    return "claude";
+    return "gemini";
   }
 }
 
@@ -165,11 +169,16 @@ export default function ScanPage() {
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
 
   const [pages, setPages] = useState<CapturedFile[]>([]);
-  const [capture, setCapture] = useState<Capture | null>({ kind: "first" });
+  // Files picked on another page arrive without the camera opening.
+  const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() ? null : { kind: "first" }));
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [engine, setEngine] = useState<ScanEngine>(readEngine);
   const [batch, setBatch] = useState<{ docs: CapturedFile[][]; index: number } | null>(null);
+  // Picked files waiting for the supplier lists; kept here so Try again
+  // can still read them if the lists failed to load.
+  const [pendingUploads, setPendingUploads] = useState<CapturedFile[][] | null>(null);
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
   const readsRef = useRef<Promise<ScanResult>[]>([]);
 
   const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayIso() }));
@@ -214,9 +223,21 @@ export default function ScanPage() {
     // screen never renders for it; extraction waits for the lists to load.
     const handoff = takeScanCapture();
     if (handoff) beginHandoff(handoff);
+    // Files picked with "Upload from files": each one a document, read
+    // together as a batch once the suppliers are in.
+    const marked = !handoff && uploadMarked();
+    const uploaded = marked ? takeUploads("/scan") : null;
+    const docs = uploaded ? uploaded.files.map((f) => [f]) : null;
+    if (marked) dropUploadMarker();
+    if (docs) beginUploads(docs, leftOutNote(uploaded!.failed, uploaded!.files.length + uploaded!.failed));
+    else if (marked) uploadsLost();
     loadLists()
       .then((l) => {
         if (handoff) runExtraction([handoff], l.cats, l.suppliers, l.receipts);
+        if (docs) {
+          setPendingUploads(null);
+          startBatch(docs, l);
+        }
       })
       .catch((err) => {
         setScanning(false);
@@ -244,6 +265,30 @@ export default function ScanPage() {
     return { cats, suppliers: c.filter((x) => x.kind === "supplier" && !x.archived), receipts: r };
   }
 
+  function beginUploads(docs: CapturedFile[][], note: string | null) {
+    setPendingUploads(docs);
+    setUploadNote(note);
+    setCapture(null);
+    setScanning(true);
+  }
+
+  function uploadsLost() {
+    setScanError("Your files didn't come through. Pick them again.");
+  }
+
+  async function readUploads(docs: CapturedFile[][], note: string | null) {
+    beginUploads(docs, note);
+    setScanError(null);
+    try {
+      const l = listsLoadedRef.current ? undefined : await loadLists();
+      setPendingUploads(null);
+      startBatch(docs, l);
+    } catch (err) {
+      setScanning(false);
+      setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+    }
+  }
+
   function beginHandoff(file: CapturedFile) {
     setPages([file]);
     setCapture(null);
@@ -252,6 +297,10 @@ export default function ScanPage() {
 
   function applyResult(result: ScanResult, supplierList: Client[], receiptList: Receipt[]) {
     const touched = touchedRef.current;
+    // A UK document writes the day first, so "08/09/26" is 8 September and
+    // there's nothing to ask. Only a document in another currency (an
+    // American supplier, say) might mean 9 August.
+    const askOrder = !!result.currency && result.currency !== "GBP";
     const unless = (k: keyof Form, fields: Partial<Form>) => (touched.has(k) ? {} : fields);
     setForm((f) => {
       const match = touched.has("clientId") || !result.vendor ? null : matchSupplier(result.vendor, supplierList);
@@ -276,12 +325,12 @@ export default function ScanPage() {
           date: result.date ?? f.date,
           dateConf: result.dateConfidence,
           dateAsPrinted: result.dateAsPrinted,
-          dateAlternative: result.date && result.dateAmbiguous ? result.dateAlternative : null,
+          dateAlternative: askOrder && result.date && result.dateAmbiguous ? result.dateAlternative : null,
         }),
         ...unless("dueDate", {
           dueDate: result.dueDate ?? "",
           dueDateAsPrinted: result.dueDateAsPrinted,
-          dueDateAlternative: result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
+          dueDateAlternative: askOrder && result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
         }),
         categoryGuess,
         ...supplierCategory({ ...f, categoryGuess }, clientId, supplierList, receiptList),
@@ -335,6 +384,10 @@ export default function ScanPage() {
   }
 
   async function retry() {
+    if (pendingUploads) {
+      readUploads(pendingUploads, uploadNote);
+      return;
+    }
     if (listsLoadedRef.current) {
       runExtraction(pages, categories, suppliers, receipts);
       return;
@@ -369,16 +422,25 @@ export default function ScanPage() {
     runExtraction(next, categories, suppliers, receipts);
   }
 
-  function startBatch(docs: CapturedFile[][]) {
+  function startBatch(docs: CapturedFile[][], lists?: { cats: string[]; suppliers: Client[]; receipts: Receipt[] }) {
     const limit = limiter(READ_CONCURRENCY);
+    const cats = lists?.cats ?? categories;
+    if (lists) suppliersRef.current = lists.suppliers;
     readsRef.current = docs.map((d) => {
-      const read = limit(() => extractPages(d, categories, engine));
+      const read = limit(() => extractPages(d, cats, engine));
       read.catch(() => {});
       return read;
     });
     setBatch({ docs, index: 0 });
-    openDoc(docs, 0);
+    openDoc(docs, 0, lists?.receipts);
   }
+
+  // Suppliers as they are now: one added while an earlier document in the
+  // batch was open must be matched against the next.
+  const suppliersRef = useRef<Client[]>([]);
+  useEffect(() => {
+    suppliersRef.current = suppliers;
+  });
 
   function openDoc(docs: CapturedFile[][], index: number, receiptList: Receipt[] = receipts) {
     resetDocument();
@@ -386,7 +448,7 @@ export default function ScanPage() {
     setCapture(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
-    runExtraction(docs[index], categories, suppliers, receiptList, readsRef.current[index]);
+    runExtraction(docs[index], categories, suppliersRef.current, receiptList, readsRef.current[index]);
   }
 
   // True when there was another document in the batch to move on to.
@@ -554,10 +616,20 @@ export default function ScanPage() {
         setSaving(false);
       }
     }
+    // Linked when none was picked to a supplier of exactly this name, such
+    // as one added since the document was read. Nothing looser: the form
+    // didn't show it. A supplier is never made here: only "Add as
+    // supplier" does that.
+    const clearedSupplier = touchedRef.current.has("clientId") && !form.clientId;
+    const clientId =
+      form.clientId ||
+      (clearedSupplier || !form.vendor.trim()
+        ? ""
+        : (suppliersRef.current.find((c) => normaliseSupplierName(c.name) === normaliseSupplierName(form.vendor))?.id ?? ""));
     if (!force && mode !== "archival") {
       const dup = findDuplicate(
         {
-          clientId: form.clientId,
+          clientId,
           vendor: form.vendor,
           invoiceNumber: form.invoiceNumber.trim() || null,
           date: form.date,
@@ -577,12 +649,13 @@ export default function ScanPage() {
     setSaveError(null);
     try {
       const details: DocumentDetails = { ...form.details };
+      if (clearedSupplier) details.noSupplier = true;
       const other = (details.other ?? []).filter((o) => o.label.trim() && o.value.trim());
       if (other.length) details.other = other;
       else delete details.other;
       const saved = await receiptsStore.add(
         {
-          clientId: form.clientId,
+          clientId,
           date: form.date,
           vendor: form.vendor,
           category: form.category || "Other",
@@ -673,22 +746,47 @@ export default function ScanPage() {
   const errorBanner = scanError && (
     <div className="rounded-lg border border-red-200 bg-red-50 p-3">
       <p className="text-sm text-red-600">{scanError}</p>
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          onClick={retry}
-          className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
-        >
-          Try again
-        </button>
-        <CaptureButton
-          onOpen={() => setCapture({ kind: "retake", index: pages.length - 1, failureMessage: scanError })}
-          onCapture={(file) => onCaptured(file, { kind: "retake", index: pages.length - 1 })}
-          disabled={scanning}
-          className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50"
-        >
-          Retake last page
-        </CaptureButton>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {(pages.length > 0 || pendingUploads) && (
+          <button
+            type="button"
+            onClick={retry}
+            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+          >
+            Try again
+          </button>
+        )}
+        {pages.length > 0 ? (
+          <CaptureButton
+            onOpen={() => setCapture({ kind: "retake", index: pages.length - 1, failureMessage: scanError })}
+            onCapture={(file) => onCaptured(file, { kind: "retake", index: pages.length - 1 })}
+            disabled={scanning}
+            className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50"
+          >
+            Retake last page
+          </CaptureButton>
+        ) : (
+          !pendingUploads && (
+            <>
+              <UploadFilesButton
+                onFiles={(files, failed) => readUploads(files.map((f) => [f]), leftOutNote(failed, files.length + failed))}
+                label="Pick files again"
+                disabled={scanning}
+                buttonClassName="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setScanError(null);
+                  setCapture({ kind: "first" });
+                }}
+                className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700"
+              >
+                Use the camera
+              </button>
+            </>
+          )
+        )}
       </div>
     </div>
   );
@@ -701,6 +799,7 @@ export default function ScanPage() {
             Document {batch.index + 1} of {batch.docs.length}
           </p>
         )}
+        {uploadNote && <p className="mb-1 text-xs text-amber-700">{uploadNote}</p>}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (
@@ -740,7 +839,13 @@ export default function ScanPage() {
         )}
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
           <p className="text-neutral-600">
-            {scanning ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…` : `${engine === "gemini" ? "Gemini" : "Claude"} read the document — check the details below before saving.`}
+            {!pages.length
+              ? scanning
+                ? "Reading your files…"
+                : "Nothing read yet."
+              : scanning
+                ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…`
+                : `${engine === "gemini" ? "Gemini" : "Claude"} read the document — check the details below before saving.`}
           </p>
           <label className="flex items-center gap-2 text-xs text-neutral-500">
             Read with

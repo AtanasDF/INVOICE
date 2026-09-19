@@ -30,3 +30,57 @@ export function takeScanCapture(): ScanHandoff | null {
     return null;
   }
 }
+
+// Files picked with "Upload from files" on another page, for the page that
+// reads them. Held in memory: getting there is a client-side navigation,
+// and several photos or PDFs can be more than sessionStorage holds. The
+// address carries upload=1, so the page knows files are coming (and keeps
+// the camera shut, or says they were lost if a full page load emptied
+// this), and they're only handed to the page they were picked for.
+let uploads: { files: ScanHandoff[]; path: string; failed: number } | null = null;
+
+export function stashUploads(files: ScanHandoff[], href: string, failed: number): string {
+  const [path, hash] = href.split("#");
+  uploads = { files, path: path.split("?")[0], failed };
+  return `${path}${path.includes("?") ? "&" : "?"}upload=1${hash ? `#${hash}` : ""}`;
+}
+
+export function uploadMarked(): boolean {
+  return new URLSearchParams(window.location.search).get("upload") === "1";
+}
+
+// Once read, a refresh shouldn't expect them again.
+export function dropUploadMarker(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("upload");
+  window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+}
+
+export function takeUploads(path: string): { files: ScanHandoff[]; failed: number } | null {
+  const taken = uploads?.path === path ? uploads : null;
+  uploads = null;
+  return taken;
+}
+
+export function leftOutNote(failed: number, total: number): string | null {
+  return failed ? `${failed} of ${total} file${total === 1 ? "" : "s"} couldn't be read and ${failed === 1 ? "was" : "were"} left out.` : null;
+}
+
+// A picked file as a scan page takes it: photos downscaled like every
+// capture (see imageDownscale), PDFs as they are.
+export function readUpload(file: File): Promise<ScanHandoff> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const { downscaleImageDataUrl } = await import("@/lib/imageDownscale");
+        const dataUrl = await downscaleImageDataUrl(reader.result as string);
+        resolve({ dataUrl, mediaType: file.type.startsWith("image/") ? "image/jpeg" : file.type || "application/pdf" });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Could not read this file."));
+    reader.readAsDataURL(file);
+  });
+}

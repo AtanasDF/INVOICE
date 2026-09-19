@@ -114,3 +114,18 @@ body {
     animation: none;
   }
 }
+
+/* iPhone Safari gives a date input a minimum width of its own, which in a
+   half-width column pushed it past the edge and over the next field. */
+input[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.625rem;
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #fff;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
