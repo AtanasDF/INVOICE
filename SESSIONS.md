@@ -354,6 +354,28 @@ and what is left open. Dates are session dates (Europe/London).
 - Session hygiene: this session started in another project's folder (MM INVOICES AUTO);
   nothing there was read or changed. Start the next Invoicer session in `Desktop/INVOICE`.
 
+## 2026-09-19 — Supplier quote requests (agent in a worktree), branch `feature/quote-requests`
+
+**Brief (Atanas, from his phone):** request quotes from companies by email, gather them
+clearly separated, compare suppliers' prices, pick the better value per item and split
+the order. Schema change: migration-028 (new tables only). Not merged; migration NOT
+applied (Atanas applies and verifies it).
+
+- migration-028: `quote_requests` (title, items jsonb with ids, notes, needed_by,
+  site_address, open/closed, choice) and `quote_request_suppliers` (one row per supplier:
+  token, sent_at, waiting/replied/declined, prices keyed by item id, delivery,
+  vat_included, valid_until, note, source online/manual/scan, document_path, previous).
+  Request FK is composite with user_id; supplier FK is RESTRICT + same-owner trigger
+  (clients has no unique (id, user_id), adding one would alter clients). The owner has no
+  update grant on answer columns: typed-in / scanned prices go through
+  `record_quote_request_response` (security definer, checks the answer time the page
+  showed, keeps the replaced answer in `previous`); the supplier's own answer through
+  `submit_quote_request_response` (service role, once, open and not past needed-by).
+- `src/lib/quoteCompare.ts`: per-line cheapest, supplier totals (ex VAT; VAT-inclusive
+  prices converted at 20%), best single vs best split (every supplier set tried, delivery
+  once per supplier used; split only when cheaper), expired offers never auto-picked,
+  order text, scanned-line matching. Unit 20/20.
+
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
 **Shipped to main and live**
