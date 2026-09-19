@@ -75,7 +75,8 @@ function unique(items: (AddressMatch | null)[]): AddressMatch[] {
 
 // The post town for each postcode (postcodes.io's built-up area), in one
 // call: OpenStreetMap often gives the council instead ("Kirklees" for
-// Huddersfield). Without an answer, OpenStreetMap's own town stands.
+// Huddersfield). Where there's no built-up area, OpenStreetMap's own town
+// stands.
 async function townsFor(postcodes: (string | null)[]): Promise<Map<string, string>> {
   const unique = [...new Set(postcodes.filter((p): p is string => !!p))];
   const towns = new Map<string, string>();
@@ -88,10 +89,13 @@ async function townsFor(postcodes: (string | null)[]): Promise<Map<string, strin
       signal: AbortSignal.timeout(4000),
       cache: "no-store",
     });
-    const body = (await res.json().catch(() => null)) as { result?: { query: string; result: { bua?: string | null; admin_district?: string } | null }[] } | null;
+    const body = (await res.json().catch(() => null)) as { result?: { query: string; result: { bua?: string | null } | null }[] } | null;
     for (const r of body?.result ?? []) {
       const pc = normalisePostcode(r.query);
-      if (pc && r.result) towns.set(pc, townCase(postcodeTown(pc, r.result.bua, [], r.result.admin_district)));
+      // Only a built-up area beats OpenStreetMap's town; with none (all of
+      // Scotland and Northern Ireland, rural England and Wales) postcodes.io
+      // only has the council, which is worse.
+      if (pc && r.result?.bua) towns.set(pc, townCase(postcodeTown(pc, r.result.bua, [], null)));
     }
   } catch {
     // OpenStreetMap's towns will do.
