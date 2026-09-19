@@ -179,6 +179,7 @@ export default function ScanPage() {
   const [supplierSaved, setSupplierSaved] = useState(false);
   const [supplierDuplicate, setSupplierDuplicate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<Receipt | null>(null);
 
@@ -533,15 +534,23 @@ export default function ScanPage() {
     }
     const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
     const sign = mode === "credit_note" ? -1 : 1;
+    // A second tap, or a Skip, while this save waits must not start another.
+    if (savingRef.current) return;
     // The duplicate check is only as good as the list it checks: if the
     // first load failed (a weak signal), load it now rather than check nothing.
     let receiptList = receipts;
     if (!listsLoadedRef.current) {
+      savingRef.current = true;
+      setSaving(true);
+      setSaveError(null);
       try {
         receiptList = (await loadLists()).receipts;
       } catch {
         setSaveError("Couldn't load your saved documents to check for duplicates. Check your connection and try again.");
         return;
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
       }
     }
     if (!force && mode !== "archival") {
@@ -562,6 +571,7 @@ export default function ScanPage() {
       }
     }
     setDuplicate(null);
+    savingRef.current = true;
     setSaving(true);
     setSaveError(null);
     try {
@@ -608,13 +618,14 @@ export default function ScanPage() {
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
 
   function discard() {
-    if (saving) return;
+    if (saving || savingRef.current) return;
     if (remaining) {
       if (window.confirm("Skip this document? It won't be saved.")) advance();
       return;

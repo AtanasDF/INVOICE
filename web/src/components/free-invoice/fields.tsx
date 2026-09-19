@@ -18,6 +18,16 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 
 // Holds the raw text so "1." and a cleared field survive typing; the
 // parsed number is what the draft stores.
+// What's shown must be what's stored: "1,200.50" is 1200.5 and a decimal
+// comma ("2,5") is 2.5, where parseFloat alone would store 1 and 2.
+export function parseAmount(text: string): number {
+  let t = text.replace(/[\s£$€]/g, "");
+  if (t.includes(",") && !t.includes(".") && /^-?\d+,\d{1,2}$/.test(t)) t = t.replace(",", ".");
+  else t = t.replace(/,/g, "");
+  const n = Number(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function NumberInput({ value, onChange, className = INPUT, ...rest }: {
   value: number;
   onChange: (n: number) => void;
@@ -29,7 +39,7 @@ export function NumberInput({ value, onChange, className = INPUT, ...rest }: {
   const [seen, setSeen] = useState(value);
   if (value !== seen) {
     setSeen(value);
-    if ((parseFloat(text) || 0) !== value) setText(value === 0 ? "" : String(value));
+    if (parseAmount(text) !== value) setText(value === 0 ? "" : String(value));
   }
   return (
     <input
@@ -39,7 +49,7 @@ export function NumberInput({ value, onChange, className = INPUT, ...rest }: {
       value={text}
       onChange={(e) => {
         setText(e.target.value);
-        onChange(parseFloat(e.target.value) || 0);
+        onChange(parseAmount(e.target.value));
       }}
     />
   );

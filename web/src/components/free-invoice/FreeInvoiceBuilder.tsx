@@ -196,7 +196,7 @@ export default function FreeInvoiceBuilder() {
   const actions = (
     <>
       <button type="button" onClick={goToSend} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-        Send by email
+        Send or share
       </button>
       <button type="button" onClick={print} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         Print or save as PDF
@@ -226,7 +226,7 @@ export default function FreeInvoiceBuilder() {
         </div>
       )}
       <button type="button" onClick={goToSend} className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white">
-        Send by email
+        Send or share
       </button>
       <button type="button" onClick={() => setTab(tab === "edit" ? "preview" : "edit")} className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-neutral-700">
         {tab === "edit" ? "Preview" : "Edit"}

@@ -40,9 +40,62 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
     if (status.kind !== "working") setStatus({ kind: "idle" });
   }
   const accountEmail = user?.email ?? "";
+  // The last PDF made, keyed by the invoice it was made from, so a second
+  // tap on Share can open the share sheet at once: iOS only allows that
+  // straight after a tap, not after a second or two of making the PDF.
+  const pdfRef = useRef<{ key: string; blob: Blob; save: (filename: string) => void } | null>(null);
+  const [shareState, setShareState] = useState<"idle" | "making" | "ready" | "error">("idle");
+  const [shareError, setShareError] = useState<string | null>(null);
   const t = computeDraftTotals(draft);
   const due = draft.cis.enabled ? t.netPaymentDue : t.total;
   const working = status.kind === "working";
+
+  async function currentPdf() {
+    const key = JSON.stringify(draft);
+    if (pdfRef.current?.key === key) return pdfRef.current;
+    if (!sheetRef.current) throw new Error("The invoice isn't ready yet.");
+    const { blob, save } = await renderInvoicePdf(sheetRef.current);
+    pdfRef.current = { key, blob, save };
+    return pdfRef.current;
+  }
+
+  const shareText = `Invoice${draft.number ? ` ${draft.number}` : ""}${draft.issuer.name ? ` from ${draft.issuer.name}` : ""}: ${formatMoney(draft.currencySymbol, due)}${draft.dueDate ? `, due ${longDate(draft.dueDate)}` : ""}.`;
+
+  async function share() {
+    setShareError(null);
+    const cached = pdfRef.current?.key === JSON.stringify(draft);
+    try {
+      if (!cached) setShareState("making");
+      const pdf = await currentPdf();
+      const file = new File([pdf.blob], pdfFilename(draft), { type: "application/pdf" });
+      if (!navigator.canShare?.({ files: [file] })) {
+        pdf.save(pdfFilename(draft));
+        setShareState("idle");
+        return;
+      }
+      try {
+        await navigator.share({ files: [file], title: pdfFilename(draft), text: shareText });
+        setShareState("idle");
+      } catch (err) {
+        if ((err as Error).name === "AbortError") setShareState("idle");
+        // Too long since the tap: the PDF is made, so the next tap shares at once.
+        else setShareState("ready");
+      }
+    } catch (err) {
+      setShareState("error");
+      setShareError(err instanceof Error ? err.message : "Couldn't make the PDF.");
+    }
+  }
+
+  async function download() {
+    setShareError(null);
+    try {
+      const pdf = await currentPdf();
+      pdf.save(pdfFilename(draft));
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : "Couldn't make the PDF.");
+    }
+  }
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +140,7 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
 
   return (
     <section id="send-by-email" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-      <h2 className="font-semibold">Send by email</h2>
+      <h2 className="font-semibold">Send it</h2>
       <p className="mt-1 text-sm text-neutral-600">
         {formatMoney(draft.currencySymbol, due)}
         {draft.number ? ` · ${draft.number}` : ""} goes as a PDF, with your payment details in the email.
@@ -149,6 +202,23 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
           </button>
         </form>
       )}
+      <div className="mt-5 border-t pt-4">
+        <p className="text-xs text-neutral-500">Or share it yourself</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={share}
+            disabled={shareState === "making"}
+            className={`rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 ${shareState === "ready" ? "bg-neutral-900 text-white" : "border text-neutral-700"}`}
+          >
+            {shareState === "making" ? "Making the PDF…" : shareState === "ready" ? "Ready — tap to share" : "Share (WhatsApp, Messages…)"}
+          </button>
+          <button type="button" onClick={download} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+            Download PDF
+          </button>
+        </div>
+        {shareError && <p className="mt-2 text-sm text-red-600">{shareError}</p>}
+      </div>
       {/* Same sheet as ScaledPreview, unscaled, so the PDF is the preview. */}
       {createPortal(
         <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>

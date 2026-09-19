@@ -31,10 +31,12 @@ type ScanApiResult = {
   notes: string | null;
 };
 
+// "30 days from receipt" is 30 days; only terms with no number and a word
+// like "receipt" mean due at once.
 function termsLengthOf(terms: string): number | null {
-  if (/receipt|immediate/i.test(terms)) return 0;
   const m = /(\d+)\s*days?/i.exec(terms);
-  return m ? Number(m[1]) : null;
+  if (m) return Number(m[1]);
+  return /receipt|immediate/i.test(terms) ? 0 : null;
 }
 
 // Printed terms win over the printed date gap, which catches invoices that
@@ -107,7 +109,7 @@ export default function NewInvoicePage() {
   const listsRef = useRef<Promise<{ clients: Client[]; pastInvoices: Invoice[] }> | null>(null);
   const copiedNotesRef = useRef("");
   // Days from the invoice date to the due date, when copied terms set it.
-  const [termsLength, setTermsLength] = useState<number | null>(null);
+  const [termsLength, setTermsLength] = useState<number | null>(() => (draft?.paymentTerms ? termsLengthOf(draft.paymentTerms) : null));
 
   useEffect(() => {
     const load = Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
@@ -182,7 +184,16 @@ export default function NewInvoicePage() {
   function onClientChange(id: string) {
     setClientId(id);
     const client = clients.find((c) => c.id === id);
-    if (client?.paymentTerms && !paymentTerms) setPaymentTerms(client.paymentTerms);
+    if (client?.paymentTerms && !paymentTerms) applyTerms(client.paymentTerms);
+  }
+
+  // Terms that name a number of days set the due date, unless the due date
+  // has been typed by hand.
+  function applyTerms(text: string) {
+    setPaymentTerms(text);
+    const days = termsLengthOf(text);
+    setTermsLength(days);
+    if (days !== null && !dueDateManual) setDueDate(addDays(date, days));
   }
 
   function addSuggestedItem(description: string, unitPrice: number, vatRate: VatRateKind) {
@@ -496,8 +507,7 @@ export default function NewInvoicePage() {
           className="w-full rounded-lg border px-3 py-2"
           value={paymentTerms}
           onChange={(e) => {
-            setPaymentTerms(e.target.value);
-            setTermsLength(termsLengthOf(e.target.value));
+            applyTerms(e.target.value);
           }}
           placeholder="Payment terms (e.g. 30 days)"
         />

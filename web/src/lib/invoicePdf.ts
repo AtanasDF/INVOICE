@@ -40,7 +40,7 @@ export function pageSlices(breaks: number[]): [number, number][] {
 // The on-screen A4 sheet, photographed at 2x and laid onto A4 pages.
 // Image based rather than laid out as PDF text, so it is exactly what the
 // preview shows on every layout.
-export async function renderInvoicePdf(sheet: HTMLElement): Promise<{ base64: string; save: (filename: string) => void }> {
+export async function renderInvoicePdf(sheet: HTMLElement): Promise<{ base64: string; blob: Blob; save: (filename: string) => void }> {
   const [{ toCanvas }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
   const options = { pixelRatio: 2, backgroundColor: "#ffffff" };
   // Safari leaves images (the signature) out of the first capture.
@@ -62,5 +62,5 @@ export async function renderInvoicePdf(sheet: HTMLElement): Promise<{ base64: st
     const y = page === 0 ? 0 : PAGE_MARGIN * ptPerCss;
     pdf.addImage(part.toDataURL("image/jpeg", 0.9), "JPEG", 0, y, PAGE_WIDTH * ptPerCss, (sh / pxPerCss) * ptPerCss);
   });
-  return { base64: pdf.output("datauristring").split(",")[1], save: (filename) => pdf.save(filename) };
+  return { base64: pdf.output("datauristring").split(",")[1], blob: pdf.output("blob"), save: (filename) => pdf.save(filename) };
 }
