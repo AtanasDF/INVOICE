@@ -8,7 +8,8 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { money } from "@/lib/money";
-import { matchSupplier } from "@/lib/supplierMatch";
+import { normaliseSupplierName } from "@/lib/supplierMatch";
+import { bulkMatchSupplier, readLinkSkips, writeLinkSkips } from "@/lib/supplierLinks";
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 
@@ -136,7 +137,9 @@ export default function ReceiptsPage() {
 
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
   const [linking, setLinking] = useState(false);
-  const [linkDismissed, setLinkDismissed] = useState(false);
+  // Documents not to offer again: dismissed, or unticked when linking.
+  const [linkSkips, setLinkSkips] = useState<Set<string>>(new Set());
+  const [unticked, setUnticked] = useState<Set<string>>(new Set());
   const [showLinkable, setShowLinkable] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -152,6 +155,7 @@ export default function ReceiptsPage() {
       setReceipts(r);
       setCategories(effectiveCategories(profile.customCategories));
       setPageCounts(counts);
+      setLinkSkips(readLinkSkips());
       setLoading(false);
     });
   }, []);
@@ -168,15 +172,18 @@ export default function ReceiptsPage() {
   );
 
   // Documents read before their supplier was added: matched by the name
-  // on the document, and only to suppliers still in use.
+  // on the document, and only to suppliers still in use. An empty supplier
+  // set on purpose ("No supplier") is not offered back.
   const linkable = useMemo(() => {
     const active = suppliers.filter((c) => !c.archived);
     return receipts.flatMap((r) => {
-      if (r.clientId || !r.vendor) return [];
-      const supplier = matchSupplier(r.vendor, active);
+      if (r.clientId || !r.vendor || r.details.noSupplier || linkSkips.has(r.id)) return [];
+      const supplier = bulkMatchSupplier(r.vendor, active);
       return supplier ? [{ receipt: r, supplier }] : [];
     });
-  }, [receipts, suppliers]);
+  }, [receipts, suppliers, linkSkips]);
+  const toLink = linkable.filter(({ receipt }) => !unticked.has(receipt.id));
+  const linkListOpen = linkable.length <= 3 || showLinkable;
 
   const today = new Date().toISOString().slice(0, 10);
   const receiptById = useMemo(() => new Map(receipts.map((r) => [r.id, r])), [receipts]);
@@ -225,15 +232,30 @@ export default function ReceiptsPage() {
     }
   }
 
+  function skipLinks(ids: string[]) {
+    const next = new Set([...linkSkips, ...ids]);
+    setLinkSkips(next);
+    writeLinkSkips(next);
+  }
+
+  function toggleLinkTick(id: string) {
+    setUnticked((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
+
   async function linkSuppliers() {
+    skipLinks(linkable.filter(({ receipt }) => unticked.has(receipt.id)).map(({ receipt }) => receipt.id));
     setError(null);
     setLinking(true);
     const results = await Promise.allSettled(
-      linkable.map(({ receipt, supplier }) => receiptsStore.update(receipt.id, { clientId: supplier.id }).then(() => [receipt.id, supplier.id] as const))
+      toLink.map(({ receipt, supplier }) => receiptsStore.update(receipt.id, { clientId: supplier.id }).then(() => [receipt.id, supplier.id] as const))
     );
     const linked = new Map(results.flatMap((x) => (x.status === "fulfilled" ? [x.value] : [])));
     setReceipts((prev) => prev.map((r) => ({ ...r, clientId: linked.get(r.id) ?? r.clientId })));
-    if (linked.size < linkable.length) setError(`Couldn't link ${linkable.length - linked.size} of them. Try again.`);
+    if (linked.size < toLink.length) setError(`Couldn't link ${toLink.length - linked.size} of them. Try again.`);
     setLinking(false);
   }
 
@@ -284,6 +306,10 @@ export default function ReceiptsPage() {
     try {
       const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = draftGbpAmounts(editDraft, r.documentType);
       const isInvoice = r.documentType === "invoice";
+      // Clearing a supplier is a choice the link offer must respect; picking
+      // one again takes the flag off (undefined drops the key from the JSON).
+      const unlinked = !!r.clientId && !editDraft.clientId;
+      const relinked = !!editDraft.clientId && !!r.details.noSupplier;
       const patch = {
         clientId: editDraft.clientId,
         vendor: editDraft.vendor,
@@ -298,6 +324,7 @@ export default function ReceiptsPage() {
         notes: editDraft.notes,
         ...(isInvoice || r.documentType === "credit_note" ? { invoiceNumber: editDraft.invoiceNumber || null } : {}),
         ...(isInvoice ? { dueDate: editDraft.dueDate || null, paid: editDraft.paid } : {}),
+        ...(unlinked || relinked ? { details: { ...r.details, noSupplier: unlinked ? (true as const) : undefined } } : {}),
       };
       await receiptsStore.update(r.id, patch);
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, ...patch } : x)));
@@ -399,31 +426,49 @@ export default function ReceiptsPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {linkable.length > 0 && !linkDismissed && (
+      {linkable.length > 0 && (
         <div className="rounded-xl border bg-neutral-50 p-4 text-sm text-neutral-800">
           <div className="flex items-start justify-between gap-3">
             <span>
-              {linkable.length} {linkable.length === 1 ? "document matches" : "documents match"} your suppliers —{" "}
-              <button onClick={linkSuppliers} disabled={linking} className="font-medium underline disabled:opacity-50">
-                {linking ? "linking…" : linkable.length === 1 ? "link it" : "link them"}
-              </button>
-              {" · "}
-              <button onClick={() => setShowLinkable((v) => !v)} aria-expanded={showLinkable} className="text-neutral-600 underline">
-                {showLinkable ? "hide" : "which?"}
-              </button>
+              {linkable.length} {linkable.length === 1 ? "document matches" : "documents match"} your suppliers
+              {linkable.length > 3 && (
+                <>
+                  {" · "}
+                  <button onClick={() => setShowLinkable((v) => !v)} aria-expanded={showLinkable} className="text-neutral-600 underline">
+                    {showLinkable ? "hide" : "which?"}
+                  </button>
+                </>
+              )}
             </span>
-            <button onClick={() => setLinkDismissed(true)} className="text-neutral-500" aria-label="Dismiss">✕</button>
+            <button onClick={() => skipLinks(linkable.map(({ receipt }) => receipt.id))} className="text-neutral-500" aria-label="Dismiss">✕</button>
           </div>
-          {showLinkable && (
-            <ul className="mt-2 space-y-0.5 text-xs text-neutral-600">
+          {linkListOpen && (
+            <ul className="mt-2">
               {linkable.map(({ receipt, supplier }) => (
                 <li key={receipt.id}>
-                  {receipt.vendor}
-                  {receipt.invoiceNumber && ` · ${receipt.invoiceNumber}`} → {supplier.name}
+                  <label className="flex items-start gap-2 py-1 text-xs text-neutral-600">
+                    <input
+                      type="checkbox"
+                      className="mt-px h-4 w-4 flex-shrink-0 accent-neutral-900"
+                      checked={!unticked.has(receipt.id)}
+                      onChange={() => toggleLinkTick(receipt.id)}
+                    />
+                    <span className="min-w-0 break-words">
+                      {receipt.vendor}
+                      {receipt.invoiceNumber && ` · ${receipt.invoiceNumber}`} → <span className="font-medium text-neutral-800">{supplier.name}</span>
+                    </span>
+                  </label>
                 </li>
               ))}
             </ul>
           )}
+          <button
+            onClick={linkSuppliers}
+            disabled={linking || toLink.length === 0}
+            className="mt-3 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {linking ? "Linking…" : `Link ${toLink.length}`}
+          </button>
         </div>
       )}
 
@@ -618,7 +663,12 @@ export default function ReceiptsPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-medium">{supplierName || r.vendor || r.category || "No supplier"}</span>
+                    <span className="truncate font-medium">
+                      {supplierName || r.vendor || r.category || "No supplier"}
+                      {supplierName && r.vendor && normaliseSupplierName(r.vendor) !== normaliseSupplierName(supplierName) && (
+                        <span className="font-normal text-neutral-500"> · {r.vendor}</span>
+                      )}
+                    </span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       {credits && (
                         <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">CN</span>
