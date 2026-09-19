@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { addDays, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, saveSignature, termsDays } from "@/lib/freeInvoiceDraft";
+import { addDays, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, readSavedSignature, saveSignature, termsDays } from "@/lib/freeInvoiceDraft";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS } from "@/lib/vat";
 import { Field, INPUT, NumberInput, Segmented, Toggle } from "@/components/free-invoice/fields";
 import LayoutPicker from "@/components/free-invoice/LayoutPicker";
@@ -62,6 +62,12 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
   }
 
   const firstLineEmpty = !draft.lines[0]?.description.trim();
+  const [hasSaved, setHasSaved] = useState(() => !!readSavedSignature().image);
+
+  function forgetSaved() {
+    saveSignature(null, "");
+    setHasSaved(false);
+  }
 
   return (
     <div className="space-y-4">
@@ -226,10 +232,16 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         <SignaturePad
           value={draft.signature}
           onChange={(signature) => {
-            saveSignature(signature, draft.signedBy);
+            // Leaving it off this invoice keeps it remembered for the next.
+            if (signature) saveSignature(signature, draft.signedBy);
             set({ signature });
           }}
         />
+        {!draft.signature && hasSaved && (
+          <button type="button" onClick={forgetSaved} className="text-xs font-medium text-neutral-500 underline">
+            Forget my saved signature on this device
+          </button>
+        )}
         {draft.signature && (
           <Field label="Name under the signature" hint="Remembered on this device with your signature.">
             <input
@@ -237,7 +249,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
               placeholder={draft.issuer.name ?? "Your name"}
               value={draft.signedBy}
               onChange={(e) => {
-                saveSignature(draft.signature, e.target.value);
+                if (draft.signature) saveSignature(draft.signature, e.target.value);
                 set({ signedBy: e.target.value });
               }}
             />

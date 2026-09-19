@@ -208,6 +208,7 @@ export default function ScanPage() {
   const mode = modeOf(form);
   const baseMode = modeOf({ ...form, typeOverride: null });
   const heading = headingFor(form, mode);
+  const remaining = batch ? batch.docs.length - batch.index - 1 : 0;
 
   async function loadLists() {
     const [c, r, profile] = await Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]);
@@ -327,6 +328,8 @@ export default function ScanPage() {
     if (current.kind === "retake") next = pages.map((p, i) => (i === current.index ? file : p));
     else if (current.kind === "add") next = [...pages, file];
     else {
+      // A single new page (the iOS native camera) replaces the batch too.
+      dropBatch();
       resetDocument();
       next = [file];
     }
@@ -348,23 +351,31 @@ export default function ScanPage() {
     openDoc(docs, 0);
   }
 
-  function openDoc(docs: CapturedFile[][], index: number) {
+  function openDoc(docs: CapturedFile[][], index: number, receiptList: Receipt[] = receipts) {
     resetDocument();
     setPages(docs[index]);
     setCapture(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
-    runExtraction(docs[index], categories, suppliers, receipts, readsRef.current[index]);
+    runExtraction(docs[index], categories, suppliers, receiptList, readsRef.current[index]);
   }
 
   // True when there was another document in the batch to move on to.
-  function advance(): boolean {
+  // `receiptList` carries a receipt saved a moment ago, so a credit note
+  // later in the batch can link to an invoice saved earlier in it.
+  function advance(receiptList: Receipt[] = receipts): boolean {
     if (!batch || batch.index + 1 >= batch.docs.length) return false;
     const index = batch.index + 1;
     setBatch({ ...batch, index });
-    openDoc(batch.docs, index);
+    openDoc(batch.docs, index, receiptList);
     window.scrollTo({ top: 0 });
     return true;
+  }
+
+  function dropBatch() {
+    runRef.current++;
+    readsRef.current = [];
+    setBatch(null);
   }
 
   function onEngineChange(next: ScanEngine) {
@@ -380,6 +391,11 @@ export default function ScanPage() {
   }
 
   function confirmStartNew() {
+    if (remaining) {
+      const from = batch!.index + 2;
+      const queued = remaining === 1 ? `document ${from}` : `documents ${from}–${batch!.docs.length}`;
+      return window.confirm(`Start a new scan? This document and ${queued} from this batch haven't been saved and will be dropped.`);
+    }
     return !pages.length || window.confirm("Start a new document? This scan hasn't been saved.");
   }
 
@@ -494,7 +510,7 @@ export default function ScanPage() {
       const other = (details.other ?? []).filter((o) => o.label.trim() && o.value.trim());
       if (other.length) details.other = other;
       else delete details.other;
-      await receiptsStore.add(
+      const saved = await receiptsStore.add(
         {
           clientId: form.clientId,
           date: form.date,
@@ -527,7 +543,9 @@ export default function ScanPage() {
         },
         pages.slice(1).map((p) => p.dataUrl)
       );
-      if (!advance()) router.push("/receipts");
+      const nextReceipts = [...receipts, saved];
+      setReceipts(nextReceipts);
+      if (!advance(nextReceipts)) router.push("/receipts");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -535,9 +553,9 @@ export default function ScanPage() {
     }
   }
 
-  const remaining = batch ? batch.docs.length - batch.index - 1 : 0;
 
   function discard() {
+    if (saving) return;
     if (remaining) {
       if (window.confirm("Skip this document? It won't be saved.")) advance();
       return;
@@ -699,7 +717,7 @@ export default function ScanPage() {
               >
                 {saving ? "Saving…" : supplierSaved ? "Saved" : "Save as new supplier"}
               </button>
-              <button type="button" onClick={discard} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+              <button type="button" onClick={discard} disabled={saving} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                 {remaining ? "Skip" : "Discard"}
               </button>
             </div>
@@ -909,7 +927,7 @@ export default function ScanPage() {
               >
                 {saving ? "Saving…" : saveLabel}
               </button>
-              <button type="button" onClick={discard} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+              <button type="button" onClick={discard} disabled={saving} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                 {remaining ? "Skip" : "Discard"}
               </button>
               {blockedReason && !saving && <span className="text-xs text-neutral-500">{blockedReason}</span>}

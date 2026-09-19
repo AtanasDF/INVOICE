@@ -44,14 +44,16 @@ export default function NewClientPage() {
   const [found, setFound] = useState<ScannedContact[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
 
+  // Only what the scan actually found is written, so details typed by
+  // hand survive a scan that doesn't show them.
   function fill(c: ScannedContact, i: number) {
     setPicked(i);
     setIsCompany(c.isCompany);
     setName(c.name);
-    setEmail(c.email ?? "");
-    setAddress(c.address ?? "");
-    setVatNumber(c.vatNumber ?? "");
-    setContactPerson(c.contactPerson ?? "");
+    if (c.email) setEmail(c.email);
+    if (c.address) setAddress(c.address);
+    if (c.vatNumber) setVatNumber(c.vatNumber);
+    if (c.contactPerson) setContactPerson(c.contactPerson);
   }
 
   async function onScanned(file: CapturedFile) {

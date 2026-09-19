@@ -834,7 +834,10 @@ export default function DocumentCapture({
     if (!files.length) return;
     try {
       if (multi) {
-        addShots(await Promise.all(files.map(readFile)));
+        const read = await Promise.allSettled(files.map(readFile));
+        addShots(read.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])));
+        const failed = read.filter((r) => r.status === "rejected").length;
+        if (failed) showFailure(`${failed} of ${files.length} file${files.length === 1 ? "" : "s"} couldn't be read and ${failed === 1 ? "was" : "were"} left out.`);
         return;
       }
       const file = await readFile(files[0]);
