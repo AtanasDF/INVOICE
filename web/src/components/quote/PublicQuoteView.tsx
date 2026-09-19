@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import QuoteDocument, { money, quoteTotal } from "@/components/quote/QuoteDocument";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
@@ -19,6 +19,13 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
   const [sending, setSending] = useState(false);
   const [answered, setAnswered] = useState<Answer | null>(data.response?.answer ?? null);
   const [error, setError] = useState<string | null>(null);
+  // The owner's own copy of the link (#o): they see what the customer sees,
+  // without buttons that would answer for the customer.
+  const ownerCopy = useSyncExternalStore(
+    () => () => {},
+    () => window.location.hash === "#o",
+    () => false
+  );
   const q = data.quote;
   const total = quoteTotal(q, data.profile.vatRegistered);
   const from = data.profile.businessName || "the sender";
@@ -87,6 +94,8 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
           <p className="text-sm text-neutral-700">
             This quote was valid until {longDate(q.validUntil!)}. Please contact {from} for an up-to-date one.
           </p>
+        ) : ownerCopy ? (
+          <p className="text-sm text-neutral-700">This is your copy of the link. Your customer sees Accept and Decline buttons here.</p>
         ) : confirming ? (
           <div className="space-y-3">
             <p className="text-sm font-medium">
