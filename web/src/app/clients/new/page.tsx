@@ -12,7 +12,7 @@ import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFinder from "@/components/AddressFinder";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import ClearFormButton from "@/components/ClearFormButton";
-import { hasUploads, takeUploads } from "@/lib/scanHandoff";
+import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -46,7 +46,7 @@ export default function NewClientPage() {
   const [saving, setSaving] = useState(false);
   // A file picked with "Upload a file" on the list is read instead of
   // opening the camera.
-  const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1" && !hasUploads());
+  const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1" && !uploadMarked());
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   const [found, setFound] = useState<ScannedContact[]>([]);
@@ -113,8 +113,10 @@ export default function NewClientPage() {
   }
 
   useEffect(() => {
-    const uploaded = takeUploads();
-    if (uploaded) Promise.resolve().then(() => onScanned(uploaded[0]));
+    if (!uploadMarked()) return;
+    const uploaded = takeUploads(window.location.pathname);
+    dropUploadMarker();
+    Promise.resolve().then(() => (uploaded ? onScanned(uploaded.files[0]) : setReadError("Your file didn't come through. Pick it again.")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -167,7 +169,7 @@ export default function NewClientPage() {
           <CameraIcon className="h-5 w-5" />
           {reading ? "Reading…" : found.length ? "Scan again" : "Scan to fill in"}
         </CaptureButton>
-        <UploadFilesButton multiple={false} className="mt-2" onFiles={(files) => onScanned(files[0])} />
+        <UploadFilesButton multiple={false} className="mt-2" onFiles={(files) => onScanned(files[0])} disabled={reading} />
         <p className="mt-2 text-xs text-neutral-500">
           A business card, letterhead, invoice, email or any photo with their details. Names, addresses, emails and VAT numbers are picked out for you.
         </p>

@@ -676,6 +676,9 @@ export default function DocumentCapture({
   // Latest detected quad, and the eased outline (display pixels) the
   // overlay is currently showing on its way there.
   const quadRef = useRef<WorkQuad | null>(null);
+  // This tick's own reading, unsmoothed: what a tap crops to when the
+  // smoothed page is lagging a move.
+  const rawQuadRef = useRef<WorkQuad | null>(null);
   const outlineRef = useRef<Quad | null>(null);
   const lockedRef = useRef(false);
   const fillRef = useRef(0);
@@ -816,6 +819,7 @@ export default function DocumentCapture({
   // next detection would crop the wrong part of the page. Forget them.
   function forgetPage() {
     quadRef.current = null;
+    rawQuadRef.current = null;
     outlineRef.current = null;
     lockedRef.current = false;
     resetStable();
@@ -1175,17 +1179,17 @@ export default function DocumentCapture({
         diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
         if (best) diagRef.current.quads++;
 
-        // The page taken counts as gone when nothing is found, when what's
-        // found is somewhere else (a receipt waiting in a pile at the edge),
-        // or has shrunk well below what was taken -- not on a frame where
-        // the same page reads a hair under the capture size.
+        // The page taken counts as gone when it's lost (past the same grace
+        // a curled page gets below, or it would be taken again where it
+        // lies), when what's found is somewhere else (a receipt waiting in a
+        // pile at the edge), or has shrunk well below what was taken -- not
+        // on a frame where the same page reads a hair under the capture size.
         if (!armedRef.current) {
           const taken = takenRef.current;
           const gone =
-            !ordered ||
+            (!ordered && (!quadRef.current || missesRef.current >= LOST_GRACE_TICKS)) ||
             !taken ||
-            dist(centre(ordered), centre(taken.pts)) > TAKEN_MOVED * workW ||
-            coverage < TAKEN_SHRUNK * taken.coverage;
+            (ordered !== null && (dist(centre(ordered), centre(taken.pts)) > TAKEN_MOVED * workW || coverage < TAKEN_SHRUNK * taken.coverage));
           if (gone) seenClearRef.current = true;
           if (seenClearRef.current && performance.now() >= rearmAtRef.current) {
             armedRef.current = true;
@@ -1196,6 +1200,7 @@ export default function DocumentCapture({
         if (smooth) {
           missesRef.current = 0;
           quadRef.current = { pts: smooth, w: workW, h: workH };
+          rawQuadRef.current = { pts: ordered!, w: workW, h: workH };
 
           const now = performance.now();
           const moved = last !== null && Math.max(...smooth.map((p, i) => dist(p, last[i]))) > MOVE_TOLERANCE * workW;
@@ -1248,6 +1253,7 @@ export default function DocumentCapture({
           }
         } else if (!quadRef.current || ++missesRef.current > LOST_GRACE_TICKS) {
           quadRef.current = null;
+          rawQuadRef.current = null;
           lockedRef.current = false;
           resetStable();
           setCoach("line");
@@ -1497,7 +1503,17 @@ export default function DocumentCapture({
     // Corners in screen order for the warp: the tick loop keeps them in the
     // order the page was first seen in, which would save a page that was
     // turned upright while tracked on its side.
-    const tracked = quadRef.current;
+    // A tap in the grace after the page was missed saves the whole frame
+    // rather than crop to where it was; right after a move it crops to this
+    // tick's reading, not the median still catching up.
+    const smoothed = quadRef.current;
+    const raw = rawQuadRef.current;
+    const tracked =
+      !smoothed || missesRef.current > 0
+        ? null
+        : raw && Math.max(...smoothed.pts.map((p, i) => dist(p, raw.pts[i]))) > MOVE_TOLERANCE * smoothed.w
+          ? raw
+          : smoothed;
     const quad = tracked && { ...tracked, pts: orderPoints(tracked.pts) };
     const frame = document.createElement("canvas");
     frame.width = Math.round(region.sw);
