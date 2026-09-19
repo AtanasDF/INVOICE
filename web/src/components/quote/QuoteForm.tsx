@@ -59,8 +59,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           {billable.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-neutral-500">Quote number</label>
           <input className={INPUT} value={v.number} onChange={(e) => set({ number: e.target.value })} />
         </div>
@@ -75,24 +75,24 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
       </div>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
+        <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">
           <span className={vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
           <span className="col-span-2 text-right">Qty</span>
           <span className="col-span-3 text-right">Unit price</span>
           {vatRegistered && <span className="col-span-2">VAT</span>}
         </div>
         {v.items.map((l, i) => (
-          <div key={i} className="grid grid-cols-12 gap-2">
+          <div key={i} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
             <input
-              className={`${vatRegistered ? "col-span-4" : "col-span-6"} rounded-lg border px-3 py-2`}
+              className={`col-span-12 ${vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
               placeholder="What the work or item is"
               value={l.description}
               onChange={(e) => setLine(i, { description: e.target.value })}
             />
-            <NumberInput className="col-span-2 rounded-lg border px-3 py-2 text-right" aria-label="Quantity" value={l.quantity} onChange={(quantity) => setLine(i, { quantity })} />
-            <NumberInput className="col-span-3 rounded-lg border px-3 py-2 text-right" aria-label="Unit price" placeholder="0.00" value={l.unitPrice} onChange={(unitPrice) => setLine(i, { unitPrice })} />
+            <NumberInput className={`${vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`} aria-label="Quantity" value={l.quantity} onChange={(quantity) => setLine(i, { quantity })} />
+            <NumberInput className={`${vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`} aria-label="Unit price" placeholder="Price £" value={l.unitPrice} onChange={(unitPrice) => setLine(i, { unitPrice })} />
             {vatRegistered && (
-              <select className="col-span-2 rounded-lg border px-1 py-2 text-xs" value={l.vatRate} onChange={(e) => setLine(i, { vatRate: e.target.value as VatRateKind })}>
+              <select aria-label="VAT rate" className="col-span-4 rounded-lg border px-1 py-2 text-xs sm:col-span-2" value={l.vatRate} onChange={(e) => setLine(i, { vatRate: e.target.value as VatRateKind })}>
                 {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
               </select>
             )}
