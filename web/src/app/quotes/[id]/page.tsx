@@ -324,7 +324,11 @@ export default function QuotePage() {
           saveLabel="Save changes"
           onSave={saveEdit}
           onCancel={() => setEditing(false)}
-          onClientAdded={(c) => setClients((prev) => [...prev, c])}
+          onClientAdded={(c) => {
+            // A refresh started before the add would drop the new customer.
+            genRef.current++;
+            setClients((prev) => [...prev.filter((p) => p.id !== c.id), c]);
+          }}
         />
       </div>
     );
@@ -517,7 +521,9 @@ export default function QuotePage() {
           sheet={<QuoteDocument quote={q} client={client} profile={profile} />}
           pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
           quoteId={q.id}
-          viewUrl={url}
+          // A draft's link shows nothing to the customer, so it isn't put in
+          // shared text until the quote has gone (the email makes its own).
+          viewUrl={q.status === "draft" ? "" : url}
           ensureViewUrl={() => ensureLink()}
           fields={{
             issuerName: profile?.businessName ?? "",

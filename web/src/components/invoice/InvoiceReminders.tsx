@@ -58,7 +58,7 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
           {client && (reason.includes("email") || reason.includes("off for this client")) && (
             <>
               {" "}
-              <Link href="/clients" className="font-medium text-blue-600">Edit the client</Link>
+              <Link href={client.kind === "supplier" ? "/clients?tab=supplier" : "/clients"} className="font-medium text-blue-600">Edit the client</Link>
             </>
           )}
         </p>

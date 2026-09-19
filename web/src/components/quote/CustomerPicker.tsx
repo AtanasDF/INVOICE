@@ -24,20 +24,24 @@ export function customerContact(c: Client): string {
   return [c.isCompany && c.contactPerson ? `Attn: ${c.contactPerson}` : "", c.email, c.phone].filter(Boolean).join(" · ");
 }
 
+export type NewCustomerStart = { name: string; email: string; address: string };
+
 // Who a quote is for: anyone in Clients & suppliers, clients first, or
 // someone new added on the spot. An archived one stays shown only while it's
-// the one picked.
-export default function CustomerPicker({ people, value, onChange, onAdded }: {
+// the one picked. Whether a new customer is being added is held by the form,
+// so it can't be saved over one half typed in.
+export default function CustomerPicker({ people, value, onChange, onAdded, adding, onAdding }: {
   people: Client[];
   value: string;
   onChange: (id: string) => void;
   onAdded: (c: Client) => void;
+  adding: NewCustomerStart | null;
+  onAdding: (start: NewCustomerStart | null) => void;
 }) {
   const shown = people.filter((c) => !c.archived || c.id === value);
   const picked = shown.find((c) => c.id === value) ?? null;
   const [browsing, setBrowsing] = useState(false);
   const [query, setQuery] = useState("");
-  const [adding, setAdding] = useState<string | null>(shown.length ? null : "");
   const labelId = useId();
 
   const q = query.trim().toLowerCase();
@@ -53,16 +57,16 @@ export default function CustomerPicker({ people, value, onChange, onAdded }: {
     setQuery("");
   }
 
-  if (adding !== null) {
+  if (adding) {
     return (
       <NewCustomer
-        initialName={adding}
+        start={adding}
         existing={shown}
-        onCancel={shown.length ? () => setAdding(null) : undefined}
+        onCancel={shown.length ? () => onAdding(null) : undefined}
         onSaved={(c) => {
           onAdded(c);
           pick(c.id);
-          setAdding(null);
+          onAdding(null);
         }}
       />
     );
@@ -131,7 +135,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded }: {
         <p className="rounded-lg border px-3 py-2.5 text-sm text-neutral-600">No one matches &ldquo;{query.trim()}&rdquo;.</p>
       )}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setAdding(groups.length ? "" : query.trim())} className={SECONDARY}>
+        <button type="button" onClick={() => onAdding({ name: groups.length ? "" : query.trim(), email: "", address: "" })} className={SECONDARY}>
           + New customer
         </button>
         {picked && (
@@ -145,19 +149,19 @@ export default function CustomerPicker({ people, value, onChange, onAdded }: {
 }
 
 // A new client, company or private person, saved straight to Clients.
-function NewCustomer({ initialName, existing, onSaved, onCancel }: {
-  initialName: string;
+function NewCustomer({ start, existing, onSaved, onCancel }: {
+  start: NewCustomerStart;
   existing: Client[];
   onSaved: (c: Client) => void;
   onCancel?: () => void;
 }) {
   const [isCompany, setIsCompany] = useState<boolean | null>(null);
-  const [name, setName] = useState(initialName);
+  const [name, setName] = useState(start.name);
   const [contactPerson, setContactPerson] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(start.email);
   const [phone, setPhone] = useState("");
   const [vatNumber, setVatNumber] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(start.address);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const id = useId();

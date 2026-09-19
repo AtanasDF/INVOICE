@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import QuoteForm, { QuoteFormValue, defaultValidUntil } from "@/components/quote/QuoteForm";
 import { Client, InvoiceItem, businessProfileStore, clientsStore, nextQuoteNumber, quotesStore } from "@/lib/storage";
 import { clearFreeInvoiceDraft, readFreeInvoiceDraft, todayIso } from "@/lib/freeInvoiceDraft";
-import { looksLikeCompany } from "@/lib/reminderTemplates";
 import { errorText } from "@/lib/errorText";
 
 export default function NewQuotePage() {
@@ -14,11 +13,10 @@ export default function NewQuotePage() {
   const [data, setData] = useState<{ clients: Client[]; vatRegistered: boolean; initial: QuoteFormValue } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // A quote brought over from the Free page: its customer, when they
-  // aren't one of the account's clients yet.
+  // aren't one of the account's clients yet, opens as a new customer in the
+  // form's picker (one way to add them, with its same-name check).
   const [imported, setImported] = useState(false);
   const [newCustomer, setNewCustomer] = useState<{ name: string; address: string; email: string } | null>(null);
-  const [formKey, setFormKey] = useState(0);
-  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     Promise.all([clientsStore.all(), quotesStore.all(), businessProfileStore.get()])
@@ -58,34 +56,6 @@ export default function NewQuotePage() {
       .catch((err) => setError(errorText(err, "Could not load your clients.")));
   }, []);
 
-  async function addCustomer() {
-    if (!data || !newCustomer) return;
-    setAdding(true);
-    setError(null);
-    try {
-      const c = await clientsStore.add({
-        name: newCustomer.name,
-        isCompany: looksLikeCompany(newCustomer.name),
-        email: newCustomer.email,
-        address: newCustomer.address,
-        kind: "client",
-        vatNumber: "",
-        paymentTerms: "",
-        defaultCurrency: "",
-        contactPerson: "",
-        phone: "",
-        remindersEnabled: true,
-      });
-      setData({ ...data, clients: [...data.clients, c], initial: { ...data.initial, clientId: c.id } });
-      setNewCustomer(null);
-      setFormKey((k) => k + 1);
-    } catch (err) {
-      setError(errorText(err, "Could not add the customer."));
-    } finally {
-      setAdding(false);
-    }
-  }
-
   async function save(v: QuoteFormValue) {
     const quote = await quotesStore.add({ ...v, validUntil: v.validUntil || null });
     if (imported) clearFreeInvoiceDraft();
@@ -103,21 +73,10 @@ export default function NewQuotePage() {
       {imported && (
         <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">Brought over from the Free page: check the details, then save it.</p>
       )}
-      {newCustomer && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <p className="text-sm text-neutral-700">
-            <strong>{newCustomer.name}</strong> isn&apos;t one of your clients yet.
-          </p>
-          <button onClick={addCustomer} disabled={adding} className="mt-3 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {adding ? "Adding…" : `Add ${newCustomer.name} as a client`}
-          </button>
-        </div>
-      )}
       {!data ? (
         !error && <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <QuoteForm
-          key={formKey}
           initial={data.initial}
           clients={data.clients}
           vatRegistered={data.vatRegistered}
@@ -125,6 +84,13 @@ export default function NewQuotePage() {
           onSave={save}
           onCancel={() => router.push("/quotes")}
           onClientAdded={(c) => setData((d) => d && { ...d, clients: [...d.clients, c] })}
+          newCustomer={newCustomer}
+          onClear={() => {
+            // Clearing drops the import, as Discard import does on invoices.
+            if (imported) clearFreeInvoiceDraft();
+            setImported(false);
+            setNewCustomer(null);
+          }}
         />
       )}
     </div>
