@@ -26,6 +26,18 @@ const line = (v: unknown, max: number) => text(typeof v === "string" ? v.replace
 // email (any name, any bank details) from the app's domain. The layout is
 // fixed, every field is escaped, the only attachment is a PDF, and the
 // copy-to-self goes to the account's own address, never one from the form.
+// Only this app's own invoice links (/i/<token>) go into an email, rebuilt
+// from their parts, so the route can't be used to carry any other URL.
+function ownInvoiceLink(value: unknown, origin: string): string {
+  if (typeof value !== "string") return "";
+  try {
+    const u = new URL(value);
+    return u.origin === origin && /^\/i\/[A-Za-z0-9_-]{43}$/.test(u.pathname) && !u.search && !u.hash ? origin + u.pathname : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -85,6 +97,7 @@ export async function POST(req: Request) {
     message: text(body.message, 2000),
     bank: body.docType === "quote" ? [] : bank,
     docType: body.docType === "quote" ? "quote" : "invoice",
+    viewUrl: ownInvoiceLink(body.viewUrl, new URL(req.url).origin),
   };
 
   const key = `send:user:${user.id}`;
@@ -117,7 +130,9 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         from: `"${fromName}" <${fromAddress}>`,
         to: [to],
-        ...(copyToSelf ? { cc: [accountEmail] } : {}),
+        // With a view link, the owner's copy goes separately (below) so its
+        // link can be marked as theirs and their opens aren't counted.
+        ...(copyToSelf && !input.viewUrl ? { cc: [accountEmail] } : {}),
         ...(replyTo ? { reply_to: replyTo } : {}),
         subject: invoiceEmailSubject(input),
         html: invoiceEmailHtml(input),
@@ -138,8 +153,25 @@ export async function POST(req: Request) {
         : "The email couldn't be sent. Try again in a minute.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
+  let copied = copyToSelf && !input.viewUrl;
+  if (copyToSelf && input.viewUrl) {
+    const own = { ...input, viewUrl: `${input.viewUrl}#o` };
+    const copyRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: `"${fromName}" <${fromAddress}>`,
+        to: [accountEmail],
+        subject: `Copy: ${invoiceEmailSubject(input)}`,
+        html: invoiceEmailHtml(own),
+        text: invoiceEmailText(own),
+        attachments: [{ filename, content: pdf }],
+      }),
+    }).catch(() => null);
+    copied = !!copyRes?.ok;
+  }
   // One line per send in the server log, so misuse can be traced to an
   // account, without putting a client's address or bank numbers in the logs.
   console.log("send-invoice sent", JSON.stringify({ user: user.id, toDomain: to.split("@")[1], issuerName, number: input.number, total: input.total, bankRows: bank.length }));
-  return NextResponse.json({ sent: true, to, copied: copyToSelf });
+  return NextResponse.json({ sent: true, to, copied });
 }
