@@ -113,10 +113,12 @@ const OUTLINE_EASE = 0.35;
 const SMOOTH_TICKS = 3;
 const LOST_GRACE_TICKS = 2;
 const FLASH_MS = 150;
-// Low light: a view this dark on average (0-255 grey) for this long turns
-// the torch on by itself, on a camera that has one.
+// Low light: a view this dark on average (0-255 grey) turns the torch on
+// by itself after TORCH_AFTER_MS, on a camera that has one, and auto-capture
+// waits for it; without a torch, a hint after DARK_HINT_MS.
 const DARK_LEVEL = 55;
-const DARK_MS = 1200;
+const TORCH_AFTER_MS = 400;
+const DARK_HINT_MS = 1200;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
 // Batch mode: after a capture, auto-capture waits until the page has left
@@ -1189,9 +1191,6 @@ export default function DocumentCapture({
       }
       if (cancelled || !streamRef.current) return;
 
-      const cv = cvRef.current;
-      if (!cv) return;
-
       const { sx, sy, sw, sh } = visibleRegion(video, cssZoomRef.current);
       const workW = WORK_WIDTH;
       const workH = Math.round((sh / sw) * WORK_WIDTH);
@@ -1203,17 +1202,28 @@ export default function DocumentCapture({
       if (!wctx) return;
       wctx.drawImage(video, sx, sy, sw, sh, 0, 0, workW, workH);
 
+      // Light is measured before edge detection, so the torch and the hint
+      // work while OpenCV is still loading or when it failed.
+      const pixels = wctx.getImageData(0, 0, workW, workH).data;
+      const lightAt = performance.now();
+      if (meanLight(pixels) < DARK_LEVEL) darkSinceRef.current ??= lightAt;
+      else darkSinceRef.current = null;
+      const darkFor = darkSinceRef.current === null ? 0 : lightAt - darkSinceRef.current;
+      const torchPending = darkSinceRef.current !== null && torchCapRef.current && !torchRef.current && !torchByHandRef.current;
+      if (torchPending && darkFor >= TORCH_AFTER_MS && !capturedRef.current) {
+        setTorch(true);
+        // The hold-still count starts again in the new light.
+        resetStable();
+      }
+      setDark(darkFor >= DARK_HINT_MS && !torchCapRef.current);
+
+      const cv = cvRef.current;
+      if (!cv) return;
+
       try {
         const mats = ensureMats(cv, workW, workH);
         const { src, gray } = mats;
-        const pixels = wctx.getImageData(0, 0, workW, workH).data;
         src.data.set(pixels);
-        const now0 = performance.now();
-        if (meanLight(pixels) < DARK_LEVEL) darkSinceRef.current ??= now0;
-        else darkSinceRef.current = null;
-        const darkLong = darkSinceRef.current !== null && now0 - darkSinceRef.current >= DARK_MS;
-        if (darkLong && torchCapRef.current && !torchRef.current && !torchByHandRef.current) setTorch(true);
-        setDark(darkLong && !torchCapRef.current);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
         const page = findPage(cv, mats);
         const best = page?.pts ?? null;
@@ -1309,7 +1319,7 @@ export default function DocumentCapture({
             const sharpEnough = sharpness >= SHARPNESS_FLOOR && sharpness >= SHARPNESS_RATIO * peakSharpRef.current;
             const ready = (stableFor >= STABLE_MS && sharpEnough) || stableFor >= STABLE_TIMEOUT_MS;
             lockedRef.current = sharpEnough || stableFor >= STABLE_MS;
-            if (ready && agrees && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
+            if (ready && agrees && !torchPending && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
               capturedRef.current = true;
               captureRef.current();
             }
