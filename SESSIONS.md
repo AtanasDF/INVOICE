@@ -4,7 +4,38 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
-## 2026-09-19 — Mac desktop app (Opus 5), overnight run
+## 2026-09-19 — Quotes UX (agent in a worktree), branch `feature/quotes-ux`
+
+**Brief (Atanas, from his phone):** quotes should look better, pick the recipient from all
+clients or suppliers, work for a company or a private person, and be sendable every way;
+payment options come later. No schema change; not merged to main.
+
+- Picker: anyone in Clients & suppliers (clients first, grouped, search from 7 people),
+  shown as a card (company + VAT / private, contact details) once picked. `client_id`
+  unchanged. A quote to a supplier can be invoiced; the draft invoice's picker and the
+  Invoices filter now show that supplier.
+- New customer inline on the quote form: Company (Companies House lookup, contact, VAT
+  number) or Private person (name), both with email, mobile and the address finder; saved
+  as a `clients` row (kind client, `is_company` set). Empty account goes straight to it.
+- Quote document: a company shows "Attn: <contact>" and its VAT number; a private person
+  never does (the /q/ page reads contact_person for this). Quote emails greet the person.
+- Quote page: summary card (who, total, deposit, valid until), status card with the next
+  step first, one Send card with Email / Text / WhatsApp / PDF tabs and the view-and-accept
+  link. Text/WhatsApp use the new "Here's your quote" preset; the link goes in only when
+  tapped, and from a draft that asks and marks it sent, as copying the link does.
+  SendInvoicePanel split into `useDocumentPdf`, `EmailForm`, `ShareButtons` (its own output
+  unchanged). List rows show badge, total, deposit and valid until.
+- Tests (mocked DB, dev server on 3300): quotes 34/34, deposits 17/17 (both with the
+  client picked in the new picker; the old "no suppliers offered" check now expects them),
+  new quotes-ux 48/48, Free-page quote import 10/10, texts 12/12 (quote half now drives
+  the Send card's tabs), and against the local Supabase stand-in: quote links 18/18,
+  invoice links 18/18, customer's /q/ page for a company and a private person 3/3.
+  tsc, eslint, build clean (build needs a temporary `turbopack.root` in a worktree with
+  symlinked node_modules; not committed).
+- Left for Atanas: try it on the iPhone (tabs, Messages/WhatsApp hand-off, the inline
+  form with the keyboard up). Payment options have a marked place above the Send card
+  (a comment, no UI). CLAUDE.md's quotes bullet could gain "putting the link in a text
+  marks a draft sent too" when this merges.
 
 **Brief from Atanas (19/09, evening)**
 
@@ -338,6 +369,13 @@ and what is left open. Dates are session dates (Europe/London).
     13/13, quotes 34/34, deposits 17/17, address 12/12 + 12/12, tax 5/5, reminders 5/5,
     lines 7/7, VAT 4/4, Free quote 10/10, share 3/3, tips 7/7; auto-zoom 9/10 and lens 3/4
     as before (known expectations). iCloud's " 2" duplicates are gitignored now.
+- Not live yet: Vercel refused the deploy of that merge (ddabd01) and of 678a192 with
+  "Deployment rate limited — retry in 24 hours". Every feature-branch push had also made a
+  preview deployment, and the day's work passed the Hobby plan's 100 deployments a day
+  (148 GitHub deployment records in 24h). `web/vercel.json` now deploys only main
+  (`git.deploymentEnabled`: `"**": false, "main": true`; `*` wouldn't match `feature/x`).
+  The oldest deployment in the window was 23:30Z on 18/09, so the next push to main after
+  about 23:30Z (00:30 BST) should deploy; check the commit status on GitHub after pushing.
 - Companies House key: steps given; the Developer Hub and Vercel env pages left open in his
   Chrome for a helper. Lookup switches on once `COMPANIES_HOUSE_API_KEY` is set + redeployed.
 - On branches, next to merge: `feature/clear-forms` (Clear form beside Save on client,
@@ -345,7 +383,27 @@ and what is left open. Dates are session dates (Europe/London).
   that saved the form), `feature/quotes-ux` (agent: pick any client or supplier, new
   company/private customer inline, one Send card with email/text/WhatsApp/PDF; 48/48 new,
   older quote suites pass), `feature/torch` (torch button in the scanner, on by itself in
-  low light unless switched by hand; 10/10).
+  low light unless switched by hand; 10/10). Review (3 lenses, 16 agents): 9 confirmed, all
+  fixed: torch now on before auto-capture fires in the dark and works without OpenCV
+  (12/12 + 3/3); recurring Clear form resets the category (22/22); quotes: no save over a
+  half-added customer, the Free-page customer opens prefilled in the picker (no duplicate
+  client), invoiced suppliers get the reminders switch and history, no draft /q/ link in
+  shared text, draft invoice picker keeps its supplier, refresh race, Clear form on a new
+  quote (fixes 11/11, quotes 34/34, deposits 17/17, Free quote 12/12, texts 12/12).
+  Clear forms and torch merged to main (cba2153, 07a67e8). A 375px sweep of all 22
+  signed-in pages found the issued invoice's buttons running off the screen; fixed on
+  main (4e169a1). `feature/quotes-ux` merged to main (897c659) after quotes-ux 48/48 and
+  the link suites against mock-server.mjs (quote links 18/18, invoice links 18/18, public
+  company/private 3/3); build/tsc/eslint clean.
+- Atanas's usage runs out tonight; background wake-ups at 00:33 (Vercel window), 00:43
+  and 01:05 BST to carry on. If this session stopped: push main after 23:30Z to deploy,
+  then the two agents' branches (multi-docs; quote-requests needs migration-028 applied).
+- Agents started: `feature/multi-docs` (several documents in one photo or PDF split into
+  separate documents, cropped/split; "Save all ready"; "already paid" read off the
+  document, the assumption behind "receipt should be created in order to take payment"),
+  `feature/quote-requests` (ask suppliers for prices by email with a private link, gather
+  replies per request, compare per item with delivery counted, best single vs best split,
+  order lists; migration-028 new tables only, to be applied and verified before merging).
 
 **Open**
 

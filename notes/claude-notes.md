@@ -263,3 +263,13 @@ changes.
    reminders with UK late-payment interest, quotes/deposits, invoice by typing.)
 7. Atanas's side: Safari camera permission, business details in Settings, invoice
    counter, Resend key, Cloudflare Worker deploy, revoke the old Mapbox token.
+8. Bank connection (Atanas, 19/09 evening: "keep in mind, don't start it now"): read-only
+   Open Banking through an FCA-authorised provider, so received and outgoing payments come
+   in by themselves. The app never sees bank logins; he approves in his bank's own app and
+   can revoke at any time. It would unlock: invoices marked paid/part-paid from matching
+   payments (and reminders stopping), supplier bills marked paid, card spends without a
+   receipt flagged, reconciliation, the tax card from real money, MTD Income Tax updates,
+   and later Pay by Bank links on invoices (payment initiation, a separate permission).
+   Before building: pick the provider (compare current UK AIS providers, cost, consent
+   renewal, whether we act as their agent), a schema for accounts/transactions/matches,
+   and how tokens are held (server side only).

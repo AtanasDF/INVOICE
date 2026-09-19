@@ -32,8 +32,10 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
       <div className="mt-6">
         <p className="text-sm font-medium text-neutral-500">For</p>
         <p className="font-medium">{client?.name || "—"}</p>
+        {client?.isCompany && client.contactPerson && <p className="text-sm text-neutral-600">Attn: {client.contactPerson}</p>}
         {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
         {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}
+        {client?.isCompany && client.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
       </div>
 
       <table className="mt-6 w-full text-sm">

@@ -201,7 +201,10 @@ export default function ClientsPage() {
             </p>
           )}
           {visibleClients.map((c) => {
-            const clientInvoices = tab === "client" ? invoicesForClient(c.id) : [];
+            // A supplier can be invoiced too (a quote to them turned into an
+            // invoice), and then needs the same reminder switch and history.
+            const clientInvoices = invoicesForClient(c.id);
+            const billed = tab === "client" || clientInvoices.length > 0;
             const expanded = expandedClientId === c.id;
             const editing = editingId === c.id;
             return (
@@ -259,14 +262,14 @@ export default function ClientsPage() {
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />
                       <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency" value={draft.defaultCurrency} onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })} />
                     </div>
-                    {tab === "client" && (
+                    {billed && (
                       <label className="flex items-center gap-2 text-sm text-neutral-700">
                         <input
                           type="checkbox"
                           checked={draft.remindersEnabled}
                           onChange={(e) => setDraft({ ...draft, remindersEnabled: e.target.checked })}
                         />
-                        Send automatic payment reminders to this client
+                        Send automatic payment reminders for invoices to them
                       </label>
                     )}
                     <div className="flex gap-3">
@@ -293,7 +296,7 @@ export default function ClientsPage() {
                       </div>
                       <div className="text-sm text-neutral-500">
                         {c.isCompany ? "Company" : "Individual"}{c.email ? ` · ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}{c.vatNumber ? ` · VAT ${c.vatNumber}` : ""}
-                        {tab === "client" && !c.remindersEnabled && " · Reminders off"}
+                        {billed && !c.remindersEnabled && " · Reminders off"}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -302,7 +305,7 @@ export default function ClientsPage() {
                           {textingId === c.id ? "Close" : "Text"}
                         </button>
                       )}
-                      {tab === "client" && clientInvoices.length > 0 && (
+                      {clientInvoices.length > 0 && (
                         <button
                           onClick={() => setExpandedClientId(expanded ? null : c.id)}
                           className="text-sm font-medium text-blue-600"

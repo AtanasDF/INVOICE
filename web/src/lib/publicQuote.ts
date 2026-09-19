@@ -31,7 +31,7 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
 
   const [{ data: client }, { data: bp }] = await Promise.all([
     q.client_id
-      ? admin.from("clients").select("name, email, address, vat_number, is_company").eq("id", q.client_id).eq("user_id", link.user_id).maybeSingle()
+      ? admin.from("clients").select("name, email, address, vat_number, is_company, contact_person").eq("id", q.client_id).eq("user_id", link.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
     admin.from("business_profile").select("business_name, address, vat_number, vat_registered").eq("user_id", link.user_id).maybeSingle(),
   ]);
@@ -69,7 +69,7 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
           kind: "client",
           paymentTerms: "",
           defaultCurrency: "",
-          contactPerson: "",
+          contactPerson: client.contact_person ?? "",
           phone: "",
           remindersEnabled: true,
           archived: false,

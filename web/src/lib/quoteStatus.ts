@@ -23,6 +23,8 @@ export function quoteStatusBadgeClass(q: Pick<Quote, "status" | "validUntil">, t
   return BADGES[shownStatus(q, today)];
 }
 
+export const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
 // "30 days" → 30, "Upon receipt" → 0; anything else has no length.
 export function termsLength(terms: string): number | null {
   const m = /(\d+)\s*days?/i.exec(terms);

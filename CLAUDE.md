@@ -11,6 +11,8 @@ it is his real accounting record. Read this file before doing anything.
 - `worker/` — separate Cloudflare Worker for email inbox import (deploy steps were handed
   to Atanas; unconfirmed whether done).
 - Live at https://invoice-omega-rust.vercel.app, auto-deployed from `main` by Vercel.
+  Only `main` deploys (`web/vercel.json` `git.deploymentEnabled`): the Hobby plan allows
+  100 deployments a day, and branch previews used them up on 2026-09-19.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
 - `scanner-research.md` — competitor research and the scanner follow-up plan.
 - `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
@@ -123,7 +125,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   lets the customer answer again. Owner status changes pass the status the page showed
   (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
   answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
-  works; copying its link marks it sent first. The owner's `#o` copy shows no buttons.
+  works; copying its link, or adding it to a text/WhatsApp message, marks it sent first
+  (after a confirm); a draft's link is never put in share-sheet text. The owner's `#o`
+  copy shows no buttons. Quotes can go to any client or supplier; a supplier who has been
+  invoiced gets the payment-reminder switch and history on the Suppliers tab.
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
@@ -273,7 +278,6 @@ them against the original before deleting.
   (haptic), "Text <customer>", the home-screen badge (needs notifications allowed).
 - Offline scan queue (keep captures on the phone until there's signal) is not built: it
   needs a caching service worker; worth doing only with an iPhone to test on.
-- "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the
   business name and bank details from there), `invoice_next_number` at 357358,
