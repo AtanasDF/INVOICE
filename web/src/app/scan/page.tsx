@@ -115,11 +115,14 @@ function headingFor(f: Form, mode: Mode): string {
 
 const ENGINE_KEY = "scan-engine";
 
+// Gemini unless Claude was picked: on the live site it read a receipt in
+// 3.7s to Claude's 9.6s, with the same result, and longer PDFs widen that
+// gap. Claude stays a tap away under "Read with".
 function readEngine(): ScanEngine {
   try {
-    return localStorage.getItem(ENGINE_KEY) === "gemini" ? "gemini" : "claude";
+    return localStorage.getItem(ENGINE_KEY) === "claude" ? "claude" : "gemini";
   } catch {
-    return "claude";
+    return "gemini";
   }
 }
 
