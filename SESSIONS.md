@@ -255,6 +255,27 @@ and what is left open. Dates are session dates (Europe/London).
     `IDEAL_POSTCODES_API_KEY`, signed-in users get Royal Mail PAF (paid per lookup, never
     for the anonymous Free page); tested with Ideal's public test key. Free page 12/12,
     signed-in forms 10/10. Review workflow running.
+  - Scanner review (3 lenses + refuters): 12 confirmed, all fixed (e5d97d5): still used
+    only if the page is re-found near the video's corners and as sharp; orientation from
+    the decoder, a sideways still turned only with a clear margin; flash after the photo
+    ("Hold still — taking the photo…"); Back/retry drops an in-flight capture; batch
+    disarms at capture start (test fails on c5f758b, passes after); corners ordered by
+    angle (45° receipts); white boxes on coloured bills rejected (edges around); no zoom
+    mid-photo. Re-check workflow running.
+  - Address review: 11 confirmed, fixed (7b9aa26): Royal Mail calls capped per account
+    (20/5 min, 100/day) + charged-only backstop, free lookup when capped or Ideal fails;
+    upstream errors not cached as "no matches"; Enter never submits the form; pending
+    Royal Mail pick shown, latest form state used; "just the postcode" keeps typed lines as
+    typed; street picks keep the typed house number and no stray postcode; council names
+    not used as towns; 16px input on phones. Unit 22/22, pages 12/12 + 12/12.
+  - Surprises, branch `feature/delight` (491299c): a "Paid" moment (tick, amount, customer,
+    "£X in this month", haptic tick) when an invoice is marked paid in full; the home-screen
+    icon badge = overdue invoices + recurring due + bills due in 3 days (dashboard, and the
+    daily push carries it); "Text <customer>" on issued invoices, sent/accepted quotes and
+    clients with a phone (On my way / Running late / I've arrived / Job done with the
+    invoice link on request / Thanks for paying) via Messages or WhatsApp. Mocked
+    click-through 7/7 + 12/12. Review running. Offline scan queue considered and left for
+    later: it needs a caching service worker, too risky to ship untested on an iPhone.
 
 **Open**
 
