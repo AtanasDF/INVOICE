@@ -238,6 +238,7 @@ export default function DocumentCapture({
   // processFrame lives in the long-lived effect below; this hands it the
   // current render's capture without restarting the stream.
   const captureRef = useRef<() => void>(() => {});
+  const zoomToRef = useRef<(level: number) => void>(() => {});
   const barcodeDetectorRef = useRef<BarcodeDetectorInstance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nativeInputRef = useRef<HTMLInputElement>(null);
@@ -336,8 +337,18 @@ export default function DocumentCapture({
     return hw ? hwZoomValueRef.current / Math.max(hw.min, 1) : cssZoomRef.current;
   }
 
+  // Corners found before a zoom are wrong after it: a shutter tap before the
+  // next detection would crop the wrong part of the page. Forget them.
+  function forgetPage() {
+    quadRef.current = null;
+    outlineRef.current = null;
+    lockedRef.current = false;
+    resetStable();
+  }
+
   // Level is relative to no zoom: 1 is the widest view, 2 twice as close.
   function zoomTo(level: number) {
+    forgetPage();
     const hw = hwZoomRef.current;
     if (!hw) {
       cssZoomRef.current = level;
@@ -355,12 +366,14 @@ export default function DocumentCapture({
 
   function toggleAutoZoom() {
     const next = !autoZoomOn;
+    // Switching off undoes auto-zoom's zoom, never one chosen by hand.
+    const manual = userZoomedRef.current;
     writeAutoZoom(next);
     autoZoomRef.current = next;
     userZoomedRef.current = false;
     smallSinceRef.current = null;
     lostSinceRef.current = null;
-    if (!next && zoomLevel() !== 1) zoomTo(1);
+    if (!next && !manual && zoomLevel() !== 1) zoomTo(1);
     setAutoZoomOn(next);
   }
 
@@ -732,7 +745,7 @@ export default function DocumentCapture({
               const level = zoomLevel();
               const next = Math.min(AUTO_ZOOM_MAX, level * Math.min(Math.sqrt(AUTO_ZOOM_TARGET / coverage), fitFactor(ordered, workW, workH)));
               if (next / level >= AUTO_ZOOM_MIN_STEP) {
-                zoomTo(next);
+                zoomToRef.current(next);
                 zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
                 resetStable();
                 return;
@@ -767,7 +780,7 @@ export default function DocumentCapture({
             if (lostSinceRef.current === null) lostSinceRef.current = now;
             else if (now - lostSinceRef.current >= AUTO_ZOOM_LOST_MS) {
               lostSinceRef.current = null;
-              zoomTo(1);
+              zoomToRef.current(1);
               zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
             }
           }
@@ -794,6 +807,7 @@ export default function DocumentCapture({
   }, [stopStream, freeMats, retryKey, useNative]);
 
   function applyZoom(value: number) {
+    forgetPage();
     userZoomedRef.current = true;
     hwZoomValueRef.current = value;
     setZoom(value);
@@ -915,6 +929,7 @@ export default function DocumentCapture({
 
   useEffect(() => {
     captureRef.current = capture;
+    zoomToRef.current = zoomTo;
   });
 
   function shutter() {
@@ -1229,6 +1244,7 @@ export default function DocumentCapture({
                   <button
                     key={z}
                     onClick={() => {
+                      forgetPage();
                       userZoomedRef.current = true;
                       cssZoomRef.current = z;
                       setCssZoom(z);

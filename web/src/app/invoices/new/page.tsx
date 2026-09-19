@@ -6,7 +6,8 @@ import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, cl
 import { supabase } from "@/lib/supabaseClient";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
-import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays } from "@/lib/freeInvoiceDraft";
+import { NumberInput } from "@/components/free-invoice/fields";
+import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { CameraIcon } from "@/components/icons";
 import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
@@ -30,14 +31,17 @@ type ScanApiResult = {
   notes: string | null;
 };
 
+function termsLengthOf(terms: string): number | null {
+  if (/receipt|immediate/i.test(terms)) return 0;
+  const m = /(\d+)\s*days?/i.exec(terms);
+  return m ? Number(m[1]) : null;
+}
+
 // Printed terms win over the printed date gap, which catches invoices that
 // only show a due date.
 function copiedTermsDays(t: InvoiceTemplate): number | null {
-  if (t.paymentTerms) {
-    if (/receipt|immediate/i.test(t.paymentTerms)) return 0;
-    const m = /(\d+)\s*days?/i.exec(t.paymentTerms);
-    if (m) return Number(m[1]);
-  }
+  const printed = t.paymentTerms ? termsLengthOf(t.paymentTerms) : null;
+  if (printed !== null) return printed;
   if (!t.date || !t.dueDate) return null;
   const gap = (Date.parse(t.dueDate) - Date.parse(t.date)) / 86_400_000;
   return Number.isFinite(gap) && gap >= 0 ? Math.round(gap) : null;
@@ -64,8 +68,13 @@ export default function NewInvoicePage() {
   // The free-invoice draft is read once, on mount: the form is empty then by
   // construction, and the gate never server-renders this page, so lazy
   // initialisers are safe and avoid a setState-in-effect cascade.
-  const [draft] = useState(readFreeInvoiceDraft);
-  const [date, setDate] = useState(() => draft?.date || new Date().toISOString().slice(0, 10));
+  // "Scan an invoice" on the list opens straight into the camera to copy an
+  // invoice sent before; the in-page button reads a source document instead.
+  // A copy starts from the scan, so a free-invoice draft isn't imported
+  // under it (and stays where it is for the Free page).
+  const [copyMode] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1");
+  const [draft] = useState(() => (copyMode ? null : readFreeInvoiceDraft()));
+  const [date, setDate] = useState(() => draft?.date || todayIso());
   const [dueDate, setDueDate] = useState(() => (draft ? importedDueDate(draft, date).dueDate : addDays(date, 30)));
   const [dueDateManual, setDueDateManual] = useState(() => !!draft && importedDueDate(draft, date).manual);
   const [paymentTerms, setPaymentTerms] = useState<string>(draft?.paymentTerms ?? "");
@@ -84,9 +93,6 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // "Scan an invoice" on the list opens straight into the camera to copy an
-  // invoice sent before; the in-page button reads a source document instead.
-  const [copyMode] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1");
   const [capture, setCapture] = useState<"copy" | "attach" | null>(() => (copyMode ? "copy" : null));
   const [copied, setCopied] = useState<{ currency: string | null } | null>(null);
   const [newCustomer, setNewCustomer] = useState<ScannedCustomer | null>(null);
@@ -100,6 +106,8 @@ export default function NewInvoicePage() {
   // against an empty client list would offer to add an existing client.
   const listsRef = useRef<Promise<{ clients: Client[]; pastInvoices: Invoice[] }> | null>(null);
   const copiedNotesRef = useRef("");
+  // Days from the invoice date to the due date, when copied terms set it.
+  const [termsLength, setTermsLength] = useState<number | null>(null);
 
   useEffect(() => {
     const load = Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
@@ -189,7 +197,7 @@ export default function NewInvoicePage() {
 
   function onDateChange(value: string) {
     setDate(value);
-    if (!dueDateManual) setDueDate(addDays(value, 30));
+    if (!dueDateManual) setDueDate(addDays(value, termsLength ?? 30));
   }
 
   function updateItem(idx: number, patch: Partial<InvoiceItem>) {
@@ -300,26 +308,22 @@ export default function NewInvoicePage() {
         : [{ ...BLANK_ITEM }]
     );
 
-    // A new invoice: dated today whatever the scan says.
-    const today = new Date().toISOString().slice(0, 10);
+    // A new invoice: dated today whatever the scan says, due by the copied
+    // terms (or the client's own), which a later date change keeps following.
+    const today = todayIso();
     setDate(today);
     const days = copiedTermsDays(t);
-    if (days !== null) {
-      setPaymentTerms(days === 0 ? "Upon receipt" : `${days} days`);
-      setDueDate(addDays(today, days));
-      // Otherwise a later date change would reset the due date to 30 days.
-      setDueDateManual(days !== 30);
-    } else {
-      setPaymentTerms(match?.paymentTerms ?? "");
-      setDueDate(addDays(today, 30));
-      setDueDateManual(false);
-    }
+    const clientDays = match?.paymentTerms ? termsLengthOf(match.paymentTerms) : null;
+    const length = days ?? clientDays;
+    setPaymentTerms(days !== null ? (days === 0 ? "Upon receipt" : `${days} days`) : (match?.paymentTerms ?? ""));
+    setTermsLength(length);
+    setDueDate(addDays(today, length ?? 30));
+    setDueDateManual(false);
 
     const copiedNotes = t.notes ?? "";
-    setNotes((prev) => (imported || !prev.trim() || prev === copiedNotesRef.current ? copiedNotes : prev));
+    const previousCopy = copiedNotesRef.current;
     copiedNotesRef.current = copiedNotes;
-    // The copy replaces a free-invoice import rather than sitting under it.
-    setImported(false);
+    setNotes((prev) => (!prev.trim() || prev === previousCopy ? copiedNotes : prev));
     setCopied({ currency: t.currency && t.currency !== "GBP" ? t.currency : null });
   }
 
@@ -488,7 +492,15 @@ export default function NewInvoicePage() {
             />
           </div>
         </div>
-        <input className="w-full rounded-lg border px-3 py-2" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
+        <input
+          className="w-full rounded-lg border px-3 py-2"
+          value={paymentTerms}
+          onChange={(e) => {
+            setPaymentTerms(e.target.value);
+            setTermsLength(termsLengthOf(e.target.value));
+          }}
+          placeholder="Payment terms (e.g. 30 days)"
+        />
 
         <div className="space-y-2">
           <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
@@ -506,17 +518,19 @@ export default function NewInvoicePage() {
                 onChange={(e) => updateItem(idx, { description: e.target.value })}
                 onBlur={() => onDescriptionBlur(idx)}
               />
-              <input
-                className="col-span-2 rounded-lg border px-3 py-2"
+              <NumberInput
+                className="col-span-2 rounded-lg border px-3 py-2 text-right"
                 placeholder="Qty"
+                aria-label="Quantity"
                 value={it.quantity}
-                onChange={(e) => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                onChange={(quantity) => updateItem(idx, { quantity })}
               />
-              <input
-                className="col-span-3 rounded-lg border px-3 py-2"
+              <NumberInput
+                className="col-span-3 rounded-lg border px-3 py-2 text-right"
                 placeholder="Unit price"
+                aria-label="Unit price"
                 value={it.unitPrice}
-                onChange={(e) => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+                onChange={(unitPrice) => updateItem(idx, { unitPrice })}
               />
               {profile?.vatRegistered && (
                 <select

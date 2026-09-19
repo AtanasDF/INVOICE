@@ -238,7 +238,15 @@ export default function NewReceiptPage() {
             className="hidden"
           />
         </div>
-        <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <select
+          className="w-full rounded-lg border px-3 py-2"
+          value={clientId}
+          onChange={(e) => {
+            setClientId(e.target.value);
+            setConfirmedDuplicate(false);
+            setPossibleDuplicate(null);
+          }}
+        >
           <option value="">No supplier / general expense</option>
           {suppliers.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
@@ -285,7 +293,7 @@ export default function NewReceiptPage() {
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <input className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+        <input className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => { setVatAmount(e.target.value); setConfirmedDuplicate(false); setPossibleDuplicate(null); }} inputMode="decimal" />
         {currency !== "GBP" && (
           <div className="flex items-center gap-2">
             <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>

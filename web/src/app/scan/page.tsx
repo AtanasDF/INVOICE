@@ -533,6 +533,17 @@ export default function ScanPage() {
     }
     const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
     const sign = mode === "credit_note" ? -1 : 1;
+    // The duplicate check is only as good as the list it checks: if the
+    // first load failed (a weak signal), load it now rather than check nothing.
+    let receiptList = receipts;
+    if (!listsLoadedRef.current) {
+      try {
+        receiptList = (await loadLists()).receipts;
+      } catch {
+        setSaveError("Couldn't load your saved documents to check for duplicates. Check your connection and try again.");
+        return;
+      }
+    }
     if (!force && mode !== "archival") {
       const dup = findDuplicate(
         {
@@ -543,7 +554,7 @@ export default function ScanPage() {
           gross: sign * (netGbp + vatGbp),
           isCreditNote: mode === "credit_note",
         },
-        receipts
+        receiptList
       );
       if (dup) {
         setDuplicate(dup);
@@ -591,7 +602,7 @@ export default function ScanPage() {
         },
         pages.slice(1).map((p) => p.dataUrl)
       );
-      const nextReceipts = [...receipts, saved];
+      const nextReceipts = [...receiptList, saved];
       setReceipts(nextReceipts);
       if (!advance(nextReceipts)) router.push("/receipts");
     } catch (err) {
