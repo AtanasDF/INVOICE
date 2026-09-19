@@ -162,8 +162,11 @@ and what is left open. Dates are session dates (Europe/London).
   "Invoice the balance" = quote lines + the deposit invoice's lines negated, refused
   while the deposit invoice is still a draft. Negative line amounts print as −£.
   Assumptions to confirm with Atanas: deposit due in 7 days; deposit only once
-  accepted. Unit 9/9, click-through 15/15. Backup 011 (quotes) verified 0/0; migration-022
-  waits for the review.
+  accepted. Review: no blockers; fixed a credited deposit still being deducted, a warning
+  before declining with an open deposit invoice (its reminders keep going), 1p rounding
+  (4-decimal lines), negative-balance guard, two-tab link warning, and New invoice no
+  longer suggesting a "Less deposit" line. Unit 13/13, click-through 17/17. Backup 011
+  verified 0/0; migration-022 applied and verified (rolled back); merged (66cb528).
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked

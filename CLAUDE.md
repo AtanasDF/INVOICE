@@ -34,7 +34,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-021, backup 010 (all applied). Supabase grants anon/authenticated everything
+   migration-022, backup 011 (all applied). Supabase grants anon/authenticated everything
    on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -86,6 +86,11 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   declined/invoiced, editable only as drafts. Turn into invoice claims the quote (status
   invoiced, invoice_id null), makes a draft invoice tagged `from <quote number>` and links
   it; the quote page relinks by that tag if the link was lost. Quotes are never deleted.
+  Deposits (migration-022): `deposit_percent` or `deposit_amount` (gross), claimed via
+  `deposit_claimed`, invoiced on its own (`deposit_invoice_id`, tag `deposit for <number>`,
+  lines per VAT rate, 4-decimal unit prices); the final invoice adds the deposit invoice's
+  lines negated (quantity -1), less anything credited against it. Maths in
+  `src/lib/quoteDeposit.ts`.
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique
@@ -183,7 +188,6 @@ them against the original before deleting.
   `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`. Old inline rows and
   inbox imports still store base64; moving those is a later job.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
-- Quote deposits (invoice a deposit on acceptance, the balance later) — follow-up to quotes.
 - "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the

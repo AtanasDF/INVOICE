@@ -39,7 +39,13 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-021 as of 2026-09-19 (backup 010:
+- Live Supabase is at migration-022 as of 2026-09-19 (backup 011:
+  quotes_backup_20260919_m022, verified 0/0, RLS): quotes.deposit_percent (0–100
+  exclusive) / deposit_amount (> 0), at most one; deposit_invoice_id → invoices ON DELETE
+  SET NULL; deposit_claimed; quotes_same_owner also checks the deposit invoice. Verified
+  rolled back: 30% saves, both or 100% refused, own deposit invoice links, another
+  account's refused, removing it unlinks and keeps the claim.
+- Migration-021 as of 2026-09-19 (backup 010:
   business_profile_backup_20260919_m021 and invoice_reminders_sent_backup_20260919_m021,
   verified 0/0 both ways, RLS on): business_profile.reminder_text_late /
   reminder_text_final / reminder_late_payment_interest (default false), and the
