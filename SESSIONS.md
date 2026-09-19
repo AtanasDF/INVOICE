@@ -74,8 +74,24 @@ and what is left open. Dates are session dates (Europe/London).
     Authenticated pages can't be driven there (no login), so /scan and /invoices/new were
     checked by review, not clicks.
 
+  - Describe an invoice in words on New invoice (4a2401b, f8ca233): customer, lines, VAT
+    treatment, currency and terms from typed or dictated text; unsaid VAT defaults to
+    standard (a pre-release check caught it defaulting to 0%).
+  - Payment reminders now come from the business name, reply to the owner, show readable
+    dates/amounts and bank details, skip part-paid and fully credited invoices, and claim
+    their slot before sending (2b82865, 535da72).
+  - Branch `feature/client-phone-and-shared-limit` (not merged): clients.phone and a
+    database-backed rate limit for the free scanner; SQL in web/supabase/009 + 018 for
+    Atanas to run; reviewed, nothing confirmed against it.
+  - Accuracy pass 1 on five synthetic documents: both engines right on every key field
+    (details in notes).
+  - Leftover git worktrees under .claude/worktrees (all merged and pushed) can be removed
+    with `git worktree remove`; left in place under the never-delete rule.
+
 **Open**
 
+- Run 009-backup-before-migration-018.sql, verify, then migration-018 in Supabase; after
+  checking, merge `feature/client-phone-and-shared-limit`.
 - Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
   signature pad and scan-to-fill on the iPhone.
 - Session hygiene: this session started in another project's folder (MM INVOICES AUTO);

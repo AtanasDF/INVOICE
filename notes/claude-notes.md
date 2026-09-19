@@ -74,6 +74,14 @@ changes.
 - Signature: localStorage `free-invoice-signature` ({image PNG data URL, name}), separate
   from the draft so Start over and new invoices reuse it.
 
+- Accuracy pass 1 (2026-09-19, synthetic documents through live /api/scan, both engines):
+  handwritten invoice, rough spreadsheet invoice with VAT, thermal till receipt, credit
+  note against an invoice, USD SaaS invoice. Both engines read every key field right
+  (supplier, date, number, gross, VAT, currency, document type, credited invoice number).
+  Gemini Flash-Lite 4-5s, Claude Opus 5 8-11s. Only difference: with "payment terms 30
+  days" and no printed due date, Gemini invented a due date; Claude left it blank as told.
+  Real documents from Atanas are still needed before deciding Gemini can carry everything.
+
 ## Decisions
 
 - Scanned supplier invoices and credit notes are expense documents in `receipts`, never
