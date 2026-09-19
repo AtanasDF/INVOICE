@@ -37,12 +37,14 @@ function dateCue(label: string, printed: string | null, iso: string | null, alte
 // An attachment holding several documents gives a row for each: a PDF cut
 // down to that document's pages where it can be, otherwise the whole
 // attachment with a note saying which part is this one.
-async function documentFile(attachment: IngestAttachment, result: ScanResult, index: number, count: number) {
-  if (count === 1) return { base64: attachment.base64, note: null };
-  const where = `Document ${index + 1} of ${count} in ${attachment.filename || "this attachment"}`;
+async function documentFile(attachment: IngestAttachment, documents: ScanResult[], index: number) {
+  const result = documents[index];
+  if (documents.length === 1) return { base64: attachment.base64, note: null };
+  const where = `Document ${index + 1} of ${documents.length} in ${attachment.filename || "this attachment"}`;
+  const shared = (page: number) => documents.some((d) => d !== result && (!d.pages.length || d.pages.includes(page)));
   if (attachment.mimeType === "application/pdf" && result.pages.length) {
     try {
-      const dataUrl = await pdfWithPages(attachment.base64, result.pages.map((page) => ({ page, box: result.box })));
+      const dataUrl = await pdfWithPages(attachment.base64, result.pages.map((page) => ({ page, box: shared(page) ? result.box : null })));
       return { base64: dataUrl.slice(dataUrl.indexOf(",") + 1), note: `${where}.` };
     } catch {}
   }
@@ -132,7 +134,7 @@ export async function POST(req: Request) {
     for (const attachment of usableAttachments) {
       const documents = await extractDocuments([{ mediaType: attachment.mimeType, base64: attachment.base64 }], []);
       for (const [index, result] of documents.entries()) {
-        const file = await documentFile(attachment, result, index, documents.length);
+        const file = await documentFile(attachment, documents, index);
         const documentType: DocumentType =
           result.documentType === "invoice" || result.documentType === "credit_note" ? result.documentType : "receipt";
         // A credit note is stored negative so it nets against spend.

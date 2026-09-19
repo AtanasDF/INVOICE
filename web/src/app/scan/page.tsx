@@ -338,8 +338,11 @@ type WalkDoc = {
   pages: CapturedFile[];
   result: ScanResult | null;
   error: string | null;
-  // Pages added or retaken by hand are one document whatever the reading says.
+  // Pages put together by hand (joined in the stack, added or retaken) are
+  // one document whatever the reading says.
   joined: boolean;
+  // Pages that are only the whole shared photo, kept after a crop.
+  context: number[];
   splitNote: string | null;
   done: "saved" | "skipped" | null;
   // Why Save all left it.
@@ -394,7 +397,6 @@ export default function ScanPage() {
   const readsRef = useRef(new Map<number, Promise<void>>());
   // A document's reading generation: a result from an older read is dropped.
   const readGenRef = useRef(new Map<number, number>());
-  const limitRef = useRef<ReturnType<typeof limiter> | null>(null);
   const idRef = useRef(0);
   // Fields the user has edited, which a re-read must not overwrite.
   const touchedRef = useRef(new Set<keyof Form>());
@@ -533,13 +535,22 @@ export default function ScanPage() {
     if (d.result && !d.error) applyResult(d.result);
   }
 
-  function readDoc(id: number, docPages: CapturedFile[], joined: boolean, cats: string[]) {
+  // A batch's reads queue in `limit`; one he asked for (Try again, a page
+  // added or retaken) starts at once.
+  function readDoc(d: WalkDoc, cats: string[], limit?: ReturnType<typeof limiter>) {
+    const { id } = d;
     const gen = (readGenRef.current.get(id) ?? 0) + 1;
     readGenRef.current.set(id, gen);
     const latest = () => readGenRef.current.get(id) === gen;
-    limitRef.current ??= limiter(READ_CONCURRENCY);
-    const read = limitRef.current(() => extractPages(docPages, cats, engine))
-      .then((found) => (joined ? [{ pages: docPages, result: mergeScanResults(found) }] : splitDocuments(docPages, found)))
+    const extract = () => extractPages(d.pages, cats, engine);
+    const read = (limit ? limit(extract) : extract())
+      .then((found) => {
+        if (!d.joined) return splitDocuments(d.pages, found);
+        // A part cut from a shared photo still carries the whole photo,
+        // where the reader finds the other documents again: those are left out.
+        const own = found.filter((f) => !f.pages?.length || f.pages.some((p) => !d.context.includes(p)));
+        return [{ pages: d.pages, result: mergeScanResults(own.length ? own : found), context: d.context }];
+      })
       .then(
         (parts) => {
           if (latest()) onRead(id, parts);
@@ -557,7 +568,7 @@ export default function ScanPage() {
     if (!w || at < 0) return;
     const d = w.docs[at];
     const splitNote = parts.length > 1 ? `${sourceName(d.pages)} had ${parts.length} documents — they're listed separately.` : d.splitNote;
-    const replaced = parts.map((p, k) => ({ ...d, id: k ? ++idRef.current : id, pages: p.pages, result: p.result, error: null, splitNote }));
+    const replaced = parts.map((p, k) => ({ ...d, id: k ? ++idRef.current : id, pages: p.pages, result: p.result, context: p.context, error: null, splitNote }));
     setWalk({ ...w, docs: [...w.docs.slice(0, at), ...replaced, ...w.docs.slice(at + 1)] });
     if (w.current === id) show(replaced[0]);
   }
@@ -590,11 +601,11 @@ export default function ScanPage() {
       startBatch([pages], lists);
       return;
     }
-    updateDoc(d.id, { error: null });
+    updateDoc(d.id, { error: null, look: null });
     setScanning(true);
     setScanError(null);
     setDuplicate(null);
-    readDoc(d.id, d.pages, d.joined, lists?.cats ?? categories);
+    readDoc(d, lists?.cats ?? categories);
   }
 
   function onCaptured(file: CapturedFile, current: Capture) {
@@ -615,16 +626,16 @@ export default function ScanPage() {
       startBatch([next]);
       return;
     }
-    updateDoc(d.id, { pages: next, joined: true, error: null });
+    const change = { pages: next, joined: true, error: null, look: null };
+    updateDoc(d.id, change);
     setScanning(true);
     setScanError(null);
     // A warning about the previous reading doesn't describe the next one.
     setDuplicate(null);
-    readDoc(d.id, next, true, categories);
+    readDoc({ ...d, ...change }, categories);
   }
 
   function startBatch(docs: CapturedFile[][], lists?: Lists) {
-    limitRef.current = limiter(READ_CONCURRENCY);
     readsRef.current = new Map();
     const cats = lists?.cats ?? categories;
     if (lists) suppliersRef.current = lists.suppliers;
@@ -633,14 +644,16 @@ export default function ScanPage() {
       pages: d,
       result: null,
       error: null,
-      joined: false,
+      joined: d.length > 1,
+      context: [],
       splitNote: null,
       done: null,
       look: null,
     }));
     setSummary(null);
     setWalk({ docs: entries, current: entries[0].id });
-    entries.forEach((e) => readDoc(e.id, e.pages, false, cats));
+    const limit = limiter(READ_CONCURRENCY);
+    entries.forEach((e) => readDoc(e, cats, limit));
     openDoc(entries[0]);
   }
 

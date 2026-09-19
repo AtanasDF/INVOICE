@@ -2,7 +2,9 @@ import type { CapturedFile } from "@/components/DocumentCapture";
 import { type DocumentBox, padded } from "@/lib/documentBox";
 import type { ScanResult } from "@/lib/scanExtraction";
 
-export type DocumentPart = { pages: CapturedFile[]; result: ScanResult };
+// `context`: page numbers in the part (as the reader counts them) that are
+// only the whole shared photo or page, kept in case the crop is off.
+export type DocumentPart = { pages: CapturedFile[]; result: ScanResult; context: number[] };
 
 const isPdf = (f: CapturedFile) => f.mediaType === "application/pdf";
 
@@ -53,7 +55,7 @@ function cropImage(file: CapturedFile, box: DocumentBox): Promise<CapturedFile |
 // that can't be cut goes whole with each document, whose notes say which
 // pages are its own.
 export async function splitDocuments(files: CapturedFile[], documents: ScanResult[]): Promise<DocumentPart[]> {
-  if (documents.length < 2) return [{ pages: files, result: documents[0] }];
+  if (documents.length < 2) return [{ pages: files, result: documents[0], context: [] }];
   const counts = await countPages(files);
   const total = counts.reduce<number>((sum, c) => sum + (c ?? 1), 0);
   const pagesOf = documents.map((d) => {
@@ -62,13 +64,15 @@ export async function splitDocuments(files: CapturedFile[], documents: ScanResul
   });
   const shared = (page: number) => pagesOf.filter((p) => p.includes(page)).length > 1;
   if (counts.includes(null)) {
-    return documents.map((d, i) => ({ pages: files, result: noted(d, `On ${pageList(pagesOf[i])} of this file, which couldn't be split.`) }));
+    return documents.map((d, i) => ({ pages: files, result: noted(d, `On ${pageList(pagesOf[i])} of this file, which couldn't be split.`), context: [] }));
   }
 
   return Promise.all(
     documents.map(async (doc, i) => {
       const pages: CapturedFile[] = [];
       const unsplit: number[] = [];
+      const context: number[] = [];
+      let read = 0;
       let start = 1;
       for (const [f, file] of files.entries()) {
         const first = start;
@@ -79,23 +83,31 @@ export async function splitDocuments(files: CapturedFile[], documents: ScanResul
         if (!isPdf(file)) {
           const crop = doc.box && shared(first) ? await cropImage(file, doc.box) : null;
           pages.push(...(crop ? [crop, file] : [file]));
+          if (crop) context.push(read + 2);
+          read += crop ? 2 : 1;
           continue;
         }
         const cuts = own.map((p) => ({ page: p - first + 1, box: doc.box && shared(p) ? doc.box : null }));
         if (own.length === count && cuts.every((c) => !c.box)) {
           pages.push(file);
+          read += count;
           continue;
         }
         try {
           const { pdfWithPages } = await import("@/lib/pdfPages");
           pages.push({ dataUrl: await pdfWithPages(file.dataUrl, cuts), mediaType: "application/pdf" });
+          for (const c of cuts) {
+            if (c.box) context.push(read + 2);
+            read += c.box ? 2 : 1;
+          }
         } catch {
           pages.push(file);
           unsplit.push(...cuts.map((c) => c.page));
+          read += count;
         }
       }
       const result = unsplit.length ? noted(doc, `On ${pageList(unsplit)} of the PDF, which couldn't be split.`) : doc;
-      return { pages: pages.length ? pages : files, result };
+      return pages.length ? { pages, result, context } : { pages: files, result, context: [] };
     })
   );
 }

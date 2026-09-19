@@ -94,6 +94,14 @@ export function conformToSchema(schema: unknown, value: unknown): unknown {
   // "other" for a kind of thing, "low" for a confidence the model didn't give.
   const fallbackOption = options && (options.includes("other") ? "other" : options.includes("low") ? "low" : options[0]);
 
+  // Non-strict tool input can carry a nested array or object as JSON text;
+  // with every document inside one array, reading that as empty would lose
+  // the whole scan.
+  if ((concrete === "array" || concrete === "object") && typeof value === "string" && /^\s*[[{]/.test(value)) {
+    try {
+      return conformToSchema(node, JSON.parse(value));
+    } catch {}
+  }
   if (value === undefined || value === null || (value === "" && nullable)) {
     if (nullable) return null;
     if (concrete === "array") return [];
