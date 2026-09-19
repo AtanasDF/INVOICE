@@ -7,6 +7,7 @@ import {
   PafAddress,
   normalisePostcode,
   osmMatch,
+  postcodeAsTyped,
   postcodeTown,
   pafLines,
   townCase,
@@ -31,6 +32,7 @@ const OSM_SIGNED_IN = 120;
 const PAF_PER_USER = 20;
 const PAF_PER_USER_DAY = 100;
 const PAF_CHARGED_TOTAL = 150;
+const PAF_CHARGED_DAY = 400;
 const PAF_FREE_TOTAL = 300;
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; result: AddressSearchResult }>();
@@ -71,6 +73,32 @@ function unique(items: (AddressMatch | null)[]): AddressMatch[] {
   });
 }
 
+// The post town for each postcode (postcodes.io's built-up area), in one
+// call: OpenStreetMap often gives the council instead ("Kirklees" for
+// Huddersfield). Without an answer, OpenStreetMap's own town stands.
+async function townsFor(postcodes: (string | null)[]): Promise<Map<string, string>> {
+  const unique = [...new Set(postcodes.filter((p): p is string => !!p))];
+  const towns = new Map<string, string>();
+  if (!unique.length) return towns;
+  try {
+    const res = await fetch("https://api.postcodes.io/postcodes", {
+      method: "POST",
+      headers: { ...UA, "Content-Type": "application/json" },
+      body: JSON.stringify({ postcodes: unique }),
+      signal: AbortSignal.timeout(4000),
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => null)) as { result?: { query: string; result: { bua?: string | null; admin_district?: string } | null }[] } | null;
+    for (const r of body?.result ?? []) {
+      const pc = normalisePostcode(r.query);
+      if (pc && r.result) towns.set(pc, townCase(postcodeTown(pc, r.result.bua, [], r.result.admin_district)));
+    }
+  } catch {
+    // OpenStreetMap's towns will do.
+  }
+  return towns;
+}
+
 // Free: postcodes.io to check a postcode and find where it is, and
 // OpenStreetMap (through Photon) for the houses and streets.
 async function searchOsm(q: string): Promise<AddressSearchResult> {
@@ -79,13 +107,20 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&countrycode=GB&layer=house&layer=street&limit=8&lang=en`;
     const { body } = await getJson<Photon>(url);
     const houseNumber = /^(\d+[a-z]?(?:-\d+[a-z]?)?)\s+\S/i.exec(q)?.[1];
-    const items = unique((body?.features ?? []).map((f, i) => osmMatch(f.properties ?? {}, `osm:${i}`, { houseNumber })));
+    const features = (body?.features ?? []).map((f) => f.properties ?? {});
+    const towns = await townsFor(features.map((p) => (p.postcode ? normalisePostcode(p.postcode) : null)));
+    const items = unique(
+      features.map((p, i) => {
+        const pc = p.postcode ? normalisePostcode(p.postcode) : null;
+        return osmMatch(p, `osm:${i}`, { houseNumber, town: pc ? towns.get(pc) : undefined });
+      })
+    );
     return { source: "osm", items: items.slice(0, 6) };
   }
   const where = await getJson<{ result?: { latitude?: number; longitude?: number; admin_district?: string; bua?: string | null } }>(
     `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`
   );
-  if (where.status === 404) return { source: "osm", items: [], badPostcode: true };
+  if (where.status === 404) return { source: "osm", items: [postcodeAsTyped(postcode)], badPostcode: true };
   const at = where.body?.result;
   if (!at?.latitude || !at.longitude) return { source: "osm", items: [] };
   const { body } = await getJson<Photon>(
@@ -114,7 +149,7 @@ async function searchPaf(q: string, key: string): Promise<AddressSearchResult> {
     const { status, body } = await getJson<{ code?: number; result?: (PafAddress & { udprn?: number })[] }>(
       `${PAF}/postcodes/${encodeURIComponent(postcode.replace(" ", ""))}?api_key=${encodeURIComponent(key)}`
     );
-    if (status === 404 || body?.code === 4040) return { source: "paf", items: [], badPostcode: true };
+    if (status === 404 || body?.code === 4040) return { source: "paf", items: [postcodeAsTyped(postcode)], badPostcode: true };
     if (status !== 200) throw new Error(`Ideal Postcodes answered ${status}`);
     const items = (body?.result ?? []).map((a): AddressMatch => {
       const lines = pafLines(a);
@@ -148,7 +183,7 @@ async function pickPaf(udprn: string, key: string): Promise<string[] | null> {
 // anonymous page); everyone else the free OpenStreetMap lookup. POST keeps
 // what people type out of request logs.
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as { q?: unknown; pick?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { q?: unknown; pick?: unknown; free?: unknown };
   if (!allow(`address:ip:${addressKey(req.headers.get("x-forwarded-for"))}`, PER_ADDRESS, FIVE_MINUTES)) {
     return json("osm", [], { busy: true }, 429);
   }
@@ -158,23 +193,25 @@ export async function POST(req: Request) {
     !!userId &&
     (await allowShared(`address:paf:user:${userId}`, PAF_PER_USER, FIVE_MINUTES)) &&
     (await allowShared(`address:paf:user-day:${userId}`, PAF_PER_USER_DAY, DAY)) &&
-    (await allowShared("address:paf:charged", PAF_CHARGED_TOTAL, FIVE_MINUTES));
+    (await allowShared("address:paf:charged", PAF_CHARGED_TOTAL, FIVE_MINUTES)) &&
+    (await allowShared("address:paf:charged-day", PAF_CHARGED_DAY, DAY));
 
   if (typeof body.pick === "string") {
     const udprn = /^paf:(\d{1,12})$/.exec(body.pick)?.[1];
     if (!key || !userId || !udprn) return json("paf", [], {}, 400);
-    if (!(await charged())) return json("paf", [], { busy: true }, 429);
+    // Refused or failed, the box searches again with the free lookup.
+    if (!(await charged())) return NextResponse.json({ fallback: true }, { status: 429 });
     try {
       const lines = await pickPaf(udprn, key);
-      return lines ? NextResponse.json({ lines }) : json("paf", [], {}, 404);
+      return lines ? NextResponse.json({ lines }) : NextResponse.json({ fallback: true }, { status: 404 });
     } catch {
-      return json("paf", [], { busy: true }, 503);
+      return NextResponse.json({ fallback: true }, { status: 503 });
     }
   }
 
   const q = typeof body.q === "string" ? body.q.replace(/\s+/g, " ").trim().slice(0, 100) : "";
   if (q.length < 3) return json(key && userId ? "paf" : "osm", []);
-  let paf = !!key && !!userId;
+  let paf = !!key && !!userId && body.free !== true;
   const cached = (source: AddressSource) => {
     const hit = cache.get(`${source}:${q.toLowerCase()}`);
     return hit && Date.now() - hit.at < CACHE_MS ? hit.result : null;

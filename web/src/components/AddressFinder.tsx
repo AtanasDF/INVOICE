@@ -17,7 +17,9 @@ async function authHeaders(): Promise<Record<string, string>> {
 export default function AddressFinder({ address, onAddress, labelledBy }: { address: string; onAddress: (next: string) => void; labelledBy?: string }) {
   const listId = useId();
   const [query, setQuery] = useState("");
-  const [result, setResult] = useState<AddressSearchResult | null>(null);
+  // Each answer remembers what it was for, so Enter can't pick from the
+  // list for what was typed a moment ago.
+  const [result, setResult] = useState<(AddressSearchResult & { q: string; free?: boolean }) | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [searching, setSearching] = useState(false);
@@ -51,10 +53,10 @@ export default function AddressFinder({ address, onAddress, labelledBy }: { addr
       setSearching(true);
       try {
         const res = await fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ q }), signal: controller.signal });
-        setResult((await res.json()) as AddressSearchResult);
+        setResult({ ...((await res.json()) as AddressSearchResult), q });
         setActive(-1);
       } catch {
-        if (!controller.signal.aborted) setResult({ source: "osm", items: [], busy: true });
+        if (!controller.signal.aborted) setResult({ source: "osm", items: [], busy: true, q });
       } finally {
         if (!controller.signal.aborted) setSearching(false);
       }
@@ -81,12 +83,22 @@ export default function AddressFinder({ address, onAddress, labelledBy }: { addr
     setFetching(true);
     try {
       const res = await fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ pick: m.id }) });
-      const body = (await res.json()) as { lines?: string[] };
-      if (!res.ok || !body.lines?.length) throw new Error();
+      const body = (await res.json().catch(() => ({}))) as { lines?: string[]; fallback?: boolean };
       if (!mounted.current) return;
-      onAddressRef.current(mergeAddress(addressRef.current, { ...m, lines: body.lines }));
-      setQuery("");
-      setResult(null);
+      if (res.ok && body.lines?.length) {
+        onAddressRef.current(mergeAddress(addressRef.current, { ...m, lines: body.lines }));
+        setQuery("");
+        setResult(null);
+        return;
+      }
+      if (!body.fallback) throw new Error();
+      // Royal Mail lookups used up for now: the same search, free.
+      const q = query.trim();
+      const again = await fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ q, free: true }) });
+      if (!mounted.current) return;
+      setResult({ ...((await again.json()) as AddressSearchResult), q, free: true });
+      setActive(-1);
+      setOpen(true);
     } catch {
       if (mounted.current) setError("Couldn't fetch that address. Pick it again, or type it in below.");
     } finally {
@@ -100,8 +112,9 @@ export default function AddressFinder({ address, onAddress, labelledBy }: { addr
     // submit the form around it.
     if (e.key === "Enter") {
       e.preventDefault();
-      if (shown && active >= 0 && items[active]) pick(items[active]);
-      else if (items.length === 1) pick(items[0]);
+      const current = !searching && result?.q === query.trim();
+      if (current && shown && active >= 0 && items[active]) pick(items[active]);
+      else if (current && items.length === 1) pick(items[0]);
       else setOpen(true);
       return;
     }
@@ -122,12 +135,12 @@ export default function AddressFinder({ address, onAddress, labelledBy }: { addr
     : result?.busy
       ? "Address search isn't answering just now. Type the address in below."
       : result?.badPostcode
-        ? "That postcode doesn't exist. Check it, or type the address in below."
+        ? "We couldn't find that postcode. Check it, or use it as typed if it's new."
         : !items.length
           ? "No matches. Try the postcode, or type the address in below."
           : result?.source === "paf"
             ? "Royal Mail addresses. Pick one to fill it in."
-            : "Pick one to fill it in. Addresses © OpenStreetMap contributors.";
+            : `${result?.free ? "Free address search for now. " : ""}Pick one to fill it in. Addresses © OpenStreetMap contributors.`;
 
   return (
     <div className="relative">
@@ -153,6 +166,7 @@ export default function AddressFinder({ address, onAddress, labelledBy }: { addr
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
+            setActive(-1);
             setError(null);
           }}
           onFocus={() => {
