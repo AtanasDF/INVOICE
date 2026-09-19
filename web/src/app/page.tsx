@@ -7,6 +7,7 @@ import {
   businessProfileStore,
   clientsStore,
   creditNotesStore,
+  paymentsStore,
   Invoice,
   invoicesStore,
   Receipt,
@@ -130,13 +131,14 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [clients, receipts, invoices, profile, recurring, creditNotes] = await Promise.all([
+      const [clients, receipts, invoices, profile, recurring, creditNotes, payments] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
         invoicesStore.all(),
         businessProfileStore.get(),
         recurringExpensesStore.all(),
         creditNotesStore.all(),
+        paymentsStore.all(),
       ]);
       if (cancelled) return;
       const today = new Date().toISOString().slice(0, 10);
@@ -154,12 +156,14 @@ export default function Dashboard() {
 
       const creditByInvoice = new Map<string, number>();
       for (const c of creditNotes) creditByInvoice.set(c.invoiceId, (creditByInvoice.get(c.invoiceId) ?? 0) + c.amount);
+      const paidByInvoice = new Map<string, number>();
+      for (const p of payments) paidByInvoice.set(p.invoiceId, (paidByInvoice.get(p.invoiceId) ?? 0) + p.amount);
 
       const outstanding = invoices
         .filter((inv) => inv.status === "sent" || inv.status === "partial")
         .map((inv) => {
           const gross = computeInvoiceTotals(inv.items, profile.vatRegistered).total;
-          const amountDue = gross - (creditByInvoice.get(inv.id) ?? 0);
+          const amountDue = Math.max(0, gross - (creditByInvoice.get(inv.id) ?? 0) - (paidByInvoice.get(inv.id) ?? 0));
           const clientName = clients.find((c) => c.id === inv.clientId)?.name || "No client";
           return { invoice: inv, amountDue, clientName };
         });

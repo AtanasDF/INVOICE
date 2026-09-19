@@ -42,14 +42,14 @@ export async function GET(req: Request) {
 
     const { data: invoices, error: invErr } = await admin
       .from("invoices")
-      .select("id, user_id, client_id, number, items, due_date")
-      // Part-paid invoices are left out: the app doesn't record how much has
-      // been paid, so a reminder would ask for the full amount.
-      .eq("status", "sent")
+      .select("id, user_id, client_id, number, items, due_date, status")
+      // Part-paid ones too: they're chased for the balance, once payments
+      // say what it is (below).
+      .in("status", ["sent", "partial"])
       .not("due_date", "is", null);
     if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 });
 
-    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; kind: ReminderKind };
+    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; status: string; kind: ReminderKind };
 
     const candidates: DueInvoice[] = (invoices ?? [])
       .map((inv) => {
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
     const userIds = Array.from(new Set(candidates.map((c) => c.user_id)));
     const invoiceIds = candidates.map((c) => c.id);
 
-    const [{ data: clients, error: clientsErr }, { data: profiles, error: profilesErr }, { data: creditNotes, error: cnErr }, { data: alreadySent, error: sentErr }] =
+    const [{ data: clients, error: clientsErr }, { data: profiles, error: profilesErr }, { data: creditNotes, error: cnErr }, { data: alreadySent, error: sentErr }, { data: payments, error: payErr }] =
       await Promise.all([
         admin.from("clients").select("id, name, email, reminders_enabled, is_company").in("id", clientIds),
         admin
@@ -78,9 +78,10 @@ export async function GET(req: Request) {
           .in("user_id", userIds),
         admin.from("credit_notes").select("invoice_id, amount").in("invoice_id", invoiceIds),
         admin.from("invoice_reminders_sent").select("invoice_id, kind").in("invoice_id", invoiceIds),
+        admin.from("invoice_payments").select("invoice_id, amount").in("invoice_id", invoiceIds),
       ]);
-    if (clientsErr || profilesErr || cnErr || sentErr) {
-      return NextResponse.json({ error: (clientsErr ?? profilesErr ?? cnErr ?? sentErr)?.message }, { status: 500 });
+    if (clientsErr || profilesErr || cnErr || sentErr || payErr) {
+      return NextResponse.json({ error: (clientsErr ?? profilesErr ?? cnErr ?? sentErr ?? payErr)?.message }, { status: 500 });
     }
 
     // Replies go to the account owner, not to the app's sending address.
@@ -97,6 +98,8 @@ export async function GET(req: Request) {
     const creditByInvoice = new Map<string, number>();
     for (const c of creditNotes ?? []) creditByInvoice.set(c.invoice_id, (creditByInvoice.get(c.invoice_id) ?? 0) + Number(c.amount));
     const sentSet = new Set((alreadySent ?? []).map((s) => `${s.invoice_id}:${s.kind}`));
+    const paidByInvoice = new Map<string, number>();
+    for (const p of payments ?? []) paidByInvoice.set(p.invoice_id, (paidByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount));
 
     let sentCount = 0;
     const failures: string[] = [];
@@ -116,8 +119,11 @@ export async function GET(req: Request) {
       };
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
       const gross = computeInvoiceTotals(items, profile?.vat_registered ?? false).total;
-      const amountDue = Math.round((gross - (creditByInvoice.get(inv.id) ?? 0)) * 100) / 100;
-      // Credited in full: nothing to chase.
+      const paid = paidByInvoice.get(inv.id) ?? 0;
+      // Marked part-paid with nothing recorded: the balance isn't known.
+      if (inv.status === "partial" && paid === 0) continue;
+      const amountDue = Math.round((gross - (creditByInvoice.get(inv.id) ?? 0) - paid) * 100) / 100;
+      // Credited or paid in full: nothing to chase.
       if (amountDue <= 0) continue;
       const businessName = profile?.business_name?.trim() ?? "";
       const body = reminderBody({

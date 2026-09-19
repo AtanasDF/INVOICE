@@ -660,7 +660,11 @@ export const invoicesStore = {
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("invoices").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      // invoice_payments.invoice_id is ON DELETE RESTRICT (migration-023).
+      if (error.code === "23503") throw new Error("This invoice has payments recorded against it, so it can't be removed.");
+      throw error;
+    }
   },
 };
 
@@ -1275,5 +1279,63 @@ export const remindersSentStore = {
     const { data, error } = await supabase.from("invoice_reminders_sent").select("kind, sent_at").eq("invoice_id", invoiceId);
     if (error) throw error;
     return (data ?? []).map((r) => ({ kind: r.kind as string, sentAt: r.sent_at as string }));
+  },
+};
+
+export type PaymentMethod = "bank" | "card" | "cash" | "cheque" | "other";
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  bank: "Bank transfer",
+  card: "Card",
+  cash: "Cash",
+  cheque: "Cheque",
+  other: "Other",
+};
+
+// Money received against a sales invoice (migration-023).
+export type InvoicePayment = {
+  id: string;
+  invoiceId: string;
+  date: string;
+  amount: number;
+  method: PaymentMethod | null;
+  note: string;
+};
+
+type InvoicePaymentRow = { id: string; invoice_id: string; date: string; amount: number | string; method: PaymentMethod | null; note: string | null };
+
+const paymentFromRow = (r: InvoicePaymentRow): InvoicePayment => ({
+  id: r.id,
+  invoiceId: r.invoice_id,
+  date: r.date,
+  amount: Number(r.amount),
+  method: r.method,
+  note: r.note ?? "",
+});
+
+export const paymentsStore = {
+  async all(): Promise<InvoicePayment[]> {
+    const { data, error } = await supabase.from("invoice_payments").select("*").order("date");
+    if (error) throw error;
+    return (data as InvoicePaymentRow[]).map(paymentFromRow);
+  },
+  async forInvoice(invoiceId: string): Promise<InvoicePayment[]> {
+    const { data, error } = await supabase.from("invoice_payments").select("*").eq("invoice_id", invoiceId).order("date");
+    if (error) throw error;
+    return (data as InvoicePaymentRow[]).map(paymentFromRow);
+  },
+  async add(input: Omit<InvoicePayment, "id">): Promise<InvoicePayment> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("invoice_payments")
+      .insert({ user_id, invoice_id: input.invoiceId, date: input.date, amount: input.amount, method: input.method, note: input.note })
+      .select()
+      .single();
+    if (error) throw error;
+    return paymentFromRow(data as InvoicePaymentRow);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from("invoice_payments").delete().eq("id", id);
+    if (error) throw error;
   },
 };

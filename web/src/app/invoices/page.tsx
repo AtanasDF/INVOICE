@@ -3,7 +3,8 @@
 import Link from "next/link";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useEffect, useMemo, useState } from "react";
-import { BusinessProfile, Client, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
+import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
+import { invoiceBalance } from "@/lib/invoiceBalance";
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -13,6 +14,7 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [payments, setPayments] = useState<InvoicePayment[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +28,12 @@ export default function InvoicesPage() {
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
-    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get(), creditNotesStore.all()]).then(([inv, c, biz, cn]) => {
+    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get(), creditNotesStore.all(), paymentsStore.all()]).then(([inv, c, biz, cn, pay]) => {
       setInvoices(inv);
       setClients(c);
       setProfile(biz);
       setCreditNotes(cn);
+      setPayments(pay);
       setLoading(false);
     });
   }, []);
@@ -59,6 +62,14 @@ export default function InvoicesPage() {
     return total(inv) - credited(inv);
   }
 
+  function paidSoFar(inv: Invoice) {
+    return payments.filter((p) => p.invoiceId === inv.id).reduce((s, p) => s + p.amount, 0);
+  }
+
+  function balance(inv: Invoice) {
+    return invoiceBalance({ total: total(inv), credited: credited(inv), paid: paidSoFar(inv), status: inv.status });
+  }
+
   const billableClients = useMemo(() => clients.filter((c) => c.kind === "client"), [clients]);
 
   function clientName(id: string) {
@@ -78,13 +89,19 @@ export default function InvoicesPage() {
   // "Mark as sent" isn't a quick inline action any more -- it now
   // assigns the real invoice number, which needs the confirmation panel
   // on the invoice's own page, not a one-tap flip from the list.
-  // "Mark as paid" from sent has no such requirement, so it stays quick.
+  // "Mark as paid" records a payment of whatever is still owed, so the
+  // payments add up to the invoice.
   async function quickMarkPaid(inv: Invoice) {
-    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
+    const due = balance(inv);
+    setError(null);
     try {
+      if (due > 0) {
+        const added = await paymentsStore.add({ invoiceId: inv.id, date: new Date().toISOString().slice(0, 10), amount: due, method: null, note: "Marked as paid" });
+        setPayments((prev) => [...prev, added]);
+      }
       await invoicesStore.update(inv.id, { status: "paid" });
+      setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
     } catch (err) {
-      setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: inv.status } : i)));
       setError(err instanceof Error ? err.message : "Could not update invoice.");
     }
   }
@@ -122,6 +139,8 @@ export default function InvoicesPage() {
         client: clientName(inv.clientId),
         total: netTotal(inv).toFixed(2),
         credited: credited(inv).toFixed(2),
+        paid: paidSoFar(inv).toFixed(2),
+        balance: balance(inv).toFixed(2),
         status: invoiceStatusLabel(inv.status, isOverdue(inv.status, inv.dueDate)),
         notes: inv.notes,
       }))
@@ -228,7 +247,7 @@ export default function InvoicesPage() {
                         CN
                       </span>
                     )}
-                    {inv.status === "sent" && (
+                    {(inv.status === "sent" || inv.status === "partial") && (
                       <button onClick={() => quickMarkPaid(inv)} className="text-xs font-medium text-blue-600 underline">
                         Mark as paid
                       </button>
@@ -241,6 +260,7 @@ export default function InvoicesPage() {
                         {" "}<span className="line-through">£{total(inv).toFixed(2)}</span> after £{creditedAmount.toFixed(2)} credited
                       </>
                     )}
+                    {paidSoFar(inv) > 0 && inv.status !== "paid" && ` · £${paidSoFar(inv).toFixed(2)} paid, £${balance(inv).toFixed(2)} still owed`}
                     {inv.dueDate && ` · due ${inv.dueDate}`}
                   </div>
                   {notes.map((c) => (

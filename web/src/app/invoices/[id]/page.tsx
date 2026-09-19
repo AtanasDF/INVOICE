@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quotesStore } from "@/lib/storage";
+import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
+import { invoiceBalance, statusFromPayments } from "@/lib/invoiceBalance";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
-import { NumberInput } from "@/components/free-invoice/fields";
+import { NumberInput, parseAmount } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import { depositTag } from "@/lib/quoteDeposit";
 
@@ -26,17 +27,19 @@ const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, va
 
 // The issued invoice as the customer sees it: on screen, printed, and as
 // the PDF that's emailed or shared (forPdf drops notes meant for the owner).
-function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
+function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf }: {
   invoice: Invoice;
   client: Client | null;
   profile: BusinessProfile | null;
   creditNotes: CreditNote[];
+  payments: InvoicePayment[];
   forPdf?: boolean;
 }) {
   const vatRegistered = profile?.vatRegistered ?? false;
   const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const amountDue = issuedAmountDue(invoice, totals.total, creditNoteTotal);
+  const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
+  const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
   return (
     <>
       <div className="flex items-start justify-between">
@@ -106,6 +109,11 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
             <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
           </div>
         ))}
+        {payments.map((p) => (
+          <div key={p.id} className="flex justify-end text-neutral-500">
+            <span>Payment received {longDate(p.date)}: −£{p.amount.toFixed(2)}</span>
+          </div>
+        ))}
       </div>
 
       <div className="mt-4 flex justify-end">
@@ -115,10 +123,9 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
             <div className="text-base font-bold text-neutral-700">Due: {longDate(invoice.dueDate)}</div>
           )}
           {invoice.status === "paid" && <div className="text-base font-bold text-green-700">Paid</div>}
-          {invoice.status === "partial" && !forPdf && (
+          {invoice.status === "partial" && paidSoFar === 0 && !forPdf && (
             <div className="mt-1 max-w-xs text-xs font-normal text-neutral-500 print:hidden">
-              Partial-payment amounts aren&apos;t tracked yet — this is still the full remaining balance. Mark
-              it Paid once it&apos;s fully settled.
+              Marked part-paid before payments were recorded: record what came in below and the balance updates.
             </div>
           )}
         </div>
@@ -141,11 +148,6 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
 
 const money = (n: number) => (Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// Rounded once, to the penny, so the email and the PDF can't disagree by a
-// half-penny; never below zero when credit notes exceed the total.
-function issuedAmountDue(invoice: Invoice, total: number, credited: number): number {
-  return invoice.status === "paid" ? 0 : Math.max(0, Math.round((total - credited) * 100) / 100);
-}
 
 // "Sort code: 12-34-56" lines become label/value rows in the email.
 function bankRowsFromText(text: string): [string, string][] {
@@ -165,6 +167,13 @@ export default function InvoiceViewPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [payments, setPayments] = useState<InvoicePayment[]>([]);
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState<PaymentMethod | "">("bank");
+  const [paySaving, setPaySaving] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -225,14 +234,16 @@ export default function InvoiceViewPage() {
       if (cancelled) return;
       setInvoice(inv);
       if (inv) {
-        const [allClients, notes, biz] = await Promise.all([
+        const [allClients, notes, biz, paid] = await Promise.all([
           clientsStore.all(),
           creditNotesStore.forInvoice(inv.id),
           businessProfileStore.get(),
+          paymentsStore.forInvoice(inv.id),
         ]);
         if (cancelled) return;
         setClients(allClients);
         setCreditNotes(notes);
+        setPayments(paid);
         setProfile(biz);
         setEditDueDate(inv.dueDate ?? "");
         setEditPaymentTerms(inv.paymentTerms);
@@ -273,6 +284,76 @@ export default function InvoiceViewPage() {
       setStatusError(err instanceof Error ? err.message : "Could not update status.");
     } finally {
       setStatusSaving(false);
+    }
+  }
+
+  // Payments set the status: part-paid while money is still owed, paid
+  // once nothing is. Saved one after the other; if the status write fails
+  // the payment stands and the next change puts the status right.
+  async function applyPayments(next: InvoicePayment[]) {
+    if (!invoice) return;
+    setPayments(next);
+    const status = statusFromPayments({
+      total: computeInvoiceTotals(invoice.items, vatRegistered).total,
+      credited: creditNotes.reduce((s, c) => s + c.amount, 0),
+      paid: next.reduce((s, p) => s + p.amount, 0),
+    });
+    if (status !== invoice.status) {
+      await invoicesStore.update(invoice.id, { status });
+      setInvoice({ ...invoice, status });
+    }
+  }
+
+  async function recordPayment(amount: number, date: string, method: PaymentMethod | null, note: string) {
+    if (!invoice) return;
+    const added = await paymentsStore.add({ invoiceId: invoice.id, date, amount, method, note });
+    await applyPayments([...payments, added]);
+  }
+
+  async function addPayment(e: React.FormEvent) {
+    e.preventDefault();
+    const amount = Math.round(parseAmount(payAmount) * 100) / 100;
+    if (!(amount > 0)) return setPayError("Enter the amount received.");
+    setPaySaving(true);
+    setPayError(null);
+    try {
+      await recordPayment(amount, payDate, payMethod || null, "");
+      setShowPayForm(false);
+      setPayAmount("");
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : "Could not record the payment.");
+    } finally {
+      setPaySaving(false);
+    }
+  }
+
+  async function markPaidInFull() {
+    if (!invoice) return;
+    const due = invoiceBalance({
+      total: computeInvoiceTotals(invoice.items, vatRegistered).total,
+      credited: creditNotes.reduce((s, c) => s + c.amount, 0),
+      paid: payments.reduce((s, p) => s + p.amount, 0),
+      status: invoice.status,
+    });
+    if (due <= 0) return;
+    setStatusError(null);
+    setStatusSaving(true);
+    try {
+      await recordPayment(due, new Date().toISOString().slice(0, 10), null, "Marked as paid");
+    } catch (err) {
+      setStatusError(err instanceof Error ? err.message : "Could not mark it paid.");
+    } finally {
+      setStatusSaving(false);
+    }
+  }
+
+  async function removePayment(id: string) {
+    setPayError(null);
+    try {
+      await paymentsStore.remove(id);
+      await applyPayments(payments.filter((p) => p.id !== id));
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : "Could not remove the payment.");
     }
   }
 
@@ -600,7 +681,8 @@ export default function InvoiceViewPage() {
   // ── Sent / Partial / Paid: locked, print-ready view ───────────────
   const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
-  const amountDue = issuedAmountDue(invoice, totals.total, creditNoteTotal);
+  const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
+  const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
   const paid = invoice.status === "paid";
   const overdue = isOverdue(invoice.status, invoice.dueDate);
 
@@ -611,16 +693,16 @@ export default function InvoiceViewPage() {
           <span className={`rounded-full px-3 py-1 text-sm font-medium ${invoiceStatusBadgeClass(invoice.status, overdue)}`}>
             {invoiceStatusLabel(invoice.status, overdue)}
           </span>
-          <select
-            value={invoice.status}
-            disabled={statusSaving}
-            onChange={(e) => changeStatus(e.target.value as InvoiceStatus)}
-            className="rounded-lg border px-2 py-1 text-sm text-neutral-700 disabled:opacity-50"
-          >
-            <option value="sent">Sent</option>
-            <option value="partial">Partially paid</option>
-            <option value="paid">Paid</option>
-          </select>
+          {amountDue > 0 && (
+            <button onClick={markPaidInFull} disabled={statusSaving || paySaving} className="rounded-lg border px-3 py-1 text-sm font-medium text-neutral-700 disabled:opacity-50">
+              Mark as paid
+            </button>
+          )}
+          {paid && paidSoFar === 0 && (
+            <button onClick={() => changeStatus("sent")} disabled={statusSaving} className="rounded-lg border px-3 py-1 text-sm font-medium text-neutral-700 disabled:opacity-50">
+              Mark as unpaid
+            </button>
+          )}
         </div>
         <div className="flex gap-2">
           <button onClick={() => setEditingDetails((v) => !v)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
@@ -673,14 +755,14 @@ export default function InvoiceViewPage() {
       )}
 
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
-        <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} />
+        <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} />
       </div>
 
-      <InvoiceReminders invoice={invoice} client={client} amountDue={amountDue} />
+      <InvoiceReminders invoice={invoice} client={client} amountDue={amountDue} hasPayments={payments.length > 0} />
 
       <SendInvoicePanel
-        sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} forPdf />}
-        pdfKey={JSON.stringify([invoice, client, profile, creditNotes])}
+        sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} forPdf />}
+        pdfKey={JSON.stringify([invoice, client, profile, creditNotes, payments])}
         signInNext={`/invoices/${invoice.id}`}
         missingName="Add your business name in Settings first, so the customer knows who it's from."
         fields={{
@@ -691,13 +773,75 @@ export default function InvoiceViewPage() {
           number: invoice.number,
           total: paid
             ? `£${money(Math.max(0, totals.total - creditNoteTotal))}, paid`
-            : `£${money(amountDue)}`,
+            : paidSoFar > 0
+              ? `£${money(amountDue)} (after £${money(paidSoFar)} received)`
+              : `£${money(amountDue)}`,
           dueDate: invoice.dueDate && !paid ? longDate(invoice.dueDate) : "",
           // A paid invoice is a copy for their records: no amount to pay, no
           // bank details.
           bank: paid ? [] : bankRowsFromText(profile?.bankDetails ?? ""),
         }}
       />
+
+      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Payments</h2>
+          {amountDue > 0 && (
+            <button
+              onClick={() => {
+                setShowPayForm((v) => !v);
+                setPayAmount(money(amountDue).replace(/,/g, ""));
+              }}
+              className="text-sm font-medium text-blue-600"
+            >
+              {showPayForm ? "Cancel" : "+ Record a payment"}
+            </button>
+          )}
+        </div>
+        {showPayForm && (
+          <form onSubmit={addPayment} className="mt-3 space-y-2">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <input type="date" aria-label="Date received" className="rounded-lg border px-3 py-2 text-sm" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              <input
+                aria-label="Amount received"
+                className="rounded-lg border px-3 py-2 text-sm"
+                placeholder="Amount received (£)"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+                inputMode="decimal"
+              />
+              <select aria-label="How it was paid" className="col-span-2 rounded-lg border px-3 py-2 text-sm sm:col-span-1" value={payMethod} onChange={(e) => setPayMethod(e.target.value as PaymentMethod | "")}>
+                {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>)}
+                <option value="">Not saying</option>
+              </select>
+            </div>
+            {payError && <p className="text-sm text-red-600">{payError}</p>}
+            <button disabled={paySaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+              {paySaving ? "Saving…" : "Save payment"}
+            </button>
+          </form>
+        )}
+        {payments.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">
+            {paid ? "Marked paid (no payments recorded)." : "Nothing received yet. Record part-payments here and the balance and reminders follow."}
+          </p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {payments.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm">
+                <span>
+                  {longDate(p.date)} — £{money(p.amount)}
+                  {p.method ? ` · ${PAYMENT_METHOD_LABELS[p.method]}` : ""}
+                  {p.note ? ` · ${p.note}` : ""}
+                </span>
+                <button onClick={() => removePayment(p.id)} className="shrink-0 text-red-600">Remove</button>
+              </div>
+            ))}
+            <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: £${money(amountDue)}` : "Paid in full."}</p>
+          </div>
+        )}
+        {!showPayForm && payError && <p className="mt-2 text-sm text-red-600">{payError}</p>}
+      </div>
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex items-center justify-between">
