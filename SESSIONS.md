@@ -51,10 +51,14 @@ and what is left open. Dates are session dates (Europe/London).
 - CLAUDE.md and notes updated: Claude non-strict extraction and why, batch scanning, email
   rules and env vars, how to test without real documents.
 
+- Email switched on with Atanas: Resend account, invoiceover.com verified (auto-configured
+  in Cloudflare), sending-only key in Vercel as `RESEND_API_KEY`, redeployed. Test invoice
+  TEST-001 sent from the live Free page to his account email: Delivered (Resend). Payment
+  reminders are live too; no invoices in his account, so none went out.
+
 **Open**
 
-- Atanas: Resend account + verified sending domain + `RESEND_API_KEY`/`EMAIL_FROM` in
-  Vercel; his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
+- Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,
   signature pad and scan-to-fill on the iPhone.
 - Session hygiene: this session started in another project's folder (MM INVOICES AUTO);
   nothing there was read or changed. Start the next Invoicer session in `Desktop/INVOICE`.
