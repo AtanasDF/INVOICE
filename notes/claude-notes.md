@@ -182,6 +182,11 @@ changes.
   from lookup results. OS Places isn't in the OS free allowance.
 - "Paid" moment, home-screen badge and customer texts added as Atanas's "surprise me"
   (2026-09-19); texts open the phone's Messages/WhatsApp, the app sends nothing.
+- Several documents per scan (2026-09-19, `feature/multi-docs`): Atanas's "receipt should
+  be created in order to take payment" was read as "an invoice that shows it's already
+  paid (card payment, PAID stamp, balance due 0) should come in as paid". The model's
+  `paidOnDocument` presets the Payment choice; the due date is still read. Save all never
+  links a supplier by a loose match (he didn't see it), only an identical name.
 
 ## Testing without Atanas's documents
 
@@ -213,6 +218,11 @@ changes.
   `.env.local`.
 - The SQL editor asks "Potential issue detected" before any query containing delete; a
   rolled-back test block needs that confirmed by a click.
+- `test-multi-docs.mjs` (harness): one upload read as 3 documents, a photo of two
+  receipts cropped by box, PDF split, Save all ready with a duplicate, a missing total, a
+  USD one and an in-batch duplicate left, the all-saved view. Synthetic files from
+  `harness/multi/gen-multi.py`; `md-*.mjs` are copies of others' suites with their own
+  Chrome profiles (another session was using the shared ones).
 - Camera suites (scratchpad `harness/`): `test-far.mjs` (far/torn/shaky/off-centre
   receipts, dark objects, a white box on a bill, 45°, and a stubbed `ImageCapture` still:
   upright/sideways/nudged/noise/hang/moved/blurred), `test-batch-swap.mjs` and

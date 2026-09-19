@@ -4,6 +4,39 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-19 — Several documents in one scan, Save all ready (`feature/multi-docs`)
+
+**Brief (via the lead session, from Atanas):** a scan should find every document on it,
+even from different suppliers, and let him check them one by one or "upload all" when it's
+a straight job; a document that shows it's been paid should be recognised as paid.
+
+**Done (branch `feature/multi-docs`, not merged; no schema change):**
+
+- Extraction returns `documents[]` with `pages`, `box`, `paidOnDocument`; one document is
+  the default. `/api/scan` keeps `result` (= first document) for invoices/new. Gemini
+  schema conversion now puts an array's `items` on the non-null branch (identical output
+  for every existing schema, checked).
+- `/scan` splits a capture/file holding N documents into N walk entries: photos cropped by
+  box (+3%) with the whole photo as page 2, PDFs cut with pdf-lib (new dependency, MIT),
+  whole PDF plus a note if that fails. "This file had 3 documents — they're listed
+  separately." Parts are never read again.
+- "Save all ready" beside Save: one save path (`prepareSave`) for both; waits for reads
+  still running; leaves anything unread, not a receipt/invoice/credit note, without a sure
+  total or date, with a date to confirm, a bill without a due date, a currency whose rate
+  can't be fetched, or a possible duplicate (earlier saves in the run count). Summary
+  "Saved 5. 2 need a look: …", each left one says why; all saved shows an "All saved" page.
+- `paidOnDocument` presets Already paid / To be paid unless he touched it.
+- Inbox import: one needs-review row per document (PDF cut per document where it can be).
+- Real Gemini on synthetic documents: every split decision right, boxes IoU 0.97–0.99,
+  timings the same as the old one-document read (4–7 s).
+- Tests (harness, mocked DB, dev server on 3304): `test-multi-docs.mjs` 32/32; uploads
+  15/15, review-fixes 21/21, receipts list 74/74; tsc, eslint, build clean (bee47fa).
+  "Save all ready" sits beside Save, not at the top: the older suites press the first
+  enabled "Save…" button, and Save should stay the first thing for the open document.
+
+**Open:** try it on the iPhone with real paper; camera suites (bent/far) still to re-run
+(the machine was at load 20-30 from other sessions; DocumentCapture is untouched).
+
 ## 2026-09-19 — Mac desktop app (Opus 5), overnight run
 
 **Brief from Atanas (19/09, evening)**
