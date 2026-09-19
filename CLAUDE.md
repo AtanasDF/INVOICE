@@ -141,6 +141,10 @@ overrides the former. `/api/send-invoice` is signed-in only by design (an open r
 an invoice-fraud relay); the PDF is made in the browser (`src/lib/invoicePdf.ts`).
 Gemini billing is a Google AI Studio prepaid balance on billing account
 `015649-CDA16A-FCF373`.
+`COMPANIES_HOUSE_API_KEY` (not set yet; Atanas registers at the Companies House Developer
+Hub, creates a Live application and a REST API key) switches on the company name lookup
+(`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
+Settings. Without it those fields are plain inputs and nothing mentions the lookup.
 
 ## Who else works here
 
@@ -173,6 +177,8 @@ them against the original before deleting.
   `storage:<path>` in image_data_url; see `src/lib/receiptImages.ts`. Old inline rows and
   inbox imports still store base64; moving those is a later job.)
 - Paywall (whole app paid except the Free invoice page) — design conversation first.
+- Quote deposits (invoice a deposit on acceptance, the balance later) — follow-up to quotes.
+- "Tax so far" estimate is on branch `feature/tax-estimate`, unmerged, for Atanas to judge.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
   business details in Settings (still placeholder; reminders and invoice emails use the
   business name and bank details from there), `invoice_next_number` at 357358,

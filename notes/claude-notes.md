@@ -102,6 +102,15 @@ changes.
   the fixes the same way until a round comes back clean. Every round found real bugs,
   several introduced by the previous round's fixes.
 
+- Companies House public data API (2026-09-19): free, key via the Developer Hub account
+  (Live application → Create new key → REST), HTTP Basic with the key as username,
+  600 requests / 5 min per key. Names come back in capitals; `tidyCompanyName` makes them
+  readable (keeps initials/acronyms). The registered office is often an accountant's, so
+  a pick only fills an empty address field and otherwise offers it.
+- Tax figures used by the tax-estimate branch (2026/27, England/Wales/NI): personal
+  allowance 12,570 (tapered £1 per £2 over 100,000), basic band 37,700, additional rate
+  from 125,140; Class 4 NI 6% on 12,570–50,270, 2% above; no Class 2. Frozen to 2030/31.
+
 ## Decisions
 
 - Scanned supplier invoices and credit notes are expense documents in `receipts`, never

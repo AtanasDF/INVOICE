@@ -133,9 +133,12 @@ and what is left open. Dates are session dates (Europe/London).
   typing a company name on the Free page (business and customer), new/edit client and
   Settings offers matches from the Companies House register; picking fills name,
   registered address and (Free page) company number. Free API, 600 requests / 5 min per
-  key; route caches 10 min, 60 per visitor and 450 overall per 5 min. Off (plain inputs,
-  no mention) until `COMPANIES_HOUSE_API_KEY` is in Vercel. Route 7/7 and UI 18/18 with a
-  stubbed register; review running. His Chrome has the Companies House Developer Hub
+  key; route caches 10 min, 60 per visitor, anonymous 120 and signed-in 180 per 5 min.
+  Off (plain inputs, no mention) until `COMPANIES_HOUSE_API_KEY` is in Vercel. Review: 8
+  small findings, all fixed (initials/IT/Co tidying, a pick no longer overwrites an
+  existing address but offers the registered office, split limits, plain input when off).
+  Route 7/7, UI 22/22 with a stubbed register. Merged (6bbb3ce); live route answers
+  configured:false and Settings renders a plain name input. His Chrome has the Companies House Developer Hub
   open (cookies: analytics rejected) at "Sign in / Register".
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
