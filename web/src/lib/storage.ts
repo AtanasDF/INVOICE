@@ -280,7 +280,7 @@ export const clientsStore = {
       // from who it was billed to or bought from is a real integrity
       // problem, not a convenience.
       if (error.code === "23503") {
-        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
+        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, quotes, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
       }
       throw error;
     }
@@ -1055,6 +1055,144 @@ export const pushSubscriptionsStore = {
   },
   async unsubscribe(endpoint: string): Promise<void> {
     const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    if (error) throw error;
+  },
+};
+
+export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "invoiced";
+
+// A priced offer to a client; accepting it can turn it into a draft
+// invoice, which invoiceId then points at.
+export type Quote = {
+  id: string;
+  clientId: string;
+  number: string;
+  date: string;
+  validUntil: string | null;
+  items: InvoiceItem[];
+  notes: string;
+  status: QuoteStatus;
+  invoiceId: string | null;
+};
+
+type QuoteRow = {
+  id: string;
+  client_id: string | null;
+  number: string;
+  date: string;
+  valid_until: string | null;
+  items: InvoiceItem[] | null;
+  notes: string | null;
+  status: QuoteStatus;
+  invoice_id: string | null;
+};
+
+function quoteFromRow(r: QuoteRow): Quote {
+  return {
+    id: r.id,
+    clientId: r.client_id ?? "",
+    number: r.number,
+    date: r.date,
+    validUntil: r.valid_until,
+    items: (r.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "standard" })),
+    notes: r.notes ?? "",
+    status: r.status,
+    invoiceId: r.invoice_id,
+  };
+}
+
+// Q-0001, Q-0002...: one past the highest number already used.
+export function nextQuoteNumber(existing: Quote[]): string {
+  const highest = existing.reduce((max, q) => Math.max(max, Number(/^Q-(\d+)$/.exec(q.number)?.[1] ?? 0)), 0);
+  return `Q-${String(highest + 1).padStart(4, "0")}`;
+}
+
+export const quotesStore = {
+  async all(): Promise<Quote[]> {
+    const { data, error } = await supabase.from("quotes").select("*").order("date", { ascending: false }).order("number", { ascending: false });
+    if (error) throw error;
+    return (data as QuoteRow[]).map(quoteFromRow);
+  },
+  async get(id: string): Promise<Quote | null> {
+    const { data, error } = await supabase.from("quotes").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? quoteFromRow(data as QuoteRow) : null;
+  },
+  async add(input: Omit<Quote, "id" | "status" | "invoiceId">): Promise<Quote> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("quotes")
+      .insert({
+        user_id,
+        client_id: input.clientId || null,
+        number: input.number,
+        date: input.date,
+        valid_until: input.validUntil || null,
+        items: input.items,
+        notes: input.notes,
+        status: "draft",
+      })
+      .select()
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new Error(`Quote number "${input.number}" is already in use.`);
+      throw error;
+    }
+    return quoteFromRow(data as QuoteRow);
+  },
+  // The offer itself (lines, client, dates) is only editable as a draft;
+  // once sent, only its status moves.
+  async updateDraft(id: string, patch: Partial<Pick<Quote, "clientId" | "number" | "date" | "validUntil" | "items" | "notes">>): Promise<void> {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
+    if (patch.number !== undefined) dbPatch.number = patch.number;
+    if (patch.date !== undefined) dbPatch.date = patch.date;
+    if (patch.validUntil !== undefined) dbPatch.valid_until = patch.validUntil || null;
+    if (patch.items !== undefined) dbPatch.items = patch.items;
+    if (patch.notes !== undefined) dbPatch.notes = patch.notes;
+    const { data, error } = await supabase.from("quotes").update(dbPatch).eq("id", id).eq("status", "draft").select("id");
+    if (error) {
+      if (error.code === "23505") throw new Error(`Quote number "${patch.number}" is already in use.`);
+      throw error;
+    }
+    if (!data?.length) throw new Error("This quote isn't a draft any more, so it can't be changed. Reload to see it.");
+  },
+  // An invoiced quote stays invoiced: its invoice exists.
+  async setStatus(id: string, status: Exclude<QuoteStatus, "invoiced">): Promise<void> {
+    const { data, error } = await supabase.from("quotes").update({ status }).eq("id", id).neq("status", "invoiced").select("id");
+    if (error) throw error;
+    if (!data?.length) throw new Error("This quote has already been turned into an invoice. Reload to see it.");
+  },
+  // A draft becomes sent when it's emailed; anything further along stays.
+  async markSent(id: string): Promise<boolean> {
+    const { data, error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id).eq("status", "draft").select("id");
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  },
+  // Turning a quote into an invoice claims it first (status invoiced, no
+  // invoice yet), so a second tap or tab can't make a second invoice; the
+  // invoice is then made from the claimed row, not from what a possibly
+  // stale page shows, and linked. claim returns null if another tap got
+  // there first; release puts it back if no invoice was made.
+  async claimForInvoice(id: string): Promise<Quote | null> {
+    const { data, error } = await supabase
+      .from("quotes")
+      .update({ status: "invoiced" })
+      .eq("id", id)
+      .neq("status", "invoiced")
+      .is("invoice_id", null)
+      .select("*");
+    if (error) throw error;
+    return data?.length ? quoteFromRow(data[0] as QuoteRow) : null;
+  },
+  async releaseClaim(id: string, status: Exclude<QuoteStatus, "invoiced">): Promise<void> {
+    const { error } = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", "invoiced").is("invoice_id", null);
+    if (error) throw error;
+  },
+  // Linking also sets invoiced: the invoice exists, even if the claim was
+  // put back from another tab meanwhile.
+  async linkInvoice(id: string, invoiceId: string): Promise<void> {
+    const { error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null);
     if (error) throw error;
   },
 };

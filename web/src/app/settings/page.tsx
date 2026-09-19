@@ -8,6 +8,7 @@ import {
   feedbackStore,
   invoicesStore,
   pushSubscriptionsStore,
+  quotesStore,
   receiptPagesStore,
   receiptsStore,
   recurringExpensesStore,
@@ -186,12 +187,13 @@ export default function SettingsPage() {
     setExportError(null);
     setExporting(true);
     try {
-      const [clients, receipts, receiptPages, invoices, creditNotes, feedback, recurringExpenses, profile] = await Promise.all([
+      const [clients, receipts, receiptPages, invoices, creditNotes, quotes, feedback, recurringExpenses, profile] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
         receiptPagesStore.all(),
         invoicesStore.all(),
         creditNotesStore.all(),
+        quotesStore.all(),
         feedbackStore.all(),
         recurringExpensesStore.all(),
         businessProfileStore.get(),
@@ -208,6 +210,7 @@ export default function SettingsPage() {
         receiptPages: pagesWithImages,
         invoices,
         creditNotes,
+        quotes,
         recurringExpenses,
         feedback,
       });
@@ -450,7 +453,7 @@ export default function SettingsPage() {
         <div>
           <h2 className="font-semibold">Your data</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Download everything you&apos;ve stored — clients, receipts, invoices, credit notes, recurring expenses,
+            Download everything you&apos;ve stored — clients, receipts, invoices, credit notes, quotes, recurring expenses,
             and feedback — as a single JSON file, including any scanned images and PDFs attached to your receipts.
           </p>
         </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
+import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quotesStore } from "@/lib/storage";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -387,6 +387,7 @@ export default function InvoiceViewPage() {
     setDuplicating(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
+      const quoteTags = new Set((await quotesStore.all()).map((q) => `from ${q.number}`));
       // Creates a new draft, same as New Invoice -- no real number and
       // no counter advance until it's marked sent.
       const created = await invoicesStore.add({
@@ -398,7 +399,8 @@ export default function InvoiceViewPage() {
         dueDate: addDays(today, 30),
         paymentTerms: invoice.paymentTerms,
         status: "draft",
-        tags: invoice.tags,
+        // "from <quote number>" marks the invoice a quote became; a copy isn't it.
+        tags: invoice.tags.filter((t) => !quoteTags.has(t)),
       });
       router.push(`/invoices/${created.id}`);
     } catch (err) {

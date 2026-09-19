@@ -23,6 +23,7 @@ function Header() {
             <Link href="/clients">Clients & suppliers</Link>
             <Link href="/receipts">Receipts</Link>
             <Link href="/invoices">Invoices</Link>
+            <Link href="/quotes">Quotes</Link>
             <Link href="/expenses">Expenses</Link>
             <Link href="/settings">Settings</Link>
             <button
