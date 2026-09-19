@@ -8,6 +8,8 @@ export type CompanyMatch = {
 };
 
 type RegisteredAddress = {
+  care_of?: string;
+  po_box?: string;
   premises?: string;
   address_line_1?: string;
   address_line_2?: string;
@@ -27,8 +29,8 @@ export type CompanySearchItem = {
 };
 
 const SUFFIXES: Record<string, string> = { LTD: "Ltd", LIMITED: "Limited", PLC: "plc", LLP: "LLP", CIC: "CIC", UK: "UK", "(UK)": "(UK)", GB: "GB" };
-const SMALL = new Set(["of", "and", "the", "for", "in", "on", "at", "to", "by", "a", "an", "or", "de"]);
-const COMMON_TWO = new Set(["of", "to", "in", "on", "at", "by", "my", "we", "go", "do", "no", "so", "up", "me", "be", "is", "it", "an", "as", "or", "us"]);
+const SMALL = new Set(["of", "and", "the", "for", "in", "on", "at", "to", "by", "an", "or", "de"]);
+const COMMON_TWO = new Set(["of", "to", "in", "on", "at", "by", "my", "we", "go", "do", "no", "so", "up", "me", "be", "is", "an", "as", "or", "us", "co"]);
 
 function tidyPart(part: string): string {
   if (!part) return part;
@@ -58,12 +60,12 @@ export function tidyCompanyName(title: string): string {
     .join(" ");
 }
 
-const HOME = new Set(["united kingdom", "england", "wales", "scotland", "northern ireland", "uk", "great britain", "england and wales"]);
+const HOME = new Set(["united kingdom", "england", "wales", "scotland", "northern ireland", "uk", "great britain", "england and wales", "not specified"]);
 
 export function formatRegisteredAddress(a: RegisteredAddress | undefined, snippet?: string): string {
   if (!a) return snippet ?? "";
   const first = [a.premises, a.address_line_1].filter(Boolean).join(a.premises && /^\d+[a-z]?$/i.test(a.premises) ? " " : ", ");
-  const lines = [first, a.address_line_2, a.locality, a.region, a.postal_code?.toUpperCase()];
+  const lines = [a.care_of && `c/o ${a.care_of}`, a.po_box && `PO Box ${a.po_box.replace(/^p\.?\s*o\.?\s*box\s*/i, "")}`, first, a.address_line_2, a.locality, a.region, a.postal_code?.toUpperCase()];
   if (a.country && !HOME.has(a.country.trim().toLowerCase())) lines.push(a.country);
   const out = lines.map((l) => l?.trim()).filter(Boolean);
   return out.length ? out.join("\n") : snippet ?? "";

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useId, useState } from "react";
 import { addDays, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, readSavedSignature, saveSignature, termsDays } from "@/lib/freeInvoiceDraft";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS } from "@/lib/vat";
 import { Field, INPUT, NumberInput, Segmented, Toggle } from "@/components/free-invoice/fields";
@@ -21,31 +21,45 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 type Nullable<T> = { [K in keyof T]: string | null };
 
-function TextFields<T extends Nullable<T>>({ value, fields, onChange }: {
+function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey }: {
   value: T;
   fields: { key: keyof T; label: string; type?: string; multiline?: boolean; hint?: string; span?: boolean; lookup?: (c: CompanyMatch) => Partial<T> }[];
+  // Where a picked company's registered address goes.
+  addressKey?: keyof T;
   onChange: (v: T) => void;
 }) {
+  const labelBase = useId();
   return (
     <div className="grid grid-cols-2 gap-3">
-      {fields.map((f) => (
+      {fields.map((f) =>
+        f.lookup ? (
+          // Not inside a <label>: the open list would become part of the
+          // field's accessible name.
+          <div key={String(f.key)} className={f.span ? "col-span-2" : ""}>
+            <span id={`${labelBase}-${String(f.key)}`} className="text-xs text-neutral-500">{f.label}</span>
+            <CompanyNameInput
+              className={INPUT}
+              labelledBy={`${labelBase}-${String(f.key)}`}
+              value={value[f.key] ?? ""}
+              onChange={(v) => onChange({ ...value, [f.key]: v || null })}
+              address={addressKey ? (value[addressKey] ?? "") : undefined}
+              onAddress={addressKey ? (a) => onChange({ ...value, [addressKey]: a }) : undefined}
+              onPick={(c, fillAddress) => onChange({ ...value, ...f.lookup!(c), ...(addressKey && fillAddress ? { [addressKey]: fillAddress } : {}) })}
+            />
+            {f.hint && <p className="mt-1 text-xs text-neutral-500">{f.hint}</p>}
+          </div>
+        ) : (
         <div key={String(f.key)} className={f.span || f.multiline ? "col-span-2" : ""}>
           <Field label={f.label} hint={f.hint}>
             {f.multiline ? (
               <textarea rows={3} className={INPUT} value={value[f.key] ?? ""} onChange={(e) => onChange({ ...value, [f.key]: e.target.value || null })} />
-            ) : f.lookup ? (
-              <CompanyNameInput
-                className={INPUT}
-                value={value[f.key] ?? ""}
-                onChange={(v) => onChange({ ...value, [f.key]: v || null })}
-                onPick={(c) => onChange({ ...value, ...f.lookup!(c) })}
-              />
             ) : (
               <input type={f.type ?? "text"} className={INPUT} value={value[f.key] ?? ""} onChange={(e) => onChange({ ...value, [f.key]: e.target.value || null })} />
             )}
           </Field>
         </div>
-      ))}
+        )
+      )}
     </div>
   );
 }
@@ -90,13 +104,14 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         <TextFields
           value={draft.issuer}
           onChange={(issuer) => set({ issuer })}
+          addressKey="address"
           fields={[
             {
               key: "name",
               label: "Business name",
               span: true,
               hint: draft.issuer.name ? undefined : `Add your name so the customer knows who to pay.${lookupOn ? " A limited company? Type its name and pick it to fill in the address and company number." : ""}`,
-              lookup: (c) => ({ name: c.name, address: c.address || null, companyNumber: c.number }),
+              lookup: (c) => ({ name: c.name, companyNumber: c.number }),
             },
             { key: "address", label: "Address", multiline: true },
             { key: "email", label: "Email", type: "email" },
@@ -141,8 +156,9 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         <TextFields
           value={draft.customer}
           onChange={(customer) => set({ customer })}
+          addressKey="address"
           fields={[
-            { key: "name", label: "Customer name", span: true, lookup: (c) => ({ name: c.name, address: c.address || null }) },
+            { key: "name", label: "Customer name", span: true, lookup: (c) => ({ name: c.name }) },
             { key: "address", label: "Address", multiline: true },
             { key: "email", label: "Email", type: "email", span: true },
           ]}

@@ -219,7 +219,9 @@ export default function ClientsPage() {
                         lookupPlaceholder="Company name (type to search Companies House)"
                         value={draft.name}
                         onChange={(name) => setDraft({ ...draft, name })}
-                        onPick={(c) => setDraft({ ...draft, name: c.name, address: c.address || draft.address })}
+                        address={draft.address}
+                        onAddress={(address) => setDraft({ ...draft, address })}
+                        onPick={(c, fillAddress) => setDraft({ ...draft, name: c.name, address: fillAddress ?? draft.address })}
                       />
                     ) : (
                       <input

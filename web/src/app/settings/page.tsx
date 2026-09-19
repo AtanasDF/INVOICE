@@ -244,9 +244,11 @@ export default function SettingsPage() {
               lookupPlaceholder="Limited company? Type to find it on Companies House"
               value={businessName}
               onChange={setBusinessName}
-              onPick={(c) => {
+              address={address}
+              onAddress={setAddress}
+              onPick={(c, fillAddress) => {
                 setBusinessName(c.name);
-                if (c.address) setAddress(c.address);
+                if (fillAddress) setAddress(fillAddress);
               }}
             />
           </div>

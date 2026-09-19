@@ -177,9 +177,11 @@ export default function NewClientPage() {
             lookupPlaceholder="Company name (type to search Companies House)"
             value={name}
             onChange={setName}
-            onPick={(c) => {
+            address={address}
+            onAddress={setAddress}
+            onPick={(c, fillAddress) => {
               setName(c.name);
-              if (c.address) setAddress(c.address);
+              if (fillAddress) setAddress(fillAddress);
             }}
           />
         ) : (
