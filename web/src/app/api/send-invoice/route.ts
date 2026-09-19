@@ -84,12 +84,6 @@ export async function POST(req: Request) {
     release(key);
     return NextResponse.json({ error: "Sending is busy right now. Try again in a little while." }, { status: 429 });
   }
-  // Only a send that went out counts against the hourly limits.
-  const fail = (error: string, status: number) => {
-    release(key);
-    release("send:global");
-    return NextResponse.json({ error }, { status });
-  };
 
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
   const fromAddress = /<([^>]+)>/.exec(from)?.[1] ?? from;
@@ -114,7 +108,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("send-invoice: Resend unreachable", err instanceof Error ? err.message : err);
-    return fail("The email couldn't be sent. Try again in a minute.", 502);
+    return NextResponse.json({ error: "The email couldn't be sent. Try again in a minute." }, { status: 502 });
   }
   if (!res.ok) {
     const detail = (await res.json().catch(() => null)) as { message?: string } | null;
@@ -123,7 +117,7 @@ export async function POST(req: Request) {
       res.status === 403 && /domain|testing emails/i.test(detail?.message ?? "")
         ? "Email sending is still in test mode: it can only send to the account owner's address until the sending domain is verified."
         : "The email couldn't be sent. Try again in a minute.";
-    return fail(message, 502);
+    return NextResponse.json({ error: message }, { status: 502 });
   }
   return NextResponse.json({ sent: true, to, copied: copyToSelf });
 }

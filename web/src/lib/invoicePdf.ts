@@ -9,7 +9,7 @@ const BREAK_POINTS = "tr, section, header, footer, table, h1, p, dl > div";
 // never through one. CSS pixels from the top of the sheet.
 function breakPoints(sheet: HTMLElement): number[] {
   const top = sheet.getBoundingClientRect().top;
-  const points = [...sheet.querySelectorAll(BREAK_POINTS)].map((el) => Math.ceil(el.getBoundingClientRect().bottom - top));
+  const points = [...sheet.querySelectorAll(BREAK_POINTS)].map((el) => Math.round(el.getBoundingClientRect().bottom - top));
   return [...new Set(points)].sort((a, b) => a - b);
 }
 
@@ -22,7 +22,8 @@ export function pageSlices(breaks: number[]): [number, number][] {
   while (start < contentEnd) {
     const room = slices.length === 0 ? PAGE_HEIGHT - PAGE_MARGIN : PAGE_HEIGHT - 2 * PAGE_MARGIN;
     const limit = start + room;
-    if (limit >= contentEnd) {
+    // A couple of pixels over the line is rounding, not another page.
+    if (limit + 2 >= contentEnd) {
       slices.push([start, slices.length === 0 ? PAGE_HEIGHT : contentEnd]);
       break;
     }

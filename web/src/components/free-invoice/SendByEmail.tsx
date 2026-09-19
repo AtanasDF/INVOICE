@@ -10,7 +10,11 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
 
-type Status = { kind: "idle" } | { kind: "working"; step: string } | { kind: "sent"; to: string; copied: boolean } | { kind: "error"; message: string };
+type Status =
+  | { kind: "idle" }
+  | { kind: "working"; step: string }
+  | { kind: "sent"; to: string; copied: boolean; number: string }
+  | { kind: "error"; message: string };
 
 export function pdfFilename(d: FreeInvoiceDraft): string {
   return `Invoice${d.number ? `-${d.number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
@@ -25,10 +29,14 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
   const [message, setMessage] = useState("");
   const [copyToSelf, setCopyToSelf] = useState(true);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  // A new invoice number is a new invoice: "Sent" belongs to the old one.
+  // A new invoice number is a new invoice: the recipient, the message and
+  // "Sent" all belonged to the old one. A send still in flight reports
+  // under the number it was sent with.
   const [statusFor, setStatusFor] = useState(draft.number);
   if (statusFor !== draft.number) {
     setStatusFor(draft.number);
+    setTypedTo(null);
+    setMessage("");
     if (status.kind !== "working") setStatus({ kind: "idle" });
   }
   const accountEmail = user?.email ?? "";
@@ -43,6 +51,7 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
       return;
     }
     if (!sheetRef.current) return;
+    const number = draft.number;
     try {
       setStatus({ kind: "working", step: "Making the PDF…" });
       const { base64 } = await renderInvoicePdf(sheetRef.current);
@@ -69,7 +78,7 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
       });
       const body = (await res.json().catch(() => ({}))) as { sent?: boolean; to?: string; copied?: boolean; error?: string };
       if (!res.ok || !body.sent) throw new Error(body.error || `The email couldn't be sent (${res.status}).`);
-      setStatus({ kind: "sent", to: body.to ?? to, copied: !!body.copied });
+      setStatus({ kind: "sent", to: body.to ?? to, copied: !!body.copied, number });
       onSent?.();
     } catch (err) {
       setStatus({ kind: "error", message: err instanceof Error ? err.message : "The email couldn't be sent." });
@@ -92,7 +101,9 @@ export default function SendByEmail({ draft, onSent }: { draft: FreeInvoiceDraft
         </div>
       ) : status.kind === "sent" ? (
         <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
-          <p className="font-medium">Sent to {status.to}.</p>
+          <p className="font-medium">
+            {status.number ? `Invoice ${status.number} sent` : "Sent"} to {status.to}.
+          </p>
           {status.copied && <p className="mt-0.5">A copy went to {accountEmail}.</p>}
           <button type="button" onClick={() => setStatus({ kind: "idle" })} className="mt-2 text-sm font-medium underline">
             Send again
