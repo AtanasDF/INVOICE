@@ -148,8 +148,13 @@ them against the original before deleting.
 - (Resolved 2026-09-19: Send by email live; test invoice TEST-001 sent from the live Free
   page to Atanas's account email and shown Delivered in Resend.) An unused first key "Invoicer app (Vercel)" exists in
   Resend (its value was never copied); Atanas may delete it.
-- Test the batch scanner, green lock-on, signature pad and scan-to-fill on the iPhone
-  (tested here only against a synthetic camera stream).
+- Test the batch scanner, green lock-on, auto-zoom, signature pad, scan-to-fill, Share and
+  Describe it on the iPhone (tested here against synthetic camera clips and headless
+  Chrome only).
+- Branch `feature/client-phone-and-shared-limit`: run web/supabase/009 then 018, verify,
+  then merge (clients.phone + shared rate limit for the free scanner).
+- Partial payments aren't recorded, so reminders skip part-paid invoices; a payments
+  record would let them chase the balance.
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
   carry everything.
 - Shared rate limiter for `/api/invoice-template`; then the research follow-ups

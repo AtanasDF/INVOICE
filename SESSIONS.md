@@ -87,6 +87,21 @@ and what is left open. Dates are session dates (Europe/London).
     (details in notes).
   - Leftover git worktrees under .claude/worktrees (all merged and pushed) can be removed
     with `git worktree remove`; left in place under the never-delete rule.
+  - Invoice page (/invoices/[id]): the text-only WhatsApp/mailto links are replaced by the
+    shared Send it panel (SendInvoicePanel): email with the issued invoice as PDF, share
+    sheet, download. The invoice card is one IssuedInvoice component for screen, print and
+    PDF; dates read "19 September 2026"; a paid invoice emails as "£X, paid" without bank
+    details (5d9cc9e, a7e6346).
+  - Whole-day review (4 lenses + refuters) then two follow-up checks: 13 + 12 findings
+    confirmed and fixed (b4c6d81, a7e6346); final check clean. Main ones:
+    conformToSchema now enforces types for every engine (a rough scan could give £NaN or
+    get the Free draft deleted); Send by email replies only to the account's own confirmed
+    address, needs a confirmed email, 100/day, logs without PII; scan/contact routes rate
+    limited; Describe it keeps a chosen customer/date/terms/lines; negative quantities kept;
+    off-list currencies kept; archived client offered back only on an exact name; import
+    warnings for numbered / CIS / VAT-mismatch Free invoices.
+  - Live after deploy: headless share 3/3, tips 7/7, auto-zoom 9/10 (known edge-case
+    expectation); /invoices/new renders with Describe it for the signed-in account.
 
 **Open**
 

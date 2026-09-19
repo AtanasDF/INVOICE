@@ -82,6 +82,11 @@ changes.
   days" and no printed due date, Gemini invented a due date; Claude left it blank as told.
   Real documents from Atanas are still needed before deciding Gemini can carry everything.
 
+- Review loop that worked this session: build, then a workflow of reviewers (one per area)
+  each followed by a refuter told to default to "not real"; fix what survives; re-check
+  the fixes the same way until a round comes back clean. Every round found real bugs,
+  several introduced by the previous round's fixes.
+
 ## Decisions
 
 - Scanned supplier invoices and credit notes are expense documents in `receipts`, never
