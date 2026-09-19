@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
 import { SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
-import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocument, parseDataUrl } from "@/lib/scanExtraction";
+import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocuments, parseDataUrl } from "@/lib/scanExtraction";
 import { allow, release } from "@/lib/rateLimit";
 
 const HOUR = 60 * 60 * 1000;
@@ -90,8 +90,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await extractDocument(pages, categories, engine);
-    return NextResponse.json({ result });
+    // `result` is the first document, for callers that read one (invoices/new).
+    const documents = await extractDocuments(pages, categories, engine);
+    return NextResponse.json({ result: documents[0], documents });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error while scanning.";
     return NextResponse.json({ error: message }, { status: 502 });

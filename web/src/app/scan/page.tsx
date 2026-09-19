@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Client, DocumentDetails, DocumentType, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
 import type { ScanEngine } from "@/lib/extractors";
-import { documentDetailsFromScan, extractPages } from "@/lib/scanClient";
+import { documentDetailsFromScan, extractPages, mergeScanResults } from "@/lib/scanClient";
+import { type DocumentPart, splitDocuments } from "@/lib/splitDocuments";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { findDuplicate, sameNumber, sameSupplier } from "@/lib/duplicates";
 import { dropUploadMarker, leftOutNote, takeScanCapture, takeUploads, uploadMarked } from "@/lib/scanHandoff";
@@ -95,6 +96,7 @@ const EMPTY_FORM: Form = {
 
 const TYPE_WORD: Record<TransactionalType, string> = { invoice: "Invoice", receipt: "Receipt", credit_note: "Credit note" };
 const SAVED_TYPE: Record<Mode, DocumentType> = { invoice: "invoice", receipt: "receipt", credit_note: "credit_note", archival: "other", contact: "other" };
+const TRANSACTIONAL: ScanDocumentType[] = ["receipt", "invoice", "credit_note"];
 
 function todayIso(): string {
   const d = new Date();
@@ -161,6 +163,197 @@ function usualCategory(clientId: string, supplierList: Client[], receiptList: Re
   return mostUsedCategory(receiptList.filter((r) => sameSupplier(r, { clientId, vendor })).map((r) => r.category));
 }
 
+function exactSupplier(name: string, supplierList: Client[]): Client | undefined {
+  const n = normaliseSupplierName(name);
+  return n ? supplierList.find((c) => normaliseSupplierName(c.name) === n) : undefined;
+}
+
+function supplierCategory(f: Form, clientId: string, supplierList: Client[], receiptList: Receipt[], touched: Set<keyof Form>): Partial<Form> {
+  if (touched.has("category")) return {};
+  const usual = usualCategory(clientId, supplierList, receiptList);
+  return usual ? { category: usual, categoryUsual: true } : { category: f.categoryGuess || f.category, categoryUsual: false };
+}
+
+// A reading fills the form except what was typed by hand. On the form
+// he's looking at (`shown`) a supplier is matched loosely, since he sees
+// the match; a document Save all files unseen is linked only to a supplier
+// of exactly the same name.
+function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, supplierList: Client[], receiptList: Receipt[], shown: boolean): Form {
+  // A UK document writes the day first, so "08/09/26" is 8 September and
+  // there's nothing to ask. Only a document in another currency (an
+  // American supplier, say) might mean 9 August.
+  const askOrder = !!result.currency && result.currency !== "GBP";
+  const unless = (k: keyof Form, fields: Partial<Form>) => (touched.has(k) ? {} : fields);
+  const match =
+    touched.has("clientId") || !result.vendor
+      ? null
+      : shown
+        ? matchSupplier(result.vendor, supplierList)
+        : (exactSupplier(result.vendor, supplierList) ?? null);
+  const credited = receiptList.find((r) => r.documentType === "invoice" && sameNumber(r.invoiceNumber, result.creditedInvoiceNumber));
+  const lines = result.lineItems.map((li) => ({
+    description: li.description,
+    quantity: String(li.quantity),
+    unitPrice: String(li.unitPrice),
+    lineTotal: li.lineTotal,
+  }));
+  const clientId = touched.has("clientId") ? f.clientId : match?.id ?? "";
+  const categoryGuess = result.category ?? f.category;
+  return {
+    ...f,
+    docType: result.documentType,
+    ...unless("clientId", { clientId: match?.id ?? "" }),
+    ...unless("vendor", { vendor: result.vendor ?? "", vendorConf: result.vendorConfidence }),
+    ...unless("invoiceNumber", { invoiceNumber: result.invoiceNumber ?? "" }),
+    ...unless("date", {
+      date: result.date ?? f.date,
+      dateConf: result.dateConfidence,
+      dateAsPrinted: result.dateAsPrinted,
+      dateAlternative: askOrder && result.date && result.dateAmbiguous ? result.dateAlternative : null,
+    }),
+    ...unless("dueDate", {
+      dueDate: result.dueDate ?? "",
+      dueDateAsPrinted: result.dueDateAsPrinted,
+      dueDateAlternative: askOrder && result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
+    }),
+    categoryGuess,
+    ...supplierCategory({ ...f, categoryGuess }, clientId, supplierList, receiptList, touched),
+    ...unless("totalAmount", {
+      totalAmount: result.totalAmount !== null ? String(result.totalAmount) : "",
+      totalConf: result.totalAmountConfidence,
+    }),
+    ...unless("vatAmount", {
+      vatAmount: result.vatAmount !== null ? String(result.vatAmount) : "",
+      vatConf: result.vatAmountConfidence,
+    }),
+    ...unless("details", { details: documentDetailsFromScan(result.details) }),
+    ...unless("notes", { notes: result.notes ?? "" }),
+    lines: touched.has("lines") ? [...f.lines, ...lines.slice(f.lines.length)] : lines,
+    // What the document says wins (an online order paid by card still
+    // prints a due date); otherwise a printed due date means it's a bill.
+    paid: f.paidTouched ? f.paid : (result.paidOnDocument ?? !result.dueDate),
+    ...unless("creditOfReceiptId", { creditOfReceiptId: credited?.id ?? "" }),
+    ...unless("contactPerson", { contactPerson: result.contactPerson ?? "" }),
+    ...unless("contactEmail", { contactEmail: result.contactEmail ?? "" }),
+  };
+}
+
+// Same conversion as the manual Receipts form: figures stay in
+// `currency` until save time, when they're converted to GBP.
+function gbpAmounts(f: Form) {
+  const total = parseFloat(f.totalAmount) || 0;
+  const vat = parseFloat(f.vatAmount) || 0;
+  if (f.currency === "GBP") {
+    return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
+  }
+  const rate = parseFloat(f.fxRateInput) || 0;
+  const totalGbp = total * rate;
+  const vatGbp = vat * rate;
+  return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp, originalAmount: total, originalVatAmount: vat, originalCurrency: f.currency, fxRate: rate };
+}
+
+function saveProblem(f: Form): string | null {
+  const mode = modeOf(f);
+  if (mode !== "archival" && !f.totalAmount) return "Enter a total before saving.";
+  if (f.currency !== "GBP" && !f.fxRateInput) return "Enter an exchange rate before saving (or wait for it to load).";
+  if (mode === "invoice" && !f.paid && !f.dueDate) return "A bill to be paid needs a due date.";
+  return null;
+}
+
+// Why Save all leaves a document for him to check, or null when it needs
+// nothing: read, a receipt/invoice/credit note, a total it's sure of, a
+// date, nothing to confirm. Currency and duplicates are checked after.
+function lookReason(f: Form, result: ScanResult | null, touched: Set<keyof Form>): string | null {
+  if (!result) return "couldn't be read";
+  const mode = modeOf(f);
+  if (mode === "archival" || mode === "contact" || (!f.typeOverride && !TRANSACTIONAL.includes(result.documentType))) return "not a receipt or invoice";
+  if (!f.totalAmount) return "no total read";
+  if (f.totalConf === "low" && !touched.has("totalAmount")) return "total unclear";
+  if (!result.date && !touched.has("date")) return "no date read";
+  if (f.dateAlternative || (mode === "invoice" && f.dueDateAlternative)) return "date to confirm";
+  if (mode === "invoice" && !f.paid && !f.dueDate) return "no due date";
+  return null;
+}
+
+// Everything a save needs, for the Save button and Save all alike. Linked
+// to the supplier the form showed or, when none was picked, to one of
+// exactly this name (such as one added since the document was read).
+// Nothing looser, and a supplier is never made here: only "Add as
+// supplier" does that.
+function prepareSave(f: Form, docPages: CapturedFile[], supplierList: Client[], receiptList: Receipt[], clearedSupplier: boolean) {
+  const mode = modeOf(f);
+  const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts(f);
+  const sign = mode === "credit_note" ? -1 : 1;
+  const clientId = f.clientId || (clearedSupplier || !f.vendor.trim() ? "" : (exactSupplier(f.vendor, supplierList)?.id ?? ""));
+  const invoiceNumber = f.invoiceNumber.trim() || null;
+  const duplicate =
+    mode === "archival"
+      ? null
+      : findDuplicate(
+          { clientId, vendor: f.vendor, invoiceNumber, date: f.date, gross: sign * (netGbp + vatGbp), isCreditNote: mode === "credit_note" },
+          receiptList
+        );
+  const details: DocumentDetails = { ...f.details };
+  if (clearedSupplier) details.noSupplier = true;
+  const other = (details.other ?? []).filter((o) => o.label.trim() && o.value.trim());
+  if (other.length) details.other = other;
+  else delete details.other;
+  const input: ReceiptInput = {
+    clientId,
+    date: f.date,
+    vendor: f.vendor,
+    category: f.category || "Other",
+    amount: sign * netGbp,
+    vatAmount: sign * vatGbp,
+    originalAmount,
+    originalVatAmount,
+    originalCurrency,
+    fxRate,
+    imageDataUrl: docPages[0]?.dataUrl ?? null,
+    notes: f.notes,
+    starred: false,
+    needsReview: false,
+    warrantyMonths: null,
+    tags: [],
+    lineItems: f.lines.map((l) => ({
+      description: l.description,
+      quantity: parseFloat(l.quantity) || 0,
+      unitPrice: parseFloat(l.unitPrice) || 0,
+      category: null,
+    })),
+    documentType: SAVED_TYPE[mode],
+    invoiceNumber,
+    dueDate: mode === "invoice" && f.dueDate ? f.dueDate : null,
+    paid: mode === "invoice" ? f.paid : true,
+    details,
+    creditOfReceiptId: mode === "credit_note" && f.creditOfReceiptId ? f.creditOfReceiptId : null,
+  };
+  return { input, extraPages: docPages.slice(1).map((p) => p.dataUrl), duplicate };
+}
+
+// One document in the walk through a batch. A capture or file the reader
+// finds several documents in is replaced by one entry per document.
+type WalkDoc = {
+  id: number;
+  pages: CapturedFile[];
+  result: ScanResult | null;
+  error: string | null;
+  // Pages added or retaken by hand are one document whatever the reading says.
+  joined: boolean;
+  splitNote: string | null;
+  done: "saved" | "skipped" | null;
+  // Why Save all left it.
+  look: string | null;
+};
+
+type Walk = { docs: WalkDoc[]; current: number };
+type Lists = { cats: string[]; suppliers: Client[]; receipts: Receipt[] };
+
+function sourceName(pages: CapturedFile[]): string {
+  if (pages.length > 1) return "These pages";
+  return pages[0]?.mediaType === "application/pdf" ? "This file" : "This photo";
+}
+
 export default function ScanPage() {
   const router = useRouter();
 
@@ -174,12 +367,14 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [engine, setEngine] = useState<ScanEngine>(readEngine);
-  const [batch, setBatch] = useState<{ docs: CapturedFile[][]; index: number } | null>(null);
+  const [walk, setWalkState] = useState<Walk | null>(null);
   // Picked files waiting for the supplier lists; kept here so Try again
   // can still read them if the lists failed to load.
   const [pendingUploads, setPendingUploads] = useState<CapturedFile[][] | null>(null);
   const [uploadNote, setUploadNote] = useState<string | null>(null);
-  const readsRef = useRef<Promise<ScanResult>[]>([]);
+  const [summary, setSummary] = useState<{ saved: number; looks: string[] } | null>(null);
+  // Save all's progress while it runs.
+  const [bulk, setBulk] = useState<string | null>(null);
 
   const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayIso() }));
   const [typePickerOpen, setTypePickerOpen] = useState(false);
@@ -192,8 +387,15 @@ export default function ScanPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<Receipt | null>(null);
 
-  // Extraction generation: a result from an older run is dropped.
-  const runRef = useRef(0);
+  // Reads land after the page has moved on, so the walk and the lists they
+  // need are kept in refs as well as state.
+  const walkRef = useRef<Walk | null>(null);
+  const receiptsRef = useRef<Receipt[]>([]);
+  const readsRef = useRef(new Map<number, Promise<void>>());
+  // A document's reading generation: a result from an older read is dropped.
+  const readGenRef = useRef(new Map<number, number>());
+  const limitRef = useRef<ReturnType<typeof limiter> | null>(null);
+  const idRef = useRef(0);
   // Fields the user has edited, which a re-read must not overwrite.
   const touchedRef = useRef(new Set<keyof Form>());
   const listsLoadedRef = useRef(false);
@@ -206,15 +408,29 @@ export default function ScanPage() {
     setDuplicate(null);
   };
 
-  function supplierCategory(f: Form, clientId: string, supplierList: Client[], receiptList: Receipt[]): Partial<Form> {
-    if (touchedRef.current.has("category")) return {};
-    const usual = usualCategory(clientId, supplierList, receiptList);
-    return usual ? { category: usual, categoryUsual: true } : { category: f.categoryGuess || f.category, categoryUsual: false };
+  function setWalk(next: Walk | null) {
+    walkRef.current = next;
+    setWalkState(next);
+  }
+
+  function updateDoc(id: number, change: Partial<WalkDoc>) {
+    const w = walkRef.current;
+    if (w) setWalk({ ...w, docs: w.docs.map((d) => (d.id === id ? { ...d, ...change } : d)) });
+  }
+
+  function currentDoc(): WalkDoc | null {
+    const w = walkRef.current;
+    return w?.docs.find((d) => d.id === w.current) ?? null;
+  }
+
+  function putReceipts(list: Receipt[]) {
+    receiptsRef.current = list;
+    setReceipts(list);
   }
 
   function pickSupplier(clientId: string, supplierList: Client[] = suppliers) {
     touch("clientId");
-    setForm((f) => ({ ...f, clientId, ...supplierCategory(f, clientId, supplierList, receipts) }));
+    setForm((f) => ({ ...f, clientId, ...supplierCategory(f, clientId, supplierList, receipts, touchedRef.current) }));
     setDuplicate(null);
   }
 
@@ -233,7 +449,7 @@ export default function ScanPage() {
     else if (marked) uploadsLost();
     loadLists()
       .then((l) => {
-        if (handoff) runExtraction([handoff], l.cats, l.suppliers, l.receipts);
+        if (handoff) startBatch([[handoff]], l);
         if (docs) {
           setPendingUploads(null);
           startBatch(docs, l);
@@ -251,12 +467,15 @@ export default function ScanPage() {
   const mode = modeOf(form);
   const baseMode = modeOf({ ...form, typeOverride: null });
   const heading = headingFor(form, mode);
-  const remaining = batch ? batch.docs.length - batch.index - 1 : 0;
+  const position = walk ? walk.docs.findIndex((d) => d.id === walk.current) : -1;
+  const doc = walk && position >= 0 ? walk.docs[position] : null;
+  const remaining = walk ? walk.docs.slice(position + 1).filter((d) => !d.done).length : 0;
+  const unsaved = walk ? walk.docs.filter((d) => !d.done).length : 0;
 
-  async function loadLists() {
+  async function loadLists(): Promise<Lists> {
     const [c, r, profile] = await Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]);
     setClients(c);
-    setReceipts(r);
+    putReceipts(r);
     const cats = effectiveCategories(profile.customCategories);
     setCategories(cats);
     const usual = mostUsedCategory(r.map((receipt) => receipt.category));
@@ -295,62 +514,9 @@ export default function ScanPage() {
     setScanning(true);
   }
 
-  function applyResult(result: ScanResult, supplierList: Client[], receiptList: Receipt[]) {
+  function applyResult(result: ScanResult) {
     const touched = touchedRef.current;
-    // A UK document writes the day first, so "08/09/26" is 8 September and
-    // there's nothing to ask. Only a document in another currency (an
-    // American supplier, say) might mean 9 August.
-    const askOrder = !!result.currency && result.currency !== "GBP";
-    const unless = (k: keyof Form, fields: Partial<Form>) => (touched.has(k) ? {} : fields);
-    setForm((f) => {
-      const match = touched.has("clientId") || !result.vendor ? null : matchSupplier(result.vendor, supplierList);
-      const credited = receiptList.find(
-        (r) => r.documentType === "invoice" && sameNumber(r.invoiceNumber, result.creditedInvoiceNumber)
-      );
-      const lines = result.lineItems.map((li) => ({
-        description: li.description,
-        quantity: String(li.quantity),
-        unitPrice: String(li.unitPrice),
-        lineTotal: li.lineTotal,
-      }));
-      const clientId = touched.has("clientId") ? f.clientId : match?.id ?? "";
-      const categoryGuess = result.category ?? f.category;
-      return {
-        ...f,
-        docType: result.documentType,
-        ...unless("clientId", { clientId: match?.id ?? "" }),
-        ...unless("vendor", { vendor: result.vendor ?? "", vendorConf: result.vendorConfidence }),
-        ...unless("invoiceNumber", { invoiceNumber: result.invoiceNumber ?? "" }),
-        ...unless("date", {
-          date: result.date ?? f.date,
-          dateConf: result.dateConfidence,
-          dateAsPrinted: result.dateAsPrinted,
-          dateAlternative: askOrder && result.date && result.dateAmbiguous ? result.dateAlternative : null,
-        }),
-        ...unless("dueDate", {
-          dueDate: result.dueDate ?? "",
-          dueDateAsPrinted: result.dueDateAsPrinted,
-          dueDateAlternative: askOrder && result.dueDate && result.dueDateAmbiguous ? result.dueDateAlternative : null,
-        }),
-        categoryGuess,
-        ...supplierCategory({ ...f, categoryGuess }, clientId, supplierList, receiptList),
-        ...unless("totalAmount", {
-          totalAmount: result.totalAmount !== null ? String(result.totalAmount) : "",
-          totalConf: result.totalAmountConfidence,
-        }),
-        ...unless("vatAmount", {
-          vatAmount: result.vatAmount !== null ? String(result.vatAmount) : "",
-          vatConf: result.vatAmountConfidence,
-        }),
-        ...unless("details", { details: documentDetailsFromScan(result.details) }),
-        ...unless("notes", { notes: result.notes ?? "" }),
-        lines: touched.has("lines") ? [...f.lines, ...lines.slice(f.lines.length)] : lines,
-        paid: f.paidTouched ? f.paid : !result.dueDate,
-        ...unless("creditOfReceiptId", { creditOfReceiptId: credited?.id ?? "" }),
-        ...unless("contactPerson", { contactPerson: result.contactPerson ?? "" }),
-        ...unless("contactEmail", { contactEmail: result.contactEmail ?? "" }),
-      };
-    });
+    setForm((f) => formFromResult(result, f, touched, suppliersRef.current, receiptsRef.current, true));
     if (touched.has("currency") || touched.has("fxRateInput")) return;
     if (result.currency && result.currency !== "GBP") onCurrencyChange(result.currency);
     else {
@@ -359,28 +525,47 @@ export default function ScanPage() {
     }
   }
 
-  async function runExtraction(
-    toRead: CapturedFile[],
-    cats: string[],
-    supplierList: Client[],
-    receiptList: Receipt[],
-    pending?: Promise<ScanResult>
-  ) {
-    const run = ++runRef.current;
-    setScanning(true);
-    setScanError(null);
-    // A warning about the previous reading doesn't describe the next one.
-    setDuplicate(null);
-    try {
-      const result = await (pending ?? extractPages(toRead, cats, engine));
-      if (run !== runRef.current) return;
-      applyResult(result, supplierList, receiptList);
-    } catch (err) {
-      if (run !== runRef.current) return;
-      setScanError(err instanceof Error ? err.message : "Scanning failed.");
-    } finally {
-      if (run === runRef.current) setScanning(false);
-    }
+  // The open document as its reading stands: still reading, read, or failed.
+  function show(d: WalkDoc) {
+    setPages(d.pages);
+    setScanning(!d.result && !d.error);
+    setScanError(d.error);
+    if (d.result && !d.error) applyResult(d.result);
+  }
+
+  function readDoc(id: number, docPages: CapturedFile[], joined: boolean, cats: string[]) {
+    const gen = (readGenRef.current.get(id) ?? 0) + 1;
+    readGenRef.current.set(id, gen);
+    const latest = () => readGenRef.current.get(id) === gen;
+    limitRef.current ??= limiter(READ_CONCURRENCY);
+    const read = limitRef.current(() => extractPages(docPages, cats, engine))
+      .then((found) => (joined ? [{ pages: docPages, result: mergeScanResults(found) }] : splitDocuments(docPages, found)))
+      .then(
+        (parts) => {
+          if (latest()) onRead(id, parts);
+        },
+        (err) => {
+          if (latest()) onReadFailed(id, err instanceof Error ? err.message : "Scanning failed.");
+        }
+      );
+    readsRef.current.set(id, read);
+  }
+
+  function onRead(id: number, parts: DocumentPart[]) {
+    const w = walkRef.current;
+    const at = w ? w.docs.findIndex((d) => d.id === id) : -1;
+    if (!w || at < 0) return;
+    const d = w.docs[at];
+    const splitNote = parts.length > 1 ? `${sourceName(d.pages)} had ${parts.length} documents — they're listed separately.` : d.splitNote;
+    const replaced = parts.map((p, k) => ({ ...d, id: k ? ++idRef.current : id, pages: p.pages, result: p.result, error: null, splitNote }));
+    setWalk({ ...w, docs: [...w.docs.slice(0, at), ...replaced, ...w.docs.slice(at + 1)] });
+    if (w.current === id) show(replaced[0]);
+  }
+
+  function onReadFailed(id: number, error: string) {
+    updateDoc(id, { error });
+    const d = currentDoc();
+    if (d?.id === id) show(d);
   }
 
   async function retry() {
@@ -388,51 +573,75 @@ export default function ScanPage() {
       readUploads(pendingUploads, uploadNote);
       return;
     }
-    if (listsLoadedRef.current) {
-      runExtraction(pages, categories, suppliers, receipts);
+    let lists: Lists | undefined;
+    if (!listsLoadedRef.current) {
+      setScanning(true);
+      setScanError(null);
+      try {
+        lists = await loadLists();
+      } catch (err) {
+        setScanning(false);
+        setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+        return;
+      }
+    }
+    const d = currentDoc();
+    if (!d) {
+      startBatch([pages], lists);
       return;
     }
+    updateDoc(d.id, { error: null });
     setScanning(true);
     setScanError(null);
-    try {
-      const l = await loadLists();
-      runExtraction(pages, l.cats, l.suppliers, l.receipts);
-    } catch (err) {
-      setScanning(false);
-      setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
-    }
+    setDuplicate(null);
+    readDoc(d.id, d.pages, d.joined, lists?.cats ?? categories);
   }
 
   function onCaptured(file: CapturedFile, current: Capture) {
-    let next: CapturedFile[];
-    if (current.kind === "retake") next = pages.map((p, i) => (i === current.index ? file : p));
-    else if (current.kind === "add") next = [...pages, file];
-    else {
+    if (current.kind === "first") {
       // The iOS native camera can't ask before it opens (a confirm costs
       // the tap iOS needs), so it asks now, before dropping queued documents.
       if (remaining && !confirmStartNew()) return;
-      dropBatch();
-      resetDocument();
-      next = [file];
+      startBatch([[file]]);
+      return;
     }
+    const next = current.kind === "retake" ? pages.map((p, i) => (i === current.index ? file : p)) : [...pages, file];
     setPages(next);
     setCapture(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
-    runExtraction(next, categories, suppliers, receipts);
+    const d = currentDoc();
+    if (!d) {
+      startBatch([next]);
+      return;
+    }
+    updateDoc(d.id, { pages: next, joined: true, error: null });
+    setScanning(true);
+    setScanError(null);
+    // A warning about the previous reading doesn't describe the next one.
+    setDuplicate(null);
+    readDoc(d.id, next, true, categories);
   }
 
-  function startBatch(docs: CapturedFile[][], lists?: { cats: string[]; suppliers: Client[]; receipts: Receipt[] }) {
-    const limit = limiter(READ_CONCURRENCY);
+  function startBatch(docs: CapturedFile[][], lists?: Lists) {
+    limitRef.current = limiter(READ_CONCURRENCY);
+    readsRef.current = new Map();
     const cats = lists?.cats ?? categories;
     if (lists) suppliersRef.current = lists.suppliers;
-    readsRef.current = docs.map((d) => {
-      const read = limit(() => extractPages(d, cats, engine));
-      read.catch(() => {});
-      return read;
-    });
-    setBatch({ docs, index: 0 });
-    openDoc(docs, 0, lists?.receipts);
+    const entries: WalkDoc[] = docs.map((d) => ({
+      id: ++idRef.current,
+      pages: d,
+      result: null,
+      error: null,
+      joined: false,
+      splitNote: null,
+      done: null,
+      look: null,
+    }));
+    setSummary(null);
+    setWalk({ docs: entries, current: entries[0].id });
+    entries.forEach((e) => readDoc(e.id, e.pages, false, cats));
+    openDoc(entries[0]);
   }
 
   // Suppliers as they are now: one added while an earlier document in the
@@ -442,31 +651,24 @@ export default function ScanPage() {
     suppliersRef.current = suppliers;
   });
 
-  function openDoc(docs: CapturedFile[][], index: number, receiptList: Receipt[] = receipts) {
+  function openDoc(d: WalkDoc) {
     resetDocument();
-    setPages(docs[index]);
+    setWalk({ ...walkRef.current!, current: d.id });
     setCapture(null);
     setSupplierSaved(false);
     setSupplierDuplicate(false);
-    runExtraction(docs[index], categories, suppliersRef.current, receiptList, readsRef.current[index]);
+    show(d);
   }
 
   // True when there was another document in the batch to move on to.
-  // `receiptList` carries a receipt saved a moment ago, so a credit note
-  // later in the batch can link to an invoice saved earlier in it.
-  function advance(receiptList: Receipt[] = receipts): boolean {
-    if (!batch || batch.index + 1 >= batch.docs.length) return false;
-    const index = batch.index + 1;
-    setBatch({ ...batch, index });
-    openDoc(batch.docs, index, receiptList);
+  function advance(): boolean {
+    const w = walkRef.current;
+    const at = w ? w.docs.findIndex((d) => d.id === w.current) : -1;
+    const next = w?.docs.slice(at + 1).find((d) => !d.done);
+    if (!next) return false;
+    openDoc(next);
     window.scrollTo({ top: 0 });
     return true;
-  }
-
-  function dropBatch() {
-    runRef.current++;
-    readsRef.current = [];
-    setBatch(null);
   }
 
   function onEngineChange(next: ScanEngine) {
@@ -483,19 +685,25 @@ export default function ScanPage() {
 
   function confirmStartNew() {
     if (remaining) {
-      const from = batch!.index + 2;
-      const queued = remaining === 1 ? `document ${from}` : `documents ${from}–${batch!.docs.length}`;
-      return window.confirm(`Start a new scan? This document and ${queued} from this batch haven't been saved and will be dropped.`);
+      const more = remaining === 1 ? "1 more document" : `${remaining} more documents`;
+      return window.confirm(`Start a new scan? This document and ${more} from this batch haven't been saved and will be dropped.`);
     }
     return !pages.length || window.confirm("Start a new document? This scan hasn't been saved.");
+  }
+
+  function scanMore() {
+    setWalk(null);
+    setSummary(null);
+    setPages([]);
+    resetDocument();
+    setCapture({ kind: "first" });
   }
 
   // Runs once the replacement's first page is in hand rather than when
   // the camera opens, so backing out of the camera keeps the current scan.
   function resetDocument() {
-    runRef.current++;
     touchedRef.current = new Set();
-    setForm({ ...EMPTY_FORM, date: todayIso(), category: form.category });
+    setForm((f) => ({ ...EMPTY_FORM, date: todayIso(), category: f.category }));
     setSaveError(null);
     setDuplicate(null);
     setFxError(null);
@@ -520,20 +728,6 @@ export default function ScanPage() {
     }
   }
 
-  // Same conversion as the manual Receipts form: figures stay in
-  // `currency` until save time, when they're converted to GBP.
-  function gbpAmounts() {
-    const total = parseFloat(form.totalAmount) || 0;
-    const vat = parseFloat(form.vatAmount) || 0;
-    if (form.currency === "GBP") {
-      return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
-    }
-    const rate = parseFloat(form.fxRateInput) || 0;
-    const totalGbp = total * rate;
-    const vatGbp = vat * rate;
-    return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp, originalAmount: total, originalVatAmount: vat, originalCurrency: form.currency, fxRate: rate };
-  }
-
   async function addAsSupplier() {
     const name = form.vendor.trim();
     if (!name) {
@@ -543,7 +737,7 @@ export default function ScanPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const existing = suppliers.find((c) => normaliseSupplierName(c.name) === normaliseSupplierName(name));
+      const existing = exactSupplier(name, suppliers);
       if (existing) {
         pickSupplier(existing.id);
         setSupplierDuplicate(true);
@@ -581,114 +775,45 @@ export default function ScanPage() {
         ? "Confirm the due date first."
         : null;
 
+  // The duplicate check is only as good as the list it checks: if the
+  // first load failed (a weak signal), load it now rather than check nothing.
+  async function checkedReceipts(): Promise<Receipt[] | null> {
+    if (listsLoadedRef.current) return receiptsRef.current;
+    try {
+      return (await loadLists()).receipts;
+    } catch {
+      setSaveError("Couldn't load your saved documents to check for duplicates. Check your connection and try again.");
+      return null;
+    }
+  }
+
   async function save(force = false) {
     if (blockedReason) return;
-    if (mode !== "archival" && !form.totalAmount) {
-      setSaveError("Enter a total before saving.");
+    const problem = saveProblem(form);
+    if (problem) {
+      setSaveError(problem);
       return;
     }
-    if (form.currency !== "GBP" && !form.fxRateInput) {
-      setSaveError("Enter an exchange rate before saving (or wait for it to load).");
-      return;
-    }
-    if (mode === "invoice" && !form.paid && !form.dueDate) {
-      setSaveError("A bill to be paid needs a due date.");
-      return;
-    }
-    const { netGbp, vatGbp, originalAmount, originalVatAmount, originalCurrency, fxRate } = gbpAmounts();
-    const sign = mode === "credit_note" ? -1 : 1;
     // A second tap, or a Skip, while this save waits must not start another.
     if (savingRef.current) return;
-    // The duplicate check is only as good as the list it checks: if the
-    // first load failed (a weak signal), load it now rather than check nothing.
-    let receiptList = receipts;
-    if (!listsLoadedRef.current) {
-      savingRef.current = true;
-      setSaving(true);
-      setSaveError(null);
-      try {
-        receiptList = (await loadLists()).receipts;
-      } catch {
-        setSaveError("Couldn't load your saved documents to check for duplicates. Check your connection and try again.");
-        return;
-      } finally {
-        savingRef.current = false;
-        setSaving(false);
-      }
-    }
-    // Linked when none was picked to a supplier of exactly this name, such
-    // as one added since the document was read. Nothing looser: the form
-    // didn't show it. A supplier is never made here: only "Add as
-    // supplier" does that.
-    const clearedSupplier = touchedRef.current.has("clientId") && !form.clientId;
-    const clientId =
-      form.clientId ||
-      (clearedSupplier || !form.vendor.trim()
-        ? ""
-        : (suppliersRef.current.find((c) => normaliseSupplierName(c.name) === normaliseSupplierName(form.vendor))?.id ?? ""));
-    if (!force && mode !== "archival") {
-      const dup = findDuplicate(
-        {
-          clientId,
-          vendor: form.vendor,
-          invoiceNumber: form.invoiceNumber.trim() || null,
-          date: form.date,
-          gross: sign * (netGbp + vatGbp),
-          isCreditNote: mode === "credit_note",
-        },
-        receiptList
-      );
-      if (dup) {
-        setDuplicate(dup);
-        return;
-      }
-    }
-    setDuplicate(null);
     savingRef.current = true;
     setSaving(true);
     setSaveError(null);
     try {
-      const details: DocumentDetails = { ...form.details };
-      if (clearedSupplier) details.noSupplier = true;
-      const other = (details.other ?? []).filter((o) => o.label.trim() && o.value.trim());
-      if (other.length) details.other = other;
-      else delete details.other;
-      const saved = await receiptsStore.add(
-        {
-          clientId,
-          date: form.date,
-          vendor: form.vendor,
-          category: form.category || "Other",
-          amount: sign * netGbp,
-          vatAmount: sign * vatGbp,
-          originalAmount,
-          originalVatAmount,
-          originalCurrency,
-          fxRate,
-          imageDataUrl: pages[0]?.dataUrl ?? null,
-          notes: form.notes,
-          starred: false,
-          needsReview: false,
-          warrantyMonths: null,
-          tags: [],
-          lineItems: form.lines.map((l) => ({
-            description: l.description,
-            quantity: parseFloat(l.quantity) || 0,
-            unitPrice: parseFloat(l.unitPrice) || 0,
-            category: null,
-          })),
-          documentType: SAVED_TYPE[mode],
-          invoiceNumber: form.invoiceNumber.trim() || null,
-          dueDate: showDueDate && form.dueDate ? form.dueDate : null,
-          paid: mode === "invoice" ? form.paid : true,
-          details,
-          creditOfReceiptId: mode === "credit_note" && form.creditOfReceiptId ? form.creditOfReceiptId : null,
-        },
-        pages.slice(1).map((p) => p.dataUrl)
-      );
-      const nextReceipts = [...receiptList, saved];
-      setReceipts(nextReceipts);
-      if (!advance(nextReceipts)) router.push("/receipts");
+      const receiptList = await checkedReceipts();
+      if (!receiptList) return;
+      const clearedSupplier = touchedRef.current.has("clientId") && !form.clientId;
+      const prepared = prepareSave(form, pages, suppliersRef.current, receiptList, clearedSupplier);
+      if (!force && prepared.duplicate) {
+        setDuplicate(prepared.duplicate);
+        return;
+      }
+      setDuplicate(null);
+      const saved = await receiptsStore.add(prepared.input, prepared.extraPages);
+      putReceipts([...receiptList, saved]);
+      const d = currentDoc();
+      if (d) updateDoc(d.id, { done: "saved", look: null });
+      if (!advance()) router.push("/receipts");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -697,15 +822,103 @@ export default function ScanPage() {
     }
   }
 
+  // Saves, through the same checks as Save, every document left in the
+  // batch that needs nothing from him, and leaves the rest in the walk
+  // with the reason. Waits for reads still running. The open document goes
+  // as its form stands.
+  async function saveAll() {
+    const w = walkRef.current;
+    if (!w || savingRef.current || scanning) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError(null);
+    setDuplicate(null);
+    setBulk("Saving…");
+    const shown = { id: w.current, form, pages, touched: new Set(touchedRef.current) };
+    const clearedSupplier = shown.touched.has("clientId") && !form.clientId;
+    try {
+      let receiptList = await checkedReceipts();
+      if (!receiptList) return;
+      const reading = w.docs.filter((d) => !d.done && !d.result && !d.error).length;
+      if (reading) setBulk(`Waiting for ${reading} to be read…`);
+      await Promise.all(readsRef.current.values());
+      const all = walkRef.current!.docs;
+      const todo = all.filter((d) => !d.done);
+      const defaultCategory = mostUsedCategory(receiptList.map((r) => r.category)) ?? form.category;
+      const rates = new Map<string, Promise<number>>();
+      const saved = new Set<number>();
+      const looks = new Map<number, string>();
+      const names = new Map<number, string>();
+      for (const [n, d] of todo.entries()) {
+        setBulk(`Saving ${n + 1} of ${todo.length}…`);
+        const isShown = d.id === shown.id;
+        let f: Form | null = isShown ? shown.form : null;
+        if (!isShown && d.result) {
+          const read = formFromResult(d.result, { ...EMPTY_FORM, date: todayIso(), category: defaultCategory }, new Set(), suppliersRef.current, receiptList, false);
+          f = { ...read, currency: d.result.currency && d.result.currency !== "GBP" ? d.result.currency : "GBP" };
+        }
+        let look = !f || d.error ? "couldn't be read" : lookReason(f, d.result, isShown ? shown.touched : new Set());
+        if (f && !look && f.currency !== "GBP" && !f.fxRateInput) {
+          if (!rates.has(f.currency)) rates.set(f.currency, getFxRate(f.currency, "GBP"));
+          try {
+            f = { ...f, fxRateInput: String(await rates.get(f.currency)) };
+          } catch {
+            look = `in ${f.currency}, no exchange rate`;
+          }
+        }
+        if (f && !look) {
+          const prepared = prepareSave(f, isShown ? shown.pages : d.pages, suppliersRef.current, receiptList, isShown && clearedSupplier);
+          if (prepared.duplicate) look = "possible duplicate";
+          else {
+            try {
+              receiptList = [...receiptList, await receiptsStore.add(prepared.input, prepared.extraPages)];
+              saved.add(d.id);
+            } catch {
+              look = "couldn't be saved";
+            }
+          }
+        }
+        if (look) {
+          looks.set(d.id, look);
+          names.set(d.id, (isShown ? shown.form.vendor : d.result?.vendor) || `Document ${all.indexOf(d) + 1}`);
+        }
+      }
+      putReceipts(receiptList);
+      const now = walkRef.current!;
+      setWalk({
+        ...now,
+        docs: now.docs.map((d) =>
+          saved.has(d.id) ? { ...d, done: "saved" as const, look: null } : looks.has(d.id) ? { ...d, look: looks.get(d.id)! } : d
+        ),
+      });
+      setSummary({ saved: saved.size, looks: todo.filter((d) => looks.has(d.id)).map((d) => `${names.get(d.id)} (${looks.get(d.id)})`) });
+      if (!saved.has(shown.id) || !advance()) window.scrollTo({ top: 0 });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+      setBulk(null);
+    }
+  }
 
   function discard() {
     if (saving || savingRef.current) return;
     if (remaining) {
-      if (window.confirm("Skip this document? It won't be saved.")) advance();
+      if (window.confirm("Skip this document? It won't be saved.")) {
+        if (doc) updateDoc(doc.id, { done: "skipped" });
+        advance();
+      }
       return;
     }
-    if (window.confirm("Discard this scan? Nothing has been saved.")) router.push("/");
+    const savedSome = walk?.docs.some((d) => d.done === "saved");
+    if (window.confirm(savedSome ? "Discard this document? It won't be saved." : "Discard this scan? Nothing has been saved.")) router.push("/");
   }
+
+  const summaryText =
+    summary &&
+    `Saved ${summary.saved}.` +
+      (summary.looks.length ? ` ${summary.looks.length} need${summary.looks.length === 1 ? "s" : ""} a look: ${summary.looks.join(", ")}.` : "");
 
   if (capture) {
     return (
@@ -719,7 +932,36 @@ export default function ScanPage() {
     );
   }
 
-  const amounts = gbpAmounts();
+  if (walk && summary && walk.docs.every((d) => d.done)) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold">All saved</h1>
+          <p className="mt-1 text-neutral-600">
+            Saved {summary.saved} document{summary.saved === 1 ? "" : "s"}. Nothing needs a look.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/receipts")}
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+          >
+            See them in Receipts
+          </button>
+          <CaptureButton
+            onOpen={scanMore}
+            onCapture={(file) => startBatch([[file]])}
+            className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
+          >
+            Scan more
+          </CaptureButton>
+        </div>
+      </div>
+    );
+  }
+
+  const amounts = gbpAmounts(form);
   const money = (n: number) => `${form.currency === "GBP" ? "£" : `${form.currency} `}${n.toFixed(2)}`;
   const linesSum = form.lines.reduce((sum, l) => sum + lineTotalOf(l), 0);
   const enteredTotal = parseFloat(form.totalAmount);
@@ -732,6 +974,19 @@ export default function ScanPage() {
     (mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`) +
     (remaining ? " and next" : "");
   const changeLabel = mode === "archival" ? "Not right?" : `Not ${mode === "invoice" ? "an invoice" : mode === "receipt" ? "a receipt" : mode === "credit_note" ? "a credit note" : "a business card"}?`;
+
+  // Beside Save rather than at the top, so Save stays the first thing to
+  // tap for the document on screen.
+  const saveAllButton = unsaved > 1 && (
+    <button
+      type="button"
+      onClick={saveAll}
+      disabled={saving || scanning}
+      className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+    >
+      {bulk ?? "Save all ready"}
+    </button>
+  );
 
   const pagesStrip = (
     <PagesStrip
@@ -794,11 +1049,14 @@ export default function ScanPage() {
   return (
     <div className="space-y-8">
       <div>
-        {batch && batch.docs.length > 1 && (
+        {summaryText && <p className="mb-3 rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-700">{summaryText}</p>}
+        {walk && walk.docs.length > 1 && (
           <p className="mb-1 text-xs font-medium text-neutral-500">
-            Document {batch.index + 1} of {batch.docs.length}
+            Document {position + 1} of {walk.docs.length}
           </p>
         )}
+        {doc?.splitNote && <p className="mb-1 text-xs text-neutral-500">{doc.splitNote}</p>}
+        {doc?.look && <p className="mb-1 text-xs font-medium text-neutral-700">Needs a look: {doc.look}.</p>}
         {uploadNote && <p className="mb-1 text-xs text-amber-700">{uploadNote}</p>}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
@@ -862,7 +1120,7 @@ export default function ScanPage() {
         </div>
       </div>
 
-      <fieldset disabled={scanning} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <fieldset disabled={scanning || bulk !== null} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         {errorBanner}
 
         {mode === "contact" ? (
@@ -893,7 +1151,7 @@ export default function ScanPage() {
             )}
             {supplierSaved && <p className="text-sm text-green-700">Saved as a new supplier.</p>}
             {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={addAsSupplier}
                 disabled={saving || supplierSaved || scanning}
@@ -904,6 +1162,7 @@ export default function ScanPage() {
               <button type="button" onClick={discard} disabled={saving} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                 {remaining ? "Skip" : "Discard"}
               </button>
+              {saveAllButton}
             </div>
           </>
         ) : (
@@ -1150,6 +1409,7 @@ export default function ScanPage() {
               <button type="button" onClick={discard} disabled={saving} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                 {remaining ? "Skip" : "Discard"}
               </button>
+              {saveAllButton}
               {blockedReason && !saving && <span className="text-xs text-neutral-500">{blockedReason}</span>}
             </div>
           </>

@@ -1,7 +1,8 @@
 import { CATEGORIES } from "@/lib/categories";
 import { CURRENCIES } from "@/lib/fx";
-import { NormalisedDates, normaliseScanDates } from "@/lib/documentDate";
-import { extractStructured, nullableEnum, type ScanEngine } from "@/lib/extractors";
+import type { DocumentBox } from "@/lib/documentBox";
+import { type NormalisedDates, normaliseScanDates } from "@/lib/documentDate";
+import { conformToSchema, extractStructured, nullableEnum, type ScanEngine } from "@/lib/extractors";
 import { ROUGH_DOCUMENTS } from "@/lib/invoiceTemplate";
 import type { DocumentDetails } from "@/lib/storage";
 
@@ -37,7 +38,7 @@ export type ScanDocumentType =
   | "barcode"
   | "other";
 
-// Exactly what the record_document tool returns.
+// One entry of what the record_documents tool returns.
 export type ScanToolOutput = {
   documentType: ScanDocumentType;
   vendor: string | null;
@@ -77,6 +78,14 @@ export type ScanToolOutput = {
   contactPerson: string | null;
   contactEmail: string | null;
   notes: string | null;
+  // 1-based, counting every page of a PDF across the attachments in order;
+  // empty means every page.
+  pages: number[];
+  // Only where one page or photo holds more than one document.
+  box: DocumentBox | null;
+  // What the document itself says: a PAID stamp, a card payment, balance
+  // due 0 (true); an amount still owed (false); neither (null).
+  paidOnDocument: boolean | null;
 };
 
 export type ScanResult = ScanToolOutput & NormalisedDates;
@@ -108,7 +117,7 @@ const confidence = { type: "string", enum: ["high", "low"] };
 // one) so the model only ever suggests categories that actually appear in
 // their dropdown. Claude-strict form, so every object closes
 // additionalProperties and lists every property as required.
-export function buildExtractionSchema(categories: string[]): Record<string, unknown> {
+function buildDocumentSchema(categories: string[]): Record<string, unknown> {
   const detailProperties = Object.fromEntries(
     (Object.keys(DETAIL_DESCRIPTIONS) as ScanDetailKey[]).map((k) => [k, nullable(DETAIL_DESCRIPTIONS[k])])
   );
@@ -205,6 +214,23 @@ export function buildExtractionSchema(categories: string[]): Record<string, unkn
       notes: nullable(
         "Only a genuine remark or warning printed on the document or something the reviewer must know (a smudged total, a handwritten alteration). Null otherwise -- never a summary."
       ),
+      pages: {
+        type: "array",
+        description: "The pages this document is on: 1-based numbers of the attached pages, counting every page of a PDF, in order.",
+        items: { type: "integer" },
+      },
+      box: {
+        type: ["array", "null"],
+        description:
+          "Only when this document shares its page or photo with another document: where it is on that page, as " +
+          "[ymin, xmin, ymax, xmax] on a 0-1000 scale, covering the whole document. Null otherwise.",
+        items: { type: "number" },
+      },
+      paidOnDocument: {
+        type: ["boolean", "null"],
+        description:
+          "true when the document itself shows it has already been paid; false when it shows money still owed; null when it says neither.",
+      },
     },
     required: [
       "documentType",
@@ -228,13 +254,43 @@ export function buildExtractionSchema(categories: string[]): Record<string, unkn
       "contactPerson",
       "contactEmail",
       "notes",
+      "pages",
+      "box",
+      "paidOnDocument",
     ],
   };
 }
 
+export function buildExtractionSchema(categories: string[]): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      documents: {
+        type: "array",
+        description: "Every separate document found, in page order. Almost always exactly one.",
+        items: buildDocumentSchema(categories),
+      },
+    },
+    required: ["documents"],
+  };
+}
+
 const PROMPT =
-  "Read this scanned UK business document and record its details with the record_document tool. " +
-  "Every attached image or PDF page is a page of the SAME document, in order. " +
+  "Read the scanned UK business documents attached and record them with the record_documents tool. " +
+  "The attached images and PDF pages are pages 1, 2, 3... in the order given, counting every page of a PDF. " +
+  "Normally they are all pages of ONE document, in order, and you return exactly one document: a document " +
+  "that runs over several pages is still one document, and so are a document's continuation sheets, terms " +
+  "and conditions or remittance slip. Return more than one only when the pages clearly hold separate " +
+  "documents -- different suppliers, different invoice or receipt numbers, several receipts photographed " +
+  "together, several invoices in one PDF -- and never split one document's pages apart. For each document " +
+  "list its pages. box is only for a page or photo that holds more than one document: that document's " +
+  "[ymin, xmin, ymax, xmax] on a 0-1000 scale of that page, taking in all of it; otherwise null. " +
+  "paidOnDocument is true when the document itself shows it has already been paid (a PAID stamp, " +
+  "\"payment received\", paid by card or a card payment line, a balance or amount due of 0, an online order " +
+  "charged at checkout, a till receipt), false when it shows money still owed (an amount or balance due above " +
+  "0, a request to pay by a date) and null when it says neither. Everything below applies to each document " +
+  "on its own. " +
   "A receipt is proof of a payment already made; an invoice is a request for payment; a credit note reduces " +
   "or refunds an earlier invoice -- for a credit note set documentType to \"credit_note\", report its amounts " +
   "as POSITIVE numbers, and put the original invoice number it refers to in creditedInvoiceNumber. " +
@@ -272,19 +328,34 @@ export function parseDataUrl(dataUrl: string): { mediaType: string; base64: stri
   return { mediaType: match[1], base64: match[2] };
 }
 
-export async function extractDocument(
+// Pages and boxes the model got wrong are dropped rather than trusted; a
+// box means nothing for a document that has its pages to itself.
+function tidy(doc: ScanToolOutput, alone: boolean): ScanToolOutput {
+  const pages = [...new Set(doc.pages.filter((p) => Number.isInteger(p) && p >= 1))].sort((a, b) => a - b);
+  const b = doc.box?.map((v) => Math.min(1000, Math.max(0, v)));
+  const box = !alone && b?.length === 4 && b[0] < b[2] && b[1] < b[3] ? (b as DocumentBox) : null;
+  return { ...doc, pages, box };
+}
+
+export async function extractDocuments(
   pages: { mediaType: string; base64: string }[],
   categories: string[],
   engine: ScanEngine = "claude"
-): Promise<ScanResult> {
-  const output = await extractStructured<ScanToolOutput>({
+): Promise<ScanResult[]> {
+  const schema = buildExtractionSchema(categories.length ? categories : [...CATEGORIES]);
+  const { documents } = await extractStructured<{ documents: ScanToolOutput[] }>({
     engine,
-    name: "record_document",
+    name: "record_documents",
     description:
-      "Records the structured data read off a scanned UK business document (receipt, supplier invoice, credit note, or similar).",
-    schema: buildExtractionSchema(categories.length ? categories : [...CATEGORIES]),
+      "Records the structured data read off scanned UK business documents (receipts, supplier invoices, credit notes, or similar), one entry per separate document.",
+    schema,
     prompt: PROMPT,
     pages,
   });
-  return normaliseScanDates(output);
+  // Nothing recognised still gives the reviewer a form to fill in, as a
+  // read of one document always has.
+  const found = documents.length
+    ? documents
+    : [conformToSchema((schema.properties as { documents: { items: unknown } }).documents.items, {}) as ScanToolOutput];
+  return found.map((d) => normaliseScanDates(tidy(d, found.length === 1)));
 }
