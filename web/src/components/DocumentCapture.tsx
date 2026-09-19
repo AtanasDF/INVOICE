@@ -1344,7 +1344,11 @@ export default function DocumentCapture({
     const video = videoRef.current;
     if (!video || video.videoWidth === 0) return null;
     const region = visibleRegion(video, cssZoomRef.current);
-    const quad = quadRef.current;
+    // Corners in screen order for the warp: the tick loop keeps them in the
+    // order the page was first seen in, which would save a page that was
+    // turned upright while tracked on its side.
+    const tracked = quadRef.current;
+    const quad = tracked && { ...tracked, pts: orderPoints(tracked.pts) };
     const frame = document.createElement("canvas");
     frame.width = Math.round(region.sw);
     frame.height = Math.round(region.sh);
