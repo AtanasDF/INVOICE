@@ -26,13 +26,15 @@ const line = (v: unknown, max: number) => text(typeof v === "string" ? v.replace
 // email (any name, any bank details) from the app's domain. The layout is
 // fixed, every field is escaped, the only attachment is a PDF, and the
 // copy-to-self goes to the account's own address, never one from the form.
-// Only this app's own invoice links (/i/<token>) go into an email, rebuilt
-// from their parts, so the route can't be used to carry any other URL.
-function ownInvoiceLink(value: unknown, origin: string): string {
+// Only this app's own links (/i/<token> for an invoice, /q/<token> for a
+// quote) go into an email, rebuilt from their parts, so the route can't be
+// used to carry any other URL.
+function ownInvoiceLink(value: unknown, origin: string, docType: "invoice" | "quote"): string {
   if (typeof value !== "string") return "";
+  const path = docType === "quote" ? /^\/q\/[A-Za-z0-9_-]{43}$/ : /^\/i\/[A-Za-z0-9_-]{43}$/;
   try {
     const u = new URL(value);
-    return u.origin === origin && /^\/i\/[A-Za-z0-9_-]{43}$/.test(u.pathname) && !u.search && !u.hash ? origin + u.pathname : "";
+    return u.origin === origin && path.test(u.pathname) && !u.search && !u.hash ? origin + u.pathname : "";
   } catch {
     return "";
   }
@@ -97,7 +99,7 @@ export async function POST(req: Request) {
     message: text(body.message, 2000),
     bank: body.docType === "quote" ? [] : bank,
     docType: body.docType === "quote" ? "quote" : "invoice",
-    viewUrl: ownInvoiceLink(body.viewUrl, new URL(req.url).origin),
+    viewUrl: ownInvoiceLink(body.viewUrl, new URL(req.url).origin, body.docType === "quote" ? "quote" : "invoice"),
   };
 
   const key = `send:user:${user.id}`;
