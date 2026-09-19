@@ -20,7 +20,7 @@ export default function NewQuotePage() {
         setData({
           clients,
           vatRegistered: biz.vatRegistered,
-          initial: { clientId: "", number: nextQuoteNumber(quotes), date, validUntil: defaultValidUntil(date), items: [], notes: "" },
+          initial: { clientId: "", number: nextQuoteNumber(quotes), date, validUntil: defaultValidUntil(date), items: [], notes: "", deposit: null },
         });
       })
       .catch((err) => setError(errorText(err, "Could not load your clients.")));

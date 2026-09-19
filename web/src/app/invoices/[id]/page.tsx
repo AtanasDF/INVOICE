@@ -10,6 +10,7 @@ import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import { NumberInput } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
+import { depositTag } from "@/lib/quoteDeposit";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -17,6 +18,9 @@ function addDays(dateStr: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+// A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
+const signedMoney = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
@@ -75,7 +79,7 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
               <td className="py-2 text-right">{it.quantity}</td>
               <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
               {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
-              <td className="py-2 text-right">£{(it.quantity * it.unitPrice).toFixed(2)}</td>
+              <td className="py-2 text-right">{signedMoney(it.quantity * it.unitPrice)}</td>
             </tr>
           ))}
         </tbody>
@@ -389,7 +393,7 @@ export default function InvoiceViewPage() {
     setDuplicating(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const quoteTags = new Set((await quotesStore.all()).map((q) => `from ${q.number}`));
+      const quoteTags = new Set((await quotesStore.all()).flatMap((q) => [`from ${q.number}`, depositTag(q.number)]));
       // Creates a new draft, same as New Invoice -- no real number and
       // no counter advance until it's marked sent.
       const created = await invoicesStore.add({

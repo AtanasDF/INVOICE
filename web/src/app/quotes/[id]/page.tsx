@@ -7,11 +7,13 @@ import QuoteDocument, { quoteTotal } from "@/components/quote/QuoteDocument";
 import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import { longDate } from "@/components/invoice/InvoiceDocument";
-import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileStore, clientsStore, invoicesStore, quotesStore } from "@/lib/storage";
+import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quotesStore } from "@/lib/storage";
+import { computeInvoiceTotals } from "@/lib/vat";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, termsLength } from "@/lib/quoteStatus";
 import { errorText } from "@/lib/errorText";
+import { depositDeductions, depositGross, depositLines, depositTag } from "@/lib/quoteDeposit";
 
 type Open = Exclude<QuoteStatus, "invoiced">;
 
@@ -25,7 +27,19 @@ async function fetchQuote(id: string) {
     orphan = (await invoicesStore.all()).find((inv) => inv.tags.includes(`from ${quote.number}`)) ?? null;
     if (orphan) await quotesStore.linkInvoice(quote.id, orphan.id).catch(() => {});
   }
-  return { quote, clients, profile, orphan };
+  // The deposit invoice, or for a deposit claimed but never linked, the one
+  // made from it found by its tag (null if there is none).
+  let depositInvoice: Invoice | null = null;
+  let depositOrphan: Invoice | null | undefined;
+  if (quote?.depositInvoiceId) depositInvoice = await invoicesStore.get(quote.depositInvoiceId);
+  else if (quote?.depositClaimed) {
+    depositOrphan = (await invoicesStore.all()).find((inv) => inv.tags.includes(depositTag(quote.number))) ?? null;
+    if (depositOrphan) {
+      await quotesStore.linkDeposit(quote.id, depositOrphan.id).catch(() => {});
+      depositInvoice = depositOrphan;
+    }
+  }
+  return { quote, clients, profile, orphan, depositInvoice, depositOrphan };
 }
 
 export default function QuotePage() {
@@ -37,6 +51,8 @@ export default function QuotePage() {
   // An invoiced quote whose link wasn't saved: the invoice made from it,
   // found by its "from Q-..." tag, if there is one.
   const [orphan, setOrphan] = useState<Invoice | null | undefined>(undefined);
+  const [depositInvoice, setDepositInvoice] = useState<Invoice | null>(null);
+  const [depositOrphan, setDepositOrphan] = useState<Invoice | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -54,6 +70,8 @@ export default function QuotePage() {
     setClients(d.clients);
     setProfile(d.profile);
       setOrphan(d.orphan);
+      setDepositInvoice(d.depositInvoice);
+      setDepositOrphan(d.depositOrphan);
     });
   }, [id]);
 
@@ -64,6 +82,8 @@ export default function QuotePage() {
         setClients(d.clients);
         setProfile(d.profile);
         setOrphan(d.orphan);
+        setDepositInvoice(d.depositInvoice);
+        setDepositOrphan(d.depositOrphan);
       })
       .catch((err) => setError(errorText(err, "Could not load the quote.")))
       .finally(() => setLoading(false));
@@ -116,8 +136,20 @@ export default function QuotePage() {
   const today = todayIso();
   const total = quoteTotal(q, vatRegistered);
   const invoiceId = q.invoiceId ?? orphan?.id ?? null;
+  const depositAmount = depositGross(q, vatRegistered);
+  // A deposit still to invoice: asked for, quote accepted, none made yet.
+  const depositDue = q.status === "accepted" && depositAmount && !q.depositClaimed && !depositInvoice ? depositAmount : null;
+  const openDeposit = depositInvoice && depositInvoice.status !== "paid" && depositInvoice.status !== "draft" ? depositInvoice : null;
+  const money = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const setStatus = (status: Open) =>
+  const setStatus = (status: Open) => {
+    // A deposit invoice outlives the deal: its reminders keep going until
+    // it's paid or credited, so say so before backing out of the quote.
+    if ((status === "declined" || status === "sent") && q.status === "accepted" && openDeposit && !window.confirm(`The deposit invoice ${openDeposit.number} is still open, and its payment reminders will keep going until it's paid or credited. Carry on? You can add a credit note on the invoice's page.`)) return;
+    if (status === "declined" && q.status === "sent" && openDeposit && !window.confirm(`The deposit invoice ${openDeposit.number} is still open. Mark the quote declined anyway?`)) return;
+    return runStatus(status);
+  };
+  const runStatus = (status: Open) =>
     run(async () => {
       await quotesStore.setStatus(q.id, status);
       setQuote({ ...q, status });
@@ -133,13 +165,31 @@ export default function QuotePage() {
   // Claim the quote, make the draft invoice from the claimed row, then link
   // it. The claim stops a second tap or tab making a second invoice. If the
   // invoice seems not to have been made, look for it before releasing the
-  // claim: a lost reply can hide an invoice that was.
+  // claim: a lost reply can hide an invoice that was. With a deposit already
+  // invoiced, the final invoice takes it off.
   const toInvoice = () =>
     run(async () => {
       const before = q.status as Open;
       const claimed = await quotesStore.claimForInvoice(q.id);
       if (!claimed) throw new Error("This quote has already been turned into an invoice.");
       const tag = `from ${claimed.number}`;
+      let deposit: Invoice | null = null;
+      let credited = 0;
+      try {
+        if (claimed.depositClaimed && !claimed.depositInvoiceId)
+          throw new Error("The deposit invoice can't be found: it may still be being made, or it was removed. Reload the page to see which.");
+        deposit = claimed.depositInvoiceId ? await invoicesStore.get(claimed.depositInvoiceId) : null;
+        if (deposit?.status === "draft") throw new Error("The deposit invoice is still a draft. Send it first, so the final invoice can take it off.");
+        if (deposit) {
+          credited = (await creditNotesStore.forInvoice(deposit.id)).reduce((sum, c) => sum + c.amount, 0);
+          const depositTotal = computeInvoiceTotals(deposit.items, vatRegistered).total - credited;
+          if (depositTotal > computeInvoiceTotals(claimed.items, vatRegistered).total + 0.005)
+            throw new Error("The deposit invoice is for more than the whole quote, so the balance would be negative. Check the deposit invoice.");
+        }
+      } catch (err) {
+        await quotesStore.releaseClaim(q.id, before).catch(() => {});
+        throw err;
+      }
       const terms = (await clientsStore.all()).find((c) => c.id === claimed.clientId)?.paymentTerms ?? "";
       let invoice: Invoice;
       try {
@@ -148,7 +198,7 @@ export default function QuotePage() {
           clientId: claimed.clientId,
           date,
           number: draftPlaceholderNumber(),
-          items: claimed.items,
+          items: [...claimed.items, ...(deposit ? depositDeductions(deposit, credited, vatRegistered) : [])],
           notes: claimed.notes,
           dueDate: addDays(date, termsLength(terms) ?? 30),
           paymentTerms: terms,
@@ -165,7 +215,42 @@ export default function QuotePage() {
         }
         invoice = made;
       }
-      await quotesStore.linkInvoice(q.id, invoice.id).catch(() => {});
+      const linked = await quotesStore.linkInvoice(q.id, invoice.id).catch(() => true);
+      if (!linked) throw new Error("Another invoice was linked to this quote at the same time (another tab?). A second draft invoice was made: check Invoices and keep one.");
+      router.push(`/invoices/${invoice.id}`);
+    });
+
+  // The deposit goes out as its own invoice, due in 7 days: it books the
+  // work. Claimed and recovered the same way as the final invoice.
+  const toDepositInvoice = () =>
+    run(async () => {
+      const claimed = await quotesStore.claimDeposit(q.id);
+      if (!claimed) throw new Error("The deposit has already been invoiced, or the quote isn't accepted.");
+      const tag = depositTag(claimed.number);
+      let invoice: Invoice;
+      try {
+        const date = todayIso();
+        invoice = await invoicesStore.add({
+          clientId: claimed.clientId,
+          date,
+          number: draftPlaceholderNumber(),
+          items: depositLines(claimed, vatRegistered),
+          notes: `Deposit to book the work quoted in ${claimed.number}. The balance will be invoiced when the work is done.`,
+          dueDate: addDays(date, 7),
+          paymentTerms: "7 days",
+          status: "draft",
+          tags: [tag],
+        });
+      } catch (err) {
+        const made = (await invoicesStore.all()).find((inv) => inv.tags.includes(tag));
+        if (!made) {
+          await quotesStore.releaseDeposit(q.id).catch(() => {});
+          throw err;
+        }
+        invoice = made;
+      }
+      const linked = await quotesStore.linkDeposit(q.id, invoice.id).catch(() => true);
+      if (!linked) throw new Error("Another deposit invoice was linked to this quote at the same time (another tab?). A second draft was made: check Invoices and keep one.");
       router.push(`/invoices/${invoice.id}`);
     });
 
@@ -177,7 +262,7 @@ export default function QuotePage() {
           <h1 className="mt-1 text-2xl font-bold">Edit quote {q.number}</h1>
         </div>
         <QuoteForm
-          initial={{ clientId: q.clientId, number: q.number, date: q.date, validUntil: q.validUntil ?? "", items: q.items, notes: q.notes }}
+          initial={{ clientId: q.clientId, number: q.number, date: q.date, validUntil: q.validUntil ?? "", items: q.items, notes: q.notes, deposit: q.deposit }}
           clients={clients}
           vatRegistered={vatRegistered}
           saveLabel="Save changes"
@@ -221,7 +306,14 @@ export default function QuotePage() {
           ) : (
             <div className="space-y-3 text-sm text-neutral-700">
               <p>This quote was being turned into an invoice, but no invoice from it can be found.</p>
-              <button onClick={() => run(async () => { await quotesStore.releaseClaim(q.id, "accepted"); await load(); })} disabled={busy} className={SECONDARY}>
+              <button
+                onClick={() => {
+                  if (window.confirm("Only do this if no invoice is being made from this quote in another tab or on another device. Put it back?"))
+                    run(async () => { await quotesStore.releaseClaim(q.id, "accepted"); await load(); });
+                }}
+                disabled={busy}
+                className={SECONDARY}
+              >
                 Put it back to accepted
               </button>
             </div>
@@ -231,13 +323,26 @@ export default function QuotePage() {
             <p className="text-sm text-neutral-700">
               {q.status === "draft" && "Not sent yet. Send it below, or mark it sent if you gave it to them another way."}
               {q.status === "sent" && "Waiting on the customer. When they say yes, mark it accepted."}
-              {q.status === "accepted" && "Accepted. Turn it into an invoice when you're ready to bill."}
-              {q.status === "declined" && "Declined. Reopen it if they change their mind."}
+              {q.status === "accepted" &&
+                (depositDue
+                  ? `Accepted. Invoice the ${money(depositDue)} deposit to book the work, or turn the whole quote into an invoice.`
+                  : depositInvoice
+                    ? "Accepted, deposit invoiced. Invoice the balance when the work is done."
+                    : "Accepted. Turn it into an invoice when you're ready to bill.")}
+              {q.status === "declined" &&
+                (openDeposit
+                  ? `Declined. The deposit invoice ${openDeposit.number} is still open and will keep being chased: credit it on its page if it won't be paid.`
+                  : "Declined. Reopen it if they change their mind.")}
             </p>
             <div className="flex flex-wrap gap-2">
+              {depositDue && (
+                <button onClick={toDepositInvoice} disabled={busy} className={PRIMARY}>
+                  {busy ? "Working…" : "Invoice the deposit"}
+                </button>
+              )}
               {(q.status === "accepted" || q.status === "sent" || q.status === "draft") && (
-                <button onClick={toInvoice} disabled={busy} className={q.status === "accepted" ? PRIMARY : SECONDARY}>
-                  {busy ? "Working…" : "Turn into invoice"}
+                <button onClick={toInvoice} disabled={busy} className={q.status === "accepted" && !depositDue ? PRIMARY : SECONDARY}>
+                  {busy ? "Working…" : depositInvoice ? "Invoice the balance" : "Turn into invoice"}
                 </button>
               )}
               {q.status === "draft" && <button onClick={() => setStatus("sent")} disabled={busy} className={SECONDARY}>Mark as sent</button>}
@@ -252,6 +357,27 @@ export default function QuotePage() {
             </div>
           </div>
         )}
+        {depositInvoice && (
+          <p className="mt-3 border-t pt-3 text-sm text-neutral-700">
+            Deposit invoiced ({depositInvoice.status === "draft" ? "draft, not sent yet" : depositInvoice.status}).{" "}
+            <Link href={`/invoices/${depositInvoice.id}`} className="font-medium text-blue-600">Open the deposit invoice</Link>
+          </p>
+        )}
+        {q.depositClaimed && !depositInvoice && depositOrphan === null && (
+          <div className="mt-3 space-y-2 border-t pt-3 text-sm text-neutral-700">
+            <p>The deposit invoice can&apos;t be found: it was removed, or it&apos;s still being made in another tab. Clear it to make it again or to invoice the whole quote without it.</p>
+            <button
+              onClick={() => {
+                if (window.confirm("Only do this if no deposit invoice is being made in another tab or on another device. Clear it?"))
+                  run(async () => { await quotesStore.releaseDeposit(q.id); await load(); });
+              }}
+              disabled={busy}
+              className={SECONDARY}
+            >
+              Let me invoice the deposit again
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border bg-white p-6 text-neutral-900 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
@@ -262,7 +388,7 @@ export default function QuotePage() {
         <SendInvoicePanel
           docType="quote"
           sheet={<QuoteDocument quote={q} client={client} profile={profile} />}
-          pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, client, profile])}
+          pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
           resetKey={q.id}
           signInNext={`/quotes/${q.id}`}
           missingName="Add your business name in Settings first, so the customer knows who it's from."
