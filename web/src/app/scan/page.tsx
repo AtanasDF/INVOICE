@@ -319,6 +319,8 @@ export default function ScanPage() {
     const run = ++runRef.current;
     setScanning(true);
     setScanError(null);
+    // A warning about the previous reading doesn't describe the next one.
+    setDuplicate(null);
     try {
       const result = await (pending ?? extractPages(toRead, cats, engine));
       if (run !== runRef.current) return;
@@ -516,6 +518,7 @@ export default function ScanPage() {
         : null;
 
   async function save(force = false) {
+    if (blockedReason) return;
     if (mode !== "archival" && !form.totalAmount) {
       setSaveError("Enter a total before saving.");
       return;
@@ -992,14 +995,14 @@ export default function ScanPage() {
                   <button
                     type="button"
                     onClick={() => save(true)}
-                    disabled={saving}
+                    disabled={saving || !!blockedReason}
                     className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                   >
                     Save anyway
                   </button>
                   <button
                     type="button"
-                    onClick={() => (remaining ? advance() : router.push("/"))}
+                    onClick={discard}
                     disabled={saving}
                     className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700"
                   >
