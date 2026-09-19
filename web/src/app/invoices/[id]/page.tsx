@@ -692,7 +692,7 @@ export default function InvoiceViewPage() {
             </button>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => setEditingDetails((v) => !v)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             {editingDetails ? "Cancel" : "Edit details"}
           </button>
