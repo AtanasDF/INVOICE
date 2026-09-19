@@ -41,5 +41,5 @@ export function syncedStatus(
 // the account's current one for a draft (and for an issued invoice from
 // before the setting was saved, which has always shown that way).
 export function invoiceVat(invoice: { status: InvoiceStatus; vatRegistered: boolean | null }, accountVat: boolean): boolean {
-  return invoice.status === "draft" || invoice.vatRegistered === null ? accountVat : invoice.vatRegistered;
+  return invoice.status === "draft" || invoice.vatRegistered == null ? accountVat : invoice.vatRegistered;
 }
