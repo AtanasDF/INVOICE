@@ -381,7 +381,9 @@ export default function SettingsPage() {
               <span className="block text-xs text-neutral-500">
                 Under the Late Payment of Commercial Debts (Interest) Act 1998 a business can claim 8% a year above
                 the Bank of England base rate, plus £40, £70 or £100 compensation depending on the amount. It
-                doesn&apos;t apply to private individuals, so they never see it.
+                doesn&apos;t apply to private individuals: only clients marked Company get it, so check private
+                customers are marked Individual under Clients. Leave this off if your own terms set a late-payment
+                interest rate, since that replaces the statutory one.
               </span>
             </span>
           </label>

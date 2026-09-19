@@ -41,6 +41,8 @@ end $$;
 --       and column_name in ('reminder_text_late', 'reminder_text_final', 'reminder_late_payment_interest');
 --   select pg_get_constraintdef(oid) from pg_constraint
 --     where conrelid = 'public.invoice_reminders_sent'::regclass and conname = 'invoice_reminders_sent_kind_check';
---     -> CHECK (kind = ANY (ARRAY['before','due','after','late','final']))
+--     -> CHECK ((kind = ANY (ARRAY['before'::text, 'due'::text, 'after'::text, 'late'::text, 'final'::text])))
+--   select count(*) from pg_constraint where conrelid = 'public.invoice_reminders_sent'::regclass and contype = 'c';
+--     -> 1 (no leftover check refusing the new kinds)
 --   The owner can still update their own profile row (existing policy), and the
 --   cron (service role) can insert a 'late' and a 'final' row.

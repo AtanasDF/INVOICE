@@ -42,9 +42,31 @@ export function longDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-// Which reminder, if any, is due today for an invoice due on dueDate.
+// A reminder still goes out if the daily run missed its day, for up to
+// three days (never overlapping the next one), so one failed run doesn't
+// lose it for good.
+const CATCH_UP_DAYS = 3;
+
+// Which reminder, if any, is in its sending window today for an invoice
+// due on dueDate. The caller skips it if it, or a later one, was sent.
 export function reminderDueToday(dueDate: string, today: string): ReminderKind | null {
-  return REMINDER_SCHEDULE.find((s) => addDays(dueDate, s.days) === today)?.kind ?? null;
+  for (const [i, step] of REMINDER_SCHEDULE.entries()) {
+    const from = addDays(dueDate, step.days);
+    const next = REMINDER_SCHEDULE[i + 1];
+    const until = addDays(dueDate, next ? Math.min(next.days, step.days + CATCH_UP_DAYS) : step.days + CATCH_UP_DAYS);
+    if (today >= from && today < until) return step.kind;
+  }
+  return null;
+}
+
+export function laterReminders(kind: ReminderKind): ReminderKind[] {
+  return REMINDER_SCHEDULE.slice(REMINDER_SCHEDULE.findIndex((s) => s.kind === kind)).map((s) => s.kind);
+}
+
+// A name with a company suffix is a company; anything else is taken as a
+// person, since only businesses can be charged late-payment interest.
+export function looksLikeCompany(name: string): boolean {
+  return /\b(ltd|limited|llp|plc|p\.l\.c\.|cic|cyf|cyfyngedig|lp|inc|gmbh|llc)\b\.?$/i.test(name.trim()) || /\b(ltd|limited)\b/i.test(name);
 }
 
 // Fixed compensation under the Late Payment of Commercial Debts
@@ -91,7 +113,7 @@ export function reminderBody({ kind, template, clientName, clientIsCompany, invo
   });
   const interest =
     kind === "final" && claimInterest && clientIsCompany
-      ? `As this is a business debt, the Late Payment of Commercial Debts (Interest) Act 1998 entitles us to statutory interest at 8% a year above the Bank of England base rate from ${longDate(dueDate)}, and fixed compensation of £${lateCompensation(amountDue)}. We may claim these if the invoice isn't paid by the date above.`
+      ? `As this is a business debt, we may be entitled under the Late Payment of Commercial Debts (Interest) Act 1998 to statutory interest at 8% a year above the Bank of England base rate from the day after ${longDate(dueDate)}, and fixed compensation of £${lateCompensation(amountDue)}. We may claim these if the invoice isn't paid by ${longDate(addDays(today, 7))}.`
       : "";
   return [text, interest, bank && `How to pay:\n${bank}`, businessName].filter(Boolean).join("\n\n");
 }

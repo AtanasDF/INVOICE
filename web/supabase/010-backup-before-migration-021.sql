@@ -24,10 +24,11 @@ alter table public.invoice_reminders_sent_backup_20260919_m021 enable row level 
 --
 -- To restore (only if something actually breaks -- this does not run
 -- automatically): the columns are additive, so undoing migration-021 means
--- clearing them, and putting the old kind check back once no row uses a
--- new kind:
+-- clearing them, and putting the old kind check back NOT VALID, so rows
+-- already logged as 'late' or 'final' stay (nothing is deleted) while new
+-- ones are refused:
 --   update public.business_profile set reminder_text_late = null, reminder_text_final = null,
 --     reminder_late_payment_interest = false;
 --   alter table public.invoice_reminders_sent drop constraint invoice_reminders_sent_kind_check;
 --   alter table public.invoice_reminders_sent add constraint invoice_reminders_sent_kind_check
---     check (kind in ('before', 'due', 'after'));
+--     check (kind in ('before', 'due', 'after')) not valid;

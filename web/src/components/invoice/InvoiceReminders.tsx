@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { REMINDER_SCHEDULE, addDays } from "@/lib/reminderTemplates";
+import { REMINDER_SCHEDULE, addDays, laterReminders, reminderDueToday } from "@/lib/reminderTemplates";
 import { Client, Invoice, remindersSentStore } from "@/lib/storage";
 
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -41,7 +41,13 @@ export default function InvoiceReminders({ invoice, client, amountDue }: { invoi
             : null;
 
   const today = new Date().toISOString().slice(0, 10);
-  const next = invoice.dueDate ? REMINDER_SCHEDULE.find((r) => addDays(invoice.dueDate!, r.days) >= today && !sent?.has(r.kind)) : undefined;
+  // In its window today (on the day or a missed day being caught up) and
+  // neither it nor a later one sent yet.
+  const nowKind = invoice.dueDate ? reminderDueToday(invoice.dueDate, today) : null;
+  const goingToday = nowKind && !laterReminders(nowKind).some((k) => sent?.has(k)) ? nowKind : null;
+  const next = invoice.dueDate
+    ? REMINDER_SCHEDULE.find((r) => r.kind === goingToday) ?? REMINDER_SCHEDULE.find((r) => addDays(invoice.dueDate!, r.days) > today && !sent?.has(r.kind))
+    : undefined;
 
   return (
     <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
@@ -61,7 +67,7 @@ export default function InvoiceReminders({ invoice, client, amountDue }: { invoi
           {REMINDER_SCHEDULE.map((r) => {
             const on = addDays(invoice.dueDate!, r.days);
             const sentAt = sent?.get(r.kind);
-            const state = sentAt ? `Sent ${shortDate(sentAt)}` : on > today ? `Goes out ${shortDate(on)}` : on === today ? "Goes out today" : "Not sent";
+            const state = sentAt ? `Sent ${shortDate(sentAt)}` : r.kind === goingToday ? "Goes out today" : on > today ? `Goes out ${shortDate(on)}` : "Not sent";
             return (
               <li key={r.kind} className={`flex justify-between gap-4 ${r === next ? "font-medium" : sentAt ? "text-neutral-700" : "text-neutral-500"}`}>
                 <span>{r.label}</span>

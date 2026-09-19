@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { computeInvoiceTotals, VatLineItem } from "@/lib/vat";
-import { ReminderKind, SUBJECT, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
+import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
 
 export const runtime = "nodejs";
 
 // Triggered daily by vercel.json's cron config -- same mechanism and same
 // CRON_SECRET as /api/notifications/check, no separate secret needed for
 // this route. For every sent (not part-paid) invoice with a due date, checks
-// whether today matches one of the fixed reminder points (REMINDER_SCHEDULE:
-// 3 days before due, on the day, then 7, 14 and 30 days after) and, if so
-// and the client hasn't opted out, emails them via Resend.
+// whether today falls in one of the fixed reminder windows (REMINDER_SCHEDULE:
+// 3 days before due, on the day, then 7, 14 and 30 days after, each with a
+// few catch-up days) and, if so and the client hasn't opted out, emails them
+// via Resend.
 //
 // Inert until RESEND_API_KEY is set: returns 200 with a "skipped" note
 // rather than erroring, since "no email provider configured yet" is this
@@ -101,7 +102,8 @@ export async function GET(req: Request) {
     const failures: string[] = [];
 
     for (const inv of candidates) {
-      if (sentSet.has(`${inv.id}:${inv.kind}`)) continue;
+      // Already sent, or overtaken by a later one sent on a catch-up day.
+      if (laterReminders(inv.kind).some((k) => sentSet.has(`${inv.id}:${k}`))) continue;
       const client = clientById.get(inv.client_id ?? "");
       if (!client || !client.reminders_enabled || !client.email) continue;
       const profile = profileByUser.get(inv.user_id);
