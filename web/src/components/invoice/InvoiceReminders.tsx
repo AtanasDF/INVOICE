@@ -9,7 +9,7 @@ const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toL
 
 // Which automatic reminders have gone out for this invoice, which are
 // coming, and why there are none when there aren't.
-export default function InvoiceReminders({ invoice, client, amountDue }: { invoice: Invoice; client: Client | null; amountDue: number }) {
+export default function InvoiceReminders({ invoice, client, amountDue, hasPayments }: { invoice: Invoice; client: Client | null; amountDue: number; hasPayments: boolean }) {
   const [sent, setSent] = useState<Map<string, string> | null>(null);
 
   useEffect(() => {
@@ -30,8 +30,8 @@ export default function InvoiceReminders({ invoice, client, amountDue }: { invoi
   if (invoice.status === "paid" || invoice.status === "draft" || amountDue <= 0) return null;
 
   const reason =
-    invoice.status === "partial"
-      ? "Part-paid invoices get no automatic reminders, since the app doesn't know the balance."
+    invoice.status === "partial" && !hasPayments
+      ? "No automatic reminders: it's marked part-paid but no payments are recorded, so the balance isn't known. Record what came in under Payments."
       : !invoice.dueDate
         ? "No due date, so no automatic reminders."
         : !client?.email
@@ -55,7 +55,7 @@ export default function InvoiceReminders({ invoice, client, amountDue }: { invoi
       {reason ? (
         <p className="mt-1 text-sm text-neutral-600">
           {reason}
-          {client && !reason.startsWith("Part") && !reason.startsWith("No due") && (
+          {client && (reason.includes("email") || reason.includes("off for this client")) && (
             <>
               {" "}
               <Link href="/clients" className="font-medium text-blue-600">Edit the client</Link>
