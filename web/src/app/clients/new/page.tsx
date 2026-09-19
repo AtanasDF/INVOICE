@@ -11,6 +11,7 @@ import { CameraIcon } from "@/components/icons";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFinder from "@/components/AddressFinder";
 import UploadFilesButton from "@/components/UploadFilesButton";
+import ClearFormButton from "@/components/ClearFormButton";
 import { hasUploads, takeUploads } from "@/lib/scanHandoff";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
@@ -89,6 +90,26 @@ export default function NewClientPage() {
     } finally {
       setReading(false);
     }
+  }
+
+  const filled = !!(name || email || address || vatNumber || paymentTerms || defaultCurrency || contactPerson || phone || found.length || !isCompany || !remindersEnabled);
+
+  function clearForm() {
+    setIsCompany(true);
+    setName("");
+    setEmail("");
+    setAddress("");
+    setVatNumber("");
+    setPaymentTerms("");
+    setDefaultCurrency("");
+    setContactPerson("");
+    setPhone("");
+    setRemindersEnabled(true);
+    setError(null);
+    setReadError(null);
+    setFound([]);
+    setPicked(null);
+    scannedRef.current = { email: "", address: "", vatNumber: "", contactPerson: "", phone: "" };
   }
 
   useEffect(() => {
@@ -236,9 +257,12 @@ export default function NewClientPage() {
           </label>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? "Saving…" : `Save ${kind}`}
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {saving ? "Saving…" : `Save ${kind}`}
+          </button>
+          <ClearFormButton onClear={clearForm} disabled={saving || reading || !filled} />
+        </div>
       </form>
     </div>
   );

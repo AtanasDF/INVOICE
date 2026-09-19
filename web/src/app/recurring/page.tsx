@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
+import ClearFormButton from "@/components/ClearFormButton";
 
 function RecurringTabs() {
   return (
@@ -49,6 +50,17 @@ export default function RecurringExpensesPage() {
 
   function supplierName(id: string) {
     return clients.find((c) => c.id === id)?.name || "";
+  }
+
+  const filled = !!(description || totalAmount || vatAmount || supplierId || dayOfMonth !== "1");
+
+  function clearForm() {
+    setDescription("");
+    setTotalAmount("");
+    setVatAmount("");
+    setSupplierId("");
+    setDayOfMonth("1");
+    setError(null);
   }
 
   async function addRecurring(e: React.FormEvent) {
@@ -175,9 +187,12 @@ export default function RecurringExpensesPage() {
           />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? "Saving…" : "Add recurring expense"}
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {saving ? "Saving…" : "Add recurring expense"}
+          </button>
+          <ClearFormButton onClear={clearForm} disabled={saving || !filled} />
+        </div>
       </form>
 
       {loading ? (

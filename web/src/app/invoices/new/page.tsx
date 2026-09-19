@@ -18,6 +18,7 @@ import { looksLikeCompany } from "@/lib/reminderTemplates";
 import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
 import { withKinds } from "@/lib/cis";
 import UploadFilesButton from "@/components/UploadFilesButton";
+import ClearFormButton from "@/components/ClearFormButton";
 import { hasUploads, takeUploads } from "@/lib/scanHandoff";
 
 function addDays(dateStr: string, days: number): string {
@@ -172,6 +173,40 @@ export default function NewInvoicePage() {
     setPaymentTerms("");
     setDueDate(addDays(date, 30));
     setDueDateManual(false);
+    setImported(false);
+  }
+
+  const filled =
+    !!(clientId || paymentTerms || notes || tagsInput || typed || newCustomer || copied || imported || cisRate !== null || dueDateManual || date !== todayIso()) ||
+    items.length !== 1 ||
+    !!items[0].description ||
+    items[0].unitPrice !== 0 ||
+    items[0].quantity !== 1;
+
+  // An imported free invoice goes with the rest, as with Discard import.
+  function clearForm() {
+    if (imported) clearFreeInvoiceDraft();
+    const today = todayIso();
+    setClientId("");
+    setDate(today);
+    setDueDate(addDays(today, 30));
+    setDueDateManual(false);
+    setPaymentTerms("");
+    setTermsLength(null);
+    setItems([{ ...BLANK_ITEM }]);
+    cisTouchedRef.current = false;
+    cisFromScanRef.current = false;
+    setCisRateState(null);
+    setNotes("");
+    setTagsInput("");
+    setError(null);
+    setCopied(null);
+    copiedNotesRef.current = "";
+    setTyped("");
+    setTypedNote(null);
+    setNewCustomer(null);
+    setAddClientError(null);
+    setScanError(null);
     setImported(false);
   }
 
@@ -791,6 +826,9 @@ export default function NewInvoicePage() {
             </button>
           </div>
           <CisSummary items={items} rate={cisRate} total={totals.total} />
+          <div className="flex justify-end pt-1">
+            <ClearFormButton onClear={clearForm} disabled={saving || scanning || typing || addingClient || !filled} />
+          </div>
           <p className="text-right text-xs text-neutral-500">
             Saves as a draft — fully editable until you mark it sent, which is what assigns its invoice number, locks the rest in, and starts the due-date clock.
           </p>
