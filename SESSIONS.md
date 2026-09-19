@@ -346,10 +346,37 @@ payment options come later. No schema change; not merged to main.
   page inside the corners", split several invoices in one scan, compact receipt cards,
   due filters, clear-form buttons, and a quotes overhaul (all contacts, company/private,
   send every way, request quotes from suppliers, compare suppliers' quotes by item).
-  In progress: `feature/scan-fixes` (upload from files, live supplier matching + at save,
-  no day/month prompt on GBP documents, iPhone date field width), `feature/receipts-list`
-  (agent: compact cards, filters, link-to-supplier banner), `feature/bent-paper` (agent:
-  line-fit corners and smoothing for bent/curled paper, hint removal).
+- Scan, receipts and bent-paper bundle merged to main (via `integration/scan-receipts`):
+  - Upload from files under every camera button (several at once to /scan, one on the
+    client/invoice pages), read as a batch; the address carries `upload=1` so a lost
+    hand-off says so instead of opening the camera, and unreadable files are counted.
+  - Receipts never create a supplier by themselves; they link to one at read time
+    (shown in the form) or at save only by exactly the same name. "No supplier" picked on
+    purpose is kept in `details.noSupplier`.
+  - No day/month question on GBP documents; date fields fit the iPhone column; /scan reads
+    with Gemini by default (3.7s vs Claude's 9.6s on the same receipt, same result).
+  - Receipts & bills list: compact cards with Details, To pay / Overdue / Due in 7 days /
+    Paid and type filters, "To receive" on Invoices; link-to-supplier offer with a tick per
+    row, strict whole-word matching, remembered skips.
+  - Scanner: bent/curled paper (line-fitted corners, median smoothing, 2-tick grace), no
+    "fit the page" nagging (first-time tip only).
+  - Review (3 lenses, 18 agents): 10 confirmed and fixed (batch double capture of a curled
+    page, stale crop on a tap during the grace, uploads lost when the lists failed, silent
+    unreadable files, fuzzy save-time links, upload races, lost hand-off on a full load,
+    link offer undoing "No supplier" and substring matches like Espresso Bar → Esso).
+    Suites: review fixes 21/21, uploads 15/15, receipts 74/74, bent 64/64, far 35/35,
+    batch 2/2, pinch 4/4, camera tip 2/2, delight 8/8, texts 12/12, CIS 14/14, payments
+    13/13, quotes 34/34, deposits 17/17, address 12/12 + 12/12, tax 5/5, reminders 5/5,
+    lines 7/7, VAT 4/4, Free quote 10/10, share 3/3, tips 7/7; auto-zoom 9/10 and lens 3/4
+    as before (known expectations). iCloud's " 2" duplicates are gitignored now.
+- Companies House key: steps given; the Developer Hub and Vercel env pages left open in his
+  Chrome for a helper. Lookup switches on once `COMPANIES_HOUSE_API_KEY` is set + redeployed.
+- On branches, next to merge: `feature/clear-forms` (Clear form beside Save on client,
+  supplier, invoice, receipt and both recurring forms; 21/21; also fixes the receipt item ✕
+  that saved the form), `feature/quotes-ux` (agent: pick any client or supplier, new
+  company/private customer inline, one Send card with email/text/WhatsApp/PDF; 48/48 new,
+  older quote suites pass), `feature/torch` (torch button in the scanner, on by itself in
+  low light unless switched by hand; 10/10).
 
 **Open**
 

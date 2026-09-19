@@ -131,7 +131,10 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   clients with `is_company` true.
 - A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
   and in the push cron from 3 days before `due_date`.
-- Suppliers are `clients` rows with `kind = 'supplier'`.
+- Suppliers are `clients` rows with `kind = 'supplier'`. A scanned document is linked to a
+  supplier only when the form showed it (read-time match) or the names are exactly the same
+  at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
+  marks "No supplier" picked on purpose, so the receipts list doesn't offer to link it.
 
 ## Scanning and extraction
 
@@ -159,13 +162,18 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   re-arms auto-capture only after the page leaves the frame, and reviews/join-pages in
   `BatchReview`; `/scan` reads the documents three at a time and walks them with Save and
   next / Skip. The Free-page template scan and single-document flows stay one-shot.
+- "Upload from files" (`UploadFilesButton`) hands files to the reading page in memory
+  (`scanHandoff.ts`) with `upload=1` in the address; the page takes them only for its own
+  path, and says they didn't come through (instead of opening the camera) if a full page
+  load emptied memory. /scan reads with Gemini unless `scan-engine` is "claude".
 - Camera: `src/components/DocumentCapture.tsx`. OpenCV is **not bundled**: a prebuild
   script copies it to `public/vendor/opencv-5.0.0.js` (gitignored, immutable cache
   header) and `src/lib/opencv.ts` loads it as a script and awaits `window.cv`. Never
   `import()` the package: its `module.exports` is a Promise and Turbopack's interop makes
   the import reject. The capture screen shows "Edge detection unavailable: <reason>" on
-  failure, and tapping the hint pill shows a readout (engine state, video size, ticks,
-  quads, coverage, sharpness).
+  failure, and tapping the hint pill (an invisible strip beside Back while there's no
+  hint) shows a readout (engine state, video size, ticks, quads, coverage, sharpness).
+  No hint shows until a page is found (Atanas: "everyone knows what to do").
 - iOS defaults to the in-app scanner (`scanner-mode` in localStorage; `native` opts back
   into the OS camera). `CaptureButton` is the label-wrapped capture input on the native
   path so one tap opens the camera.
@@ -178,6 +186,15 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   ~3200x1800 because Safari otherwise returns its smallest size; it's used only if it
   matches the screen, the page is re-found near the video's corners and it's as sharp,
   else the video frame. WebKit facts behind this are in `notes/claude-notes.md`.
+- Bent paper (2026-09-19): a page's corners are where straight lines fitted to its sides
+  meet (`fitCorners`: cv.fitLine, Huber, two passes over the outline points along each
+  side's middle), used only where further out than the simplified outline's corner by
+  2-30% of the shorter side (a near-rectangular page keeps its corners as before). A
+  dog-eared corner goes back to the page's real corner instead of one end of the fold
+  (which flipped as the page moved). Outline, movement check and crop use the per-corner
+  median of the last 3 detections; a page missed for up to 2 ticks keeps its outline and
+  count; a tick whose own reading is off the median never fires the shot. A curled page's
+  curved sides are not flattened (a 4-point warp).
 
 ## Environment variables
 

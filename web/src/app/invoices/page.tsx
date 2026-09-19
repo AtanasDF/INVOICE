@@ -11,6 +11,8 @@ import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvo
 import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
 
+type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -25,7 +27,7 @@ export default function InvoicesPage() {
   const [filterClientId, setFilterClientId] = useState("");
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"" | InvoiceStatus | "overdue">("");
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>("");
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
@@ -148,8 +150,11 @@ export default function InvoicesPage() {
       if (filterClientId && inv.clientId !== filterClientId) return false;
       if (!isNaN(minTotal) && invoiceCharge(inv, invoiceVat(inv, vatRegistered)).due < minTotal) return false;
       if (search && !inv.number.toLowerCase().includes(search)) return false;
-      if (filterStatus === "overdue" && !isOverdue(inv.status, inv.dueDate)) return false;
-      if (filterStatus !== "" && filterStatus !== "overdue" && inv.status !== filterStatus) return false;
+      if (filterStatus === "overdue") {
+        if (!isOverdue(inv.status, inv.dueDate)) return false;
+      } else if (filterStatus === "to_receive") {
+        if (inv.status !== "sent" && inv.status !== "partial") return false;
+      } else if (filterStatus && inv.status !== filterStatus) return false;
       if (filterTag && !inv.tags.includes(filterTag)) return false;
       return true;
     });
@@ -215,8 +220,9 @@ export default function InvoicesPage() {
             <option value="">All clients</option>
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as "" | InvoiceStatus | "overdue")}>
+          <select className="rounded-lg border px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>
             <option value="">All statuses</option>
+            <option value="to_receive">To receive (owed to me)</option>
             {INVOICE_STATUS_KINDS.map((k) => <option key={k} value={k}>{INVOICE_STATUS_LABELS[k]}</option>)}
             <option value="overdue">Overdue</option>
           </select>
