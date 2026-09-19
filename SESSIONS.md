@@ -171,11 +171,14 @@ and what is left open. Dates are session dates (Europe/London).
   (migration-023, new table, no backup needed); status follows payments; invoice/PDF list
   payments and show the balance; Mark as paid records the balance; reminders chase the
   balance of part-paid invoices (skip legacy part-paid with no payments); dashboard,
-  list, CSV and export use it. Click-through 9/9, reminder job 8/8. Review running.
-- Noted, not changed: RESTRICT foreign keys to clients (migrations 014/015, and quotes)
-  would likely block deleting a whole user account from the Supabase dashboard, since a
-  cascade can hit a RESTRICT before the referencing row is gone. No in-app account
-  deletion exists; worth a NO ACTION review if one is ever added.
+  list, CSV and export use it. Review: no blockers, 8 fixed (credit notes now set the
+  status too, legacy part-paid "Mark as paid" doesn't invent a payment, fresh reads and
+  double-tap guard, overpayment/date checks, penny rounding, reminder wording "£X to
+  pay"). Unit 10/10, click-through 13/13, reminder job 8/8. Migration-023 applied and
+  verified (rolled back); merged (3508bb9); full build clean.
+- Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
+  cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
+  rolled back). No in-app account deletion exists; protective as it is.
 - "Tax so far" estimate on the home page, branch `feature/tax-estimate` (pushed, NOT
   merged, for Atanas to judge): income tax + Class 4 NI on this tax year's profit as if
   the year ended today, full-year projection, VAT owed if registered. Maths checked

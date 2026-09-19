@@ -39,7 +39,16 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-022 as of 2026-09-19 (backup 011:
+- Live Supabase is at migration-023 as of 2026-09-19: invoice_payments (new table; RLS
+  owner policy; authenticated select/insert/update/delete, anon nothing; trigger
+  invoice_payments_same_owner; invoice FK RESTRICT). Verified rolled back: owner records
+  and removes, zero refused, other user sees 0 and can't pay into it, anon refused, an
+  invoice with a payment can't be removed.
+- invoices.user_id and clients.user_id reference auth.users with NO cascade in the live
+  database (unlike schema.sql, which says cascade), so a user with invoices or clients
+  can't be deleted outright. Found 2026-09-19 with a throwaway user in a rolled-back
+  block; left as is (protective under the never-delete rule).
+- Migration-022 as of 2026-09-19 (backup 011:
   quotes_backup_20260919_m022, verified 0/0, RLS): quotes.deposit_percent (0–100
   exclusive) / deposit_amount (> 0), at most one; deposit_invoice_id → invoices ON DELETE
   SET NULL; deposit_claimed; quotes_same_owner also checks the deposit invoice. Verified
