@@ -71,8 +71,20 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
   const [customTerms, setCustomTerms] = useState(!isPreset);
   const termsValue = customTerms || !isPreset ? "custom" : draft.paymentTerms;
 
+  const quote = draft.docType === "quote";
+
+  // A quote is valid for 30 days unless changed; back to an invoice, the
+  // due date follows the payment terms again.
+  function setDocType(docType: FreeInvoiceDraft["docType"]) {
+    if (docType === draft.docType) return;
+    const days = docType === "quote" ? 30 : termsDays(draft.paymentTerms);
+    set({ docType, dueDate: days === null ? draft.dueDate : addDays(draft.date, days) });
+  }
+
   function setDate(date: string) {
-    const days = termsDays(draft.paymentTerms);
+    // A quote keeps however long it was valid for; an invoice follows its terms.
+    const gap = Math.round((Date.parse(draft.dueDate) - Date.parse(draft.date)) / 86_400_000);
+    const days = quote ? (Number.isFinite(gap) && gap >= 0 ? gap : 30) : termsDays(draft.paymentTerms);
     set({ date, dueDate: days === null ? draft.dueDate : addDays(date, days) });
   }
 
@@ -96,6 +108,16 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
 
   return (
     <div className="space-y-4">
+      <Card title="Making">
+        <Segmented
+          label="Document"
+          value={draft.docType}
+          options={[{ value: "invoice", label: "Invoice" }, { value: "quote", label: "Quote" }]}
+          onChange={(docType) => setDocType(docType)}
+        />
+        {quote && <p className="text-xs text-neutral-500">A quote shows what the job will cost, valid until a date. No payment terms or bank details.</p>}
+      </Card>
+
       <Card title="Layout">
         <LayoutPicker value={draft.layout} onChange={(layout) => set({ layout })} />
       </Card>
@@ -124,10 +146,10 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         />
       </Card>
 
-      <Card title="Invoice">
+      <Card title={quote ? "Quote" : "Invoice"}>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Invoice number">
-            <input className={INPUT} placeholder="INV-001" value={draft.number} onChange={(e) => set({ number: e.target.value })} />
+          <Field label={quote ? "Quote number" : "Invoice number"}>
+            <input className={INPUT} placeholder={quote ? "Q-001" : "INV-001"} value={draft.number} onChange={(e) => set({ number: e.target.value })} />
           </Field>
           <Field label="Currency symbol">
             <input className={INPUT} value={draft.currencySymbol} onChange={(e) => set({ currencySymbol: e.target.value })} />
@@ -135,16 +157,18 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           <Field label="Date">
             <input type="date" className={INPUT} value={draft.date} onChange={(e) => setDate(e.target.value)} />
           </Field>
-          <Field label="Due date">
+          <Field label={quote ? "Valid until" : "Due date"}>
             <input type="date" className={INPUT} value={draft.dueDate} onChange={(e) => set({ dueDate: e.target.value })} />
           </Field>
-          <Field label="Payment terms">
-            <select className={INPUT} value={termsValue} onChange={(e) => setTerms(e.target.value)}>
-              {PAYMENT_TERMS.map((t) => <option key={t} value={t}>{t}</option>)}
-              <option value="custom">Custom…</option>
-            </select>
-          </Field>
-          {termsValue === "custom" && (
+          {!quote && (
+            <Field label="Payment terms">
+              <select className={INPUT} value={termsValue} onChange={(e) => setTerms(e.target.value)}>
+                {PAYMENT_TERMS.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value="custom">Custom…</option>
+              </select>
+            </Field>
+          )}
+          {!quote && termsValue === "custom" && (
             <Field label="Custom terms">
               <input className={INPUT} placeholder="e.g. 50% on completion" value={draft.paymentTerms} onChange={(e) => set({ paymentTerms: e.target.value })} />
             </Field>
@@ -152,7 +176,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         </div>
       </Card>
 
-      <Card title="Bill to">
+      <Card title={quote ? "Quote for" : "Bill to"}>
         <TextFields
           value={draft.customer}
           onChange={(customer) => set({ customer })}
@@ -170,8 +194,10 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         {draft.vatRegistered && (
           <Toggle label="Reverse charge" description={`Charges no VAT on every line and prints "Reverse charge: VAT Act 1994 Section 55A applies".`} checked={draft.reverseCharge} onChange={(reverseCharge) => set({ reverseCharge })} />
         )}
-        <Toggle label="CIS subcontractor" description="Splits labour from materials and shows the CIS deduction." checked={draft.cis.enabled} onChange={(enabled) => set({ cis: { ...draft.cis, enabled } })} />
-        {draft.cis.enabled && (
+        {!quote && (
+          <Toggle label="CIS subcontractor" description="Splits labour from materials and shows the CIS deduction." checked={draft.cis.enabled} onChange={(enabled) => set({ cis: { ...draft.cis, enabled } })} />
+        )}
+        {!quote && draft.cis.enabled && (
           <div>
             <p className="text-xs text-neutral-500">CIS rate</p>
             <Segmented
@@ -212,7 +238,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
                     </Field>
                   </div>
                 )}
-                {draft.cis.enabled && (
+                {!quote && draft.cis.enabled && (
                   <div className="min-w-[7rem] flex-1">
                     <Field label="Type">
                       <select className={INPUT} value={l.kind} onChange={(e) => setLine(i, { kind: e.target.value as FreeInvoiceLine["kind"] })}>
@@ -241,19 +267,21 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         </button>
       </Card>
 
-      <Card title="Payment details">
-        <TextFields
-          value={draft.bank}
-          onChange={(bank) => set({ bank })}
-          fields={[
-            { key: "accountName", label: "Account name", span: true },
-            { key: "sortCode", label: "Sort code" },
-            { key: "accountNumber", label: "Account number" },
-            { key: "iban", label: "IBAN" },
-            { key: "reference", label: "Reference", hint: "Left blank, the invoice number is used." },
-          ]}
-        />
-      </Card>
+      {!quote && (
+        <Card title="Payment details">
+          <TextFields
+            value={draft.bank}
+            onChange={(bank) => set({ bank })}
+            fields={[
+              { key: "accountName", label: "Account name", span: true },
+              { key: "sortCode", label: "Sort code" },
+              { key: "accountNumber", label: "Account number" },
+              { key: "iban", label: "IBAN" },
+              { key: "reference", label: "Reference", hint: "Left blank, the invoice number is used." },
+            ]}
+          />
+        </Card>
+      )}
 
       <Card title="Notes">
         <Field label="Notes" hint="Shown above the payment details.">

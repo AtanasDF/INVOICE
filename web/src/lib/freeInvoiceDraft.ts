@@ -3,8 +3,13 @@ import { computeInvoiceTotals, VAT_RATES, VatRateKind } from "@/lib/vat";
 
 export type FreeInvoiceLine = { description: string; quantity: number; unitPrice: number; vatRate: VatRateKind; kind: InvoiceLineKind };
 
+// The same page makes a quote: titled Quote, "valid until" in place of the
+// due date, and no payment terms, bank details or CIS deduction.
+export type FreeDocType = "invoice" | "quote";
+
 export type FreeInvoiceDraft = {
   version: 1;
+  docType: FreeDocType;
   layout: InvoiceLayoutStyle;
   issuer: InvoiceTemplate["issuer"];
   bank: InvoiceTemplate["bank"];
@@ -91,6 +96,7 @@ export function defaultDraft(): FreeInvoiceDraft {
   const saved = readSavedSignature();
   return {
     version: 1,
+    docType: "invoice",
     layout: "modern",
     issuer: { name: null, address: null, email: null, phone: null, website: null, vatNumber: null, companyNumber: null, utr: null },
     bank: { accountName: null, sortCode: null, accountNumber: null, iban: null, reference: null },
@@ -228,6 +234,7 @@ export function readFreeInvoiceDraft(): FreeInvoiceDraft | null {
       issuer: { ...base.issuer, ...stored.issuer },
       bank: { ...base.bank, ...stored.bank },
       customer: { ...base.customer, ...stored.customer },
+      docType: stored.docType === "quote" ? "quote" : "invoice",
       cis: isObject(stored.cis) && typeof stored.cis.enabled === "boolean" && (stored.cis.rate === 20 || stored.cis.rate === 30) ? stored.cis : base.cis,
       lines: stored.lines.map((l) => ({
         ...emptyLine(),
@@ -259,6 +266,11 @@ export function clearFreeInvoiceDraft() {
   }
 }
 
+// CIS is taken off when the invoice is paid, so a quote shows the full price.
+export function cisApplies(d: FreeInvoiceDraft): boolean {
+  return d.cis.enabled && d.docType !== "quote";
+}
+
 export type DraftTotals = ReturnType<typeof computeInvoiceTotals> & {
   lines: FreeInvoiceLine[];
   labourNet: number;
@@ -283,7 +295,7 @@ export function computeDraftTotals(d: FreeInvoiceDraft): DraftTotals {
   const total = round(subtotal + totalVat);
   const net = (kind: InvoiceLineKind) => round(lines.filter((l) => l.kind === kind).reduce((s, l) => s + l.quantity * l.unitPrice, 0));
   const labourNet = net("labour");
-  const cisDeduction = d.cis.enabled ? round((labourNet * d.cis.rate) / 100) : 0;
+  const cisDeduction = cisApplies(d) ? round((labourNet * d.cis.rate) / 100) : 0;
   return {
     subtotal,
     vatByRate,

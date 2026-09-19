@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { computeDraftTotals, DraftTotals, FreeInvoiceDraft, FreeInvoiceLine } from "@/lib/freeInvoiceDraft";
+import { cisApplies, computeDraftTotals, DraftTotals, FreeInvoiceDraft, FreeInvoiceLine } from "@/lib/freeInvoiceDraft";
 import type { InvoiceLineKind } from "@/lib/invoiceTemplate";
 import { VAT_RATE_LABELS } from "@/lib/vat";
 
@@ -20,17 +20,23 @@ export function longDate(iso: string): string {
 
 type Row = [string, string];
 
+const title = (d: FreeInvoiceDraft) => (d.docType === "quote" ? "Quote" : "Invoice");
+const numberLabel = (d: FreeInvoiceDraft) => (d.docType === "quote" ? "Quote no." : "Invoice no.");
+
 function metaRows(d: FreeInvoiceDraft): Row[] {
+  const quote = d.docType === "quote";
   const rows: Row[] = [
-    ["Invoice no.", d.number],
+    [numberLabel(d), d.number],
     ["Date", d.date ? longDate(d.date) : ""],
-    ["Due date", d.dueDate ? longDate(d.dueDate) : ""],
-    ["Terms", d.paymentTerms],
+    [quote ? "Valid until" : "Due date", d.dueDate ? longDate(d.dueDate) : ""],
+    ["Terms", quote ? "" : d.paymentTerms],
   ];
   return rows.filter(([, v]) => v);
 }
 
+// A quote asks for no payment yet, so it carries no bank details.
 export function bankRows(d: FreeInvoiceDraft): Row[] {
+  if (d.docType === "quote") return [];
   const b = d.bank;
   if (!(b.accountName || b.sortCode || b.accountNumber || b.iban)) return [];
   const rows: [string, string | null][] = [
@@ -60,7 +66,7 @@ function BillTo({ d, dense }: { d: FreeInvoiceDraft; dense?: boolean }) {
   const c = d.customer;
   return (
     <section>
-      <p className={`font-semibold uppercase tracking-wider text-neutral-500 ${dense ? "text-[10px]" : "text-xs"}`}>Bill to</p>
+      <p className={`font-semibold uppercase tracking-wider text-neutral-500 ${dense ? "text-[10px]" : "text-xs"}`}>{d.docType === "quote" ? "For" : "Bill to"}</p>
       <p className={`font-semibold ${dense ? "" : "mt-1 text-base"}`}>{c.name || "Customer name"}</p>
       {c.address && <p className="whitespace-pre-line text-neutral-600">{c.address}</p>}
       {c.email && <p className="text-neutral-600">{c.email}</p>}
@@ -73,7 +79,7 @@ function LinesTable({ d, t, dense, bold }: { d: FreeInvoiceDraft; t: DraftTotals
   const reverse = d.vatRegistered && d.reverseCharge;
   const cols = d.vatRegistered ? 5 : 4;
   const cell = dense ? "py-1" : "py-2";
-  const groups: [string, FreeInvoiceLine[]][] = d.cis.enabled
+  const groups: [string, FreeInvoiceLine[]][] = cisApplies(d)
     ? KIND_ORDER.map((k): [string, FreeInvoiceLine[]] => [KIND_LABEL[k], t.lines.filter((l) => l.kind === k)]).filter(([, ls]) => ls.length)
     : [["", t.lines]];
 
@@ -95,20 +101,20 @@ function LinesTable({ d, t, dense, bold }: { d: FreeInvoiceDraft; t: DraftTotals
   );
 
   const totals: ReactNode[] = [];
-  if (d.cis.enabled) {
+  if (cisApplies(d)) {
     totals.push(total("Labour", t.labourNet, "muted"), total("Materials", t.materialsNet, "muted"));
   }
-  if (d.cis.enabled || d.vatRegistered) totals.push(total("Subtotal", t.subtotal, "muted"));
+  if (cisApplies(d) || d.vatRegistered) totals.push(total("Subtotal", t.subtotal, "muted"));
   for (const v of t.vatByRate) totals.push(total(`VAT ${VAT_RATE_LABELS[v.kind]}`, v.vat, "muted"));
   if (reverse) totals.push(total("VAT to be accounted for by the customer (20%)", t.reverseChargeVat, "muted"));
-  if (d.cis.enabled) {
+  if (cisApplies(d)) {
     totals.push(
       total("Total", t.total, "plain"),
       total(`CIS deduction (${d.cis.rate}% of labour)`, t.cisDeduction, "muted"),
       total("Net payment due", t.netPaymentDue, "final")
     );
   } else {
-    totals.push(total("Total due", t.total, "final"));
+    totals.push(total(d.docType === "quote" ? "Total" : "Total due", t.total, "final"));
   }
 
   return (
@@ -207,7 +213,7 @@ function Classic({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
       </header>
       <hr className="my-6 border-t border-neutral-900" />
       <section className="text-center">
-        <h1 className="text-xl font-semibold uppercase tracking-[0.35em]">Invoice</h1>
+        <h1 className="text-xl font-semibold uppercase tracking-[0.35em]">{title(d)}</h1>
         <dl className="mt-3 flex flex-wrap justify-center gap-x-10 gap-y-2">
           {metaRows(d).map(([k, v]) => (
             <div key={k}>
@@ -256,7 +262,7 @@ function Modern({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
           {d.vatRegistered && d.issuer.vatNumber && <p className="mt-1 text-neutral-600">VAT no. {d.issuer.vatNumber}</p>}
         </div>
         <div className="shrink-0 text-right">
-          <h1 className="text-3xl font-bold tracking-tight">Invoice</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{title(d)}</h1>
           <dl className="mt-3 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">
             {metaRows(d).map(([k, v]) => (
               <div key={k} className="contents">
@@ -297,7 +303,7 @@ function Compact({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
   const i = d.issuer;
   const business = [i.address?.replace(/\s*\n\s*/g, ", "), i.email, i.phone, i.website].filter(Boolean).join("  ·  ");
   const bank = bankRows(d);
-  const meta = metaRows(d).filter(([k]) => k !== "Invoice no.");
+  const meta = metaRows(d).filter(([k]) => k !== numberLabel(d));
   return (
     <div className="text-xs">
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
@@ -305,7 +311,7 @@ function Compact({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
         {business && <p className="text-neutral-600">{business}</p>}
       </header>
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-y border-neutral-900 py-1.5">
-        <h1 className="font-semibold uppercase tracking-widest">Invoice{d.number && ` ${d.number}`}</h1>
+        <h1 className="font-semibold uppercase tracking-widest">{title(d)}{d.number && ` ${d.number}`}</h1>
         <p className="text-neutral-700">{meta.map(([k, v]) => `${k} ${v}`).join("  ·  ")}</p>
       </div>
       <div className="mt-3">

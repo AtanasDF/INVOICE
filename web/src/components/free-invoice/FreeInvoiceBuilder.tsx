@@ -18,6 +18,7 @@ import { MAX_BATCH_CHARS } from "@/lib/scanClient";
 import { supabase } from "@/lib/supabaseClient";
 import {
   FreeInvoiceDraft,
+  addDays,
   clearFreeInvoiceDraft,
   defaultDraft,
   nextDraft,
@@ -52,6 +53,7 @@ export default function FreeInvoiceBuilder() {
   // Rendered client-only (see the page), so the saved draft can seed
   // state directly instead of arriving in an effect after first paint.
   const [draft, setDraft] = useState<FreeInvoiceDraft | null>(readFreeInvoiceDraft);
+  const quote = draft?.docType === "quote";
   const [stage, setStage] = useState<Stage>(draft ? "editor" : "start");
   const [engine, setEngine] = useState<ScanEngine>("claude");
   const [pages, setPages] = useState<CapturedFile[]>([]);
@@ -100,8 +102,9 @@ export default function FreeInvoiceBuilder() {
     window.print();
   }
 
-  function startBlank() {
-    setDraft(defaultDraft());
+  function startBlank(docType: FreeInvoiceDraft["docType"] = "invoice") {
+    const fresh = defaultDraft();
+    setDraft(docType === "quote" ? { ...fresh, docType, dueDate: addDays(fresh.date, 30) } : fresh);
     setInvoiceGen((g) => g + 1);
     setNote(null);
     setTab("edit");
@@ -186,7 +189,8 @@ export default function FreeInvoiceBuilder() {
 
   function saveToAccount() {
     if (draft) writeFreeInvoiceDraft(draft);
-    router.push(user ? "/invoices/new" : "/login?next=/invoices/new");
+    const to = draft?.docType === "quote" ? "/quotes/new?import=1" : "/invoices/new";
+    router.push(user ? to : `/login?next=${encodeURIComponent(to)}`);
   }
 
   if (capturing) {
@@ -208,7 +212,7 @@ export default function FreeInvoiceBuilder() {
         Print or save as PDF
       </button>
       <button type="button" onClick={startNext} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-        Next invoice
+        {quote ? "Next quote" : "Next invoice"}
       </button>
       <button type="button" onClick={saveToAccount} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         Save to your account
@@ -226,7 +230,7 @@ export default function FreeInvoiceBuilder() {
       {moreOpen && (
         <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border bg-white shadow-lg">
           <button type="button" onClick={() => { setMoreOpen(false); print(); }} className={menuItem}>Print or save as PDF</button>
-          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>Next invoice</button>
+          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>{quote ? "Next quote" : "Next invoice"}</button>
           <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Save to your account</button>
           <button type="button" onClick={() => { setMoreOpen(false); startOver(); }} className={`${menuItem} border-t text-neutral-600`}>Start over</button>
         </div>
@@ -247,8 +251,8 @@ export default function FreeInvoiceBuilder() {
     <div className={`space-y-6 ${stage === "editor" ? "pb-28 sm:pb-0" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Free invoice</h1>
-          <p className="mt-1 text-neutral-600">Build an invoice and print it or save it as a PDF. No account needed.</p>
+          <h1 className="text-2xl font-bold">{quote ? "Free quote" : "Free invoice"}</h1>
+          <p className="mt-1 text-neutral-600">Build an invoice or a quote and print it or save it as a PDF. No account needed.</p>
         </div>
         {stage === "editor" && <div className="hidden items-center gap-2 sm:flex">{actions}</div>}
       </div>
@@ -266,10 +270,15 @@ export default function FreeInvoiceBuilder() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col rounded-lg border p-4">
               <p className="font-medium">Start blank</p>
-              <p className="mt-1 flex-1 text-sm text-neutral-600">Type in the details and watch the invoice build itself alongside.</p>
-              <button type="button" onClick={startBlank} className="mt-3 w-fit rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-                Start blank
-              </button>
+              <p className="mt-1 flex-1 text-sm text-neutral-600">Type in the details and watch the invoice, or the quote, build itself alongside.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => startBlank()} className="w-fit rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+                  Start blank
+                </button>
+                <button type="button" onClick={() => startBlank("quote")} className="w-fit rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                  Start a quote
+                </button>
+              </div>
             </div>
             <div className="flex flex-col rounded-lg border p-4">
               <p className="font-medium">Scan an existing invoice</p>
