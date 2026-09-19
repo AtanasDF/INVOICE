@@ -6,6 +6,8 @@ import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, businessProf
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
+import { longDate } from "@/components/invoice/InvoiceDocument";
+import SendInvoicePanel from "@/components/SendInvoicePanel";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -15,6 +17,133 @@ function addDays(dateStr: string, days: number): string {
 }
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
+
+// The issued invoice as the customer sees it: on screen, printed, and as
+// the PDF that's emailed or shared (forPdf drops notes meant for the owner).
+function IssuedInvoice({ invoice, client, profile, creditNotes, forPdf }: {
+  invoice: Invoice;
+  client: Client | null;
+  profile: BusinessProfile | null;
+  creditNotes: CreditNote[];
+  forPdf?: boolean;
+}) {
+  const vatRegistered = profile?.vatRegistered ?? false;
+  const totals = computeInvoiceTotals(invoice.items, vatRegistered);
+  const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
+  const amountDue = invoice.status === "paid" ? 0 : totals.total - creditNoteTotal;
+  return (
+    <>
+      <div className="flex items-start justify-between">
+        {profile?.businessName && (
+          <div>
+            <p className="text-lg font-bold">{profile.businessName}</p>
+            {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
+            {vatRegistered && profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
+          </div>
+        )}
+        <div className="text-right">
+          <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
+          <p className="text-sm text-neutral-500">Date: {longDate(invoice.date)}</p>
+          {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-sm font-medium text-neutral-500">Billed to</p>
+        <p className="font-medium">{client?.name || "—"}</p>
+        {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
+        {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}
+        {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
+      </div>
+
+      <table className="mt-6 w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-neutral-500">
+            <th className="py-2">Description</th>
+            <th className="py-2 text-right">Qty</th>
+            <th className="py-2 text-right">Unit price</th>
+            {vatRegistered && <th className="py-2 text-right">VAT</th>}
+            <th className="py-2 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invoice.items.map((it, idx) => (
+            <tr key={idx} className="border-b">
+              <td className="py-2">{it.description}</td>
+              <td className="py-2 text-right">{it.quantity}</td>
+              <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
+              {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
+              <td className="py-2 text-right">£{(it.quantity * it.unitPrice).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="mt-4 space-y-1 text-sm">
+        {vatRegistered && (
+          <>
+            <div className="flex justify-end text-neutral-600">
+              <span>Subtotal (excl. VAT): £{totals.subtotal.toFixed(2)}</span>
+            </div>
+            {totals.vatByRate.map((v) => (
+              <div key={v.kind} className="flex justify-end text-neutral-600">
+                <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
+              </div>
+            ))}
+            <div className="flex justify-end text-neutral-600">
+              <span>Total: £{totals.total.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+        {creditNotes.map((c) => (
+          <div key={c.id} className="flex justify-end text-neutral-500">
+            <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
+          <div className="text-2xl font-extrabold">Amount due: £{amountDue.toFixed(2)}</div>
+          {invoice.dueDate && invoice.status !== "paid" && (
+            <div className="text-base font-bold text-neutral-700">Due: {longDate(invoice.dueDate)}</div>
+          )}
+          {invoice.status === "paid" && <div className="text-base font-bold text-green-700">Paid</div>}
+          {invoice.status === "partial" && !forPdf && (
+            <div className="mt-1 max-w-xs text-xs font-normal text-neutral-500 print:hidden">
+              Partial-payment amounts aren&apos;t tracked yet — this is still the full remaining balance. Mark
+              it Paid once it&apos;s fully settled.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {invoice.notes && (
+        <div className="mt-6 border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
+      )}
+
+      {profile?.bankDetails && (
+        <div className="mt-4 rounded-lg border bg-neutral-50 p-4 text-sm">
+          <p className="font-semibold">How to pay</p>
+          <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
+        </div>
+      )}
+  
+    </>
+  );
+}
+
+// "Sort code: 12-34-56" lines become label/value rows in the email.
+function bankRowsFromText(text: string): [string, string][] {
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const m = /^([^:]{1,30}):\s*(.+)$/.exec(l);
+      return m ? [m[1].trim(), m[2].trim()] : ["", l];
+    });
+}
 
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
@@ -456,13 +585,6 @@ export default function InvoiceViewPage() {
   const amountDue = invoice.status === "paid" ? 0 : netTotal;
   const overdue = isOverdue(invoice.status, invoice.dueDate);
 
-  const shareText =
-    `Invoice ${invoice.number}${client?.name ? ` for ${client.name}` : ""} — £${netTotal.toFixed(2)}` +
-    (invoice.dueDate ? `, due ${invoice.dueDate}` : "") +
-    `. (Attach the PDF from "Print / save as PDF" — this message doesn't include it automatically.)`;
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-  const emailHref = `mailto:${client?.email || ""}?subject=${encodeURIComponent(`Invoice ${invoice.number}`)}&body=${encodeURIComponent(shareText)}`;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between print:hidden">
@@ -488,11 +610,8 @@ export default function InvoiceViewPage() {
           <button onClick={duplicateInvoice} disabled={duplicating} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
             {duplicating ? "Duplicating…" : "Duplicate"}
           </button>
-          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-            Share via WhatsApp
-          </a>
-          <a href={emailHref} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-            Share via Email
+          <a href="#send-by-email" className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+            Send or share
           </a>
           <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
             Print / save as PDF
@@ -535,102 +654,25 @@ export default function InvoiceViewPage() {
       )}
 
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
-        <div className="flex items-start justify-between">
-          {profile?.businessName && (
-            <div>
-              <p className="text-lg font-bold">{profile.businessName}</p>
-              {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
-              {vatRegistered && profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
-            </div>
-          )}
-          <div className="text-right">
-            <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
-            <p className="text-sm text-neutral-500">Date: {invoice.date}</p>
-            {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <p className="text-sm font-medium text-neutral-500">Billed to</p>
-          <p className="font-medium">{client?.name || "—"}</p>
-          {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
-          {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}
-          {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
-        </div>
-
-        <table className="mt-6 w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-2">Description</th>
-              <th className="py-2 text-right">Qty</th>
-              <th className="py-2 text-right">Unit price</th>
-              {vatRegistered && <th className="py-2 text-right">VAT</th>}
-              <th className="py-2 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items.map((it, idx) => (
-              <tr key={idx} className="border-b">
-                <td className="py-2">{it.description}</td>
-                <td className="py-2 text-right">{it.quantity}</td>
-                <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
-                {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
-                <td className="py-2 text-right">£{(it.quantity * it.unitPrice).toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="mt-4 space-y-1 text-sm">
-          {vatRegistered && (
-            <>
-              <div className="flex justify-end text-neutral-600">
-                <span>Subtotal (excl. VAT): £{totals.subtotal.toFixed(2)}</span>
-              </div>
-              {totals.vatByRate.map((v) => (
-                <div key={v.kind} className="flex justify-end text-neutral-600">
-                  <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
-                </div>
-              ))}
-              <div className="flex justify-end text-neutral-600">
-                <span>Total: £{totals.total.toFixed(2)}</span>
-              </div>
-            </>
-          )}
-          {creditNotes.map((c) => (
-            <div key={c.id} className="flex justify-end text-neutral-500">
-              <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
-            <div className="text-2xl font-extrabold">Amount due: £{amountDue.toFixed(2)}</div>
-            {invoice.dueDate && invoice.status !== "paid" && (
-              <div className="text-base font-bold text-neutral-700">Due: {invoice.dueDate}</div>
-            )}
-            {invoice.status === "paid" && <div className="text-base font-bold text-green-700">Paid</div>}
-            {invoice.status === "partial" && (
-              <div className="mt-1 max-w-xs text-xs font-normal text-neutral-500 print:hidden">
-                Partial-payment amounts aren&apos;t tracked yet — this is still the full remaining balance. Mark
-                it Paid once it&apos;s fully settled.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {invoice.notes && (
-          <div className="mt-6 border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
-        )}
-
-        {profile?.bankDetails && (
-          <div className="mt-4 rounded-lg border bg-neutral-50 p-4 text-sm">
-            <p className="font-semibold">How to pay</p>
-            <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
-          </div>
-        )}
+        <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} />
       </div>
+
+      <SendInvoicePanel
+        sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} forPdf />}
+        pdfKey={JSON.stringify([invoice, client, profile, creditNotes])}
+        signInNext={`/invoices/${invoice.id}`}
+        missingName="Add your business name in Settings first, so the customer knows who it's from."
+        fields={{
+          issuerName: profile?.businessName ?? "",
+          issuerEmail: "",
+          customerName: client?.name ?? "",
+          customerEmail: client?.email ?? "",
+          number: invoice.number,
+          total: `£${amountDue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          dueDate: invoice.dueDate && invoice.status !== "paid" ? longDate(invoice.dueDate) : "",
+          bank: bankRowsFromText(profile?.bankDetails ?? ""),
+        }}
+      />
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex items-center justify-between">
