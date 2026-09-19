@@ -57,6 +57,14 @@ changes.
 - Main scanner defaults to Claude with a signed-in "Read with" switch (localStorage
   `scan-engine`); the Free invoice page defaults to Gemini for visitors.
 
+- Claude extraction was failing on every read until 2026-09-19 (tool schema rejected), so
+  every earlier "scanner doesn't recognise" report from Atanas was likely Gemini-only or an
+  error. Verified live that night: Claude reads a synthetic handwritten invoice (27s on
+  /api/scan, 10s on the template route at low effort) and a rough spreadsheet invoice
+  correctly; Gemini Flash-Lite read the handwritten one correctly too.
+- Signature: localStorage `free-invoice-signature` ({image PNG data URL, name}), separate
+  from the draft so Start over and new invoices reuse it.
+
 ## Decisions
 
 - Scanned supplier invoices and credit notes are expense documents in `receipts`, never
@@ -65,6 +73,27 @@ changes.
 - Anonymous scanning is Gemini-only; the in-memory rate limiter is a known gap.
 - The Free invoice page is public and browser-only; "Save to your account" carries a
   localStorage draft through sign-up into `/invoices/new`.
+- Send by email needs an account (decided 2026-09-19 after review found the open route
+  could send invoice-shaped fraud from the app's domain); the copy goes to the account's
+  own address. Visitors get "Sign in or sign up to send", which returns to their draft.
+- Camera permission can't be remembered by the site: iOS Safari asks per visit unless
+  aA → Website Settings → Camera → Allow. Batch mode keeps the stream open instead.
+
+## Testing without Atanas's documents
+
+- Real documents go in `test-docs/` (gitignored), never in git or on the live site.
+- Synthetic test invoices were generated with Pillow (Bradley Hand font on a lined page,
+  photographed-on-a-table effect; a grid "spreadsheet" invoice) in the session scratchpad.
+- The live site can't fetch from localhost (Local Network Access), and popups open in the
+  same tab in the browser pane. Getting a test image into the live tab: a local page on
+  127.0.0.1 fetches it and navigates to the live URL with the data in the #fragment (never
+  sent to a server); the live tab moves it to sessionStorage and clears the hash.
+- The camera is faked with a canvas `captureStream()` plus overrides of
+  `getUserMedia` and `permissions.query`, then "Try again" on the capture screen.
+- html-to-image and the camera overlay only draw while the browser pane is displayed;
+  with the pane hidden, `javascript_tool` still works but renders stall.
+- Never press Save on a test scan: it writes to Atanas's real records. Skip/Discard, and
+  clear any test draft from the live Free page's localStorage afterwards.
 
 ## References
 
@@ -72,7 +101,9 @@ changes.
   auto-deploys `main`).
 - Supabase SQL editor: https://supabase.com/dashboard/project/wecfwjxzyzzrcwbwnwpo/sql/new
 - Google AI Studio keys and billing: https://aistudio.google.com/app/api-keys
-- PRs so far: #1–#5 earlier features, #6 scanner rework, #7 free invoice page.
+- PRs so far: #1–#5 earlier features, #6 scanner rework, #7 free invoice page. From
+  2026-09-19 schema-free work goes straight to main (CLAUDE.md rule 4); unfinished work to
+  `wip/<topic>` branches.
 
 ## Queued work (Atanas's list, 2026-09-17)
 

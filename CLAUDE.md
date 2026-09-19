@@ -83,15 +83,29 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 ## Scanning and extraction
 
 - `src/lib/extractors.ts` — one `extractStructured()` with two engines: `claude`
-  (`claude-opus-5`, strict tool schema, forced tool) and `gemini` (`gemini-3.5-flash-lite`
-  via `@google/genai` Interactions API; schema converted from the Claude-strict form).
+  (`claude-opus-5`, forced tool, **not strict**, output passed through `conformToSchema`)
+  and `gemini` (`gemini-3.5-flash-lite` via `@google/genai` Interactions API; schema
+  converted by `toGeminiSchema`). Do not turn Claude strict mode back on: strict allows at
+  most 16 nullable/union fields (the scan schema has 29) and rejects an enum under a
+  `["string","null"]` type (use `nullableEnum`, an anyOf). Emulating null with "" made Opus 5
+  write tool-call syntax into empty fields. `effort` per call: template and contact reads
+  run `low`, `/api/scan` `medium`. Scan routes allow `maxDuration = 300`.
   Dates are parsed day-first server-side from the printed string
   (`src/lib/documentDate.ts`); ambiguous ones must be confirmed in the UI.
 - `POST /api/scan` requires the signed-in user's Supabase bearer token; `engine` is
   optional. `POST /api/invoice-template` (used by the public Free invoice page) is
   unauthenticated: anonymous callers always get Gemini, `claude` needs a bearer token,
   limits are per instance (10/hour/IP, 200/hour global) — a shared counter is a known
-  follow-up.
+  follow-up. `POST /api/contact-scan` (signed in) lists every business/person on any photo
+  for the new client/supplier form.
+- A scanned invoice on the Free page becomes the NEXT invoice (`templateToDraft`): number
+  +1 via `nextInvoiceNumber` (labels like "No." stripped, year-last formats bump the
+  sequence, no digits → blank), today's date, printed gap kept as terms. CIS only when the
+  invoice shows a CIS deduction or mentions the scheme.
+- Batch scanning: `DocumentCapture` with `onBatch` keeps the camera open, stacks captures,
+  re-arms auto-capture only after the page leaves the frame, and reviews/join-pages in
+  `BatchReview`; `/scan` reads the documents three at a time and walks them with Save and
+  next / Skip. The Free-page template scan and single-document flows stay one-shot.
 - Camera: `src/components/DocumentCapture.tsx`. OpenCV is **not bundled**: a prebuild
   script copies it to `public/vendor/opencv-5.0.0.js` (gitignored, immutable cache
   header) and `src/lib/opencv.ts` loads it as a script and awaits `window.cv`. Never
@@ -108,7 +122,11 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CRON_SECRET`,
 `INBOX_WEBHOOK_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
-Not yet set anywhere: `RESEND_API_KEY` (payment reminder emails stay inert without it).
+Not yet set anywhere: `RESEND_API_KEY` (payment reminders and Send by email stay inert
+without it) and optional `EMAIL_FROM` (e.g. `Invoicer <invoices@verified-domain>`; until a
+domain is verified in Resend the fallback `onboarding@resend.dev` only delivers to the
+Resend account owner). `/api/send-invoice` is signed-in only by design (an open route was
+an invoice-fraud relay); the PDF is made in the browser (`src/lib/invoicePdf.ts`).
 Gemini billing is a Google AI Studio prepaid balance on billing account
 `015649-CDA16A-FCF373`.
 
@@ -120,9 +138,15 @@ migrations and tests DB state in rolled-back transactions; its briefs land in
 sits under iCloud Desktop sync and sometimes spawns stray `name 2.ext` duplicates; diff
 them against the original before deleting.
 
-## Open items (2026-09-18)
+## Open items (2026-09-19)
 
 - (Resolved 2026-09-18: the iPhone in-app scanner is confirmed working by Atanas.)
+- (Resolved 2026-09-19: Claude scanning had been failing on every read; fixed and verified
+  live on synthetic handwritten and spreadsheet invoices.)
+- Send by email: needs Atanas's Resend account, a verified sending domain, `RESEND_API_KEY`
+  and `EMAIL_FROM` in Vercel, then one real send to check delivery and the attachment.
+- Test the batch scanner, green lock-on, signature pad and scan-to-fill on the iPhone
+  (tested here only against a synthetic camera stream).
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
   carry everything.
 - Shared rate limiter for `/api/invoice-template`; then the research follow-ups
