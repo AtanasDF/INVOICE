@@ -7,6 +7,7 @@ import { ScannerMode, consumeCameraHint, isIOS, readAutoCapture, readScannerMode
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon } from "@/components/icons";
+import BatchReview, { Shot, groupShots } from "@/components/scan/BatchReview";
 
 type Point = { x: number; y: number };
 type Quad = [Point, Point, Point, Point];
@@ -57,6 +58,10 @@ const OUTLINE_EASE = 0.35;
 const FLASH_MS = 150;
 const FAILURE_MS = 2500;
 const FOCUS_RING_MS = 800;
+// Batch mode: after a capture, auto-capture waits until the page has left
+// the frame (or the detector lost it while pages were swapped) and this
+// long has passed, so one page is never taken twice.
+const REARM_MS = 900;
 // getUserMedia can hang indefinitely rather than reject in some real
 // browser/OS blocking states (camera access blocked at the OS level for
 // the whole browser, not just this site, is the most common one) -- with
@@ -65,6 +70,11 @@ const FOCUS_RING_MS = 800;
 const CAMERA_TIMEOUT_MS = 8000;
 const CV_ERROR_MAX = 140;
 const GREEN = "#4ADE80";
+// The page itself turns green as it locks on: a faint wash once it is
+// found, deepening while it is held steady and in focus.
+const FILL_FOUND = 0.12;
+const FILL_LOCKED = 0.32;
+const FILL_EASE = 0.15;
 const GUIDE_IDLE = "rgba(255,255,255,0.7)";
 const GUIDE_WIDTH = 0.8;
 const GUIDE_MAX_HEIGHT = 0.9;
@@ -147,15 +157,20 @@ function BackButton({ onClick }: { onClick: () => void }) {
 
 export default function DocumentCapture({
   onCapture,
+  onBatch,
   onClose,
   pageNumber,
   failureMessage,
 }: {
-  onCapture: (file: CapturedFile) => void;
+  onCapture?: (file: CapturedFile) => void;
+  // Batch mode: the camera stays open, each capture joins a stack, and the
+  // reviewed stack arrives here grouped into documents.
+  onBatch?: (docs: CapturedFile[][]) => void;
   onClose: () => void;
   pageNumber?: number;
   failureMessage?: string;
 }) {
+  const multi = !!onBatch;
   const videoRef = useRef<HTMLVideoElement>(null);
   const liveAreaRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -168,6 +183,8 @@ export default function DocumentCapture({
   // overlay is currently showing on its way there.
   const quadRef = useRef<WorkQuad | null>(null);
   const outlineRef = useRef<Quad | null>(null);
+  const lockedRef = useRef(false);
+  const fillRef = useRef(0);
   // Work-frame corners from the previous tick, for the movement check.
   const lastQuadRef = useRef<Quad | null>(null);
   const stableSinceRef = useRef<number | null>(null);
@@ -175,6 +192,11 @@ export default function DocumentCapture({
   // Set the moment auto-capture fires; the parent unmounts this
   // component on onCapture, so it never fires twice per mount.
   const capturedRef = useRef(false);
+  const armedRef = useRef(true);
+  const seenClearRef = useRef(false);
+  const rearmAtRef = useRef(0);
+  const reviewingRef = useRef(false);
+  const shotIdRef = useRef(0);
   const autoRef = useRef(true);
   const onCaptureRef = useRef(onCapture);
   // processFrame lives in the long-lived effect below; this hands it the
@@ -212,6 +234,9 @@ export default function DocumentCapture({
   const [cvStatus, setCvStatus] = useState<CvStatus>("loading");
   const [cvError, setCvError] = useState<string | null>(null);
   const [cameraHint, setCameraHint] = useState(false);
+  const [shots, setShots] = useState<Shot[]>([]);
+  const [reviewing, setReviewing] = useState(false);
+  const [waitingNext, setWaitingNext] = useState(false);
   // processFrame lives inside a long-lived effect that only re-runs on
   // [stopStream, retryKey, useNative] -- it closes over state as it was
   // AT EFFECT-SETUP TIME, so a plain state read there would never observe
@@ -238,6 +263,14 @@ export default function DocumentCapture({
   useEffect(() => {
     onCaptureRef.current = onCapture;
   }, [onCapture]);
+
+  useEffect(() => {
+    reviewingRef.current = reviewing;
+  }, [reviewing]);
+
+  function addShots(files: CapturedFile[]) {
+    setShots((prev) => [...prev, ...files.map((f) => ({ ...f, id: ++shotIdRef.current, joinPrev: false }))]);
+  }
 
   function resetStable() {
     stableSinceRef.current = null;
@@ -448,6 +481,7 @@ export default function DocumentCapture({
       const quad = quadRef.current;
       if (!quad) {
         outlineRef.current = null;
+        fillRef.current = 0;
         drawGuide(octx, displayW, displayH, GUIDE_IDLE);
         return;
       }
@@ -457,12 +491,16 @@ export default function DocumentCapture({
         ? (shown.map((p, i) => ({ x: p.x + (target[i].x - p.x) * OUTLINE_EASE, y: p.y + (target[i].y - p.y) * OUTLINE_EASE })) as Quad)
         : target;
       outlineRef.current = outline;
-      octx.strokeStyle = GREEN;
-      octx.lineWidth = 3;
+      const fillTarget = lockedRef.current ? FILL_LOCKED : FILL_FOUND;
+      fillRef.current += (fillTarget - fillRef.current) * FILL_EASE;
       octx.beginPath();
       octx.moveTo(outline[0].x, outline[0].y);
       for (let i = 1; i < outline.length; i++) octx.lineTo(outline[i].x, outline[i].y);
       octx.closePath();
+      octx.fillStyle = `rgba(74, 222, 128, ${fillRef.current.toFixed(3)})`;
+      octx.fill();
+      octx.strokeStyle = GREEN;
+      octx.lineWidth = 3;
       octx.stroke();
       drawGuide(octx, displayW, displayH, GREEN);
     }
@@ -581,6 +619,14 @@ export default function DocumentCapture({
         diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
         if (best) diagRef.current.quads++;
 
+        if (!armedRef.current) {
+          if (!best) seenClearRef.current = true;
+          if (seenClearRef.current && performance.now() >= rearmAtRef.current) {
+            armedRef.current = true;
+            setWaitingNext(false);
+          }
+        }
+
         if (best) {
           const ordered = orderPoints(best);
           quadRef.current = { pts: ordered, w: workW, h: workH };
@@ -591,6 +637,7 @@ export default function DocumentCapture({
           lastQuadRef.current = ordered;
           const coverage = bestArea / (workW * workH);
           if (moved || coverage < MIN_COVERAGE) {
+            lockedRef.current = false;
             stableSinceRef.current = null;
             peakSharpRef.current = 0;
           }
@@ -603,13 +650,15 @@ export default function DocumentCapture({
             const stableFor = now - stableSinceRef.current;
             const sharpEnough = sharpness >= SHARPNESS_FLOOR && sharpness >= SHARPNESS_RATIO * peakSharpRef.current;
             const ready = (stableFor >= STABLE_MS && sharpEnough) || stableFor >= STABLE_TIMEOUT_MS;
-            if (ready && autoRef.current && !capturedRef.current && statusRef.current === "live") {
+            lockedRef.current = sharpEnough || stableFor >= STABLE_MS;
+            if (ready && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
               capturedRef.current = true;
               captureRef.current();
             }
           }
         } else {
           quadRef.current = null;
+          lockedRef.current = false;
           resetStable();
           setCoach("line");
         }
@@ -737,8 +786,19 @@ export default function DocumentCapture({
       showFailure(err instanceof Error ? err.message : "Could not read this image.");
       return;
     }
+    if (multi) {
+      addShots([{ dataUrl, mediaType: "image/jpeg" }]);
+      setFlash(false);
+      armedRef.current = false;
+      seenClearRef.current = false;
+      rearmAtRef.current = performance.now() + REARM_MS;
+      setWaitingNext(true);
+      resetStable();
+      capturedRef.current = false;
+      return;
+    }
     stopStream();
-    onCaptureRef.current({ dataUrl, mediaType: "image/jpeg" });
+    onCaptureRef.current?.({ dataUrl, mediaType: "image/jpeg" });
   }
 
   useEffect(() => {
@@ -751,34 +811,84 @@ export default function DocumentCapture({
     capture();
   }
 
-  function readAndCapture(file: File) {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      let dataUrl: string;
-      try {
-        dataUrl = await downscaleImageDataUrl(reader.result as string);
-      } catch (err) {
-        showFailure(err instanceof Error ? err.message : "Could not read this file.");
-        return;
-      }
-      stopStream();
-      onCapture({ dataUrl, mediaType: file.type.startsWith("image/") ? "image/jpeg" : file.type });
-    };
-    reader.onerror = () => showFailure("Could not read this file.");
-    reader.readAsDataURL(file);
+  function readFile(file: File): Promise<CapturedFile> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const dataUrl = await downscaleImageDataUrl(reader.result as string);
+          resolve({ dataUrl, mediaType: file.type.startsWith("image/") ? "image/jpeg" : file.type });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error("Could not read this file."));
+      reader.readAsDataURL(file);
+    });
   }
 
-  function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
     // Cleared so picking the same file again after a failure re-fires change.
     e.target.value = "";
-    if (file) readAndCapture(file);
+    if (!files.length) return;
+    try {
+      if (multi) {
+        addShots(await Promise.all(files.map(readFile)));
+        return;
+      }
+      const file = await readFile(files[0]);
+      stopStream();
+      onCapture?.(file);
+    } catch (err) {
+      showFailure(err instanceof Error ? err.message : "Could not read this file.");
+    }
   }
 
   function close() {
+    if (shots.length && !window.confirm(`Discard ${shots.length} scan${shots.length === 1 ? "" : "s"}?`)) return;
     stopStream();
     onClose();
   }
+
+  function acceptBatch() {
+    const docs = groupShots(shots);
+    if (!docs.length) return;
+    stopStream();
+    onBatch?.(docs);
+  }
+
+  const stack = multi && shots.length > 0 && (
+    <button
+      type="button"
+      onClick={() => setReviewing(true)}
+      aria-label={`Review ${shots.length} scan${shots.length === 1 ? "" : "s"}`}
+      className="relative h-14 w-11 rounded-md border-2 border-white bg-neutral-800 shadow-lg"
+    >
+      {shots.length > 1 && <span className="absolute -right-1.5 -top-1.5 -z-10 h-14 w-11 rotate-6 rounded-md border-2 border-white/70 bg-neutral-700" />}
+      {shots[shots.length - 1].mediaType === "application/pdf" ? (
+        <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-white">PDF</span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={shots[shots.length - 1].id} src={shots[shots.length - 1].dataUrl} alt="" className="shot-in h-full w-full rounded-[4px] object-cover" />
+      )}
+      <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#4ADE80] px-1 text-[11px] font-bold text-neutral-900">
+        {shots.length}
+      </span>
+    </button>
+  );
+
+  const review = reviewing && (
+    <BatchReview
+      shots={shots}
+      onChange={setShots}
+      onKeepScanning={() => {
+        resetStable();
+        setReviewing(false);
+      }}
+      onAccept={acceptBatch}
+    />
+  );
 
   const pageLabel = pageNumber && pageNumber > 1 ? `Page ${pageNumber}` : null;
   const hasQuad = coach !== "line";
@@ -794,7 +904,9 @@ export default function DocumentCapture({
   }, [debug, cvStatus, coach]);
 
   const hint =
-    cvStatus === "failed"
+    multi && waitingNext
+      ? `Got it — ${shots.length} scanned. Next document…`
+      : cvStatus === "failed"
       ? "Fit the page inside the corners and tap to capture"
       : !hasQuad
         ? "Fit the page inside the corners"
@@ -825,8 +937,11 @@ export default function DocumentCapture({
             <BackButton onClick={close} />
           </div>
           {pageLabel && <p className="text-sm font-medium text-white">{pageLabel}</p>}
+          {stack}
           <p className="px-8 text-center text-sm text-white/70">
-            Take a clear, well-lit photo of the whole document.
+            {multi && shots.length
+              ? `${shots.length} scanned. Take the next one, or tap the stack to check them.`
+              : "Take a clear, well-lit photo of the whole document."}
           </p>
           {shownFailure && <p className="px-8 text-center text-sm text-red-400">{shownFailure}</p>}
         </div>
@@ -835,8 +950,16 @@ export default function DocumentCapture({
             onClick={() => nativeInputRef.current?.click()}
             className="w-full rounded-lg bg-white px-5 py-3 text-center text-sm font-medium text-neutral-900"
           >
-            Take a photo
+            {multi && shots.length ? "Take the next photo" : "Take a photo"}
           </button>
+          {multi && shots.length > 0 && (
+            <button
+              onClick={() => setReviewing(true)}
+              className="w-full rounded-lg bg-[#4ADE80] px-5 py-3 text-center text-sm font-medium text-neutral-900"
+            >
+              Check and read {shots.length} scan{shots.length === 1 ? "" : "s"}
+            </button>
+          )}
           {/* capture="environment" forces straight to the camera on iOS
               Safari, which is exactly what the button above wants -- but
               it also makes the photo library and PDFs unreachable. This
@@ -864,10 +987,12 @@ export default function DocumentCapture({
             ref={fileInputRef}
             type="file"
             accept="image/*,application/pdf"
+            multiple={multi}
             onChange={onFileChosen}
             className="hidden"
           />
         </div>
+        {review}
       </div>
     );
   }
@@ -1016,6 +1141,7 @@ export default function DocumentCapture({
               className={`h-16 w-16 rounded-full border-4 bg-white/20 ${hasQuad ? "border-[#4ADE80]" : "border-white"}`}
               aria-label="Capture"
             />
+            {stack && <div className="absolute right-6 flex flex-col items-center gap-1">{stack}</div>}
           </>
         ) : (
           // Camera isn't usable right now (still starting, denied,
@@ -1033,10 +1159,12 @@ export default function DocumentCapture({
           ref={fileInputRef}
           type="file"
           accept="image/*,application/pdf"
+          multiple={multi}
           onChange={onFileChosen}
           className="hidden"
         />
       </div>
+      {review}
     </div>
   );
 }

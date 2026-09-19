@@ -47,3 +47,18 @@ body {
     break-inside: avoid;
   }
 }
+
+/* A batch-scanner capture flies from the viewfinder into the stack. */
+@keyframes shot-in {
+  from {
+    transform: translate(-38vw, -40vh) scale(4);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.shot-in {
+  animation: shot-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}

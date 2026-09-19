@@ -119,6 +119,32 @@ function readEngine(): ScanEngine {
 
 const pill = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium ${on ? "bg-neutral-900 text-white" : "border text-neutral-700"}`;
 
+// Reads for a batch start together, a few at a time, so the next
+// document is usually ready by the time the current one is saved.
+const READ_CONCURRENCY = 3;
+
+function limiter(n: number) {
+  let active = 0;
+  const queue: (() => void)[] = [];
+  const next = () => {
+    if (active >= n || !queue.length) return;
+    active++;
+    queue.shift()!();
+  };
+  return <T,>(fn: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      queue.push(() =>
+        fn()
+          .then(resolve, reject)
+          .finally(() => {
+            active--;
+            next();
+          })
+      );
+      next();
+    });
+}
+
 function sameNumber(a: string | null, b: string | null): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
   return !!a && !!b && norm(a) === norm(b);
@@ -136,6 +162,8 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [engine, setEngine] = useState<ScanEngine>(readEngine);
+  const [batch, setBatch] = useState<{ docs: CapturedFile[][]; index: number } | null>(null);
+  const readsRef = useRef<Promise<ScanResult>[]>([]);
 
   const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayIso() }));
   const [typePickerOpen, setTypePickerOpen] = useState(false);
@@ -256,12 +284,18 @@ export default function ScanPage() {
     }
   }
 
-  async function runExtraction(toRead: CapturedFile[], cats: string[], supplierList: Client[], receiptList: Receipt[]) {
+  async function runExtraction(
+    toRead: CapturedFile[],
+    cats: string[],
+    supplierList: Client[],
+    receiptList: Receipt[],
+    pending?: Promise<ScanResult>
+  ) {
     const run = ++runRef.current;
     setScanning(true);
     setScanError(null);
     try {
-      const result = await extractPages(toRead, cats, engine);
+      const result = await (pending ?? extractPages(toRead, cats, engine));
       if (run !== runRef.current) return;
       applyResult(result, supplierList, receiptList);
     } catch (err) {
@@ -301,6 +335,36 @@ export default function ScanPage() {
     setSupplierSaved(false);
     setSupplierDuplicate(false);
     runExtraction(next, categories, suppliers, receipts);
+  }
+
+  function startBatch(docs: CapturedFile[][]) {
+    const limit = limiter(READ_CONCURRENCY);
+    readsRef.current = docs.map((d) => {
+      const read = limit(() => extractPages(d, categories, engine));
+      read.catch(() => {});
+      return read;
+    });
+    setBatch({ docs, index: 0 });
+    openDoc(docs, 0);
+  }
+
+  function openDoc(docs: CapturedFile[][], index: number) {
+    resetDocument();
+    setPages(docs[index]);
+    setCapture(null);
+    setSupplierSaved(false);
+    setSupplierDuplicate(false);
+    runExtraction(docs[index], categories, suppliers, receipts, readsRef.current[index]);
+  }
+
+  // True when there was another document in the batch to move on to.
+  function advance(): boolean {
+    if (!batch || batch.index + 1 >= batch.docs.length) return false;
+    const index = batch.index + 1;
+    setBatch({ ...batch, index });
+    openDoc(batch.docs, index);
+    window.scrollTo({ top: 0 });
+    return true;
   }
 
   function onEngineChange(next: ScanEngine) {
@@ -463,7 +527,7 @@ export default function ScanPage() {
         },
         pages.slice(1).map((p) => p.dataUrl)
       );
-      router.push("/receipts");
+      if (!advance()) router.push("/receipts");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -471,14 +535,21 @@ export default function ScanPage() {
     }
   }
 
+  const remaining = batch ? batch.docs.length - batch.index - 1 : 0;
+
   function discard() {
+    if (remaining) {
+      if (window.confirm("Skip this document? It won't be saved.")) advance();
+      return;
+    }
     if (window.confirm("Discard this scan? Nothing has been saved.")) router.push("/");
   }
 
   if (capture) {
     return (
       <DocumentCapture
-        onCapture={(file) => onCaptured(file, capture)}
+        onCapture={capture.kind === "first" ? undefined : (file) => onCaptured(file, capture)}
+        onBatch={capture.kind === "first" ? startBatch : undefined}
         onClose={onCaptureClosed}
         pageNumber={capture.kind === "add" ? pages.length + 1 : capture.kind === "retake" ? capture.index + 1 : undefined}
         failureMessage={capture.kind === "retake" ? capture.failureMessage : undefined}
@@ -487,7 +558,9 @@ export default function ScanPage() {
   }
 
   const amounts = gbpAmounts();
-  const saveLabel = mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`;
+  const saveLabel =
+    (mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`) +
+    (remaining ? " and next" : "");
   const changeLabel = mode === "archival" ? "Not right?" : `Not ${mode === "invoice" ? "an invoice" : mode === "receipt" ? "a receipt" : mode === "credit_note" ? "a credit note" : "a business card"}?`;
 
   const pagesStrip = (
@@ -526,6 +599,11 @@ export default function ScanPage() {
   return (
     <div className="space-y-8">
       <div>
+        {batch && batch.docs.length > 1 && (
+          <p className="mb-1 text-xs font-medium text-neutral-500">
+            Document {batch.index + 1} of {batch.docs.length}
+          </p>
+        )}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (
@@ -622,7 +700,7 @@ export default function ScanPage() {
                 {saving ? "Saving…" : supplierSaved ? "Saved" : "Save as new supplier"}
               </button>
               <button type="button" onClick={discard} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                Discard
+                {remaining ? "Skip" : "Discard"}
               </button>
             </div>
           </>
@@ -832,7 +910,7 @@ export default function ScanPage() {
                 {saving ? "Saving…" : saveLabel}
               </button>
               <button type="button" onClick={discard} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                Discard
+                {remaining ? "Skip" : "Discard"}
               </button>
               {blockedReason && !saving && <span className="text-xs text-neutral-500">{blockedReason}</span>}
             </div>
