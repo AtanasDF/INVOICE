@@ -91,13 +91,14 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   it; the quote page relinks by that tag if the link was lost. Quotes are never deleted.
   Deposits (migration-022): `deposit_percent` or `deposit_amount` (gross), claimed via
   `deposit_claimed`, invoiced on its own (`deposit_invoice_id`, tag `deposit for <number>`,
-  lines per VAT rate, 4-decimal unit prices); the final invoice adds the deposit invoice's
+  lines per VAT rate, whole-penny prices); the final invoice adds the deposit invoice's
   lines negated (quantity -1), less anything credited against it. Maths in
   `src/lib/quoteDeposit.ts`.
 - `invoice_payments` (migration-023): money received against a sales invoice (date,
   amount, method). The app sets the invoice status from credit notes and payments
   (`src/lib/invoiceBalance.ts`: paid once nothing is owed, credited in full included;
-  part-paid while some is paid), re-checked on every invoice page load. An invoice marked
+  part-paid while some is paid), after each payment or credit-note change on the invoice
+  page (never just from opening it). An invoice marked
   paid/part-paid by hand before payments existed keeps its status. "Mark as paid" records
   the balance as a payment. An invoice with payments can't be deleted (RESTRICT).
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
