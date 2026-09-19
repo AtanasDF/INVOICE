@@ -39,7 +39,14 @@ changes.
 
 ## Verified facts
 
-- Live Supabase is at migration-019 as of 2026-09-19: private storage bucket `receipts`
+- Live Supabase is at migration-020 as of 2026-09-19: `quotes` table (RLS owner policy;
+  authenticated select/insert/update only, anon nothing, because Supabase's default
+  privileges otherwise grant everything; trigger `quotes_same_owner` so a quote can only
+  point at its own client/invoice; client FK RESTRICT, invoice FK SET NULL). Verified in a
+  rolled-back block: owner sees own, other user sees/updates 0, cross-account client and
+  invoice refused (23503), delete refused (42501), anon refused, deleting the invoice
+  unlinks the quote. New tables need an explicit `revoke` for the same reason.
+- Migration-019 as of 2026-09-19: private storage bucket `receipts`
   (10MB, images + PDF), policies receipts_owner_select/insert on the owner's folder, no
   delete policy. Verified in SQL (rolled back) and live with Atanas's session (own folder
   200, other folder 403, signed read 200, public read refused). A 70-byte test file
@@ -129,8 +136,16 @@ changes.
   installed Chrome with a fresh profile, `--use-fake-device-for-media-stream
   --use-file-for-fake-video-capture=<clip>.mjpeg` (concatenated JPEG frames made with
   Pillow; Chrome delivers them as 720x1080). A canvas `captureStream()` fake camera does
-  NOT work headless (2x2 black frames). It can't sign in, so it only covers public pages
-  (Free invoice, the camera) against `npm run dev`.
+  NOT work headless (2x2 black frames).
+- Signed-in pages are tested with `harness/mockdb.mjs`: a fake session in localStorage and
+  request interception answering every Supabase REST call from an in-memory table set
+  (eq/neq/is/in filters, object vs array replies, injected failures and lost replies), and
+  `/api/send-invoice` captured instead of sent. Nothing reaches the real database, so it's
+  safe for flows that write. `test-quotes.mjs` runs 34 checks. Worktree dev servers need
+  `next dev --webpack` (Turbopack rejects the symlinked node_modules) and a symlinked
+  `.env.local`.
+- The SQL editor asks "Potential issue detected" before any query containing delete; a
+  rolled-back test block needs that confirmed by a click.
 
 ## References
 
