@@ -39,7 +39,10 @@ changes.
 
 ## Verified facts
 
-- Live Supabase (project `wecfwjxzyzzrcwbwnwpo`) is at migration-017 as of 2026-09-17:
+- Live Supabase is at migration-018 as of 2026-09-19 (clients.phone; rate_limit_hits +
+  hit_rate_limit, service_role only; verified in a rolled-back block). Snapshot
+  clients_backup_20260919 (0 rows: Atanas had no clients yet). Never drop it.
+- Live Supabase (project `wecfwjxzyzzrcwbwnwpo`) was at migration-017 as of 2026-09-17:
   receipts has 26 columns; all client FKs are ON DELETE RESTRICT; `receipt_pages`,
   `create_receipt_with_pages` (security invoker, authenticated only) exist. `receipts`
   had zero rows when the migration ran. Two overlapping owner policies exist on

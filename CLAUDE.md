@@ -17,9 +17,10 @@ it is his real accounting record. Read this file before doing anything.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
-  in the Supabase SQL editor; there is no migration runner. Latest as of 2026-09-19:
-  migration-018 and backup 009, on branch `feature/client-phone-and-shared-limit`, not yet
-  applied.
+  in the Supabase SQL editor; there is no migration runner. A session can run them itself
+  in Atanas's Chrome (claude-in-chrome) when he is signed in to Supabase: set the Monaco
+  editor with `window.monaco.editor.getModels()[0].setValue(sql)`, click Run, read results
+  from `[role="gridcell"]` / `[role="columnheader"]` textContent.
 
 ## Hard rules
 
@@ -32,8 +33,8 @@ it is his real accounting record. Read this file before doing anything.
    `add column if not exists`, guarded `do $$ ... $$` blocks for constraints/policies,
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
-   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-18:
-   migration-017, backup 008.
+   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
+   migration-018, backup 009 (both applied).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
    their ON DELETE, policies, function grants) and exercise new functions as the
@@ -97,8 +98,8 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 - `POST /api/scan` requires the signed-in user's Supabase bearer token; `engine` is
   optional. `POST /api/invoice-template` (used by the public Free invoice page) is
   unauthenticated: anonymous callers always get Gemini, `claude` needs a bearer token,
-  limits are per instance (10/hour/IP, 200/hour global) — a shared counter is a known
-  follow-up. `POST /api/contact-scan` (signed in) lists every business/person on any photo
+  limits (10/hour/IP, 200/hour global) are counted in the database via `hit_rate_limit`
+  (service role, HMAC'd keys), falling back to per-instance memory if that fails. `POST /api/contact-scan` (signed in) lists every business/person on any photo
   for the new client/supplier form.
 - A scanned invoice on the Free page becomes the NEXT invoice (`templateToDraft`): number
   +1 via `nextInvoiceNumber` (labels like "No." stripped, year-last formats bump the
@@ -153,8 +154,8 @@ them against the original before deleting.
 - Test the batch scanner, green lock-on, auto-zoom, signature pad, scan-to-fill, Share and
   Describe it on the iPhone (tested here against synthetic camera clips and headless
   Chrome only).
-- Branch `feature/client-phone-and-shared-limit`: run web/supabase/009 then 018, verify,
-  then merge (clients.phone + shared rate limit for the free scanner).
+- (Done 2026-09-19: backup 009 + migration-018 applied, verified and merged: clients.phone
+  and the shared rate limit for the free scanner.)
 - Partial payments aren't recorded, so reminders skip part-paid invoices; a payments
   record would let them chase the balance.
 - Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
