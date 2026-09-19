@@ -5,7 +5,6 @@ import type { Mat, MatVector } from "@techstark/opencv-js";
 import { CVModule, loadOpenCV } from "@/lib/opencv";
 import {
   ScannerMode,
-  consumeCameraHint,
   isIOS,
   readAutoCapture,
   readAutoZoom,
@@ -86,6 +85,9 @@ const AUTO_ZOOM_MAX = 2;
 const AUTO_ZOOM_MIN_STEP = 1.15;
 const AUTO_ZOOM_SETTLE_MS = 450;
 const AUTO_ZOOM_LOST_MS = 1500;
+// A pinch without the camera's own zoom crops the picture: past 3× there's
+// too little of the photo left to read.
+const PINCH_CSS_MAX = 3;
 const AUTO_ZOOM_COOLDOWN_MS = 800;
 const FIT_MARGIN = 0.06;
 // getUserMedia can hang indefinitely rather than reject in some real
@@ -105,8 +107,13 @@ const GUIDE_IDLE = "rgba(255,255,255,0.7)";
 const GUIDE_WIDTH = 0.8;
 const GUIDE_MAX_HEIGHT = 0.9;
 const A4_RATIO = Math.SQRT2;
+// A website can't make Safari remember a camera "Allow"; only the phone's
+// settings can. Shown when Safari had to ask.
 const SAFARI_CAMERA_TIP =
-  "Safari asks each time until you allow it permanently: tap the aA button in the address bar, Website Settings, then set Camera to Allow.";
+  "Asked for the camera every time? Set it once: iPhone Settings → Safari (under Apps) → Camera → Allow. Or in Safari: aA → Website Settings → Camera → Allow.";
+// A grant Safari already remembers comes back at once; anything slower means
+// someone had to tap Allow.
+const ASKED_AFTER_MS = 700;
 
 // A4 portrait frame, centred, as four corner brackets -- the thing to
 // line the page up with whether or not edge detection is running.
@@ -500,6 +507,7 @@ export default function DocumentCapture({
         }, CAMERA_TIMEOUT_MS);
       });
 
+      const askedAt = Date.now();
       try {
         const stream = await Promise.race([
           navigator.mediaDevices.getUserMedia({
@@ -537,7 +545,7 @@ export default function DocumentCapture({
           setZoomRange(null);
         }
         setStatus("live");
-        if (isIOS() && consumeCameraHint()) setCameraHint(true);
+        if (isIOS() && Date.now() - askedAt > ASKED_AFTER_MS) setCameraHint(true);
         rafRef.current = requestAnimationFrame(loop);
       } catch {
         if (cancelled) return;
@@ -805,6 +813,76 @@ export default function DocumentCapture({
     // instead precisely so OpenCV arriving mid-effect doesn't need to
     // restart the camera stream just to start detection.
   }, [stopStream, freeMats, retryKey, useNative]);
+
+  // Two fingers on the camera zoom the camera, not the page: the browser's
+  // own pinch and double-tap zoom are switched off here (touch-action, and
+  // Safari's gesture events), and the pinch drives the lens zoom where the
+  // phone offers one, otherwise the cropped zoom. Applied once per frame.
+  const pinchRef = useRef<{ dist: number; level: number; ratio: number; frame: number } | null>(null);
+  const pinchStepRef = useRef<(ratio: number, level: number) => void>(() => {});
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    pinchStepRef.current = (ratio, level) => {
+      const hw = hwZoomRef.current;
+      if (hw) {
+        const base = Math.max(hw.min, 1);
+        const target = Math.min(hw.max, Math.max(hw.min, base * level * ratio));
+        const value = hw.step > 0 ? Math.round(target / hw.step) * hw.step : target;
+        if (value !== hwZoomValueRef.current) applyZoom(value);
+        return;
+      }
+      const css = Math.min(PINCH_CSS_MAX, Math.max(1, level * ratio));
+      if (Math.abs(css - cssZoomRef.current) < 0.01) return;
+      forgetPage();
+      userZoomedRef.current = true;
+      cssZoomRef.current = css;
+      setCssZoom(css);
+    };
+  });
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const spread = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      const hw = hwZoomRef.current;
+      const level = hw ? hwZoomValueRef.current / Math.max(hw.min, 1) : cssZoomRef.current;
+      pinchRef.current = { dist: spread(e.touches) || 1, level, ratio: 1, frame: 0 };
+      if (videoRef.current) videoRef.current.style.transition = "none";
+    };
+    const onMove = (e: TouchEvent) => {
+      const p = pinchRef.current;
+      if (!p || e.touches.length !== 2) return;
+      e.preventDefault();
+      p.ratio = spread(e.touches) / p.dist;
+      if (p.frame) return;
+      p.frame = requestAnimationFrame(() => {
+        p.frame = 0;
+        pinchStepRef.current(p.ratio, p.level);
+      });
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length >= 2 || !pinchRef.current) return;
+      pinchRef.current = null;
+      if (videoRef.current) videoRef.current.style.transition = "";
+    };
+    const block = (e: Event) => e.preventDefault();
+    const opts = { passive: false } as const;
+    const gestures = ["gesturestart", "gesturechange", "gestureend"];
+    el.addEventListener("touchstart", onStart, opts);
+    el.addEventListener("touchmove", onMove, opts);
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    for (const g of gestures) el.addEventListener(g, block, opts);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+      for (const g of gestures) el.removeEventListener(g, block);
+    };
+  }, [useNative]);
 
   function applyZoom(value: number) {
     forgetPage();
@@ -1128,7 +1206,7 @@ export default function DocumentCapture({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+    <div ref={rootRef} className="fixed inset-0 z-50 flex touch-none flex-col bg-black">
       <div ref={liveAreaRef} className="relative flex-1 overflow-hidden">
         <video
           ref={videoRef}
@@ -1270,7 +1348,11 @@ export default function DocumentCapture({
                 Use the native camera instead
               </button>
             )}
-            {cameraHint && <p className="text-center text-xs text-neutral-400">{SAFARI_CAMERA_TIP}</p>}
+            {cameraHint && (
+              <Tip id="camera-allow" dark className="w-full max-w-sm">
+                {SAFARI_CAMERA_TIP}
+              </Tip>
+            )}
           </div>
         )}
       </div>

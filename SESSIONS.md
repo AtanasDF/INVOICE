@@ -204,6 +204,18 @@ and what is left open. Dates are session dates (Europe/London).
   blocked-storage crash, credit notes scoped by owner; added "Stop this link" and a
   column-level insert grant. End to end 18/18. Migration-025 applied and verified
   (rolled back); merged (54a4e35); live: unknown links show not-found with noindex.
+- From Atanas on his phone, fixed on main:
+  - Pinch on the camera zoomed the whole page (58aa368): the camera screen now claims its
+    touches (touch-action none + Safari gesture events cancelled) and a pinch drives the
+    lens zoom, or the cropped zoom up to 3x. Headless pinch 4/4; auto-zoom/tips unchanged.
+  - Camera permission asked every time: a site can't make Safari remember it. The how-to
+    (Settings > Safari > Camera > Allow, or aA > Website Settings) now shows as a tip
+    whenever Safari had to ask (judged by the grant taking > 700ms), not once ever in grey.
+  - Quotes on the Free page (f57ec09): Invoice | Quote switch, quote layout (valid until,
+    no terms/bank/CIS), quote email/PDF wording, Save to account -> Quotes > New prefilled
+    with add-customer. Headless 10/10.
+- Quote links (accept a quote online), branch `feature/quote-links`: WIP, parked while the
+  above were done; migration-026 written, not applied.
 - Noted, not changed: in the live DB invoices.user_id and clients.user_id have no
   cascade, so deleting a user with invoices/clients fails (checked on a throwaway user,
   rolled back). No in-app account deletion exists; protective as it is.
