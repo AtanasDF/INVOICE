@@ -123,9 +123,10 @@ Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CRON_SECRET`,
 `INBOX_WEBHOOK_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 Not yet set anywhere: `RESEND_API_KEY` (payment reminders and Send by email stay inert
-without it) and optional `EMAIL_FROM` (e.g. `Invoicer <invoices@verified-domain>`; until a
-domain is verified in Resend the fallback `onboarding@resend.dev` only delivers to the
-Resend account owner). `/api/send-invoice` is signed-in only by design (an open route was
+without it). Sending domain is `invoiceover.com` (registered at Cloudflare 2026-09-15, DNS
+on Cloudflare, no records as of 2026-09-19): Send by email defaults to
+`invoices@invoiceover.com`, reminders use `reminders@invoiceover.com`; `EMAIL_FROM`
+overrides the former. Nothing delivers until the domain is verified in Resend. `/api/send-invoice` is signed-in only by design (an open route was
 an invoice-fraud relay); the PDF is made in the browser (`src/lib/invoicePdf.ts`).
 Gemini billing is a Google AI Studio prepaid balance on billing account
 `015649-CDA16A-FCF373`.

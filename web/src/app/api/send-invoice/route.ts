@@ -12,7 +12,9 @@ const GLOBAL_PER_HOUR = 60;
 // Vercel caps the request body at 4.5MB; the PDF arrives base64-encoded.
 const MAX_PDF_CHARS = 4_000_000;
 const EMAIL_RE = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/;
-const DEFAULT_FROM = "Invoicer <onboarding@resend.dev>";
+// The app's own domain, the one payment reminders send from too; it has to
+// be verified in Resend before anything is delivered.
+const DEFAULT_FROM = "Invoicer <invoices@invoiceover.com>";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 // Single-line fields end up in the subject and sender name.

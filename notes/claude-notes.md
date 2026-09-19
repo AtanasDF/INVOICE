@@ -62,6 +62,8 @@ changes.
   error. Verified live that night: Claude reads a synthetic handwritten invoice (27s on
   /api/scan, 10s on the template route at low effort) and a rough spreadsheet invoice
   correctly; Gemini Flash-Lite read the handwritten one correctly too.
+- The app's domain is invoiceover.com (Atanas, 2026-09-19): registered at Cloudflare
+  2026-09-15, Cloudflare DNS, no A/MX/TXT records yet; not connected to the Vercel project.
 - Signature: localStorage `free-invoice-signature` ({image PNG data URL, name}), separate
   from the draft so Start over and new invoices reuse it.
 
