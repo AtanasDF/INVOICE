@@ -21,7 +21,7 @@ export type ScanLineItem = {
   lineTotal: number | null;
 };
 
-export type ScanDetailKey = Exclude<keyof DocumentDetails, "other">;
+export type ScanDetailKey = Exclude<keyof DocumentDetails, "other" | "noSupplier">;
 
 export type ScanDetails = Record<ScanDetailKey, string | null> & { other: { label: string; value: string }[] };
 

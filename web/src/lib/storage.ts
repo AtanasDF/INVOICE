@@ -60,9 +60,12 @@ export type DocumentDetails = {
   supplierPhone?: string;
   deliveryAddress?: string;
   other?: { label: string; value: string }[];
+  // Set when the supplier was cleared on purpose, so a name match isn't
+  // offered back later.
+  noSupplier?: true;
 };
 
-export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other">, string> = {
+export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier">, string> = {
   accountNumber: "Account number",
   sortCode: "Sort code",
   iban: "IBAN",
