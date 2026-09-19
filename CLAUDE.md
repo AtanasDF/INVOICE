@@ -181,6 +181,20 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   re-arms auto-capture only after the page leaves the frame, and reviews/join-pages in
   `BatchReview`; `/scan` reads the documents three at a time and walks them with Save and
   next / Skip. The Free-page template scan and single-document flows stay one-shot.
+- Several documents in one scan (2026-09-19): the scan tool returns `documents: [...]`,
+  each with `pages` (1-based, counting every PDF page), `box` ([ymin, xmin, ymax, xmax] on
+  0-1000, only when a page holds more than one) and `paidOnDocument`. One document is the
+  default; `/api/scan` returns `{ result: documents[0], documents }` so one-document callers
+  (invoices/new) are unchanged. `/scan` replaces a capture or file holding N with N entries
+  in the walk (`splitDocuments.ts`: photos cropped to the box +3% with the whole photo kept
+  as page 2; PDFs cut per document with pdf-lib, `pdfPages.ts`, else whole with a note);
+  parts reuse their reading. Pages added or retaken by hand are merged as one document.
+  "Save all ready" saves, through the same `prepareSave` as Save, every remaining document
+  that's read, a receipt/invoice/credit note, has a sure total and a date, nothing to
+  confirm, GBP or a rate fetched, and no possible duplicate (documents saved earlier in the
+  run count); the rest stay with the reason. Unseen documents link only a supplier of
+  exactly the same name. `paidOnDocument` presets Already paid / To be paid. The inbox
+  import makes one needs-review row per document.
 - "Upload from files" (`UploadFilesButton`) hands files to the reading page in memory
   (`scanHandoff.ts`) with `upload=1` in the address; the page takes them only for its own
   path, and says they didn't come through (instead of opening the camera) if a full page

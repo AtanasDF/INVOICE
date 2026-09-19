@@ -94,6 +94,14 @@ export function conformToSchema(schema: unknown, value: unknown): unknown {
   // "other" for a kind of thing, "low" for a confidence the model didn't give.
   const fallbackOption = options && (options.includes("other") ? "other" : options.includes("low") ? "low" : options[0]);
 
+  // Non-strict tool input can carry a nested array or object as JSON text;
+  // with every document inside one array, reading that as empty would lose
+  // the whole scan.
+  if ((concrete === "array" || concrete === "object") && typeof value === "string" && /^\s*[[{]/.test(value)) {
+    try {
+      return conformToSchema(node, JSON.parse(value));
+    } catch {}
+  }
   if (value === undefined || value === null || (value === "" && nullable)) {
     if (nullable) return null;
     if (concrete === "array") return [];
@@ -171,30 +179,31 @@ async function extractWithGemini<T>(opts: ExtractStructuredOptions): Promise<T> 
 
 // Gemini's JSON-schema mode takes anyOf but not type arrays or
 // additionalProperties, so a Claude-strict schema is rewritten node by
-// node: ["string","null"] becomes anyOf [{type:"string"},{type:"null"}]
-// with any enum moved onto the non-null branch (minus its null entry).
+// node: ["string","null"] becomes anyOf [{type:"string"},{type:"null"}].
+// Everything that describes the value (an enum minus its null entry, an
+// array's items) goes on the non-null branch, where Gemini looks for it.
 export function toGeminiSchema(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(toGeminiSchema);
   if (!node || typeof node !== "object") return node;
   const source = { ...(node as Record<string, unknown>) };
   delete source.additionalProperties;
   const { type, enum: values, properties, ...rest } = source;
+  if (Array.isArray(type)) {
+    const { description, ...typed } = rest;
+    const concrete = (values as unknown[] | undefined)?.filter((v) => v !== null);
+    const branches = type
+      .filter((t) => t !== "null")
+      .map((t) => toGeminiSchema({ ...typed, type: t, ...(properties ? { properties } : {}), ...(concrete ? { enum: concrete } : {}) }) as Record<string, unknown>);
+    if (type.includes("null")) branches.push({ type: "null" });
+    const described = description === undefined ? {} : { description };
+    return branches.length === 1 ? { ...described, ...branches[0] } : { ...described, anyOf: branches };
+  }
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(rest)) out[k] = k === "required" || k === "description" ? v : toGeminiSchema(v);
   if (properties && typeof properties === "object") {
     out.properties = Object.fromEntries(
       Object.entries(properties as Record<string, unknown>).map(([k, v]) => [k, toGeminiSchema(v)])
     );
-  }
-  if (Array.isArray(type)) {
-    const concrete = (values as unknown[] | undefined)?.filter((v) => v !== null);
-    const branches: Record<string, unknown>[] = type
-      .filter((t) => t !== "null")
-      .map((t) => (concrete ? { type: t, enum: concrete } : { type: t }));
-    if (type.includes("null")) branches.push({ type: "null" });
-    if (branches.length === 1) Object.assign(out, branches[0]);
-    else out.anyOf = branches;
-    return out;
   }
   if (type !== undefined) out.type = type;
   if (values !== undefined) out.enum = values;

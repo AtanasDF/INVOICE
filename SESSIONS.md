@@ -4,6 +4,51 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-19 — Several documents in one scan, Save all ready (`feature/multi-docs`)
+
+**Brief (via the lead session, from Atanas):** a scan should find every document on it,
+even from different suppliers, and let him check them one by one or "upload all" when it's
+a straight job; a document that shows it's been paid should be recognised as paid.
+
+**Done (branch `feature/multi-docs`, not merged; no schema change):**
+
+- Extraction returns `documents[]` with `pages`, `box`, `paidOnDocument`; one document is
+  the default. `/api/scan` keeps `result` (= first document) for invoices/new. Gemini
+  schema conversion now puts an array's `items` on the non-null branch (identical output
+  for every existing schema, checked).
+- `/scan` splits a capture/file holding N documents into N walk entries: photos cropped by
+  box (+3%) with the whole photo as page 2, PDFs cut with pdf-lib (new dependency, MIT),
+  whole PDF plus a note if that fails. "This file had 3 documents — they're listed
+  separately." Parts are never read again.
+- "Save all ready" beside Save: one save path (`prepareSave`) for both; waits for reads
+  still running; leaves anything unread, not a receipt/invoice/credit note, without a sure
+  total or date, with a date to confirm, a bill without a due date, a currency whose rate
+  can't be fetched, or a possible duplicate (earlier saves in the run count). Summary
+  "Saved 5. 2 need a look: …", each left one says why; all saved shows an "All saved" page.
+- `paidOnDocument` presets Already paid / To be paid unless he touched it.
+- Inbox import: one needs-review row per document (PDF cut per document where it can be).
+- Real Gemini on synthetic documents: every split decision right, boxes IoU 0.97–0.99,
+  timings the same as the old one-document read (4–7 s).
+- "Save all ready" sits beside Save, not at the top: the older suites press the first
+  enabled "Save…" button, and Save should stay the first thing for the open document.
+- Independent review (one agent, read-only): 4 findings, all fixed in 04a3fc9 (a page
+  added to a cropped part re-read the whole photo and merged the other receipts in;
+  re-reads queued behind the batch; a stale "Needs a look"; inbox cropped unshared
+  pages). Also: pages joined in the stack review stay one document; conformToSchema
+  parses a nested array sent as JSON text.
+- Merged current main into the branch (clear-form buttons, scanner torch, quotes redesign,
+  invoice-page fix); only SESSIONS.md conflicted. Main's Quotes UX entry had taken the
+  place of the overnight entry's heading; the heading is back.
+- Tests on the merged branch (harness, mocked DB, dev server on 3304): `test-multi-docs.mjs`
+  33/33, uploads 15/15, review-fixes 21/21, receipts list 74/74, bent 64/64, far-v2 34/35.
+  tsc, eslint, build clean. The far-v2 miss is main's new torch: on the dark clip the
+  scanner now says "It's dark here — more light helps", and that suite's dark check still
+  expects no hint at all — the expectation needs updating, nothing in the scanner is wrong
+  (earlier bent failures at load 15-30 all passed once the machine was quiet).
+
+**Open:** try it on the iPhone with real paper; the Claude engine couldn't be run here
+(no Anthropic key locally), so the first Claude read of the new schema is unverified.
+
 ## 2026-09-19 — Quotes UX (agent in a worktree), branch `feature/quotes-ux`
 
 **Brief (Atanas, from his phone):** quotes should look better, pick the recipient from all
@@ -36,6 +81,8 @@ payment options come later. No schema change; not merged to main.
   form with the keyboard up). Payment options have a marked place above the Send card
   (a comment, no UI). CLAUDE.md's quotes bullet could gain "putting the link in a text
   marks a draft sent too" when this merges.
+
+## 2026-09-19 — Mac desktop app (Opus 5), overnight run
 
 **Brief from Atanas (19/09, evening)**
 
