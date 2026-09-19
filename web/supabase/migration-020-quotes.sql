@@ -12,7 +12,7 @@
 
 create table if not exists public.quotes (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default auth.uid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   client_id uuid references public.clients(id) on delete restrict,
   number text not null,
   date date not null default current_date,
