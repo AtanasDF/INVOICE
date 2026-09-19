@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
-import { invoiceBalance, statusFromPayments, syncedStatus } from "@/lib/invoiceBalance";
+import { invoiceBalance, invoiceVat, statusFromPayments, syncedStatus } from "@/lib/invoiceBalance";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -35,7 +35,7 @@ function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf
   payments: InvoicePayment[];
   forPdf?: boolean;
 }) {
-  const vatRegistered = profile?.vatRegistered ?? false;
+  const vatRegistered = invoiceVat(invoice, profile?.vatRegistered ?? false);
   const totals = computeInvoiceTotals(invoice.items, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
@@ -289,9 +289,8 @@ export default function InvoiceViewPage() {
   }
 
   // The status follows credit notes and payments (paid once nothing is
-  // owed, credited in full included), after each change made here. Not on
-  // opening the page: totals use today's VAT setting, which may not be the
-  // one the invoice was issued under.
+  // owed, credited in full included), after each change made here, never
+  // just from opening the page.
   async function syncStatus(inv: Invoice, notes: CreditNote[], pays: InvoicePayment[], vat: boolean, fromPayments = false) {
     const next = syncedStatus(inv.status, { total: computeInvoiceTotals(inv.items, vat).total, credited: sum(notes), paid: sum(pays) }, pays.length, fromPayments);
     if (!next) return;
@@ -305,7 +304,7 @@ export default function InvoiceViewPage() {
     const [pays, notes] = await Promise.all([paymentsStore.forInvoice(invoice!.id), creditNotesStore.forInvoice(invoice!.id)]);
     setPayments(pays);
     setCreditNotes(notes);
-    const due = invoiceBalance({ total: computeInvoiceTotals(invoice!.items, vatRegistered).total, credited: sum(notes), paid: sum(pays), status: invoice!.status });
+    const due = invoiceBalance({ total: computeInvoiceTotals(invoice!.items, invoiceVat(invoice!, vatRegistered)).total, credited: sum(notes), paid: sum(pays), status: invoice!.status });
     return { pays, notes, due };
   }
 
@@ -335,7 +334,7 @@ export default function InvoiceViewPage() {
     } finally {
       setPaySaving(false);
     }
-    if (saved) await syncStatus(invoice, saved.notes, saved.pays, vatRegistered).catch((err) => setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it."));
+    if (saved) await syncStatus(invoice, saved.notes, saved.pays, invoiceVat(invoice, vatRegistered)).catch((err) => setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it."));
   }
 
   // Records whatever is still owed as received today. An invoice marked
@@ -358,7 +357,7 @@ export default function InvoiceViewPage() {
         all = [...pays, added];
         setPayments(all);
       }
-      await syncStatus(invoice, notes, all, vatRegistered);
+      await syncStatus(invoice, notes, all, invoiceVat(invoice, vatRegistered));
       // Nothing was owed (a £0 balance after a deposit): the figures alone
       // don't make it paid, the owner saying so does.
       if (due <= 0 && all.length === pays.length) {
@@ -378,7 +377,7 @@ export default function InvoiceViewPage() {
     try {
       await paymentsStore.remove(id);
       const { pays, notes } = await freshFigures();
-      await syncStatus(invoice, notes, pays, vatRegistered, true);
+      await syncStatus(invoice, notes, pays, invoiceVat(invoice, vatRegistered), true);
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Could not remove the payment.");
     }
@@ -540,7 +539,7 @@ export default function InvoiceViewPage() {
       setCnAmount("");
       setCnReason("");
       setShowCnForm(false);
-      await syncStatus(invoice, notes, payments, vatRegistered);
+      await syncStatus(invoice, notes, payments, invoiceVat(invoice, vatRegistered));
     } catch (err) {
       setCnError(err instanceof Error ? err.message : "Could not save credit note.");
     } finally {
@@ -555,9 +554,9 @@ export default function InvoiceViewPage() {
       if (invoice) {
         // If the figures (this credit included) are what made it paid, it
         // follows them back; a status set by hand stays.
-        const total = computeInvoiceTotals(invoice.items, vatRegistered).total;
+        const total = computeInvoiceTotals(invoice.items, invoiceVat(invoice, vatRegistered)).total;
         const setByFigures = statusFromPayments({ total, credited: sum(creditNotes), paid: sum(payments) }) === invoice.status;
-        await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, vatRegistered, setByFigures);
+        await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, invoiceVat(invoice, vatRegistered), setByFigures);
       }
     } catch {
       // best-effort local update above; a reload will resync if this failed
@@ -715,7 +714,7 @@ export default function InvoiceViewPage() {
   }
 
   // ── Sent / Partial / Paid: locked, print-ready view ───────────────
-  const totals = computeInvoiceTotals(invoice.items, vatRegistered);
+  const totals = computeInvoiceTotals(invoice.items, invoiceVat(invoice, vatRegistered));
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
   const paidSoFar = sum(payments);
   const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });

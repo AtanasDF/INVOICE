@@ -9,6 +9,7 @@ import SendInvoicePanel from "@/components/SendInvoicePanel";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quotesStore } from "@/lib/storage";
 import { computeInvoiceTotals } from "@/lib/vat";
+import { invoiceVat } from "@/lib/invoiceBalance";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, termsLength } from "@/lib/quoteStatus";
@@ -182,7 +183,7 @@ export default function QuotePage() {
         if (deposit?.status === "draft") throw new Error("The deposit invoice is still a draft. Send it first, so the final invoice can take it off.");
         if (deposit) {
           credited = (await creditNotesStore.forInvoice(deposit.id)).reduce((sum, c) => sum + c.amount, 0);
-          const depositTotal = computeInvoiceTotals(deposit.items, vatRegistered).total - credited;
+          const depositTotal = computeInvoiceTotals(deposit.items, invoiceVat(deposit, vatRegistered)).total - credited;
           if (depositTotal > computeInvoiceTotals(claimed.items, vatRegistered).total + 0.005)
             throw new Error("The deposit invoice is for more than the whole quote, so the balance would be negative. Check the deposit invoice.");
         }
@@ -198,7 +199,7 @@ export default function QuotePage() {
           clientId: claimed.clientId,
           date,
           number: draftPlaceholderNumber(),
-          items: [...claimed.items, ...(deposit ? depositDeductions(deposit, credited, vatRegistered) : [])],
+          items: [...claimed.items, ...(deposit ? depositDeductions(deposit, credited, invoiceVat(deposit, vatRegistered)) : [])],
           notes: claimed.notes,
           dueDate: addDays(date, termsLength(terms) ?? 30),
           paymentTerms: terms,

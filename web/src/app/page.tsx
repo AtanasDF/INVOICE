@@ -23,7 +23,7 @@ import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
 import Tip from "@/components/Tip";
-import { invoiceBalance } from "@/lib/invoiceBalance";
+import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 
 function ScanIcon() {
   return (
@@ -163,7 +163,7 @@ export default function Dashboard() {
       const outstanding = invoices
         .filter((inv) => inv.status === "sent" || inv.status === "partial")
         .map((inv) => {
-          const gross = computeInvoiceTotals(inv.items, profile.vatRegistered).total;
+          const gross = computeInvoiceTotals(inv.items, invoiceVat(inv, profile.vatRegistered)).total;
           const amountDue = invoiceBalance({ total: gross, credited: creditByInvoice.get(inv.id) ?? 0, paid: paidByInvoice.get(inv.id) ?? 0, status: inv.status });
           const clientName = clients.find((c) => c.id === inv.clientId)?.name || "No client";
           return { invoice: inv, amountDue, clientName };

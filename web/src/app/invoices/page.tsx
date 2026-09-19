@@ -4,7 +4,7 @@ import Link from "next/link";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
-import { invoiceBalance } from "@/lib/invoiceBalance";
+import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -42,7 +42,7 @@ export default function InvoicesPage() {
   // "Amount due" figure on the invoice itself, not just the line items'
   // raw subtotal.
   function total(inv: Invoice) {
-    return computeInvoiceTotals(inv.items, profile?.vatRegistered ?? false).total;
+    return computeInvoiceTotals(inv.items, invoiceVat(inv, profile?.vatRegistered ?? false)).total;
   }
 
   const creditNotesByInvoice = useMemo(() => {
@@ -133,7 +133,7 @@ export default function InvoicesPage() {
       if (filterFrom && inv.date < filterFrom) return false;
       if (filterTo && inv.date > filterTo) return false;
       if (filterClientId && inv.clientId !== filterClientId) return false;
-      if (!isNaN(minTotal) && computeInvoiceTotals(inv.items, vatRegistered).total < minTotal) return false;
+      if (!isNaN(minTotal) && computeInvoiceTotals(inv.items, invoiceVat(inv, vatRegistered)).total < minTotal) return false;
       if (search && !inv.number.toLowerCase().includes(search)) return false;
       if (filterStatus === "overdue" && !isOverdue(inv.status, inv.dueDate)) return false;
       if (filterStatus !== "" && filterStatus !== "overdue" && inv.status !== filterStatus) return false;
