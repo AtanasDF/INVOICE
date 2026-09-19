@@ -34,8 +34,9 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
-   migration-027, backup 013 (all applied). Supabase grants anon/authenticated everything
-   on a new table by default: revoke explicitly (see migration-020).
+   migration-027, backup 013 (all applied); migration-028 (quote requests, new tables
+   only) is on `feature/quote-requests`, not applied. Supabase grants anon/authenticated
+   everything on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
    their ON DELETE, policies, function grants) and exercise new functions as the
@@ -123,6 +124,19 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
   answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
   works; copying its link marks it sent first. The owner's `#o` copy shows no buttons.
+- Quote requests (migration-028, branch `feature/quote-requests`): Atanas asking
+  suppliers to price a list. `quote_requests` (items with ids, needed_by, site_address,
+  open/closed, `choice` = his pick per line) and one `quote_request_suppliers` row per
+  supplier (token for `/r/<token>`, sent_at, waiting/replied/declined, `prices` keyed by
+  item id, delivery, vat_included, valid_until, `source` online/manual/scan,
+  document_path in the `receipts` bucket, `previous` answers). The owner can't update
+  answer columns: typed-in or scanned prices go through `record_quote_request_response`
+  (checks the answer time the page showed, keeps what it replaces); the supplier's own
+  through `submit_quote_request_response` (service role, once, open and not past
+  needed_by). The list is locked once sent. Maths in `src/lib/quoteCompare.ts`: ex VAT
+  (VAT-inclusive converted at 20%), split only when cheaper than the best single supplier
+  after each supplier's delivery, expired offers never auto-picked. UI under
+  `/quotes/requests` (Quotes tabs: My quotes / From suppliers).
 - Payment reminders (`/api/reminders/send`, daily cron): schedule, wording and the
   late-payment-interest rule live in `src/lib/reminderTemplates.ts` (-3, 0, +7, +14 'late',
   +30 'final'; each has a 3-day catch-up window; `invoice_reminders_sent` unique

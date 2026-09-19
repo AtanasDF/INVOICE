@@ -182,6 +182,15 @@ changes.
   from lookup results. OS Places isn't in the OS free allowance.
 - "Paid" moment, home-screen badge and customer texts added as Atanas's "surprise me"
   (2026-09-19); texts open the phone's Messages/WhatsApp, the app sends nothing.
+- Quote requests (2026-09-19, branch `feature/quote-requests`, migration-028 not applied):
+  a supplier's online answer is never edited in place; the owner can replace it only by
+  typing in or scanning their document, which marks the row as his and keeps the old
+  answer in `previous`. Supplier kind is enforced by the app, not the database. A request
+  "expires" for suppliers once its needed-by date has passed. Prices compare ex VAT with
+  VAT-inclusive quotes converted at 20%; a line's alternative/note is counted as that
+  line's price but shown. Orders are text to copy/email/share; nothing but the picks is
+  stored. clients has no unique (id, user_id), so supplier_id is RESTRICT + a same-owner
+  trigger rather than a composite FK (adding one would alter clients).
 
 ## Testing without Atanas's documents
 
@@ -211,6 +220,13 @@ changes.
   safe for flows that write. `test-quotes.mjs` runs 34 checks. Worktree dev servers need
   `next dev --webpack` (Turbopack rejects the symlinked node_modules) and a symlinked
   `.env.local`.
+- Quote requests: `harness/test-quote-requests.mjs` (80+ checks) against a dev server with
+  `NEXT_PUBLIC_SUPABASE_URL=http://localhost:5566` and RESEND/AI/VAPID keys empty;
+  `qr-mock-server.mjs` also answers `/auth/v1/user` (by the JWT's sub) and storage upload
+  and sign, and `qr-mockdb.mjs` mirrors migration-028's column grants, items lock and both
+  answer functions. The answer route allows 10 per address per hour and the dev server
+  keeps counts between runs: give each supplier page its own `x-forwarded-for`. When the
+  Mac is busy, first compiles take a minute: warm the routes with curl first.
 - The SQL editor asks "Potential issue detected" before any query containing delete; a
   rolled-back test block needs that confirmed by a click.
 - Camera suites (scratchpad `harness/`): `test-far.mjs` (far/torn/shaky/off-centre
