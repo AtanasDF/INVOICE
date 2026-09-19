@@ -42,14 +42,14 @@ export async function GET(req: Request) {
 
     const { data: invoices, error: invErr } = await admin
       .from("invoices")
-      .select("id, user_id, client_id, number, items, due_date, status")
+      .select("id, user_id, client_id, number, items, due_date, status, vat_registered")
       // Part-paid ones too: they're chased for the balance, once payments
       // say what it is (below).
       .in("status", ["sent", "partial"])
       .not("due_date", "is", null);
     if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 });
 
-    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; status: string; kind: ReminderKind };
+    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; status: string; vat_registered: boolean | null; kind: ReminderKind };
 
     const candidates: DueInvoice[] = (invoices ?? [])
       .map((inv) => {
@@ -118,7 +118,7 @@ export async function GET(req: Request) {
         final: profile?.reminder_text_final,
       };
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
-      const gross = computeInvoiceTotals(items, profile?.vat_registered ?? false).total;
+      const gross = computeInvoiceTotals(items, inv.vat_registered ?? profile?.vat_registered ?? false).total;
       const paid = paidByInvoice.get(inv.id) ?? 0;
       // Marked part-paid with nothing recorded: the balance isn't known.
       if (inv.status === "partial" && paid === 0) continue;

@@ -36,3 +36,10 @@ export function syncedStatus(
   if (!fromPayments && paymentCount === 0 && figures.credited === 0) return null;
   return next === current ? null : next;
 }
+
+// The VAT setting an invoice's totals use: the one it was issued under, or
+// the account's current one for a draft (and for an issued invoice from
+// before the setting was saved, which has always shown that way).
+export function invoiceVat(invoice: { status: InvoiceStatus; vatRegistered: boolean | null }, accountVat: boolean): boolean {
+  return invoice.status === "draft" || invoice.vatRegistered === null ? accountVat : invoice.vatRegistered;
+}

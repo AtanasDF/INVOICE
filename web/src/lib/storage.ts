@@ -140,6 +140,9 @@ export type Invoice = {
   paymentTerms: string;
   status: InvoiceStatus;
   tags: string[];
+  // The VAT setting it was issued under (migration-024); null while a draft,
+  // which follows the account's current setting.
+  vatRegistered: boolean | null;
 };
 
 export type CreditNote = {
@@ -535,6 +538,7 @@ type InvoiceRow = {
   payment_terms: string | null;
   status: InvoiceStatus | null;
   tags: string[] | null;
+  vat_registered?: boolean | null;
 };
 
 function invoiceFromRow(r: InvoiceRow): Invoice {
@@ -560,6 +564,7 @@ function invoiceFromRow(r: InvoiceRow): Invoice {
     // start as an editable draft.
     status: r.status ?? "sent",
     tags: r.tags ?? [],
+    vatRegistered: r.vat_registered ?? null,
   };
 }
 
@@ -574,7 +579,7 @@ export const invoicesStore = {
     if (error) throw error;
     return data ? invoiceFromRow(data as InvoiceRow) : null;
   },
-  async add(input: Omit<Invoice, "id">): Promise<Invoice> {
+  async add(input: Omit<Invoice, "id" | "vatRegistered">): Promise<Invoice> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("invoices")
