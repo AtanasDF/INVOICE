@@ -27,7 +27,8 @@ export default function NewQuotePage() {
         const draft = new URLSearchParams(window.location.search).get("import") === "1" ? readFreeInvoiceDraft() : null;
         if (draft?.docType === "quote") {
           const name = draft.customer.name?.trim() ?? "";
-          const match = clients.find((c) => c.kind === "client" && !c.archived && c.name.trim().toLowerCase() === name.toLowerCase());
+          const same = clients.filter((c) => !c.archived && c.name.trim().toLowerCase() === name.toLowerCase());
+          const match = same.find((c) => c.kind === "client") ?? same[0];
           const items: InvoiceItem[] = draft.lines
             .filter((l) => l.description.trim() || l.unitPrice)
             .map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, vatRate: l.vatRate }));
@@ -91,8 +92,6 @@ export default function NewQuotePage() {
     router.push(`/quotes/${quote.id}`);
   }
 
-  const hasClients = data?.clients.some((c) => c.kind === "client" && !c.archived);
-
   return (
     <div className="space-y-6">
       <div>
@@ -116,15 +115,17 @@ export default function NewQuotePage() {
       )}
       {!data ? (
         !error && <p className="text-sm text-neutral-500">Loading…</p>
-      ) : !hasClients && !newCustomer ? (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <p className="text-sm text-neutral-700">A quote is for a client. Add the client first, then come back here.</p>
-          <Link href="/clients/new" className="mt-3 inline-block rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-            Add a client
-          </Link>
-        </div>
       ) : (
-        <QuoteForm key={formKey} initial={data.initial} clients={data.clients} vatRegistered={data.vatRegistered} saveLabel="Save quote" onSave={save} onCancel={() => router.push("/quotes")} />
+        <QuoteForm
+          key={formKey}
+          initial={data.initial}
+          clients={data.clients}
+          vatRegistered={data.vatRegistered}
+          saveLabel="Save quote"
+          onSave={save}
+          onCancel={() => router.push("/quotes")}
+          onClientAdded={(c) => setData((d) => d && { ...d, clients: [...d.clients, c] })}
+        />
       )}
     </div>
   );

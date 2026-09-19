@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BusinessProfile, Client, Quote, businessProfileStore, clientsStore, quotesStore } from "@/lib/storage";
-import { quoteTotal } from "@/components/quote/QuoteDocument";
-import { quoteStatusBadgeClass, quoteStatusLabel } from "@/lib/quoteStatus";
+import { money, quoteTotal } from "@/components/quote/QuoteDocument";
+import { quoteStatusBadgeClass, quoteStatusLabel, shortDate } from "@/lib/quoteStatus";
+import { depositGross } from "@/lib/quoteDeposit";
 import { todayIso } from "@/lib/freeInvoiceDraft";
 import Tip from "@/components/Tip";
 import { errorText } from "@/lib/errorText";
@@ -29,6 +30,7 @@ export default function QuotesPage() {
   }, []);
 
   const clientName = (id: string) => clients.find((c) => c.id === id)?.name || "No client";
+  const vatRegistered = profile?.vatRegistered ?? false;
 
   return (
     <div className="space-y-8">
@@ -54,21 +56,28 @@ export default function QuotesPage() {
       ) : (
         <div className="space-y-3">
           {quotes.length === 0 && !error && <p className="text-sm text-neutral-500">No quotes yet.</p>}
-          {quotes.map((q) => (
-            <Link key={q.id} href={`/quotes/${q.id}`} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 font-medium">
-                  {q.number} · {clientName(q.clientId)}
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${quoteStatusBadgeClass(q, today)}`}>{quoteStatusLabel(q, today)}</span>
+          {quotes.map((q) => {
+            const deposit = depositGross(q, vatRegistered);
+            const open = q.status === "draft" || q.status === "sent";
+            return (
+              <Link key={q.id} href={`/quotes/${q.id}`} className="flex items-start justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {q.number} · {clientName(q.clientId)}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-500">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${quoteStatusBadgeClass(q, today)}`}>{quoteStatusLabel(q, today)}</span>
+                    <span>{shortDate(q.date)}</span>
+                  </div>
                 </div>
-                <div className="text-sm text-neutral-500">
-                  {q.date} · £{quoteTotal(q, profile?.vatRegistered ?? false).toFixed(2)}
-                  {q.validUntil && q.status !== "invoiced" && ` · valid until ${q.validUntil}`}
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold">{money(quoteTotal(q, vatRegistered))}</p>
+                  {deposit ? <p className="text-xs text-neutral-500">{money(deposit)} deposit</p> : null}
+                  {open && q.validUntil && <p className="text-xs text-neutral-500">until {shortDate(q.validUntil)}</p>}
                 </div>
-              </div>
-              <span className="shrink-0 text-sm font-medium text-blue-600">Open</span>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

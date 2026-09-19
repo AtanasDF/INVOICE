@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
+import CustomerPicker from "@/components/quote/CustomerPicker";
 import { addDays } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
 import { depositGross } from "@/lib/quoteDeposit";
@@ -22,13 +23,14 @@ export type QuoteFormValue = {
 const BLANK_LINE: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 const INPUT = "w-full rounded-lg border px-3 py-2";
 
-export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel }: {
+export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel, onClientAdded }: {
   initial: QuoteFormValue;
   clients: Client[];
   vatRegistered: boolean;
   saveLabel: string;
   onSave: (value: QuoteFormValue) => Promise<void>;
   onCancel?: () => void;
+  onClientAdded: (client: Client) => void;
 }) {
   const [v, setV] = useState<QuoteFormValue>(initial.items.length ? initial : { ...initial, items: [{ ...BLANK_LINE }] });
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,6 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   const lines = v.items.filter((l) => l.description.trim() || l.unitPrice);
   const totals = computeInvoiceTotals(lines, vatRegistered);
   const depositShown = depositGross({ deposit: v.deposit, items: lines }, vatRegistered);
-  const billable = clients.filter((c) => c.kind === "client" && (!c.archived || c.id === v.clientId));
 
   async function save() {
     if (!v.clientId) return setError("Pick who the quote is for.");
@@ -60,13 +61,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
 
   return (
     <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-      <div>
-        <label className="text-xs text-neutral-500">For</label>
-        <select className={INPUT} value={v.clientId} onChange={(e) => set({ clientId: e.target.value })}>
-          <option value="">Pick a client…</option>
-          {billable.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
+      <CustomerPicker people={clients} value={v.clientId} onChange={(clientId) => set({ clientId })} onAdded={onClientAdded} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-neutral-500">Quote number</label>

@@ -81,7 +81,8 @@ export default function InvoicesPage() {
     return invoiceBalance({ total: total(inv), credited: creditOffDue(charge(inv), credited(inv)), paid: paidSoFar(inv), status: inv.status });
   }
 
-  const billableClients = useMemo(() => clients.filter((c) => c.kind === "client"), [clients]);
+  // A supplier appears once it has an invoice (from a quote to them).
+  const billableClients = useMemo(() => clients.filter((c) => c.kind === "client" || invoices.some((i) => i.clientId === c.id)), [clients, invoices]);
 
   function clientName(id: string) {
     return clients.find((c) => c.id === id)?.name || "No client";
