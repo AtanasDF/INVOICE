@@ -375,6 +375,19 @@ applied (Atanas applies and verifies it).
   prices converted at 20%), best single vs best split (every supplier set tried, delivery
   once per supplier used; split only when cheaper), expired offers never auto-picked,
   order text, scanned-line matching. Unit 20/20.
+- UI (2cb5d5d): Quotes gets tabs My quotes / From suppliers (`QuotesTabs`, the only
+  change to the existing quotes list). `/quotes/requests` lists requests with every
+  supplier's status and ex-VAT total; `/quotes/requests/new`; `/quotes/requests/[id]`
+  with suppliers (email, copy link, enter prices, attach and read their quote, can't
+  quote, ask again, stop link), Compare (items x suppliers, cheapest labelled, tap a price
+  to pick, "Use the best value" follows the recommendation again) and Orders (per
+  supplier text: copy, email, share). Supplier page `/r/<token>` (AppShell treats /r/ as
+  public). Routes: `/api/quote-requests/send` (signed in; reads as the owner, sends only to
+  the saved address the page showed; shares send-invoice's limits) and
+  `/api/quote-requests/respond` (public, 10/hour/IP, service-role function).
+- Tests (dev server 3305, RESEND_API_KEY empty, Supabase mocked by
+  `harness/qr-mock-server.mjs` + `qr-mockdb.mjs`, which mirror migration-028's grants,
+  trigger and functions): `harness/test-quote-requests.mjs` 80/80.
 
 ## 2026-09-17 → 2026-09-18 — Mac desktop app (Fable 5.1), with Atanas mostly on his phone
 
