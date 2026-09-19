@@ -8,6 +8,7 @@ import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNum
 import { InvoiceStatus, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
+import { NumberInput } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 
 function addDays(dateStr: string, days: number): string {
@@ -482,42 +483,45 @@ export default function InvoiceViewPage() {
           <input className="w-full rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
 
           <div className="space-y-2">
-            <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500">
+            <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">
               <span className={vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
               <span className="col-span-2 text-right">Qty</span>
               <span className="col-span-3 text-right">Unit price</span>
               {vatRegistered && <span className="col-span-2">VAT</span>}
             </div>
             {draftItems.map((it, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2">
+              <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
                 <input
-                  className={`${vatRegistered ? "col-span-4" : "col-span-6"} rounded-lg border px-3 py-2`}
+                  className={`col-span-12 ${vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
                   placeholder="Description"
                   value={it.description}
                   onChange={(e) => updateDraftItem(idx, { description: e.target.value })}
                 />
-                <input
-                  className="col-span-2 rounded-lg border px-3 py-2"
+                <NumberInput
+                  className={`${vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`}
                   placeholder="Qty"
+                  aria-label="Quantity"
                   value={it.quantity}
-                  onChange={(e) => updateDraftItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                  onChange={(quantity) => updateDraftItem(idx, { quantity })}
                 />
-                <input
-                  className="col-span-3 rounded-lg border px-3 py-2"
+                <NumberInput
+                  className={`${vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
                   placeholder="Unit price"
+                  aria-label="Unit price"
                   value={it.unitPrice}
-                  onChange={(e) => updateDraftItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+                  onChange={(unitPrice) => updateDraftItem(idx, { unitPrice })}
                 />
                 {vatRegistered && (
                   <select
-                    className="col-span-2 rounded-lg border px-1 py-2 text-xs"
+                    aria-label="VAT rate"
+                    className="col-span-4 rounded-lg border px-1 py-2 text-xs sm:col-span-2"
                     value={it.vatRate}
                     onChange={(e) => updateDraftItem(idx, { vatRate: e.target.value as VatRateKind })}
                   >
                     {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                   </select>
                 )}
-                <button onClick={() => removeDraftLine(idx)} className="col-span-1 text-sm text-red-600">✕</button>
+                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
               </div>
             ))}
             <button onClick={addDraftLine} className="text-sm font-medium text-blue-600">+ Add line</button>
