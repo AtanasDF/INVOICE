@@ -56,6 +56,24 @@ and what is left open. Dates are session dates (Europe/London).
   TEST-001 sent from the live Free page to his account email: Delivered (Resend). Payment
   reminders are live too; no invoices in his account, so none went out.
 
+- Autonomous stretch (Atanas away, "run and test as much as you can"):
+  - Auto-zoom in the camera (14d56eb): zooms a far page toward filling the view (max 2x,
+    never cropping it), back to 1x when the page leaves, off switch, manual zoom wins.
+  - `research-apps-2.md` (b60a488): ten apps researched by five web-only agents, ranked.
+  - Scan an invoice copies one already sent (customer match / add, lines with learned
+    VAT, today's date, terms) and receipt save checks (duplicate warning, line-total
+    check, usual category per supplier), built by agents in worktrees, merged after fixes.
+  - First-time tips (0c828e1): three showings each or until Got it.
+  - Share by WhatsApp/text + Download PDF on the Free page (9bd5faf).
+  - Three review rounds on this stretch (reviewer + refuter per area): 3+1+10+3 findings
+    confirmed and fixed, incl. a pre-existing bug: decimals couldn't be typed in invoice
+    Qty/Unit price.
+  - Test harness: headless Chrome (fresh profile in the scratchpad, never Atanas's) with
+    Chrome's fake camera playing generated MJPEG clips; runs auto-zoom (9/10, the 10th is a
+    wrong expectation), tips (7/7) and share (3/3) tests against the local dev server.
+    Authenticated pages can't be driven there (no login), so /scan and /invoices/new were
+    checked by review, not clicks.
+
 **Open**
 
 - Atanas: his brother's invoice into `test-docs/`; try batch scanner, green lock-on,

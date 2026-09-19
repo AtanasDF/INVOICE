@@ -104,6 +104,13 @@ changes.
 - Never press Save on a test scan: it writes to Atanas's real records. Skip/Discard, and
   clear any test draft from the live Free page's localStorage afterwards.
 
+- Headless test harness (2026-09-19): puppeteer-core in the session scratchpad driving the
+  installed Chrome with a fresh profile, `--use-fake-device-for-media-stream
+  --use-file-for-fake-video-capture=<clip>.mjpeg` (concatenated JPEG frames made with
+  Pillow; Chrome delivers them as 720x1080). A canvas `captureStream()` fake camera does
+  NOT work headless (2x2 black frames). It can't sign in, so it only covers public pages
+  (Free invoice, the camera) against `npm run dev`.
+
 ## References
 
 - Live app: https://invoice-omega-rust.vercel.app (Vercel project `atanas-df/invoice`,
