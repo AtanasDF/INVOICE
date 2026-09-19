@@ -1252,15 +1252,19 @@ export const quotesStore = {
     const { error } = await supabase.from("quotes").update({ deposit_claimed: false }).eq("id", id).is("deposit_invoice_id", null);
     if (error) throw error;
   },
-  async linkDeposit(id: string, invoiceId: string): Promise<void> {
-    const { error } = await supabase.from("quotes").update({ deposit_invoice_id: invoiceId, deposit_claimed: true }).eq("id", id).is("deposit_invoice_id", null);
+  // False if another deposit invoice was linked first (another tab).
+  async linkDeposit(id: string, invoiceId: string): Promise<boolean> {
+    const { data, error } = await supabase.from("quotes").update({ deposit_invoice_id: invoiceId, deposit_claimed: true }).eq("id", id).is("deposit_invoice_id", null).select("id");
     if (error) throw error;
+    return (data ?? []).length > 0;
   },
   // Linking also sets invoiced: the invoice exists, even if the claim was
   // put back from another tab meanwhile.
-  async linkInvoice(id: string, invoiceId: string): Promise<void> {
-    const { error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null);
+  // False if another invoice was linked first (another tab).
+  async linkInvoice(id: string, invoiceId: string): Promise<boolean> {
+    const { data, error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null).select("id");
     if (error) throw error;
+    return (data ?? []).length > 0;
   },
 };
 

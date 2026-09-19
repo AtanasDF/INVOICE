@@ -7,7 +7,8 @@ import QuoteDocument, { quoteTotal } from "@/components/quote/QuoteDocument";
 import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
 import { longDate } from "@/components/invoice/InvoiceDocument";
-import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileStore, clientsStore, invoicesStore, quotesStore } from "@/lib/storage";
+import { BusinessProfile, Client, Invoice, Quote, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quotesStore } from "@/lib/storage";
+import { computeInvoiceTotals } from "@/lib/vat";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, termsLength } from "@/lib/quoteStatus";
@@ -138,9 +139,17 @@ export default function QuotePage() {
   const depositAmount = depositGross(q, vatRegistered);
   // A deposit still to invoice: asked for, quote accepted, none made yet.
   const depositDue = q.status === "accepted" && depositAmount && !q.depositClaimed && !depositInvoice ? depositAmount : null;
+  const openDeposit = depositInvoice && depositInvoice.status !== "paid" && depositInvoice.status !== "draft" ? depositInvoice : null;
   const money = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const setStatus = (status: Open) =>
+  const setStatus = (status: Open) => {
+    // A deposit invoice outlives the deal: its reminders keep going until
+    // it's paid or credited, so say so before backing out of the quote.
+    if ((status === "declined" || status === "sent") && q.status === "accepted" && openDeposit && !window.confirm(`The deposit invoice ${openDeposit.number} is still open, and its payment reminders will keep going until it's paid or credited. Carry on? You can add a credit note on the invoice's page.`)) return;
+    if (status === "declined" && q.status === "sent" && openDeposit && !window.confirm(`The deposit invoice ${openDeposit.number} is still open. Mark the quote declined anyway?`)) return;
+    return runStatus(status);
+  };
+  const runStatus = (status: Open) =>
     run(async () => {
       await quotesStore.setStatus(q.id, status);
       setQuote({ ...q, status });
@@ -165,10 +174,18 @@ export default function QuotePage() {
       if (!claimed) throw new Error("This quote has already been turned into an invoice.");
       const tag = `from ${claimed.number}`;
       let deposit: Invoice | null = null;
+      let credited = 0;
       try {
-        if (claimed.depositClaimed && !claimed.depositInvoiceId) throw new Error("The deposit invoice is still being made. Reload the page and try again.");
+        if (claimed.depositClaimed && !claimed.depositInvoiceId)
+          throw new Error("The deposit invoice can't be found: it may still be being made, or it was removed. Reload the page to see which.");
         deposit = claimed.depositInvoiceId ? await invoicesStore.get(claimed.depositInvoiceId) : null;
         if (deposit?.status === "draft") throw new Error("The deposit invoice is still a draft. Send it first, so the final invoice can take it off.");
+        if (deposit) {
+          credited = (await creditNotesStore.forInvoice(deposit.id)).reduce((sum, c) => sum + c.amount, 0);
+          const depositTotal = computeInvoiceTotals(deposit.items, vatRegistered).total - credited;
+          if (depositTotal > computeInvoiceTotals(claimed.items, vatRegistered).total + 0.005)
+            throw new Error("The deposit invoice is for more than the whole quote, so the balance would be negative. Check the deposit invoice.");
+        }
       } catch (err) {
         await quotesStore.releaseClaim(q.id, before).catch(() => {});
         throw err;
@@ -181,7 +198,7 @@ export default function QuotePage() {
           clientId: claimed.clientId,
           date,
           number: draftPlaceholderNumber(),
-          items: [...claimed.items, ...(deposit ? depositDeductions(deposit) : [])],
+          items: [...claimed.items, ...(deposit ? depositDeductions(deposit, credited, vatRegistered) : [])],
           notes: claimed.notes,
           dueDate: addDays(date, termsLength(terms) ?? 30),
           paymentTerms: terms,
@@ -198,7 +215,8 @@ export default function QuotePage() {
         }
         invoice = made;
       }
-      await quotesStore.linkInvoice(q.id, invoice.id).catch(() => {});
+      const linked = await quotesStore.linkInvoice(q.id, invoice.id).catch(() => true);
+      if (!linked) throw new Error("Another invoice was linked to this quote at the same time (another tab?). A second draft invoice was made: check Invoices and keep one.");
       router.push(`/invoices/${invoice.id}`);
     });
 
@@ -231,7 +249,8 @@ export default function QuotePage() {
         }
         invoice = made;
       }
-      await quotesStore.linkDeposit(q.id, invoice.id).catch(() => {});
+      const linked = await quotesStore.linkDeposit(q.id, invoice.id).catch(() => true);
+      if (!linked) throw new Error("Another deposit invoice was linked to this quote at the same time (another tab?). A second draft was made: check Invoices and keep one.");
       router.push(`/invoices/${invoice.id}`);
     });
 
@@ -287,7 +306,14 @@ export default function QuotePage() {
           ) : (
             <div className="space-y-3 text-sm text-neutral-700">
               <p>This quote was being turned into an invoice, but no invoice from it can be found.</p>
-              <button onClick={() => run(async () => { await quotesStore.releaseClaim(q.id, "accepted"); await load(); })} disabled={busy} className={SECONDARY}>
+              <button
+                onClick={() => {
+                  if (window.confirm("Only do this if no invoice is being made from this quote in another tab or on another device. Put it back?"))
+                    run(async () => { await quotesStore.releaseClaim(q.id, "accepted"); await load(); });
+                }}
+                disabled={busy}
+                className={SECONDARY}
+              >
                 Put it back to accepted
               </button>
             </div>
@@ -303,7 +329,10 @@ export default function QuotePage() {
                   : depositInvoice
                     ? "Accepted, deposit invoiced. Invoice the balance when the work is done."
                     : "Accepted. Turn it into an invoice when you're ready to bill.")}
-              {q.status === "declined" && "Declined. Reopen it if they change their mind."}
+              {q.status === "declined" &&
+                (openDeposit
+                  ? `Declined. The deposit invoice ${openDeposit.number} is still open and will keep being chased: credit it on its page if it won't be paid.`
+                  : "Declined. Reopen it if they change their mind.")}
             </p>
             <div className="flex flex-wrap gap-2">
               {depositDue && (
@@ -336,8 +365,15 @@ export default function QuotePage() {
         )}
         {q.depositClaimed && !depositInvoice && depositOrphan === null && (
           <div className="mt-3 space-y-2 border-t pt-3 text-sm text-neutral-700">
-            <p>The deposit invoice was being made, but it can&apos;t be found.</p>
-            <button onClick={() => run(async () => { await quotesStore.releaseDeposit(q.id); await load(); })} disabled={busy} className={SECONDARY}>
+            <p>The deposit invoice can&apos;t be found: it was removed, or it&apos;s still being made in another tab. Clear it to make it again or to invoice the whole quote without it.</p>
+            <button
+              onClick={() => {
+                if (window.confirm("Only do this if no deposit invoice is being made in another tab or on another device. Clear it?"))
+                  run(async () => { await quotesStore.releaseDeposit(q.id); await load(); });
+              }}
+              disabled={busy}
+              className={SECONDARY}
+            >
               Let me invoice the deposit again
             </button>
           </div>

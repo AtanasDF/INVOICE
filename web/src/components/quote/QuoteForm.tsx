@@ -44,12 +44,14 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
     if (!v.clientId) return setError("Pick who the quote is for.");
     if (!v.number.trim()) return setError("Give the quote a number.");
     if (!lines.length) return setError("Add at least one line.");
-    if (v.deposit && v.deposit.kind === "percent" && !(v.deposit.value > 0 && v.deposit.value < 100)) return setError("A deposit percentage is between 0 and 100.");
-    if (v.deposit && v.deposit.kind === "amount" && !(v.deposit.value > 0 && v.deposit.value <= totals.total)) return setError("The deposit has to be more than £0 and no more than the total.");
+    // Stored to 2 decimals, so check what will be stored.
+    const deposit = v.deposit && { ...v.deposit, value: Math.round(v.deposit.value * 100) / 100 };
+    if (deposit?.kind === "percent" && !(deposit.value > 0 && deposit.value < 100)) return setError("A deposit percentage is between 0 and 100.");
+    if (deposit?.kind === "amount" && !(deposit.value > 0 && deposit.value <= Math.round(totals.total * 100) / 100)) return setError("The deposit has to be more than £0 and no more than the total.");
     setSaving(true);
     setError(null);
     try {
-      await onSave({ ...v, number: v.number.trim(), items: lines });
+      await onSave({ ...v, number: v.number.trim(), items: lines, deposit });
     } catch (err) {
       setError(errorText(err, "Could not save the quote."));
       setSaving(false);
@@ -141,7 +143,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           )}
         </div>
         {v.deposit && depositShown !== null && depositShown > 0 && (
-          <p className="mt-1 text-xs text-neutral-500">{money(depositShown)} incl. VAT, invoiced on its own once the quote is accepted.</p>
+          <p className="mt-1 text-xs text-neutral-500">{money(depositShown)}{vatRegistered ? " incl. VAT" : ""}, invoiced on its own once the quote is accepted.</p>
         )}
       </div>
 

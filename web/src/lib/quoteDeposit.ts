@@ -2,6 +2,9 @@ import type { Invoice, InvoiceItem, Quote } from "@/lib/storage";
 import { VAT_RATES, VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
 
 const round = (n: number) => Math.round(n * 100) / 100;
+// Unit prices keep four decimals (as New invoice does for VAT-inclusive
+// prices), so a deposit's net lines add back up to the exact pence.
+const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export const depositTag = (quoteNumber: string) => `deposit for ${quoteNumber}`;
 
@@ -30,7 +33,7 @@ export function depositLines(quote: Pick<Quote, "deposit" | "items" | "number">,
     return {
       description: several ? `${label}, ${VAT_RATE_LABELS[r.kind]} part` : label,
       quantity: 1,
-      unitPrice: round(share / (1 + VAT_RATES[r.kind])),
+      unitPrice: round4(share / (1 + VAT_RATES[r.kind])),
       vatRate: r.kind,
     };
   });
@@ -38,13 +41,17 @@ export function depositLines(quote: Pick<Quote, "deposit" | "items" | "number">,
 
 // On the final invoice: the deposit invoice's own lines taken off again, so
 // the balance and its VAT are right whatever the deposit invoice ended up
-// saying.
-export function depositDeductions(depositInvoice: Pick<Invoice, "items" | "number" | "status">): InvoiceItem[] {
-  const ref = depositInvoice.status === "draft" ? "" : ` (invoice ${depositInvoice.number})`;
+// saying. Whatever was credited against the deposit invoice isn't taken off:
+// the lines shrink in proportion, and a fully credited deposit takes nothing.
+export function depositDeductions(depositInvoice: Pick<Invoice, "items" | "number" | "status">, credited = 0, vatRegistered = true): InvoiceItem[] {
+  const gross = computeInvoiceTotals(depositInvoice.items, vatRegistered).total;
+  const keep = gross > 0 ? Math.max(0, 1 - credited / gross) : 0;
+  if (keep === 0) return [];
+  const ref = depositInvoice.status === "draft" ? "" : ` (invoice ${depositInvoice.number}${credited > 0 ? ", less its credit" : ""})`;
   return depositInvoice.items.map((it) => ({
     description: `Less deposit${ref}${depositInvoice.items.length > 1 ? `, ${VAT_RATE_LABELS[it.vatRate]} part` : ""}`,
     quantity: -1,
-    unitPrice: round(it.quantity * it.unitPrice),
+    unitPrice: round4(it.quantity * it.unitPrice * keep),
     vatRate: it.vatRate,
   }));
 }

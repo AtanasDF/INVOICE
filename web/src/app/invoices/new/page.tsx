@@ -153,7 +153,8 @@ export default function NewInvoicePage() {
     for (const inv of pastInvoices) {
       if (inv.clientId !== clientId) continue;
       for (const item of inv.items) {
-        if (!item.description.trim()) continue;
+        // A deduction (a deposit taken off) isn't something to bill again.
+        if (!item.description.trim() || item.quantity < 0) continue;
         const existing = byDescription.get(item.description);
         if (!existing || inv.date > existing.lastDate) {
           byDescription.set(item.description, {
