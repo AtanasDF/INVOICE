@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { computeInvoiceTotals, VatLineItem } from "@/lib/vat";
+import { VatLineItem } from "@/lib/vat";
+import { invoiceCharge } from "@/lib/cis";
 import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
 
 export const runtime = "nodejs";
@@ -42,14 +43,14 @@ export async function GET(req: Request) {
 
     const { data: invoices, error: invErr } = await admin
       .from("invoices")
-      .select("id, user_id, client_id, number, items, due_date, status, vat_registered")
+      .select("id, user_id, client_id, number, items, due_date, status, vat_registered, cis_rate")
       // Part-paid ones too: they're chased for the balance, once payments
       // say what it is (below).
       .in("status", ["sent", "partial"])
       .not("due_date", "is", null);
     if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 });
 
-    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; status: string; vat_registered: boolean | null; kind: ReminderKind };
+    type DueInvoice = { id: string; user_id: string; client_id: string | null; number: string; items: VatLineItem[]; due_date: string; status: string; vat_registered: boolean | null; cis_rate: number | null; kind: ReminderKind };
 
     const candidates: DueInvoice[] = (invoices ?? [])
       .map((inv) => {
@@ -118,7 +119,8 @@ export async function GET(req: Request) {
         final: profile?.reminder_text_final,
       };
       const items = (inv.items ?? []).map((it) => ({ ...it, vatRate: it.vatRate ?? "zero" }));
-      const gross = computeInvoiceTotals(items, inv.vat_registered ?? profile?.vat_registered ?? false).total;
+      // What the customer pays: the total less any CIS they keep back.
+      const gross = invoiceCharge({ items, cisRate: inv.cis_rate }, inv.vat_registered ?? profile?.vat_registered ?? false).due;
       const paid = paidByInvoice.get(inv.id) ?? 0;
       // Marked part-paid with nothing recorded: the balance isn't known.
       if (inv.status === "partial" && paid === 0) continue;

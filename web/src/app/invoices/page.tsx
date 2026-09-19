@@ -5,6 +5,7 @@ import ScanOrAdd from "@/components/ScanOrAdd";
 import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
+import { invoiceCharge } from "@/lib/cis";
 import { downloadCsv } from "@/lib/exportCsv";
 import { computeInvoiceTotals } from "@/lib/vat";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
@@ -39,11 +40,15 @@ export default function InvoicesPage() {
     });
   }, []);
 
-  // Gross (incl. VAT) -- what the client actually owes, matching the
-  // "Amount due" figure on the invoice itself, not just the line items'
-  // raw subtotal.
+  // Gross (incl. VAT) less any CIS the contractor keeps back -- what the
+  // client actually pays, matching the "Amount due" figure on the invoice
+  // itself, not just the line items' raw subtotal.
   function total(inv: Invoice) {
-    return computeInvoiceTotals(inv.items, invoiceVat(inv, profile?.vatRegistered ?? false)).total;
+    return invoiceCharge(inv, invoiceVat(inv, profile?.vatRegistered ?? false)).due;
+  }
+
+  function cis(inv: Invoice) {
+    return invoiceCharge(inv, invoiceVat(inv, profile?.vatRegistered ?? false)).cis;
   }
 
   const creditNotesByInvoice = useMemo(() => {
@@ -153,6 +158,7 @@ export default function InvoicesPage() {
         due_date: inv.dueDate ?? "",
         client: clientName(inv.clientId),
         total: netTotal(inv).toFixed(2),
+        cis_deducted: cis(inv).toFixed(2),
         credited: credited(inv).toFixed(2),
         paid: paidSoFar(inv).toFixed(2),
         balance: balance(inv).toFixed(2),

@@ -14,7 +14,6 @@ import {
   receiptsStore,
   recurringExpensesStore,
 } from "@/lib/storage";
-import { computeInvoiceTotals } from "@/lib/vat";
 import { isOverdue } from "@/lib/invoiceStatus";
 import { FolderIcon, RepeatIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
@@ -26,6 +25,7 @@ import Tip from "@/components/Tip";
 import TaxSoFar from "@/components/TaxSoFar";
 import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
+import { invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 
 function ScanIcon() {
@@ -168,7 +168,7 @@ export default function Dashboard() {
       const outstanding = invoices
         .filter((inv) => inv.status === "sent" || inv.status === "partial")
         .map((inv) => {
-          const gross = computeInvoiceTotals(inv.items, invoiceVat(inv, profile.vatRegistered)).total;
+          const gross = invoiceCharge(inv, invoiceVat(inv, profile.vatRegistered)).due;
           const amountDue = invoiceBalance({ total: gross, credited: creditByInvoice.get(inv.id) ?? 0, paid: paidByInvoice.get(inv.id) ?? 0, status: inv.status });
           const clientName = clients.find((c) => c.id === inv.clientId)?.name || "No client";
           return { invoice: inv, amountDue, clientName };

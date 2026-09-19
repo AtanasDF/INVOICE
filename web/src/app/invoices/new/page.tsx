@@ -15,6 +15,8 @@ import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import type { TypedVat } from "@/lib/invoiceFromText";
 import { looksLikeCompany } from "@/lib/reminderTemplates";
+import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
+import { withKinds } from "@/lib/cis";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -93,14 +95,29 @@ export default function NewInvoicePage() {
   const [paymentTerms, setPaymentTerms] = useState<string>(draft?.paymentTerms ?? "");
   const [items, setItems] = useState<InvoiceItem[]>(() =>
     draft?.lines.length
-      ? draft.lines.map(({ description, quantity, unitPrice, vatRate }) => ({
+      ? draft.lines.map(({ description, quantity, unitPrice, vatRate, kind }) => ({
           description,
           quantity,
           unitPrice,
           vatRate: draft.vatRegistered ? (draft.reverseCharge ? "reverse_charge" : vatRate) : "standard",
+          // The Free page takes CIS off labour lines only.
+          kind: kind === "labour" ? ("labour" as const) : ("materials" as const),
         }))
       : [{ ...BLANK_ITEM }]
   );
+  const [cisRate, setCisRateState] = useState<number | null>(() => (draft?.cis.enabled ? draft.cis.rate : null));
+  // Once CIS is set by hand, picking a client or copying an invoice leaves it.
+  const cisTouchedRef = useRef(!!draft?.cis.enabled);
+  function setCisRate(rate: number | null) {
+    cisTouchedRef.current = true;
+    setCisRateState(rate);
+  }
+  // A client's CIS rate is the one on the last invoice made out to them.
+  function clientCisRate(forClientId: string, invoices: Invoice[] = pastInvoices): number | null {
+    let best: Invoice | null = null;
+    for (const inv of invoices) if (inv.clientId === forClientId && inv.status !== "draft" && (!best || inv.date > best.date)) best = inv;
+    return best?.cisRate ?? null;
+  }
   const [notes, setNotes] = useState<string>(draft?.notes ?? "");
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -138,6 +155,8 @@ export default function NewInvoicePage() {
   function discardImport() {
     clearFreeInvoiceDraft();
     setItems([{ ...BLANK_ITEM }]);
+    cisTouchedRef.current = false;
+    setCisRateState(clientCisRate(clientId));
     setNotes("");
     setPaymentTerms("");
     setDueDate(addDays(date, 30));
@@ -198,6 +217,7 @@ export default function NewInvoicePage() {
 
   function onClientChange(id: string) {
     setClientId(id);
+    if (!cisTouchedRef.current) setCisRateState(clientCisRate(id));
     const client = clients.find((c) => c.id === id);
     if (client?.paymentTerms && !paymentTerms) applyTerms(client.paymentTerms);
   }
@@ -383,6 +403,13 @@ export default function NewInvoicePage() {
       setAddClientError(null);
     }
 
+    // A copied CIS invoice stays CIS, at the rate that customer was last
+    // invoiced at.
+    if (!cisTouchedRef.current) {
+      const known = clientCisRate(forClientId, lists.pastInvoices);
+      setCisRateState(!typed && t.cis ? (known ?? 20) : known);
+    }
+
     const replaceLines = !typed || t.lineItems.length > 0;
     if (replaceLines) setItems(
       t.lineItems.length
@@ -402,6 +429,7 @@ export default function NewInvoicePage() {
               // multiply back to the gross that was said.
               unitPrice: Math.round(net * 10000) / 10000,
               vatRate,
+              kind: li.kind === "labour" ? ("labour" as const) : ("materials" as const),
             };
           })
         : [{ ...BLANK_ITEM }]
@@ -491,7 +519,8 @@ export default function NewInvoicePage() {
         clientId,
         date,
         number: draftPlaceholderNumber(),
-        items,
+        items: withKinds(items, cisRate),
+        cisRate,
         notes,
         dueDate: dueDate || null,
         paymentTerms,
@@ -584,7 +613,6 @@ export default function NewInvoicePage() {
             ` Amounts were entered in ${draft.currencySymbol}; this account invoices in £, so check them before saving.`}
           {draft.number &&
             ` It was numbered ${draft.number} there; here it gets your account's next number when you mark it sent, so if ${draft.number} has already gone to the customer, don't send this one again.`}
-          {draft.cis.enabled && " The CIS deduction isn't carried across, so the amount due here is higher than the one the customer saw."}
           {profile && draft.vatRegistered !== profile.vatRegistered &&
             (profile.vatRegistered
               ? " It had no VAT there, but this account is VAT registered, so 20% has been added to every line: check before saving."
@@ -662,6 +690,8 @@ export default function NewInvoicePage() {
           placeholder="Payment terms (e.g. 30 days)"
         />
 
+        <CisToggle rate={cisRate} onChange={setCisRate} />
+
         <div className="space-y-2">
           <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">
             <span className={profile?.vatRegistered ? "col-span-4" : "col-span-6"}>Description</span>
@@ -703,6 +733,7 @@ export default function NewInvoicePage() {
                 </select>
               )}
               <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
+              {cisRate !== null && <LineKind item={it} onChange={(kind) => updateItem(idx, { kind })} />}
             </div>
           ))}
           <button onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>
@@ -737,6 +768,7 @@ export default function NewInvoicePage() {
               {saving ? "Saving…" : "Save draft"}
             </button>
           </div>
+          <CisSummary items={items} rate={cisRate} total={totals.total} />
           <p className="text-right text-xs text-neutral-500">
             Saves as a draft — fully editable until you mark it sent, which is what assigns its invoice number, locks the rest in, and starts the due-date clock.
           </p>

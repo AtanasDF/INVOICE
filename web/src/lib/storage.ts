@@ -127,6 +127,9 @@ export type InvoiceItem = {
   // item even when the account isn't vat-registered (it's just ignored
   // then) so nothing is lost if VAT registration gets switched on later.
   vatRate: VatRateKind;
+  // On a CIS invoice, whether the line is labour (CIS is taken off it) or
+  // materials (it isn't). A line without one counts as labour.
+  kind?: "labour" | "materials";
 };
 
 export type Invoice = {
@@ -143,6 +146,9 @@ export type Invoice = {
   // The VAT setting it was issued under (migration-024); null while a draft,
   // which follows the account's current setting.
   vatRegistered: boolean | null;
+  // The CIS rate the contractor deducts from the labour (migration-027);
+  // null when it isn't a CIS invoice.
+  cisRate: number | null;
 };
 
 export type CreditNote = {
@@ -539,6 +545,7 @@ type InvoiceRow = {
   status: InvoiceStatus | null;
   tags: string[] | null;
   vat_registered?: boolean | null;
+  cis_rate?: number | null;
 };
 
 function invoiceFromRow(r: InvoiceRow): Invoice {
@@ -565,6 +572,7 @@ function invoiceFromRow(r: InvoiceRow): Invoice {
     status: r.status ?? "sent",
     tags: r.tags ?? [],
     vatRegistered: r.vat_registered ?? null,
+    cisRate: r.cis_rate ?? null,
   };
 }
 
@@ -579,7 +587,7 @@ export const invoicesStore = {
     if (error) throw error;
     return data ? invoiceFromRow(data as InvoiceRow) : null;
   },
-  async add(input: Omit<Invoice, "id" | "vatRegistered">): Promise<Invoice> {
+  async add(input: Omit<Invoice, "id" | "vatRegistered" | "cisRate"> & { cisRate?: number | null }): Promise<Invoice> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("invoices")
@@ -594,6 +602,7 @@ export const invoicesStore = {
         payment_terms: input.paymentTerms || null,
         status: input.status,
         tags: input.tags,
+        ...(input.cisRate ? { cis_rate: input.cisRate } : {}),
       })
       .select()
       .single();
@@ -633,7 +642,7 @@ export const invoicesStore = {
   // "changing what was billed" problem update() deliberately can't do.
   async updateDraft(
     id: string,
-    patch: Partial<Pick<Invoice, "clientId" | "date" | "items" | "dueDate" | "paymentTerms" | "notes" | "tags">>
+    patch: Partial<Pick<Invoice, "clientId" | "date" | "items" | "dueDate" | "paymentTerms" | "notes" | "tags" | "cisRate">>
   ): Promise<void> {
     const dbPatch: Record<string, unknown> = {};
     if (patch.clientId !== undefined) dbPatch.client_id = patch.clientId || null;
@@ -643,6 +652,7 @@ export const invoicesStore = {
     if (patch.paymentTerms !== undefined) dbPatch.payment_terms = patch.paymentTerms || null;
     if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
+    if (patch.cisRate !== undefined) dbPatch.cis_rate = patch.cisRate;
     const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
     if (error) throw error;
   },

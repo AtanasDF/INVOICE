@@ -3,7 +3,8 @@
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
-import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
+import { VAT_RATE_LABELS } from "@/lib/vat";
+import { invoiceCharge, labourNet } from "@/lib/cis";
 
 // A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
 const signedMoney = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
@@ -19,10 +20,11 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   forPdf?: boolean;
 }) {
   const vatRegistered = invoiceVat(invoice, profile?.vatRegistered ?? false);
-  const totals = computeInvoiceTotals(invoice.items, vatRegistered);
+  const totals = invoiceCharge(invoice, vatRegistered);
   const creditNoteTotal = creditNotes.reduce((s, c) => s + c.amount, 0);
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
-  const amountDue = invoiceBalance({ total: totals.total, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
+  const amountDue = invoiceBalance({ total: totals.due, credited: creditNoteTotal, paid: paidSoFar, status: invoice.status });
+  const cis = invoice.cisRate !== null;
   return (
     <>
       <div className="flex items-start justify-between">
@@ -61,7 +63,10 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         <tbody>
           {invoice.items.map((it, idx) => (
             <tr key={idx} className="border-b">
-              <td className="py-2">{it.description}</td>
+              <td className="py-2">
+                {it.description}
+                {cis && it.kind === "materials" && <span className="text-neutral-500"> (materials)</span>}
+              </td>
               <td className="py-2 text-right">{it.quantity}</td>
               <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
               {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
@@ -84,6 +89,21 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
             ))}
             <div className="flex justify-end text-neutral-600">
               <span>Total: £{totals.total.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+        {cis && (
+          <>
+            {!vatRegistered && (
+              <div className="flex justify-end text-neutral-600">
+                <span>Total: £{totals.total.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-end text-neutral-600">
+              <span>
+                CIS deduction ({invoice.cisRate}% of £{labourNet(invoice.items).toFixed(2)} labour):{" "}
+                <span className="whitespace-nowrap">−£{totals.cis.toFixed(2)}</span>
+              </span>
             </div>
           </>
         )}

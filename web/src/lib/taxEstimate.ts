@@ -1,6 +1,6 @@
 import type { CreditNote, Invoice, Receipt } from "@/lib/storage";
-import { computeInvoiceTotals } from "@/lib/vat";
 import { invoiceVat } from "@/lib/invoiceBalance";
+import { invoiceCharge } from "@/lib/cis";
 
 // England, Wales and Northern Ireland, 2026/27 (frozen at these figures
 // until 2030/31). Scotland sets its own income tax bands.
@@ -18,6 +18,39 @@ export function taxYearOf(iso: string): TaxYear {
   const year = Number(iso.slice(0, 4));
   const first = iso.slice(5) >= "04-06" ? year : year - 1;
   return { label: `${first}/${String(first + 1).slice(2)}`, start: `${first}-04-06`, end: `${first + 1}-04-05` };
+}
+
+const yearLabel = (first: number) => `${first}/${String(first + 1).slice(2)}`;
+
+// Self Assessment is paid on 31 January (what's still owed for the tax year
+// that ended the April before, with that year's return, and the first
+// payment on account towards the current year) and 31 July (the second
+// payment on account). Payments on account apply only to people whose last
+// bill was over £1,000 and not mostly taken at source.
+export function nextSelfAssessmentDate(today: string): { date: string; what: string } {
+  const y = Number(today.slice(0, 4));
+  const md = today.slice(5);
+  const january = (y2: number) => ({
+    date: `${y2}-01-31`,
+    what: `your ${yearLabel(y2 - 2)} return and any tax still owed for it, plus the first payment on account towards ${yearLabel(y2 - 1)} if you make them`,
+  });
+  if (md <= "01-31") return january(y);
+  if (md <= "07-31") return { date: `${y}-07-31`, what: `the second payment on account towards ${yearLabel(y - 1)}, if you make them` };
+  return january(y + 1);
+}
+
+// Fourteen days before each payment date, the daily notification says so
+// to everyone with notifications on.
+export const SA_NOTICE_DAYS = 14;
+export function selfAssessmentNotice(today: string): string | null {
+  const next = nextSelfAssessmentDate(today);
+  if (Math.round((Date.parse(next.date) - Date.parse(today)) / 86_400_000) !== SA_NOTICE_DAYS) return null;
+  return `Self Assessment is due ${next.date.endsWith("-01-31") ? "31 January" : "31 July"}: ${next.what}`;
+}
+
+// When a tax year's bill is finally due: 31 January after it ends.
+export function yearBillDue(year: TaxYear): string {
+  return `${Number(year.start.slice(0, 4)) + 2}-01-31`;
 }
 
 export function incomeTax(profit: number): number {
@@ -45,9 +78,13 @@ export type TaxEstimate = {
   incomeTax: number;
   class4: number;
   total: number;
+  // CIS contractors keep back from this year's invoices: tax already paid,
+  // so it comes off what's left to pay. setAside below zero is a refund.
+  cisDeducted: number;
+  setAside: number;
   // What the whole year comes to if it carries on at this rate; null in
   // the first month, when a projection would be noise.
-  projected: { profit: number; total: number } | null;
+  projected: { profit: number; total: number; setAside: number } | null;
   vatOwed: number | null;
   invoicesCounted: number;
   receiptsCounted: number;
@@ -70,25 +107,35 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
 
   let income = 0;
   let vatCharged = 0;
+  let cisDeducted = 0;
   let invoicesCounted = 0;
   const byId = new Map(invoices.map((inv) => [inv.id, inv]));
+  const creditedOn = new Map<string, number>();
+  for (const c of creditNotes) creditedOn.set(c.invoiceId, (creditedOn.get(c.invoiceId) ?? 0) + c.amount);
   for (const inv of invoices) {
     if (inv.status === "draft" || !inYear(inv.date)) continue;
     // Each invoice under the VAT setting it was issued with.
-    const t = computeInvoiceTotals(inv.items, invoiceVat(inv, vatRegistered));
+    const t = invoiceCharge(inv, invoiceVat(inv, vatRegistered));
     income += t.subtotal;
     vatCharged += t.totalVat;
+    // A credit note cancels the matching share of the CIS too: nothing is
+    // kept back on money the customer no longer owes.
+    if (t.cis > 0 && t.due > 0) cisDeducted += t.cis * Math.max(0, 1 - (creditedOn.get(inv.id) ?? 0) / t.due);
     invoicesCounted++;
   }
-  // Credit notes hold the gross amount; split it in the invoice's own
-  // net/VAT proportion.
+  // A credit note comes off what the customer pays (the total less any
+  // CIS), so it takes that share of the invoice's net and VAT with it.
+  // Credits beyond the whole invoice take nothing more off.
+  const creditedShare = new Map<string, number>();
   for (const c of creditNotes) {
     const inv = byId.get(c.invoiceId);
     if (!inv || inv.status === "draft" || !inYear(c.date)) continue;
-    const t = computeInvoiceTotals(inv.items, invoiceVat(inv, vatRegistered));
-    const netShare = t.total > 0 ? t.subtotal / t.total : 1;
-    income -= c.amount * netShare;
-    vatCharged -= c.amount * (1 - netShare);
+    const t = invoiceCharge(inv, invoiceVat(inv, vatRegistered));
+    const used = creditedShare.get(inv.id) ?? 0;
+    const share = Math.max(0, Math.min(t.due > 0 ? c.amount / t.due : 1, 1 - used));
+    creditedShare.set(inv.id, used + share);
+    income -= t.subtotal * share;
+    vatCharged -= t.totalVat * share;
   }
 
   // Without VAT registration the VAT on a cost can't be reclaimed, so it is
@@ -109,6 +156,7 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   const days = Math.round((Date.parse(today) - Date.parse(year.start)) / 86_400_000) + 1;
   const yearDays = Math.round((Date.parse(year.end) - Date.parse(year.start)) / 86_400_000) + 1;
   const projectedProfit = days >= 30 ? (profit * yearDays) / days : null;
+  const projectedTax = projectedProfit === null ? 0 : incomeTax(projectedProfit) + class4(projectedProfit);
 
   return {
     year,
@@ -119,7 +167,12 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
     incomeTax: round(it),
     class4: round(ni),
     total: round(it + ni),
-    projected: projectedProfit === null ? null : { profit: round(projectedProfit), total: round(incomeTax(projectedProfit) + class4(projectedProfit)) },
+    cisDeducted: round(cisDeducted),
+    setAside: round(it + ni - cisDeducted),
+    projected:
+      projectedProfit === null
+        ? null
+        : { profit: round(projectedProfit), total: round(projectedTax), setAside: round(projectedTax - (cisDeducted * yearDays) / days) },
     vatOwed: vatRegistered ? round(vatCharged - vatPaid) : null,
     invoicesCounted,
     receiptsCounted,
