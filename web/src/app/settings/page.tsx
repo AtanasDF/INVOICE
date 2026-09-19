@@ -20,6 +20,7 @@ import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { DEFAULT_REMINDER_TEXT } from "@/lib/reminderTemplates";
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
 import { inlineImage } from "@/lib/receiptImages";
+import CompanyNameInput from "@/components/CompanyNameInput";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
@@ -238,10 +239,17 @@ export default function SettingsPage() {
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div>
             <label className="text-xs text-neutral-500">Business name</label>
-            <input
+            <CompanyNameInput
               className="w-full rounded-lg border px-3 py-2"
+              lookupPlaceholder="Limited company? Type to find it on Companies House"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
+              onChange={setBusinessName}
+              address={address}
+              onAddress={setAddress}
+              onPick={(c, fillAddress) => {
+                setBusinessName(c.name);
+                if (fillAddress) setAddress(fillAddress);
+              }}
             />
           </div>
           <div>
