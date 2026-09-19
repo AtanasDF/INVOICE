@@ -36,12 +36,15 @@ a straight job; a document that shows it's been paid should be recognised as pai
   re-reads queued behind the batch; a stale "Needs a look"; inbox cropped unshared
   pages). Also: pages joined in the stack review stay one document; conformToSchema
   parses a nested array sent as JSON text.
-- Merged current main into the branch (only SESSIONS.md conflicted). Main's Quotes UX
-  entry had taken the place of the overnight entry's heading; the heading is back.
-- Tests (harness, mocked DB, dev server on 3304): `test-multi-docs.mjs` 33/33; uploads
-  15/15, review-fixes 21/21, receipts list 74/74, far-v2 35/35, bent 63/64 (the miss is
-  "little table pulled in" at 3.5% vs < 3% on a jittery clip, at load 15-30 from other
-  sessions; the scanner code is untouched here). tsc, eslint, build clean.
+- Merged current main into the branch (clear-form buttons, scanner torch, quotes redesign,
+  invoice-page fix); only SESSIONS.md conflicted. Main's Quotes UX entry had taken the
+  place of the overnight entry's heading; the heading is back.
+- Tests on the merged branch (harness, mocked DB, dev server on 3304): `test-multi-docs.mjs`
+  33/33, uploads 15/15, review-fixes 21/21, receipts list 74/74, bent 64/64, far-v2 34/35.
+  tsc, eslint, build clean. The far-v2 miss is main's new torch: on the dark clip the
+  scanner now says "It's dark here — more light helps", and that suite's dark check still
+  expects no hint at all — the expectation needs updating, nothing in the scanner is wrong
+  (earlier bent failures at load 15-30 all passed once the machine was quiet).
 
 **Open:** try it on the iPhone with real paper; the Claude engine couldn't be run here
 (no Anthropic key locally), so the first Claude read of the new schema is unverified.
