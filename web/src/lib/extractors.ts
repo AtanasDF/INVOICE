@@ -54,7 +54,7 @@ async function extractWithClaude<T>(opts: ExtractStructuredOptions): Promise<T> 
     model: CLAUDE_MODEL,
     max_tokens: opts.maxTokens ?? 16000,
     output_config: { effort: "medium" },
-    tools: [{ name: opts.name, description: opts.description, strict: true, input_schema: opts.schema as Anthropic.Tool["input_schema"] }],
+    tools: [{ name: opts.name, description: opts.description, strict: true, input_schema: toClaudeSchema(opts.schema) as Anthropic.Tool["input_schema"] }],
     tool_choice: { type: "tool", name: opts.name },
     messages: [{ role: "user", content: [...pageBlocks, { type: "text", text: opts.prompt }] }],
   });
@@ -62,7 +62,56 @@ async function extractWithClaude<T>(opts: ExtractStructuredOptions): Promise<T> 
   if (response.stop_reason === "max_tokens") throw new Error(CUT_OFF);
   const toolUse = response.content.find((block): block is Anthropic.ToolUseBlock => block.type === "tool_use");
   if (!toolUse) throw new Error(NOT_STRUCTURED);
-  return toolUse.input as T;
+  return restoreNulls(opts.schema, toolUse.input) as T;
+}
+
+const NULLABLE_TEXT_HINT = " Empty string when it is not on the document.";
+
+function isNullableText(node: Record<string, unknown>): { values?: unknown[] } | null {
+  const t = node.type;
+  if (Array.isArray(t) && t.includes("null") && t.includes("string") && t.length === 2) return { values: undefined };
+  const branches = node.anyOf;
+  if (!Array.isArray(branches) || branches.length !== 2) return null;
+  const text = branches.find((b) => (b as Record<string, unknown>).type === "string") as Record<string, unknown> | undefined;
+  const none = branches.find((b) => (b as Record<string, unknown>).type === "null");
+  return text && none ? { values: text.enum as unknown[] | undefined } : null;
+}
+
+// Claude's strict tool schemas allow at most 16 union-typed parameters and
+// the scan schema has far more nullable strings than that, so for Claude a
+// nullable string becomes a plain string that is empty when absent (an
+// enum gains "" as its "none" value); restoreNulls maps "" back to null.
+// Nullable numbers stay unions: there are only a few.
+export function toClaudeSchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(toClaudeSchema);
+  if (!node || typeof node !== "object") return node;
+  const source = node as Record<string, unknown>;
+  const text = isNullableText(source);
+  if (text) {
+    const description = `${(source.description as string | undefined) ?? ""}${NULLABLE_TEXT_HINT}`.trim();
+    return text.values ? { type: "string", enum: [...text.values, ""], description } : { type: "string", description };
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(source)) {
+    out[k] = k === "properties" && v && typeof v === "object"
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([pk, pv]) => [pk, toClaudeSchema(pv)]))
+      : k === "items" || k === "anyOf"
+        ? toClaudeSchema(v)
+        : v;
+  }
+  return out;
+}
+
+export function restoreNulls(schema: unknown, value: unknown): unknown {
+  if (!schema || typeof schema !== "object") return value;
+  const node = schema as Record<string, unknown>;
+  if (isNullableText(node)) return value === "" ? null : value;
+  if (Array.isArray(value) && node.items) return value.map((v) => restoreNulls(node.items, v));
+  if (value && typeof value === "object" && node.properties) {
+    const props = node.properties as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, restoreNulls(props[k], v)]));
+  }
+  return value;
 }
 
 async function extractWithGemini<T>(opts: ExtractStructuredOptions): Promise<T> {
