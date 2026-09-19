@@ -398,7 +398,8 @@ export default function InvoiceViewPage() {
         dueDate: addDays(today, 30),
         paymentTerms: invoice.paymentTerms,
         status: "draft",
-        tags: invoice.tags,
+        // "from Q-..." marks the invoice a quote became; a copy isn't it.
+        tags: invoice.tags.filter((t) => !t.startsWith("from Q-")),
       });
       router.push(`/invoices/${created.id}`);
     } catch (err) {

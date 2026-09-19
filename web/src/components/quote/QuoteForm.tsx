@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NumberInput } from "@/components/free-invoice/fields";
+import { money } from "@/components/quote/QuoteDocument";
 import { addDays } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem } from "@/lib/storage";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
@@ -118,8 +119,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
       </div>
 
       <div className="text-right text-sm text-neutral-700">
-        {vatRegistered && <div>Subtotal £{totals.subtotal.toFixed(2)} · VAT £{totals.totalVat.toFixed(2)}</div>}
-        <div className="text-lg font-bold">Total £{totals.total.toFixed(2)}</div>
+        {vatRegistered && <div>Subtotal {money(totals.subtotal)} · VAT {money(totals.totalVat)}</div>}
+        <div className="text-lg font-bold">Total {money(totals.total)}</div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -280,7 +280,7 @@ export const clientsStore = {
       // from who it was billed to or bought from is a real integrity
       // problem, not a convenience.
       if (error.code === "23503") {
-        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
+        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, quotes, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
       }
       throw error;
     }
@@ -1163,27 +1163,36 @@ export const quotesStore = {
     if (error) throw error;
     if (!data?.length) throw new Error("This quote has already been turned into an invoice. Reload to see it.");
   },
+  // A draft becomes sent when it's emailed; anything further along stays.
+  async markSent(id: string): Promise<boolean> {
+    const { data, error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id).eq("status", "draft").select("id");
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  },
   // Turning a quote into an invoice claims it first (status invoiced, no
   // invoice yet), so a second tap or tab can't make a second invoice; the
-  // invoice is then created and linked. claim returns false if another
-  // tap got there first; release puts it back if creating the invoice failed.
-  async claimForInvoice(id: string): Promise<boolean> {
+  // invoice is then made from the claimed row, not from what a possibly
+  // stale page shows, and linked. claim returns null if another tap got
+  // there first; release puts it back if no invoice was made.
+  async claimForInvoice(id: string): Promise<Quote | null> {
     const { data, error } = await supabase
       .from("quotes")
       .update({ status: "invoiced" })
       .eq("id", id)
       .neq("status", "invoiced")
       .is("invoice_id", null)
-      .select("id");
+      .select("*");
     if (error) throw error;
-    return (data ?? []).length > 0;
+    return data?.length ? quoteFromRow(data[0] as QuoteRow) : null;
   },
   async releaseClaim(id: string, status: Exclude<QuoteStatus, "invoiced">): Promise<void> {
-    const { error } = await supabase.from("quotes").update({ status }).eq("id", id).is("invoice_id", null);
+    const { error } = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", "invoiced").is("invoice_id", null);
     if (error) throw error;
   },
+  // Linking also sets invoiced: the invoice exists, even if the claim was
+  // put back from another tab meanwhile.
   async linkInvoice(id: string, invoiceId: string): Promise<void> {
-    const { error } = await supabase.from("quotes").update({ invoice_id: invoiceId }).eq("id", id).is("invoice_id", null);
+    const { error } = await supabase.from("quotes").update({ invoice_id: invoiceId, status: "invoiced" }).eq("id", id).is("invoice_id", null);
     if (error) throw error;
   },
 };

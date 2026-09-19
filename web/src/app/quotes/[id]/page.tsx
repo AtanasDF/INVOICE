@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import QuoteDocument, { quoteTotal } from "@/components/quote/QuoteDocument";
 import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
 import SendInvoicePanel from "@/components/SendInvoicePanel";
@@ -40,6 +40,7 @@ export default function QuotePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => fetchQuote(id).then((d) => {
@@ -61,8 +62,23 @@ export default function QuotePage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Coming back to the tab picks up changes made on another device, so an
+  // old copy isn't sent or invoiced.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !busyRef.current) load().catch(() => {});
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load]);
+
   async function run(action: () => Promise<void>) {
     setBusy(true);
+    busyRef.current = true;
     setError(null);
     try {
       await action();
@@ -70,6 +86,7 @@ export default function QuotePage() {
       setError(errorText(err, "Something went wrong."));
       await load().catch(() => {});
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -104,30 +121,38 @@ export default function QuotePage() {
     setEditing(false);
   }
 
-  // Claim the quote, make the draft invoice, then link it. The claim stops
-  // a second tap or tab making a second invoice; if the invoice can't be
-  // made the claim is released so the quote can be tried again.
+  // Claim the quote, make the draft invoice from the claimed row, then link
+  // it. The claim stops a second tap or tab making a second invoice. If the
+  // invoice seems not to have been made, look for it before releasing the
+  // claim: a lost reply can hide an invoice that was.
   const toInvoice = () =>
     run(async () => {
       const before = q.status as Open;
-      if (!(await quotesStore.claimForInvoice(q.id))) throw new Error("This quote has already been turned into an invoice.");
+      const claimed = await quotesStore.claimForInvoice(q.id);
+      if (!claimed) throw new Error("This quote has already been turned into an invoice.");
+      const tag = `from ${claimed.number}`;
+      const terms = clients.find((c) => c.id === claimed.clientId)?.paymentTerms ?? "";
       let invoice: Invoice;
       try {
         const date = todayIso();
         invoice = await invoicesStore.add({
-          clientId: q.clientId,
+          clientId: claimed.clientId,
           date,
           number: draftPlaceholderNumber(),
-          items: q.items,
-          notes: q.notes,
-          dueDate: addDays(date, termsLength(client?.paymentTerms ?? "") ?? 30),
-          paymentTerms: client?.paymentTerms ?? "",
+          items: claimed.items,
+          notes: claimed.notes,
+          dueDate: addDays(date, termsLength(terms) ?? 30),
+          paymentTerms: terms,
           status: "draft",
-          tags: [`from ${q.number}`],
+          tags: [tag],
         });
       } catch (err) {
-        await quotesStore.releaseClaim(q.id, before).catch(() => {});
-        throw err;
+        const made = (await invoicesStore.all().catch(() => [])).find((inv) => inv.tags.includes(tag));
+        if (!made) {
+          await quotesStore.releaseClaim(q.id, before).catch(() => {});
+          throw err;
+        }
+        invoice = made;
       }
       await quotesStore.linkInvoice(q.id, invoice.id).catch(() => {});
       router.push(`/invoices/${invoice.id}`);
@@ -241,7 +266,12 @@ export default function QuotePage() {
             bank: [],
           }}
           onSent={() => {
-            if (q.status === "draft") setStatus("sent");
+            quotesStore
+              .markSent(q.id)
+              .then((changed) => {
+                if (changed) setQuote((prev) => (prev && prev.status === "draft" ? { ...prev, status: "sent" } : prev));
+              })
+              .catch((err) => setError(errorText(err, "Sent, but the quote couldn't be marked as sent.")));
           }}
         />
       )}

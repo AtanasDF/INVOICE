@@ -2,7 +2,7 @@ import { longDate } from "@/components/invoice/InvoiceDocument";
 import type { BusinessProfile, Client, Quote } from "@/lib/storage";
 import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
 
-const money = (n: number) => `£${(Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const money = (n: number) => `£${(Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function quoteTotal(quote: Quote, vatRegistered: boolean): number {
   return Math.round(computeInvoiceTotals(quote.items, vatRegistered).total * 100) / 100;
@@ -57,26 +57,24 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
         </tbody>
       </table>
 
-      <div className="mt-4 space-y-1 text-sm">
-        {vatRegistered && (
-          <>
-            <div className="flex justify-end text-neutral-600">Subtotal (excl. VAT): {money(totals.subtotal)}</div>
-            {totals.vatByRate.map((v) => (
-              <div key={v.kind} className="flex justify-end text-neutral-600">
-                {VAT_RATE_LABELS[v.kind]}: {money(v.vat)}
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-      <div className="mt-4 flex justify-end">
+      {vatRegistered && (
+        <section className="mt-4 space-y-1 text-right text-sm text-neutral-600">
+          <p>Subtotal (excl. VAT): {money(totals.subtotal)}</p>
+          {totals.vatByRate.map((v) => (
+            <p key={v.kind}>
+              {VAT_RATE_LABELS[v.kind]}: {money(v.vat)}
+            </p>
+          ))}
+        </section>
+      )}
+      <section className="mt-4 flex justify-end">
         <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
-          <div className="text-2xl font-extrabold">Total: {money(totals.total)}</div>
-          {quote.validUntil && <div className="text-sm text-neutral-600">This quote is valid until {longDate(quote.validUntil)}.</div>}
+          <p className="text-2xl font-extrabold">Total: {money(totals.total)}</p>
+          {quote.validUntil && <p className="text-sm text-neutral-600">This quote is valid until {longDate(quote.validUntil)}.</p>}
         </div>
-      </div>
+      </section>
 
-      {quote.notes && <div className="mt-6 whitespace-pre-line border-t pt-4 text-sm text-neutral-600">{quote.notes}</div>}
+      {quote.notes && <p className="mt-6 whitespace-pre-line border-t pt-4 text-sm text-neutral-600">{quote.notes}</p>}
     </>
   );
 }
