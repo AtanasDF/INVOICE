@@ -97,6 +97,9 @@ export default function NewInvoicePage() {
 
   const [capture, setCapture] = useState<"copy" | "attach" | null>(() => (copyMode ? "copy" : null));
   const [copied, setCopied] = useState<{ currency: string | null } | null>(null);
+  const [typed, setTyped] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [typedNote, setTypedNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [newCustomer, setNewCustomer] = useState<ScannedCustomer | null>(null);
   const [addingClient, setAddingClient] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -299,6 +302,29 @@ export default function NewInvoicePage() {
   // Everything a copy fills is replaced on every scan, so "Scan again" can't
   // leave the previous customer, terms or lines behind; notes typed by hand
   // are kept.
+  async function fillFromText() {
+    setTyping(true);
+    setTypedNote(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in again.");
+      const res = await fetch("/api/invoice-from-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ text: typed }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; error?: string };
+      if (!res.ok || !body.template) throw new Error(body.error || "Couldn't turn that into an invoice.");
+      const lists = await (listsRef.current ?? Promise.resolve({ clients, pastInvoices }));
+      applyCopy(body.template, lists);
+      setTypedNote({ ok: true, text: "Filled in from what you typed, dated today. Check it before saving." });
+    } catch (err) {
+      setTypedNote({ ok: false, text: err instanceof Error ? err.message : "Couldn't turn that into an invoice." });
+    } finally {
+      setTyping(false);
+    }
+  }
+
   function applyCopy(t: InvoiceTemplate, lists: { clients: Client[]; pastInvoices: Invoice[] }) {
     const name = t.customer.name?.trim() ?? "";
     const billable = lists.clients.filter((c) => c.kind === "client" && !c.archived);
@@ -436,6 +462,33 @@ export default function NewInvoicePage() {
         </p>
       )}
       {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+      {!copyMode && (
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <label className="text-xs text-neutral-500" htmlFor="describe-invoice">
+            Or describe it and it&apos;s filled in for you
+          </label>
+          <textarea
+            id="describe-invoice"
+            rows={2}
+            className="mt-1 w-full rounded-lg border px-3 py-2"
+            placeholder="e.g. Smith Ltd, 3 days plastering at £250 a day plus VAT, 14 days"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={fillFromText}
+              disabled={typing || !typed.trim()}
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {typing ? "Filling in…" : "Fill in the invoice"}
+            </button>
+            <span className="text-xs text-neutral-500">On a phone you can tap the microphone on the keyboard and say it.</span>
+          </div>
+          {typedNote && <p className={`mt-2 text-sm ${typedNote.ok ? "text-neutral-600" : "text-red-600"}`}>{typedNote.text}</p>}
+        </div>
+      )}
       {imported && draft && (
         <p className="text-sm text-blue-600">
           Imported from your free invoice.
