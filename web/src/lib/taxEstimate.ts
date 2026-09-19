@@ -150,16 +150,18 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   const profit = income - expenses;
   const days = Math.round((Date.parse(today) - Date.parse(year.start)) / 86_400_000) + 1;
   const yearDays = Math.round((Date.parse(year.end) - Date.parse(year.start)) / 86_400_000) + 1;
-  const projectedProfit = days >= 30 ? (profit * yearDays) / days : null;
-  const projectedTax = projectedProfit === null ? 0 : incomeTax(projectedProfit) + class4(projectedProfit);
   // The year's allowances and bands belong to the whole year: tax on the
   // profit so far with all of them would understate what's building up,
-  // and CIS (kept back from the first pound) would look like a refund for
-  // most of the year. So once there's a month to go on, it's the share of
-  // the whole year's projected tax built up so far.
+  // and CIS (kept back from the first pound) would look like a refund. So
+  // it's the share of the whole year's tax built up so far, the year taken
+  // to carry on at this rate -- from the first day, so the figure doesn't
+  // jump when the projection line appears after a month.
   const share = days / yearDays;
-  const it = projectedProfit === null ? incomeTax(profit) : incomeTax(projectedProfit) * share;
-  const ni = projectedProfit === null ? class4(profit) : class4(projectedProfit) * share;
+  const yearProfit = profit / share;
+  const yearTax = incomeTax(yearProfit) + class4(yearProfit);
+  const it = incomeTax(yearProfit) * share;
+  const ni = class4(yearProfit) * share;
+  const projectedProfit = days >= 30 ? yearProfit : null;
 
   return {
     year,
@@ -175,7 +177,7 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
     projected:
       projectedProfit === null
         ? null
-        : { profit: round(projectedProfit), total: round(projectedTax), setAside: round(projectedTax - (cisDeducted * yearDays) / days) },
+        : { profit: round(projectedProfit), total: round(yearTax), setAside: round(yearTax - cisDeducted / share) },
     vatOwed: vatRegistered ? round(vatCharged - vatPaid) : null,
     invoicesCounted,
     receiptsCounted,

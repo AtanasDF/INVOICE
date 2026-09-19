@@ -283,7 +283,7 @@ export default function InvoicesPage() {
                     {inv.date} · £{netTotal(inv).toFixed(2)}
                     {notes.length > 0 && (
                       <>
-                        {" "}<span className="line-through">£{total(inv).toFixed(2)}</span> after £{creditedAmount.toFixed(2)} credited
+                        {" "}<span className="line-through">£{total(inv).toFixed(2)}</span> after £{creditOffDue(charge(inv), creditedAmount).toFixed(2)} credited
                       </>
                     )}
                     {paidSoFar(inv) > 0 && inv.status !== "paid" && ` · £${paidSoFar(inv).toFixed(2)} paid, £${balance(inv).toFixed(2)} still owed`}

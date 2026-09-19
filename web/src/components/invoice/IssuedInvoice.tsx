@@ -25,6 +25,11 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
   const amountDue = invoiceBalance({ total: totals.due, credited: creditOffDue(totals, creditNoteTotal), paid: paidSoFar, status: invoice.status });
   const cis = invoice.cisRate !== null;
+  // After a credit note the CIS is on what's still billed, so Total, CIS,
+  // credit notes and payments add up to the amount due.
+  const billedShare = totals.total > 0 ? Math.max(0, 1 - creditNoteTotal / totals.total) : 0;
+  const cisShown = Math.round(totals.cis * billedShare * 100) / 100;
+  const labourShown = Math.max(0, labourNet(invoice.items)) * billedShare;
   return (
     <>
       <div className="flex items-start justify-between">
@@ -101,8 +106,8 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
             )}
             <div className="flex justify-end text-neutral-600">
               <span>
-                CIS deduction ({invoice.cisRate}% of £{Math.max(0, labourNet(invoice.items)).toFixed(2)} labour):{" "}
-                <span className="whitespace-nowrap">−£{totals.cis.toFixed(2)}</span>
+                CIS deduction ({invoice.cisRate}% of £{labourShown.toFixed(2)} labour{creditNoteTotal > 0 ? " after credit" : ""}):{" "}
+                <span className="whitespace-nowrap">−£{cisShown.toFixed(2)}</span>
               </span>
             </div>
           </>
