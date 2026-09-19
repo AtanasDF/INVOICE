@@ -52,7 +52,7 @@ export default function RecurringExpensesPage() {
     return clients.find((c) => c.id === id)?.name || "";
   }
 
-  const filled = !!(description || totalAmount || vatAmount || supplierId || dayOfMonth !== "1");
+  const filled = !!(description || totalAmount || vatAmount || supplierId || dayOfMonth !== "1" || category !== categories[0]);
 
   function clearForm() {
     setDescription("");
@@ -60,6 +60,7 @@ export default function RecurringExpensesPage() {
     setVatAmount("");
     setSupplierId("");
     setDayOfMonth("1");
+    setCategory(categories[0]);
     setError(null);
   }
 
