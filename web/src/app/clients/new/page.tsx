@@ -8,6 +8,7 @@ import type { ScannedContact } from "@/lib/contactExtraction";
 import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import { CameraIcon } from "@/components/icons";
+import CompanyNameInput from "@/components/CompanyNameInput";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -169,12 +170,26 @@ export default function NewClientPage() {
             Individual
           </label>
         </div>
-        <input
-          className="w-full rounded-lg border px-3 py-2"
-          placeholder={isCompany ? "Company name" : "Full name"}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        {isCompany ? (
+          <CompanyNameInput
+            className="w-full rounded-lg border px-3 py-2"
+            placeholder="Company name"
+            lookupPlaceholder="Company name (type to search Companies House)"
+            value={name}
+            onChange={setName}
+            onPick={(c) => {
+              setName(c.name);
+              if (c.address) setAddress(c.address);
+            }}
+          />
+        ) : (
+          <input
+            className="w-full rounded-lg border px-3 py-2"
+            placeholder="Full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        )}
         <input
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Email (optional)"

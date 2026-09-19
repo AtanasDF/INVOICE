@@ -7,6 +7,8 @@ import { Field, INPUT, NumberInput, Segmented, Toggle } from "@/components/free-
 import LayoutPicker from "@/components/free-invoice/LayoutPicker";
 import SignaturePad from "@/components/free-invoice/SignaturePad";
 import Tip from "@/components/Tip";
+import CompanyNameInput, { useCompanyLookup } from "@/components/CompanyNameInput";
+import type { CompanyMatch } from "@/lib/companyLookup";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -21,7 +23,7 @@ type Nullable<T> = { [K in keyof T]: string | null };
 
 function TextFields<T extends Nullable<T>>({ value, fields, onChange }: {
   value: T;
-  fields: { key: keyof T; label: string; type?: string; multiline?: boolean; hint?: string; span?: boolean }[];
+  fields: { key: keyof T; label: string; type?: string; multiline?: boolean; hint?: string; span?: boolean; lookup?: (c: CompanyMatch) => Partial<T> }[];
   onChange: (v: T) => void;
 }) {
   return (
@@ -31,6 +33,13 @@ function TextFields<T extends Nullable<T>>({ value, fields, onChange }: {
           <Field label={f.label} hint={f.hint}>
             {f.multiline ? (
               <textarea rows={3} className={INPUT} value={value[f.key] ?? ""} onChange={(e) => onChange({ ...value, [f.key]: e.target.value || null })} />
+            ) : f.lookup ? (
+              <CompanyNameInput
+                className={INPUT}
+                value={value[f.key] ?? ""}
+                onChange={(v) => onChange({ ...value, [f.key]: v || null })}
+                onPick={(c) => onChange({ ...value, ...f.lookup!(c) })}
+              />
             ) : (
               <input type={f.type ?? "text"} className={INPUT} value={value[f.key] ?? ""} onChange={(e) => onChange({ ...value, [f.key]: e.target.value || null })} />
             )}
@@ -43,6 +52,7 @@ function TextFields<T extends Nullable<T>>({ value, fields, onChange }: {
 
 export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDraft; onChange: (d: FreeInvoiceDraft) => void }) {
   const set = (patch: Partial<FreeInvoiceDraft>) => onChange({ ...draft, ...patch });
+  const lookupOn = useCompanyLookup();
   const isPreset = (PAYMENT_TERMS as readonly string[]).includes(draft.paymentTerms);
   const [customTerms, setCustomTerms] = useState(!isPreset);
   const termsValue = customTerms || !isPreset ? "custom" : draft.paymentTerms;
@@ -81,7 +91,13 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           value={draft.issuer}
           onChange={(issuer) => set({ issuer })}
           fields={[
-            { key: "name", label: "Business name", span: true, hint: draft.issuer.name ? undefined : "Add your name so the customer knows who to pay." },
+            {
+              key: "name",
+              label: "Business name",
+              span: true,
+              hint: draft.issuer.name ? undefined : `Add your name so the customer knows who to pay.${lookupOn ? " A limited company? Type its name and pick it to fill in the address and company number." : ""}`,
+              lookup: (c) => ({ name: c.name, address: c.address || null, companyNumber: c.number }),
+            },
             { key: "address", label: "Address", multiline: true },
             { key: "email", label: "Email", type: "email" },
             { key: "phone", label: "Phone", type: "tel" },
@@ -126,7 +142,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           value={draft.customer}
           onChange={(customer) => set({ customer })}
           fields={[
-            { key: "name", label: "Customer name", span: true },
+            { key: "name", label: "Customer name", span: true, lookup: (c) => ({ name: c.name, address: c.address || null }) },
             { key: "address", label: "Address", multiline: true },
             { key: "email", label: "Email", type: "email", span: true },
           ]}
