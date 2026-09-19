@@ -233,7 +233,10 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           value={draft.signature}
           onChange={(signature) => {
             // Leaving it off this invoice keeps it remembered for the next.
-            if (signature) saveSignature(signature, draft.signedBy);
+            if (signature) {
+              saveSignature(signature, draft.signedBy);
+              setHasSaved(true);
+            }
             set({ signature });
           }}
         />

@@ -119,15 +119,18 @@ export function stripNumberLabel(number: string): string {
 
 // The sequence moves on by one, keeping its zero padding: "INV-0042"
 // becomes "INV-0043" and "2026/30" becomes "2026/31". When the last digit
-// run is a year after a sequence ("042/2026"), the sequence moves, not the
-// year. A number with no digits can't be continued, so it comes back empty
+// run is this year (give or take one) after a sequence that isn't a year
+// itself ("042/2026"), the sequence moves, not the year. A number with no digits can't be continued, so it comes back empty
 // rather than repeated.
 export function nextInvoiceNumber(number: string): string {
   const n = stripNumberLabel(number);
   const runs = [...n.matchAll(/\d+/g)];
   if (!runs.length) return "";
   const last = runs[runs.length - 1];
-  const target = runs.length > 1 && /^(19|20)\d\d$/.test(last[0]) ? runs[runs.length - 2] : last;
+  const before = runs[runs.length - 2];
+  const year = new Date().getFullYear();
+  const isYear = (run: string) => run.length === 4 && Math.abs(Number(run) - year) <= 1;
+  const target = before && isYear(last[0]) && !/^(19|20)\d\d$/.test(before[0]) ? before : last;
   const next = String(Number(target[0]) + 1).padStart(target[0].length, "0");
   return n.slice(0, target.index) + next + n.slice(target.index! + target[0].length);
 }
