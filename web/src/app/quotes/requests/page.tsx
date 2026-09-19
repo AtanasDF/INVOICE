@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Client, clientsStore } from "@/lib/storage";
 import { ANSWER_BADGES, ANSWER_LABELS, QuoteRequest, RequestSupplier, answerKey, offerOf, quoteRequestsStore, requestSuppliersStore } from "@/lib/quoteRequests";
 import { formatPence, supplierTotal } from "@/lib/quoteCompare";
-import { shortDate } from "@/components/quoteRequest/dates";
+import { shortDate } from "@/lib/quoteStatus";
 import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
 import { errorText } from "@/lib/errorText";
 

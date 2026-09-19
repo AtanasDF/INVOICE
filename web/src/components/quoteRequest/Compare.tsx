@@ -1,7 +1,7 @@
 "use client";
 
 import { Comparison, Offer, Picks, Plan, RequestItem, cellFor, cheapestFor, formatPence, isExpired, planFor, quantityText, supplierTotal } from "@/lib/quoteCompare";
-import { shortDate } from "@/components/quoteRequest/dates";
+import { shortDate } from "@/lib/quoteStatus";
 
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
 

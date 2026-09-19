@@ -8,7 +8,8 @@ import OrderLists from "@/components/quoteRequest/OrderLists";
 import AnswerEntry from "@/components/quoteRequest/AnswerEntry";
 import RequestForm, { MAX_SUPPLIERS } from "@/components/quoteRequest/RequestForm";
 import { longDate } from "@/components/invoice/InvoiceDocument";
-import { shortDate, when } from "@/components/quoteRequest/dates";
+import { when } from "@/components/quoteRequest/dates";
+import { shortDate } from "@/lib/quoteStatus";
 import { Client, businessProfileStore, clientsStore } from "@/lib/storage";
 import {
   ANSWER_BADGES,
