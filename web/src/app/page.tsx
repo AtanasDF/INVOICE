@@ -22,6 +22,8 @@ import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
 import Tip from "@/components/Tip";
+import TaxSoFar from "@/components/TaxSoFar";
+import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 
 function ScanIcon() {
   return (
@@ -66,6 +68,7 @@ export default function Dashboard() {
 
   const [outstandingInvoices, setOutstandingInvoices] = useState<{ invoice: Invoice; amountDue: number; clientName: string }[]>([]);
   const [monthTotal, setMonthTotal] = useState(0);
+  const [tax, setTax] = useState<TaxEstimate | null>(null);
   const [monthVat, setMonthVat] = useState(0);
   const [showOverdueBanner, setShowOverdueBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -149,6 +152,7 @@ export default function Dashboard() {
       // nobody's confirmed yet shouldn't silently skew these totals
       // before it's actually been checked.
       const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth && !r.needsReview);
+      setTax(estimateTax({ invoices, creditNotes, receipts, vatRegistered: profile.vatRegistered, today }));
       setMonthTotal(monthReceipts.reduce((s, r) => s + r.amount, 0));
       setMonthVat(monthReceipts.reduce((s, r) => s + r.vatAmount, 0));
 
@@ -438,6 +442,8 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {tax && <TaxSoFar estimate={tax} />}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
