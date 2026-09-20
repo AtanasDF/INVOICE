@@ -38,7 +38,8 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
         {client?.isCompany && client.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
       </div>
 
-      <table className="mt-6 w-full text-sm">
+      <div className="mt-6 overflow-x-auto print:overflow-visible">
+        <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Description</th>
@@ -59,7 +60,8 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
 
       {vatRegistered && (
         <section className="mt-4 space-y-1 text-right text-sm text-neutral-600">

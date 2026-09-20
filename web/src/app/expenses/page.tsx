@@ -232,29 +232,29 @@ export default function ExpensesPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-          <div className="text-2xl font-bold">£{totals.total.toFixed(2)}</div>
+          <div className="text-xl font-bold sm:text-2xl">£{totals.total.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">Total excl. VAT</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-          <div className="text-2xl font-bold">£{totals.vat.toFixed(2)}</div>
+          <div className="text-xl font-bold sm:text-2xl">£{totals.vat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">VAT to keep for review</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-          <div className="text-2xl font-bold">£{expensesInclVat.toFixed(2)}</div>
+          <div className="text-xl font-bold sm:text-2xl">£{expensesInclVat.toFixed(2)}</div>
           <div className="text-sm text-neutral-600">Total incl. VAT</div>
         </div>
       </div>
 
       {viewMode === "combined" && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-            <div className="text-2xl font-bold">£{income.toFixed(2)}</div>
+            <div className="text-xl font-bold sm:text-2xl">£{income.toFixed(2)}</div>
             <div className="text-sm text-neutral-600">Invoiced (income)</div>
           </div>
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-            <div className="text-2xl font-bold">£{expensesInclVat.toFixed(2)}</div>
+            <div className="text-xl font-bold sm:text-2xl">£{expensesInclVat.toFixed(2)}</div>
             <div className="text-sm text-neutral-600">Spent (incl. VAT)</div>
           </div>
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">

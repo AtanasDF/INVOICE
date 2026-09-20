@@ -55,7 +55,8 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
       </div>
 
-      <table className="mt-6 w-full text-sm">
+      <div className="mt-6 overflow-x-auto print:overflow-visible">
+        <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Description</th>
@@ -79,7 +80,8 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <div className="mt-4 space-y-1 text-sm">
         {vatRegistered && (
