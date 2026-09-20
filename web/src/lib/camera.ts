@@ -83,7 +83,13 @@ export async function openCamera(video: MediaTrackConstraints): Promise<CameraOp
   try {
     const stream = await Promise.race([navigator.mediaDevices.getUserMedia({ video }), timeout]);
     remember("granted");
-    return { ok: true, stream, asked: before === "prompt" || Date.now() - askedAt > ASKED_AFTER_MS };
+    // Where the browser answers (everywhere but iOS Safari), it says
+    // outright whether there was a prompt. Only where it doesn't is a
+    // slow open read as "they were asked" -- on a loaded machine an
+    // already-granted camera can take seconds to hand over a stream, and
+    // teaching someone to allow what they've allowed is noise.
+    const asked = before === "prompt" || (before === "unknown" && Date.now() - askedAt > ASKED_AFTER_MS);
+    return { ok: true, stream, asked };
   } catch (err) {
     // Only a refusal is remembered: a camera busy elsewhere
     // (NotReadableError) must not lock the next try out of asking.
