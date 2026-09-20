@@ -49,6 +49,43 @@ a straight job; a document that shows it's been paid should be recognised as pai
 **Open:** try it on the iPhone with real paper; the Claude engine couldn't be run here
 (no Anthropic key locally), so the first Claude read of the new schema is unverified.
 
+## 2026-09-20 — Overnight, Atanas asleep (Mac desktop app, Opus 5)
+
+**Live now** (main, deployed): the scan/receipts/bent-paper release, Clear form buttons,
+the scanner torch, the quotes redesign, wrapping invoice buttons, and the address rework.
+
+- **Address entry rebuilt** after his report ("the two rectangles don't work together — the
+  postcode deleted the upper one"): one block of fields (house and street, flat/area, town,
+  postcode) with a single Find that searches by postcode, or by number and street with the
+  town. A pick fills only what it carries, so a postcode pick keeps the street; the fields
+  hold their own state, so half-typed text no longer jumps between them. Everywhere an
+  address is typed: new client, client edit, Settings, the quote form's new customer, the
+  Free page and the new quote-request form. `splitAddress`/`joinAddress` in
+  `src/lib/addressLookup.ts` (9 unit cases), `test-address-fields.mjs` 18/18 against the
+  real lookups.
+- **Supplier quote requests merged** (agent, `feature/quote-requests`): ask suppliers for
+  prices by email with a private `/r/<token>` page, gather the replies per request, compare
+  per item with delivery counted once per supplier, best single supplier vs best split, and
+  a per-supplier order list. Migration-028 (two new tables, no backup needed) **applied and
+  verified in his Supabase**: keys/triggers/RLS/policies/column grants/function grants all
+  as designed, `quote_request_clean_prices` exercised, and a rolled-back run as
+  `authenticated` proved: another account's client refused (23503), direct answer update
+  refused (42501), delete refused (42501), only real item ids kept, stale answer refused
+  (40001), the list locked once sent (55000). Nothing left behind; his own rows untouched.
+- **Several documents in one scan merged** (agent, `feature/multi-docs`): one photo or PDF
+  holding several documents is split into separate documents (photo cropped to the model's
+  box with the whole photo kept as page 2, PDFs cut with pdf-lib), "Save all ready" saves
+  everything that needs nothing and leaves the rest with a reason, and an invoice that
+  shows it's already paid comes in as paid. Real-Gemini checks on synthetic documents:
+  splits correct in every case, boxes 0.97–0.99 IoU, no slower than before.
+- Suites on merged main: fit sweep 22/22, review fixes 21/21, uploads 15/15, clear 22/22,
+  quotes fixes 11/11, multi-docs 33/33, receipts 74/74, address 18/18, quote requests 82/82.
+- **Notes for him**: `notes/future-ideas.md` (parked: bank feed, adapting the app to how
+  it's used, company/business name apart, Settings account section, legitimacy report,
+  beginners' guide, paywall) and `notes/solo-checklist.md` (50 things to check alone).
+- A 30-minute scheduled task ("Invoicer — pick the work back up") now restarts the work by
+  itself whenever this session is asleep; it exits quietly if another session is active.
+
 ## 2026-09-19 — Quotes UX (agent in a worktree), branch `feature/quotes-ux`
 
 **Brief (Atanas, from his phone):** quotes should look better, pick the recipient from all

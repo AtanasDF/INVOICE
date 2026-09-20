@@ -247,7 +247,8 @@ Gemini billing is a Google AI Studio prepaid balance on billing account
 Hub, creates a Live application and a REST API key) switches on the company name lookup
 (`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
 Settings. Without it those fields are plain inputs and nothing mentions the lookup.
-UK address lookup (`/api/address-search`, `AddressFinder` above every address field) is
+UK address lookup (`/api/address-search`, behind `AddressFields`, the block of address
+fields used everywhere an address is typed) is
 free by default: postcodes.io (postcode check, place, post town from the built-up area)
 and OpenStreetMap via photon.komoot.io (houses and streets; not every UK house is there,
 so a postcode can always be used on its own). Optional `IDEAL_POSTCODES_API_KEY` (not
