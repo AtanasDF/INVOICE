@@ -1,0 +1,39 @@
+-- Remember the VAT setting a quote was priced under.
+--
+-- WHAT IS BROKEN NOW. An invoice records the VAT setting it was issued
+-- under (migration-024, invoices.vat_registered), so it always totals the
+-- same however Settings changes afterwards. A quote has no such column, so
+-- /q/<token> prices it with whatever business_profile.vat_registered says
+-- TODAY.
+--
+-- The case that matters: he is not VAT registered and emails quote Q-0012
+-- at £4,800. Months later he crosses the threshold and switches VAT on.
+-- The customer opens the same link and sees £5,760, with a deposit line
+-- recomputed on the gross figure and a button reading "Accept quote Q-0012
+-- for £5,760". If they accept, the owner sees a quote accepted at a price
+-- 20% above the one he quoted -- and the customer has agreed to a number
+-- he was never sent.
+--
+-- The column is nullable and every existing quote keeps null, which the
+-- app reads as "follow the account's setting", exactly as today. Only
+-- quotes sent from now on carry their own answer. A draft stays null and
+-- follows the setting, like a draft invoice.
+--
+-- NO BACKUP FILE IS NEEDED: one nullable column, added with
+-- `add column if not exists`, no row rewritten, no default. Safe to run
+-- more than once.
+
+alter table public.quotes add column if not exists vat_registered boolean;
+
+-- Check afterwards:
+--
+--   select column_name, data_type, is_nullable, column_default
+--     from information_schema.columns
+--    where table_schema = 'public' and table_name = 'quotes' and column_name = 'vat_registered';
+--
+--   select count(*) filter (where vat_registered is null) as still_following_settings,
+--          count(*) filter (where vat_registered is not null) as own_answer
+--     from public.quotes;
+--
+-- The owner already has update on every quotes column (migration-020), so
+-- there is no grant to add.

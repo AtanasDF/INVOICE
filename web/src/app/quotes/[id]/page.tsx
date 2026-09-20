@@ -141,7 +141,14 @@ export default function QuotePage() {
 
   const q = quote;
   const client = clients.find((c) => c.id === q.clientId) ?? null;
-  const vatRegistered = profile?.vatRegistered ?? false;
+  // A sent quote keeps the VAT setting it was priced under (migration-033),
+  // so the owner sees exactly what the customer sees on the link. A draft,
+  // and every quote from before that column, follows the setting.
+  const vatRegistered = q.vatRegistered ?? profile?.vatRegistered ?? false;
+  // The document, the PDF and the summary must all say the same thing: the
+  // page used to total the quote from the snapshot while the sheet below it
+  // still used today's setting, so one said £4,000 and the other £4,800.
+  const docProfile = profile ? { ...profile, vatRegistered } : profile;
   const today = todayIso();
   const total = quoteTotal(q, vatRegistered);
   const invoiceId = q.invoiceId ?? orphan?.id ?? null;
@@ -518,7 +525,7 @@ export default function QuotePage() {
           link) belong beside sending, once there's a payment provider. */}
       {sending ? (
         <QuoteSendCard
-          sheet={<QuoteDocument quote={q} client={client} profile={profile} />}
+          sheet={<QuoteDocument quote={q} client={client} profile={docProfile} />}
           pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
           quoteId={q.id}
           // A draft's link shows nothing to the customer, so it isn't put in
@@ -563,7 +570,7 @@ export default function QuotePage() {
       )}
 
       <div className="overflow-x-auto rounded-xl border bg-white p-4 text-neutral-900 shadow-sm sm:p-6 print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none">
-        <QuoteDocument quote={q} client={client} profile={profile} />
+        <QuoteDocument quote={q} client={client} profile={docProfile} />
       </div>
     </div>
   );

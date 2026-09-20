@@ -21,12 +21,20 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
 
   const { data: link } = await admin.from("quote_links").select("quote_id, user_id, response, responded_at, responder_name").eq("token", token).maybeSingle();
   if (!link) return null;
-  const { data: q } = await admin
+  const COLUMNS = "client_id, number, date, valid_until, items, notes, status, deposit_percent, deposit_amount";
+  // vat_registered is migration-033; asking for it against a database
+  // without it fails the whole select, so fall back to the old list and
+  // carry on following the account's setting, exactly as before.
+  let { data: q } = await admin
     .from("quotes")
-    .select("client_id, number, date, valid_until, items, notes, status, deposit_percent, deposit_amount")
+    .select(`${COLUMNS}, vat_registered`)
     .eq("id", link.quote_id)
     .eq("user_id", link.user_id)
     .maybeSingle();
+  if (!q) {
+    const fallback = await admin.from("quotes").select(COLUMNS).eq("id", link.quote_id).eq("user_id", link.user_id).maybeSingle();
+    q = fallback.data ? { ...fallback.data, vat_registered: null } : null;
+  }
   if (!q || q.status === "draft") return null;
 
   const [{ data: client }, { data: bp }] = await Promise.all([
@@ -57,6 +65,9 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
             : null,
       depositInvoiceId: null,
       depositClaimed: false,
+      // What it was priced under when it was sent; null follows the
+      // account's setting, as it always did.
+      vatRegistered: q.vat_registered ?? null,
     },
     client: client
       ? {
@@ -80,7 +91,10 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
       businessName: bp?.business_name ?? "",
       address: bp?.address ?? "",
       vatNumber: bp?.vat_number ?? "",
-      vatRegistered: bp?.vat_registered ?? false,
+      // The setting the quote was priced under, not the one in force
+      // today: a customer holding a link must never see the total change
+      // under them, least of all on the button they tap to accept.
+      vatRegistered: q.vat_registered ?? bp?.vat_registered ?? false,
     } as BusinessProfile,
     // An answer counts while the quote still stands on it: if the owner has
     // put it back to sent, the customer can answer again.
