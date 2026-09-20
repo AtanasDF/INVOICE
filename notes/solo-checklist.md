@@ -258,6 +258,12 @@ what is sent to a customer waits for him.
   which writes to his records with the service role — was missing from the route sweep.
   Added: it refuses both a missing and a wrong secret. 37/37.
 
+- **What the customer actually receives** (my own) — `test-print.mjs` 11/11. Printed or
+  saved as a PDF, an invoice keeps its number, who it's for, who it's from, the VAT number,
+  the registered name and company number the Companies Act asks for, the lines, the money,
+  the due date and the bank details — and carries none of the app's navigation or buttons
+  onto the customer's copy, and fits an A4 page. Nothing to fix.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
