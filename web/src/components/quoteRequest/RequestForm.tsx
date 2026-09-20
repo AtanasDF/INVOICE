@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import AddressFinder from "@/components/AddressFinder";
+import AddressFields from "@/components/AddressFields";
 import { NumberInput } from "@/components/free-invoice/fields";
 import type { Client } from "@/lib/storage";
 import type { RequestItem } from "@/lib/quoteCompare";
@@ -92,11 +92,12 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
         <input id="qr-needed" type="date" className={INPUT} value={v.neededBy ?? ""} onChange={(e) => set({ neededBy: e.target.value || null })} />
       </div>
 
-      <div className="space-y-2">
-        <label className="text-xs text-neutral-500" htmlFor="qr-site">Deliver to (optional)</label>
-        <AddressFinder address={v.siteAddress} onAddress={(siteAddress) => set({ siteAddress })} />
-        <textarea id="qr-site" rows={2} className={INPUT} placeholder="Site or delivery address" value={v.siteAddress} onChange={(e) => set({ siteAddress: e.target.value })} maxLength={500} />
-      </div>
+      <AddressFields
+        address={v.siteAddress}
+        onAddress={(siteAddress: string) => set({ siteAddress })}
+        label="Deliver to (optional)"
+        streetPlaceholder="Site number and street"
+      />
 
       <div>
         <label className="text-xs text-neutral-500" htmlFor="qr-notes">Notes for the suppliers (optional)</label>

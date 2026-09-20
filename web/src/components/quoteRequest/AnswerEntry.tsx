@@ -62,8 +62,10 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
     setReading(true);
     setError(null);
     try {
-      const result = await extractPages([{ dataUrl: file.dataUrl, mediaType: file.mediaType }], []);
-      const lines = result.lineItems.filter((l) => l.description.trim());
+      // A supplier's quote is one document; if their file holds more, the
+      // first is theirs to price against this request.
+      const [result] = await extractPages([{ dataUrl: file.dataUrl, mediaType: file.mediaType }], []);
+      const lines = (result?.lineItems ?? []).filter((l) => l.description.trim());
       const priced = lines.filter((l) => !isDeliveryLine(l.description));
       const found = matchScannedLines(items, priced);
       const next: PriceDraft = { ...draft, lines: { ...draft.lines } };
