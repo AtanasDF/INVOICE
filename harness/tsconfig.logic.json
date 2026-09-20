@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "outDir": "gen",
+    "rootDir": "/Users/nasko/Desktop/INVOICE/web/src",
+    "baseUrl": "/Users/nasko/Desktop/INVOICE/web/src",
+    "paths": { "@/*": ["*"] },
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmitOnError": false
+  },
+  "files": [
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/taxEstimate.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/reminderTemplates.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/cis.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/vat.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/invoiceBalance.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/documentDate.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/recurrence.ts"
+  ]
+}

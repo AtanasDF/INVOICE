@@ -1,0 +1,12 @@
+import { makeDb, launchSignedIn, signIn, sleep, newId } from "./mockdb.mjs";
+const BASE = "http://localhost:3000";
+const db = makeDb();
+db.tables.business_profile.push({ business_name: "Harness Plumbing", vat_registered: false });
+db.tables.clients.push({ id: newId(), user_id: "x", name: "Acme Ltd", email: "acme@example.com", kind: "client", archived: false, is_company: true, contact_person: "Jane Smith", phone: process.argv[2] ?? "07700 900123", reminders_enabled: true });
+db.tables.invoices.push({ id: newId(), user_id: "x", client_id: db.tables.clients[0].id, date: "2026-09-01", number: "INV-1", items: [], notes: null, due_date: null, payment_terms: "", status: "sent", tags: [] });
+const { browser, page } = await launchSignedIn(db, { base: BASE });
+await signIn(page, BASE);
+await page.goto(`${BASE}/clients`, { waitUntil: "networkidle0" });
+await sleep(800);
+console.log(await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: window.innerWidth, wide: [...document.querySelectorAll("*")].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 1).slice(0, 5).map((e) => e.tagName + "." + e.className.toString().slice(0, 60) + " " + Math.round(e.getBoundingClientRect().right)) })));
+await browser.close();

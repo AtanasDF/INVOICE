@@ -1,0 +1,11 @@
+import { makeDb, launchSignedIn, signIn, sleep, newId } from "./mockdb.mjs";
+const db = makeDb();
+Object.assign(db.tables, { receipts: [], invoices: [], credit_notes: [], invoice_payments: [], recurring_expenses: [] });
+db.tables.business_profile.push({ business_name: "Harness Plastering Ltd", vat_registered: true, custom_categories: [] });
+db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: new Date().toISOString().slice(0,10), vendor: "Screwfix", category: "Supplies", amount: 100, vat_amount: 20, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+const { browser, page } = await launchSignedIn(db, { base: "http://localhost:3000", width: 320, profile: "profile-dbg320" });
+await signIn(page, "http://localhost:3000");
+await page.goto("http://localhost:3000/expenses", { waitUntil: "networkidle0" });
+await sleep(1500);
+console.log(JSON.stringify(await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth, wide: [...document.querySelectorAll("body *")].filter((e) => e.scrollWidth > e.clientWidth + 1 || e.offsetWidth > window.innerWidth).slice(0, 8).map((e) => `${e.tagName}.${String(e.className).slice(0,50)} sw=${e.scrollWidth} cw=${e.clientWidth} ow=${e.offsetWidth}`) })), null, 1));
+await browser.close();
