@@ -4,6 +4,33 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-20 — Pick a company from anywhere, check it against the register (`feature/company-picker`)
+
+**Brief (via the lead session, from Atanas):** the new-invoice form only lets him choose a
+saved company; it should be free text tied to the Companies House register, with an arrow
+on the right for his saved ones, most used first then alphabetical. Everything with a
+company name or address should have the register. Scanners should fill in what the
+register holds and the document doesn't, and every company should be checked.
+
+**Done so far (branch `feature/company-picker`, no schema change):**
+
+- `ContactField` (new): one customer/supplier field. Free text with a ▾ on the right that
+  is a real `<select>` (so a phone opens its own picker) holding the saved contacts, most
+  used first under "Most used", then "A–Z". Typing filters the saved ones and, with a key,
+  searches Companies House under "On the register". A register pick opens a card with the
+  registered name, company number and registered office and only saves it on "Add as
+  client/supplier" — nothing is ever created by typing.
+- Used on New invoice (customer), New receipt (supplier) and the scan review (supplier).
+  The new client/supplier form keeps `CompanyNameInput`, which now shares the same rows.
+- `/api/company-search` also answers `number=` (a company's profile, the only place the
+  register publishes a status) and `scope=all` (dissolved companies included, for checking
+  a name already on a document). Same auth, same limits, same per-instance cache.
+- Scan review: the registered address (only when none was read) and the company number are
+  filled in from the register, marked, and undoable. A dissolved or liquidated company, or
+  a Ltd name with nothing on the register, says so plainly wherever the name is shown.
+- Without `COMPANIES_HOUSE_API_KEY` nothing mentions the register: no register rows, no
+  notes, no gap-fill. The field is then a searchable picker over his saved contacts.
+
 ## 2026-09-19 — Several documents in one scan, Save all ready (`feature/multi-docs`)
 
 **Brief (via the lead session, from Atanas):** a scan should find every document on it,

@@ -9,6 +9,10 @@ import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import { CameraIcon } from "@/components/icons";
 import CompanyNameInput from "@/components/CompanyNameInput";
+import { RegisterNote, useRegisterCheck } from "@/components/RegisterBits";
+import { useCompanyLookup } from "@/lib/companyConfigured";
+import { rememberCompany } from "@/lib/companyRegister";
+import type { CompanyMatch } from "@/lib/companyLookup";
 import AddressFields from "@/components/AddressFields";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import ClearFormButton from "@/components/ClearFormButton";
@@ -51,6 +55,11 @@ export default function NewClientPage() {
   const [readError, setReadError] = useState<string | null>(null);
   const [found, setFound] = useState<ScannedContact[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
+  // The register entry this name came from, remembered against the saved
+  // row so a later check asks for that exact company.
+  const [company, setCompany] = useState<CompanyMatch | null>(null);
+  const lookupOn = useCompanyLookup();
+  const check = useRegisterCheck(isCompany ? name : "", isCompany && company?.name === name ? company.number : null, lookupOn);
 
   // What the last scan wrote into each field. A field still holding that
   // value belongs to the scan and follows the next pick (cleared when the
@@ -109,6 +118,7 @@ export default function NewClientPage() {
     setReadError(null);
     setFound([]);
     setPicked(null);
+    setCompany(null);
     scannedRef.current = { email: "", address: "", vatNumber: "", contactPerson: "", phone: "" };
   }
 
@@ -126,7 +136,7 @@ export default function NewClientPage() {
     setError(null);
     setSaving(true);
     try {
-      await clientsStore.add({
+      const created = await clientsStore.add({
         name,
         isCompany,
         email,
@@ -139,6 +149,8 @@ export default function NewClientPage() {
         phone,
         remindersEnabled,
       });
+      const known = company ?? check.company;
+      if (known) rememberCompany(created.id, known);
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save client.");
@@ -216,6 +228,7 @@ export default function NewClientPage() {
             onAddress={setAddress}
             onPick={(c, fillAddress) => {
               setName(c.name);
+              setCompany(c);
               if (fillAddress) setAddress(fillAddress);
             }}
           />
@@ -227,6 +240,8 @@ export default function NewClientPage() {
             onChange={(e) => setName(e.target.value)}
           />
         )}
+        {isCompany && check.company && <p className="text-xs text-neutral-500">Company {check.company.number} on the Companies House register.</p>}
+        {isCompany && <RegisterNote check={check} />}
         <input
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Email (optional)"

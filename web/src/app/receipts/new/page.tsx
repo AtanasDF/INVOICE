@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
@@ -9,6 +9,7 @@ import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { findDuplicate } from "@/lib/duplicates";
 import ClearFormButton from "@/components/ClearFormButton";
+import ContactField, { type Usage } from "@/components/ContactField";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function NewReceiptPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [clientId, setClientId] = useState("");
+  const [supplierText, setSupplierText] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [vendor, setVendor] = useState("");
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
@@ -60,6 +62,26 @@ export default function NewReceiptPage() {
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
+
+  const supplierUsage = useMemo(() => {
+    const out: Usage = {};
+    for (const r of receipts) {
+      if (!r.clientId) continue;
+      const seen = out[r.clientId];
+      out[r.clientId] = { count: (seen?.count ?? 0) + 1, last: seen && seen.last > r.date ? seen.last : r.date };
+    }
+    return out;
+  }, [receipts]);
+
+  function pickSupplier(c: Client | null) {
+    setClientId(c?.id ?? "");
+    if (c) {
+      setSupplierText("");
+      if (!vendor.trim()) setVendor(c.name);
+    }
+    setConfirmedDuplicate(false);
+    setPossibleDuplicate(null);
+  }
 
   function handleFile(file: File) {
     const reader = new FileReader();
@@ -135,10 +157,11 @@ export default function NewReceiptPage() {
     setLineItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  const filled = !!(clientId || vendor || totalAmount || vatAmount || currency !== "GBP" || notes || lineItems.length || warrantyMonths || tagsInput || imageDataUrl);
+  const filled = !!(clientId || supplierText || vendor || totalAmount || vatAmount || currency !== "GBP" || notes || lineItems.length || warrantyMonths || tagsInput || imageDataUrl);
 
   function clearForm() {
     setClientId("");
+    setSupplierText("");
     setDate(new Date().toISOString().slice(0, 10));
     setVendor("");
     setCategory(mostUsedCategory(receipts.map((r) => r.category)) ?? CATEGORIES[0]);
@@ -262,20 +285,18 @@ export default function NewReceiptPage() {
             className="hidden"
           />
         </div>
-        <select
-          className="w-full rounded-lg border px-3 py-2"
-          value={clientId}
-          onChange={(e) => {
-            setClientId(e.target.value);
-            setConfirmedDuplicate(false);
-            setPossibleDuplicate(null);
-          }}
-        >
-          <option value="">No supplier / general expense</option>
-          {suppliers.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <ContactField
+          kind="supplier"
+          contacts={suppliers}
+          selectedId={clientId}
+          onSelect={pickSupplier}
+          onCreated={(c) => setClients((prev) => [...prev, c])}
+          usage={supplierUsage}
+          text={supplierText}
+          onText={setSupplierText}
+          placeholder="Supplier — type a name, or tap the arrow"
+          emptyOption="No supplier / general expense"
+        />
         <div className="grid grid-cols-2 gap-3">
           <input
             type="date"

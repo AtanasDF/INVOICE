@@ -2,36 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { CompanyMatch } from "@/lib/companyLookup";
-import { supabase } from "@/lib/supabaseClient";
+import { useCompanyLookup } from "@/lib/companyConfigured";
+import { searchRegister } from "@/lib/companyRegister";
+import { CompanyRow, oneLine } from "@/components/RegisterBits";
 
-// Until the server has a Companies House key the box is a plain input. One
-// check per page load says whether lookup is on; a failed check is retried
-// on the next mount rather than switching lookup off for the visit.
-let status: Promise<boolean> | null = null;
-
-export function useCompanyLookup(): boolean {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    let live = true;
-    status ??= fetch("/api/company-search")
-      .then((r) => r.json())
-      .then((b: { configured?: boolean }) => b.configured === true)
-      .catch(() => {
-        status = null;
-        return false;
-      });
-    status.then((v) => {
-      if (live) setOn(v);
-    });
-    return () => {
-      live = false;
-    };
-  }, []);
-  return on;
-}
-
-const longDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
-const oneLine = (a: string) => a.replace(/\n/g, ", ");
+export { useCompanyLookup };
 
 // A name field that offers matching companies from the Companies House
 // register as you type. Picking one hands back its registered details and,
@@ -86,11 +61,7 @@ export default function CompanyNameInput({
       }
       setSearching(true);
       try {
-        const { data } = await supabase.auth.getSession();
-        const headers: Record<string, string> = data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
-        const res = await fetch(`/api/company-search?q=${encodeURIComponent(q)}`, { signal: controller.signal, headers });
-        const body = (await res.json()) as { items?: CompanyMatch[] };
-        setItems(body.items ?? []);
+        setItems(await searchRegister(q, { signal: controller.signal }));
         setActive(-1);
       } catch {
         if (!controller.signal.aborted) setItems([]);
@@ -190,12 +161,7 @@ export default function CompanyNameInput({
                 onMouseEnter={() => setActive(i)}
                 className={`cursor-pointer border-b px-3 py-2 last:border-b-0 ${i === active ? "bg-neutral-100" : ""}`}
               >
-                <p className="text-sm font-medium">{c.name}</p>
-                <p className="text-xs text-neutral-500">
-                  Company {c.number}
-                  {c.incorporated ? ` · since ${longDate(c.incorporated)}` : ""}
-                </p>
-                {c.address && <p className="truncate text-xs text-neutral-500">{oneLine(c.address)}</p>}
+                <CompanyRow c={c} />
               </li>
             ))}
           </ul>
