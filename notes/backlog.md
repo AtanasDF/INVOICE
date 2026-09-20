@@ -73,7 +73,8 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   credit note was still on the invoice, when it had just gone.
 - [ ] 13. Email-import: inline signature images, unreadable-document filing
 - [ ] 14. Customer matching on a scanned invoice (exact-only)
-- [ ] 15. Free-page quote not importable as an invoice
+- [x] 15. Free-page quote not importable as an invoice — `harness/test-quote-not-invoice.mjs`
+  (8 checks), including that a real invoice draft still imports, so the gate isn't too wide.
 - [x] 16. Supplier price "12.50 per length" rejected, not £0 —
   `harness/test-price-words.mjs`. Needed `record_quote_request_response` implemented in
   `mockdb.mjs` first: the owner-side answer path was untestable without it, which also

@@ -42,6 +42,19 @@ real id. Seeded as `"x"`, a `business_profile` upsert matches nothing, appends a
 row, and a suite reading `tables[0]` sees the stale one and passes for the wrong reason.
 That cost an hour on 2026-09-20, chasing a fix that had been correct all along.
 
+## A second trap: innerText is not the whole page
+
+`bodyText(page)` is `document.body.innerText`, which does **not** include what is typed
+in an `<input>`, `<textarea>` or `<select>`. A negative check on data that lives in a box
+-- "this draft was not imported", "that field is empty" -- therefore passes whether or not
+the thing happened. Read the values too:
+
+```js
+const everything = async () =>
+  (await bodyText(page)) + " " +
+  (await page.evaluate(() => [...document.querySelectorAll("input, textarea, select")].map((i) => i.value).join(" ")));
+```
+
 ## Running it
 
 ```
