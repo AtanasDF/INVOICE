@@ -85,6 +85,11 @@ export type TaxEstimate = {
   // What the whole year comes to if it carries on at this rate; null in
   // the first month, when a projection would be noise.
   projected: { profit: number; total: number; setAside: number } | null;
+  // True for the first 30 days of a tax year, when annualising a few days'
+  // work makes the tax figures meaningless. They are still returned, so
+  // nothing has to handle nulls, but nothing should show them as an amount
+  // to put by.
+  tooEarly: boolean;
   vatOwed: number | null;
   invoicesCounted: number;
   receiptsCounted: number;
@@ -162,6 +167,14 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   const it = incomeTax(yearProfit) * share;
   const ni = class4(yearProfit) * share;
   const projectedProfit = days >= 30 ? yearProfit : null;
+  // The same reason the projection waits a month applies to the headline.
+  // Dividing by a share of a few days explodes: one £5,000 invoice on
+  // 6 April annualises to £1.8m and asks him to set aside £2,316, when the
+  // real tax on £5,000 of annual profit is nothing at all. The figure then
+  // falls all year with no change in the underlying work. Better to say it
+  // is too early than to have him hold back money he doesn't owe in the
+  // month a new business can least afford it.
+  const tooEarly = days < 30;
 
   return {
     year,
@@ -178,6 +191,7 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
       projectedProfit === null
         ? null
         : { profit: round(projectedProfit), total: round(yearTax), setAside: round(yearTax - cisDeducted / share) },
+    tooEarly,
     vatOwed: vatRegistered ? round(vatCharged - vatPaid) : null,
     invoicesCounted,
     receiptsCounted,

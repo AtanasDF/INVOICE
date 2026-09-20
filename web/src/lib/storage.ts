@@ -211,6 +211,17 @@ function clientFromRow(r: ClientRow): Client {
   };
 }
 
+// A merge tells him what stayed behind; "quote_request_suppliers" is not
+// something anyone should have to read.
+const MERGE_NAMES: Record<string, string> = {
+  invoices: "invoices",
+  receipts: "receipts and bills",
+  quotes: "quotes",
+  recurring_invoices: "repeating invoices",
+  recurring_expenses: "repeating expenses",
+  quote_request_suppliers: "quote requests",
+};
+
 export const clientsStore = {
   async all(): Promise<Client[]> {
     const { data, error } = await supabase.from("clients").select("*").order("name");
@@ -304,12 +315,25 @@ export const clientsStore = {
     const moved: Record<string, number> = {};
     const left: string[] = [];
     for (const [table, column] of tables) {
+      // Look before writing. An update that matches nothing can still be
+      // refused outright -- Postgres checks column privileges when it plans
+      // the statement, not per row -- and quote_request_suppliers grants
+      // the owner update on only two columns by design, so every merge used
+      // to report rows left behind even between two contacts that had never
+      // been sent a quote request. (migration-032 grants supplier_id; until
+      // it is run, this at least stops the false alarm.)
+      const { data: present, error: lookErr } = await supabase.from(table).select("id").eq(column, duplicateId).limit(1);
+      if (lookErr) {
+        left.push(table);
+        continue;
+      }
+      if (!present?.length) continue;
       const { data, error } = await supabase.from(table).update({ [column]: keepId }).eq(column, duplicateId).select("id");
       if (error) left.push(table);
       else if (data?.length) moved[table] = data.length;
     }
     await clientsStore.archive(duplicateId);
-    return { moved, left };
+    return { moved, left: left.map((t) => MERGE_NAMES[t] ?? t) };
   },
   async unarchive(id: string): Promise<void> {
     const { error } = await supabase.from("clients").update({ archived: false }).eq("id", id);

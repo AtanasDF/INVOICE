@@ -19,13 +19,21 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
         <>
           <div className="mt-3">
             <div className="text-2xl font-bold">
-              {e.setAside >= 1
-                ? `Set aside about ${money(e.setAside)}`
-                : e.setAside <= -1
-                  ? `HMRC may owe you about ${money(-e.setAside)} back`
-                  : "No tax on this year so far"}
+              {e.tooEarly
+                ? "Too early in the year to say"
+                : e.setAside >= 1
+                  ? `Set aside about ${money(e.setAside)}`
+                  : e.setAside <= -1
+                    ? `HMRC may owe you about ${money(-e.setAside)} back`
+                    : "No tax on this year so far"}
             </div>
-            {(e.total > 0 || e.cisDeducted > 0) && (
+            {e.tooEarly && (
+              <div className="text-sm text-neutral-600">
+                A year&apos;s allowances against a few days&apos; work gives a figure that means nothing. The totals below are real; a tax
+                estimate appears about a month into the tax year.
+              </div>
+            )}
+            {!e.tooEarly && (e.total > 0 || e.cisDeducted > 0) && (
               <div className="text-sm text-neutral-600">
                 Income tax {money(e.incomeTax)} + Class 4 National Insurance {money(e.class4)}
                 {e.cisDeducted > 0 && ` − CIS already taken off ${money(e.cisDeducted)}`}

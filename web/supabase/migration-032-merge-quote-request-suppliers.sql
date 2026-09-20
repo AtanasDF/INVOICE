@@ -1,0 +1,46 @@
+-- Let a merge move a quote request's supplier across.
+--
+-- WHAT IS BROKEN NOW. migration-028 granted the authenticated role
+-- `update (token, sent_at)` on quote_request_suppliers -- deliberately
+-- narrow, so an owner can't rewrite a supplier's own answer behind their
+-- back. But merging two contacts has to repoint supplier_id, and
+-- clientsStore.mergeInto issues exactly that update. Postgres checks column
+-- privileges when it plans the statement, not per row, so the call fails
+-- with 42501 every single time, whether or not any row matches.
+--
+-- The visible effect: every merge of two contacts -- even two with no quote
+-- requests at all -- reports "Some rows stayed with the old record
+-- (quote_request_suppliers)", which reads as though data was left behind.
+-- When there really is a request, it stays pinned to the archived duplicate
+-- and disappears from the kept contact's history.
+--
+-- NO BACKUP FILE IS NEEDED: this adds one column privilege and changes no
+-- row. Safe to run more than once.
+--
+-- Why this is still safe: supplier_id says which of the owner's own
+-- contacts a request went to. Row level security already confines every
+-- row to its owner (migration-028), the answer columns (prices, delivery,
+-- vat_included, valid_until, status, source, document_path, previous) stay
+-- unwritable by the owner, and a supplier answering through
+-- submit_quote_request_response is unaffected -- that runs as the service
+-- role.
+
+grant update (supplier_id) on public.quote_request_suppliers to authenticated;
+
+-- Check afterwards: three rows, token / sent_at / supplier_id.
+--
+--   select column_name, privilege_type
+--     from information_schema.column_privileges
+--    where table_schema = 'public'
+--      and table_name = 'quote_request_suppliers'
+--      and grantee = 'authenticated'
+--      and privilege_type = 'UPDATE'
+--    order by column_name;
+--
+-- And that nothing else became writable:
+--
+--   select privilege_type, count(*)
+--     from information_schema.column_privileges
+--    where table_schema = 'public' and table_name = 'quote_request_suppliers'
+--      and grantee = 'authenticated'
+--    group by privilege_type;

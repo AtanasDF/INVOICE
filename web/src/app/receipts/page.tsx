@@ -289,10 +289,25 @@ export default function ReceiptsPage() {
     setEditDraft({ ...editDraft, currency: next, fxRateInput: next === "GBP" ? "" : editDraft.fxRateInput });
     setEditFxError(null);
     if (next === "GBP") return;
+    // What this rate was asked for. A lookup takes seconds, and cancelling
+    // and editing another receipt in the meantime used to land the old
+    // answer on the new one -- converting a dollar receipt at a euro rate
+    // and writing a figure several percent out onto a record that was
+    // right before he touched it. The checks go inside the updater, which
+    // sees the draft as it is now; `editingId` read out here would be the
+    // value from the render this call started in, which is the same stale
+    // reading that caused the problem.
+    const forCurrency = next;
+    const rateWhenAsked = editDraft.fxRateInput;
     setEditFxLoading(true);
     try {
       const rate = await getFxRate(next, "GBP");
-      setEditDraft((prev) => (prev ? { ...prev, fxRateInput: String(rate) } : prev));
+      setEditDraft((prev) => {
+        if (!prev || prev.currency !== forCurrency) return prev;
+        // He typed one himself while this was in the air: his wins.
+        if (prev.fxRateInput !== rateWhenAsked) return prev;
+        return { ...prev, fxRateInput: String(rate) };
+      });
     } catch (err) {
       setEditFxError(saveFailed(err, "Couldn't fetch an exchange rate -- enter one manually."));
     } finally {

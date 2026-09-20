@@ -83,4 +83,14 @@ check("no projection in the first month — it would be noise", firstMonth.proje
 const midYear = estimateTax({ ...base, invoices: [inv({ id: "1", date: "2026-05-01", items: line(40000) })], receipts: [] });
 check("mid-year there is a projection, and it's bigger than the year so far", midYear.projected !== null && midYear.projected.profit > midYear.profit, JSON.stringify(midYear.projected));
 
+// Early in a tax year, annualising a few days' work makes the headline
+// meaningless -- one £5,000 invoice on 6 April used to ask him to set aside
+// £2,316 when the real tax on £5,000 a year is nothing.
+const early = estimateTax({ ...base, today: "2026-04-08", invoices: [inv({ id: "1", date: "2026-04-06", items: line(5000) })], receipts: [] });
+check("the first days of the year are marked too early to estimate", early.tooEarly === true, JSON.stringify({ tooEarly: early.tooEarly, setAside: early.setAside }));
+check("but the real figures are still there", near(early.income, 5000) && near(early.profit, 5000), JSON.stringify({ income: early.income, profit: early.profit }));
+const later = estimateTax({ ...base, today: "2026-06-06", invoices: [inv({ id: "1", date: "2026-04-06", items: line(5000) })], receipts: [] });
+check("a couple of months in, it estimates again", later.tooEarly === false, String(later.tooEarly));
+check("and the estimate is sane by then", later.total < 5000 && later.total >= 0, String(later.total));
+
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

@@ -215,7 +215,13 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
     ...unless("invoiceNumber", { invoiceNumber: result.invoiceNumber ?? "" }),
     ...unless("date", {
       date: result.date ?? f.date,
-      dateConf: result.dateConfidence,
+      // No date on the document means the box holds today's date, which is
+      // not what the document says. The model's own confidence is about
+      // what it read, and for a receipt with no date printed the honest
+      // answer to that is "high" -- so mark it low here instead, or a
+      // July receipt scanned in September is saved into the wrong quarter
+      // with nothing on screen suggesting it should be checked.
+      dateConf: result.date ? result.dateConfidence : "low",
       dateAsPrinted: result.dateAsPrinted,
       dateAlternative: askOrder && result.date && result.dateAmbiguous ? result.dateAlternative : null,
     }),
@@ -277,6 +283,10 @@ function lookReason(f: Form, result: ScanResult | null, touched: Set<keyof Form>
   if (mode === "archival" || mode === "contact" || (!f.typeOverride && !TRANSACTIONAL.includes(result.documentType))) return "not a receipt or invoice";
   if (!f.totalAmount) return "no total read";
   if (f.totalConf === "low" && !touched.has("totalAmount")) return "total unclear";
+  // A VAT figure the model called a guess goes straight into box 4 of the
+  // VAT return. It earns an amber flag when he is looking at the form, so
+  // it must not be saved unseen either.
+  if (f.vatConf === "low" && !touched.has("vatAmount")) return "VAT unclear";
   if (!result.date && !touched.has("date")) return "no date read";
   if (f.dateAlternative || (mode === "invoice" && f.dueDateAlternative)) return "date to confirm";
   if (mode === "invoice" && !f.paid && !f.dueDate) return "no due date";
