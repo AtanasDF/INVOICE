@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { LinePrice, RequestItem } from "@/lib/quoteCompare";
+import { todayISO } from "@/lib/today";
 
 export type PublicQuoteRequest = {
   from: string;
@@ -41,7 +42,7 @@ export async function loadPublicQuoteRequest(token: string): Promise<PublicQuote
   ]);
   if (!req) return null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const answered = row.status === "replied" || row.status === "declined";
   return {
     from: bp?.business_name ?? "",

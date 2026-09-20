@@ -18,6 +18,7 @@ import TextCustomer from "@/components/TextCustomer";
 import { phoneLinks } from "@/lib/customerText";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { invoiceVat } from "@/lib/invoiceBalance";
+import { todayISO } from "@/lib/today";
 
 // What this customer was actually billed: gross, incl. VAT, less any CIS
 // the contractor keeps back -- the "Amount due" figure on the invoice
@@ -206,7 +207,7 @@ export default function ClientsPage() {
 
   function exportClients() {
     downloadCsv(
-      `${tab}s-${new Date().toISOString().slice(0, 10)}.csv`,
+      `${tab}s-${todayISO()}.csv`,
       visibleClients.map((c) => ({
         name: c.name,
         type: c.isCompany ? "Company" : "Individual",

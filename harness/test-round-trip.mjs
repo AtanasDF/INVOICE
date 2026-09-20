@@ -2,11 +2,10 @@
 // accents, ampersands, a £ sign in a note), awkward numbers (0.33 of an
 // hour, a penny, a negative credit note) and empty fields have to survive
 // being saved and read back, on screen and in the database row.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 
 const NAME = "O'Brien & Sons (Bristol) Ltd — Façade Specialists";
 const NOTE = "Quote ref £250 “urgent”, see José's email — 50% now, 50% on completion.";
@@ -51,7 +50,7 @@ try {
   check("no mangled punctuation anywhere", !/&amp;|&#39;|&quot;|\\u00/.test(list), list.replace(/\s+/g, " ").slice(0, 300));
 
   // A receipt for a penny, and one for an awkward fraction of an hour.
-  const penny = { id: newId(), user_id: "x", client_id: null, date: today, vendor: "Car park", category: "Transport & Taxis", amount: 0.01, vat_amount: 0, image_data_url: null, notes: NOTE, starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null };
+  const penny = { id: newId(), user_id: "x", client_id: null, date: todayISO(), vendor: "Car park", category: "Transport & Taxis", amount: 0.01, vat_amount: 0, image_data_url: null, notes: NOTE, starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null };
   db.tables.receipts.push(penny);
   await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
   await sleep(1500);

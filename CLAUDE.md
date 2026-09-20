@@ -95,6 +95,26 @@ never stand in for a failed load; and anything that removes a record asks first 
 `window.confirm`, naming what goes. Long names wrap with `wrap-anywhere` (not
 `break-words`, which leaves min-content alone and lets one long word push the page).
 
+## What day it is
+
+`todayISO()` (`src/lib/today.ts`) is the only place that answers it, and it answers in
+**Europe/London**, not UTC. Every "today" in the app used to be
+`new Date().toISOString().slice(0, 10)`; Britain is UTC+1 from late March to late
+October, so for the hour after midnight on a summer night the app thought it was still
+yesterday — while the scan page and the Free-invoice draft read the local clock and
+thought it was today. In that hour a receipt typed in was dated **yesterday** in the
+accounting record, an invoice due that day wasn't flagged overdue, a sale on the first of
+a quarter fell into the previous quarter's VAT, and an invoice issued through the scan
+page vanished from the tax card entirely (its own date was "tomorrow" by the card's
+reckoning, so the year's income read zero). Found on 2026-09-21 at 00:02 BST, by
+`test-cis` failing for real. `harness/test-midnight.mjs` pins the clock to 23:30 UTC and
+checks the lot; `mockdb.mjs` exports the matching `todayISO()` and `day(n)`, and suites
+must use them rather than building dates off the UTC clock.
+
+Europe/London rather than the browser's own zone because these are UK accounting records
+and the app is UK throughout. UTC date **arithmetic** on a date string (`addDays` and
+friends) is correct and stays — the bug was only ever in asking UTC what day it is now.
+
 ## How the data is modelled
 
 - `invoices` and `credit_notes` are Atanas's own **sales** invoices (sequential numbering

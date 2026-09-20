@@ -163,7 +163,15 @@ export function handle(db, method, path, search, headers, body) {
   return { status: 400, json: { message: "unhandled" } };
 }
 
-export async function launchSignedIn(db, { width = 375, base = "http://localhost:3100", intercept, profile = "profile-mockdb" } = {}) {
+// One Chrome profile per suite. Chrome refuses to open a profile directory
+// another process already holds, so the sixteen suites that took the old
+// shared default killed each other under run-all.sh's four-at-a-time --
+// and passed perfectly when run alone, which is the worst way for a test
+// to fail. Named from the running suite, so it is stable between runs and
+// a suite that opens a second browser still gets its own state back.
+const suiteProfile = () => "profile-" + ((process.argv[1] ?? "run").split("/").pop().replace(/\.mjs$/, "").replace(/\W/g, "") || "run");
+
+export async function launchSignedIn(db, { width = 375, base = "http://localhost:3100", intercept, profile = suiteProfile() } = {}) {
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: true,
@@ -221,6 +229,21 @@ export async function signIn(page, base) {
     localStorage.setItem("sb-wecfwjxzyzzrcwbwnwpo-auth-token", JSON.stringify(s));
   }, fakeSession());
 }
+
+// The same day the app reckons it is: Europe/London, not UTC. See
+// web/src/lib/today.ts for why the app stopped asking toISOString() what
+// day it is. A suite that builds "9 days ago" off the UTC clock disagrees
+// with the app for the hour after midnight every summer night, and then
+// fails for a reason that has nothing to do with what it is testing --
+// which is exactly what happened to test-quote-chase on 2026-09-21.
+const UK_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" });
+export const todayISO = () => UK_DATE.format(new Date());
+// Anchored at midday so a DST change can't shunt the answer across a day.
+export const day = (n) => {
+  const d = new Date(todayISO() + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function clickText(page, text) {

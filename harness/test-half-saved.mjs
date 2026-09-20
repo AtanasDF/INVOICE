@@ -1,11 +1,10 @@
 // The connection dies in the middle of a save. Nothing may end up half
 // written, nothing may be saved twice, and the app has to say which of the
 // two happened -- these are his real books, on a phone, on a building site.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 const flat = (t) => t.replace(/\s+/g, " ");
 
 const db = makeDb();
@@ -15,7 +14,7 @@ const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "1 Mill Lane\nBristol\nBS1 4DJ", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
 const S = newId();
 db.tables.clients.push({ id: S, user_id: "x", name: "Travis Perkins", email: "", address: "", kind: "supplier", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
-const INV = { id: newId(), user_id: "x", client_id: C, date: today, number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: today, payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null };
+const INV = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: todayISO(), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null };
 db.tables.invoices.push(INV);
 
 // Signal gone completely, not a database error: every request dies.
@@ -80,7 +79,7 @@ try {
 
   // 3. A quote turned into an invoice where the invoice write is cut off:
   //    the quote must not be left claimed with no invoice to show for it.
-  const Q = { id: newId(), user_id: "x", client_id: C, number: "Q-1", date: today, valid_until: null, items: [{ description: "Kitchen", quantity: 1, unitPrice: 2000, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null, deposit_percent: null, deposit_amount: null, deposit_invoice_id: null, deposit_claimed: false, created_at: new Date().toISOString() };
+  const Q = { id: newId(), user_id: "x", client_id: C, number: "Q-1", date: todayISO(), valid_until: null, items: [{ description: "Kitchen", quantity: 1, unitPrice: 2000, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null, deposit_percent: null, deposit_amount: null, deposit_invoice_id: null, deposit_claimed: false, created_at: new Date().toISOString() };
   db.tables.quotes.push(Q);
   db.fail = { "POST invoices": 20 };
   await page.goto(`${BASE}/quotes/${Q.id}`, { waitUntil: "networkidle0" });

@@ -16,6 +16,9 @@ const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
 const ENDPOINT = "https://push.example.test/sub/abc123";
+// The key supabase-js stores the session under; src/lib/supabaseClient.ts
+// now names it explicitly so sign-out can clear it.
+const AUTH_KEY = "sb-wecfwjxzyzzrcwbwnwpo-auth-token";
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], recurring_expenses: [], recurring_invoices: [], push_subscriptions: [] });
@@ -25,14 +28,22 @@ db.tables.push_subscriptions.push({ id: newId(), user_id: "x", endpoint: ENDPOIN
 // How far into the request log the sign-out call came. Anything the app
 // does to the database AFTER this point would be doing it with no session.
 let logoutAt = -1;
+// When true, the auth endpoints behave like a phone with no signal: the
+// logout call fails AND the token can't be refreshed.
+let noSignal = false;
 const { browser, page } = await launchSignedIn(db, {
   base: BASE,
   width: 375,
   profile: "profile-signout",
   intercept: (req, u) => {
+    const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
+    if (noSignal && (u.pathname.startsWith("/auth/v1/logout") || u.pathname.startsWith("/auth/v1/token"))) {
+      req.respond({ status: 500, headers: cors, body: JSON.stringify({ message: "unreachable" }) });
+      return true;
+    }
     if (!u.pathname.startsWith("/auth/v1/logout")) return false;
     logoutAt = db.log.length;
-    req.respond({ status: 204, headers: { "Access-Control-Allow-Origin": "*" }, body: "" });
+    req.respond({ status: 204, headers: cors, body: "" });
     return true;
   },
 });
@@ -101,5 +112,33 @@ try {
   check("a device with no notifications signs out anyway", logoutAt >= 0, String(logoutAt));
   check("...and doesn't delete a row it never had", !db.log.some((e) => e.key === "DELETE push_subscriptions"), JSON.stringify(db.log.map((e) => e.key)));
   check("...and nothing fell over", !(await bodyText(page)).includes("Application error"));
+
+  // The one that used to leave a phone signed in. supabase.auth.signOut()
+  // RESOLVES with an error rather than throwing, and when the access token
+  // has already expired and the refresh can't get through, it returns
+  // WITHOUT clearing the stored session: no SIGNED_OUT fires, nothing
+  // routes away, the header still reads Invoices / Settings, and the
+  // button said nothing at all. Lend that phone to someone and they have
+  // the whole accounting record.
+  await bePhoneWithPush(false);
+  await signIn(page, BASE);
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(1200);
+  // Age the stored session past its expiry, then cut the signal.
+  await page.evaluate((key) => {
+    const s = JSON.parse(localStorage.getItem(key));
+    s.expires_at = Math.floor(Date.now() / 1000) - 3600;
+    s.expires_in = -3600;
+    localStorage.setItem(key, JSON.stringify(s));
+  }, AUTH_KEY);
+  noSignal = true;
+  await clickSignOut();
+  // supabase-js retries the refresh, so the app bounds the wait at 4s and
+  // takes the session off the device itself. Give it room to do that.
+  await sleep(6000);
+  const stored = await page.evaluate((key) => localStorage.getItem(key), AUTH_KEY).catch(() => null);
+  check("an expired session on a dead connection is still taken off the device", stored === null, String(stored).slice(0, 80));
+  check("...and the person is shown the sign-in page, so the button visibly did something", /\/login/.test(page.url()), page.url());
+  noSignal = false;
 } catch (e) { console.log("ERROR", e.message); results.push(false); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

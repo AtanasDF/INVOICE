@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { REMINDER_SCHEDULE, addDays, laterReminders, reminderDueToday } from "@/lib/reminderTemplates";
 import { Client, Invoice, remindersSentStore } from "@/lib/storage";
+import { todayISO } from "@/lib/today";
 
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
@@ -40,7 +41,7 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
             ? "Automatic reminders are off for this client."
             : null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   // In its window today (on the day or a missed day being caught up) and
   // neither it nor a later one sent yet.
   const nowKind = invoice.dueDate ? reminderDueToday(invoice.dueDate, today) : null;

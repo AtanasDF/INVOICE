@@ -1,10 +1,9 @@
 // A customer's statement: every issued invoice, what came off it, what's
 // owed and how old it is.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, day } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const day = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], quote_links: [], invoice_links: [] });
 const C = newId();

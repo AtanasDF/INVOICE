@@ -1,11 +1,10 @@
 // What a customer sees. A private invoice or quote link that has been
 // stopped, mistyped, or points at a draft must not show them a bare 404 or
 // a stack trace -- and must never say whether the token ever existed.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 const flat = (t) => t.replace(/\s+/g, " ");
 const token = (n) => `${n}`.padEnd(43, "0");
 
@@ -14,7 +13,7 @@ Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [],
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
-const DRAFT = { id: newId(), user_id: "x", client_id: C, date: today, number: "DRAFT-p", items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
+const DRAFT = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "DRAFT-p", items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
 db.tables.invoices.push(DRAFT);
 db.tables.invoice_links.push({ id: newId(), user_id: "x", invoice_id: DRAFT.id, token: token("draftlink"), created_at: new Date().toISOString(), first_viewed_at: null, last_viewed_at: null, view_count: 0 });
 

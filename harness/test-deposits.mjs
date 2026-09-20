@@ -1,9 +1,8 @@
-import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3500";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
-const plus = (days) => { const d = new Date(`${today}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+const plus = (days) => { const d = new Date(`${todayISO()}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
 const total = (items, vat = true) => items.reduce((s, i) => s + i.quantity * i.unitPrice * (vat ? 1 + ({ standard: 0.2, reduced: 0.05 }[i.vatRate] ?? 0) : 1), 0);
 
 const db = makeDb();
@@ -86,9 +85,9 @@ try {
 
   // A deposit invoice credited in full takes nothing off the balance.
   const Q4 = newId(), DEP4 = newId();
-  db.tables.invoices.push({ id: DEP4, user_id: "x", client_id: C1, date: today, number: "INV-2002", items: [{ description: "Deposit for quote Q-0004", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: null, due_date: null, payment_terms: null, status: "sent", tags: ["deposit for Q-0004"] });
-  db.tables.quotes.push({ id: Q4, user_id: "x", client_id: C1, number: "Q-0004", date: today, valid_until: null, items: [{ description: "Job", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null, deposit_percent: null, deposit_amount: 120, deposit_invoice_id: DEP4, deposit_claimed: true });
-  db.tables.credit_notes.push({ id: newId(), user_id: "x", invoice_id: DEP4, date: today, amount: 120, reason: "cancelled" });
+  db.tables.invoices.push({ id: DEP4, user_id: "x", client_id: C1, date: todayISO(), number: "INV-2002", items: [{ description: "Deposit for quote Q-0004", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: null, due_date: null, payment_terms: null, status: "sent", tags: ["deposit for Q-0004"] });
+  db.tables.quotes.push({ id: Q4, user_id: "x", client_id: C1, number: "Q-0004", date: todayISO(), valid_until: null, items: [{ description: "Job", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null, deposit_percent: null, deposit_amount: 120, deposit_invoice_id: DEP4, deposit_claimed: true });
+  db.tables.credit_notes.push({ id: newId(), user_id: "x", invoice_id: DEP4, date: todayISO(), amount: 120, reason: "cancelled" });
   await page.goto(`${BASE}/quotes/${Q4}`, { waitUntil: "networkidle0" });
   await waitText(page, "Invoice the balance");
   await clickText(page, "Invoice the balance");
@@ -99,9 +98,9 @@ try {
 
   // Claimed but never linked: found by its tag, or offered back.
   const Q2 = newId(), Q3 = newId(), INV = newId();
-  const base = { user_id: "x", client_id: C1, date: today, valid_until: null, items: [{ description: "x", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null, deposit_percent: null, deposit_amount: 50, deposit_invoice_id: null, deposit_claimed: true };
+  const base = { user_id: "x", client_id: C1, date: todayISO(), valid_until: null, items: [{ description: "x", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null, deposit_percent: null, deposit_amount: 50, deposit_invoice_id: null, deposit_claimed: true };
   db.tables.quotes.push({ ...base, id: Q2, number: "Q-0002" }, { ...base, id: Q3, number: "Q-0003" });
-  db.tables.invoices.push({ id: INV, user_id: "x", client_id: C1, date: today, number: "DRAFT-y", items: [], notes: null, due_date: null, payment_terms: null, status: "draft", tags: ["deposit for Q-0002"] });
+  db.tables.invoices.push({ id: INV, user_id: "x", client_id: C1, date: todayISO(), number: "DRAFT-y", items: [], notes: null, due_date: null, payment_terms: null, status: "draft", tags: ["deposit for Q-0002"] });
   await page.goto(`${BASE}/quotes/${Q2}`, { waitUntil: "networkidle0" });
   await waitText(page, "Deposit invoiced");
   check("lost deposit link found by tag and relinked", db.tables.quotes.find((x) => x.id === Q2).deposit_invoice_id === INV);

@@ -12,6 +12,7 @@ import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvo
 import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
 
@@ -129,7 +130,7 @@ export default function InvoicesPage() {
         : invoiceBalance({ total: total(inv), credited: creditOffDue(charge(inv), notes.reduce((s, c) => s + c.amount, 0)), paid: pays.reduce((s, p) => s + p.amount, 0), status: inv.status });
       let all = pays;
       if (due > 0) {
-        const added = await paymentsStore.add({ invoiceId: inv.id, date: new Date().toISOString().slice(0, 10), amount: due, method: null, note: "Marked as paid" });
+        const added = await paymentsStore.add({ invoiceId: inv.id, date: todayISO(), amount: due, method: null, note: "Marked as paid" });
         all = [...pays, added];
       }
       setPayments((prev) => [...prev.filter((p) => p.invoiceId !== inv.id), ...all]);
@@ -171,7 +172,7 @@ export default function InvoicesPage() {
 
   function exportInvoices() {
     downloadCsv(
-      `invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      `invoices-${todayISO()}.csv`,
       filteredInvoices.map((inv) => ({
         number: inv.status === "draft" ? "" : inv.number,
         date: inv.date,

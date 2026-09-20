@@ -20,18 +20,50 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 - [x] **3. `/expenses` counts draft invoices as income and ignores credit notes** `[high]`
   — two different income figures between it and the tax card.
   Fixed: `src/lib/periodIncome.ts`, tested by `harness/test-period-income.mjs`.
-- [ ] **5. Saving Settings writes back the invoice counter from a stale page-load
-  snapshot** `[medium]`
-- [ ] **6. Sign out can silently do nothing on a bad connection and leave the session on
-  the phone** `[medium]`
-- [ ] **7. Recurring "Log it" saves the expense, then reports failure if only the schedule
-  write fails** `[medium]`
-- [ ] **8. A photo the browser can't decode attaches nothing, no error shown** `[medium]`
-- [ ] **9. Feedback pill covers the Free-invoice "More" button on a phone** `[medium]`
-- [ ] **10. A failed dashboard load clears the home-screen badge — false all-clear** `[low]`
+- [x] **5. Saving Settings writes back the invoice counter from a stale page-load
+  snapshot** `[medium]` — the review's stated consequence was wrong and worth recording:
+  `unique (user_id, number)` means a number can never reach two customers. What actually
+  happened is that issuing **jams** — the next "Mark as sent" fails on 23505, and because
+  the aborted transaction rolls the increment back too, it keeps failing until someone
+  works out why and retypes the number. An untouched field now writes back today's value;
+  a deliberate edit still wins.
+- [x] **6. Sign out can silently do nothing on a bad connection and leave the session on
+  the phone** `[medium]` — worse than reported, and the test is what found it.
+  `supabase.auth.signOut()` resolves with an error rather than throwing, and on a dead
+  connection it **hangs**, retrying the token refresh; it can also return reporting no
+  error at all with the session still in storage. Sign-out is now bounded at 4s and then
+  checks by looking, rather than trusting what it was told.
+- [x] **7. Recurring "Log it" saves the expense, then reports failure if only the schedule
+  write fails** `[medium]` — and the identical defect on `/recurring/invoices`, fixed in
+  the same pass. Also adds the missing in-flight guard, so a double-tap can't make two.
+- [x] **8. A photo the browser can't decode attaches nothing, no error shown** `[medium]`
+  — at exactly one place, `/receipts/new`; every other upload path already handled it.
+- [x] **9. Feedback pill covers the Free-invoice "More" button on a phone** `[medium]` —
+  it hid Print, Next invoice and Save to your account behind a tap that opened Feedback.
+  `test-one-handed` now hit-tests every button on that page, because `clickText` calls
+  `el.click()` and never notices something sitting on top.
+- [x] **10. A failed dashboard load clears the home-screen badge — false all-clear** `[low]`
 - [ ] **11. Fourth review pass on what all three missed**: PDF/print rendering,
   `quoteDeposit`, `splitDocuments`, `duplicateContacts`, `statement`, `priceGuide`,
   `companyRegister`
+
+## Found along the way (not on the original list)
+
+- [x] **Every "today" in the app was the UTC date.** For the hour after midnight, British
+  Summer Time, a receipt typed in was dated yesterday, an invoice due that day wasn't
+  overdue, a sale could land in the previous VAT quarter, and an invoice issued through
+  the scan page dropped out of the tax card altogether. One `todayISO()` in
+  `src/lib/today.ts` now, in Europe/London. `harness/test-midnight.mjs`.
+- [x] **A crashed harness suite reported "0 fails"**, which reads as a pass. Three were
+  sitting like that.
+- [x] **`large.mjpeg` had no generator** and nine suites need it; the clip only ever
+  existed by hand in a wiped scratchpad. `harness/gen-large.py`.
+- [x] **Sixteen suites shared one Chrome profile**, so they knocked each other over
+  four-at-a-time and passed when run alone.
+- [x] **The harness built its own dates off the UTC clock**, so it disagreed with the app
+  for the same hour. `mockdb.mjs` now exports `todayISO()` / `day(n)`.
+- [ ] `torch-bright.mjpeg` and `dark-nocv2.mjpeg` still have no generator (suites outside
+  `run-all.sh`).
 
 ## Tests for fixes that have none yet
 

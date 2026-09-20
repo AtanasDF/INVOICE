@@ -83,10 +83,18 @@ function FeedbackButton() {
   const { user } = useAuth();
   const pathname = usePathname();
   if (!user || pathname === "/feedback" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/")) return null;
+  // The Free invoice page is the one screen with its own bottom bar on a
+  // phone (sm:hidden), and the pill sat on top of it at the same z-10, later
+  // in the DOM -- so a tap on "More", whose centre was inside the pill,
+  // opened Feedback instead. That hid Print, Next invoice and Save to your
+  // account behind a button that couldn't be pressed. The pill steps aside
+  // exactly where the bar is; it is on every other page, for a signed-in
+  // user, at every width.
+  const overBottomBar = pathname === "/free-invoice";
   return (
     <Link
       href="/feedback"
-      className="fixed right-5 z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden"
+      className={`fixed right-5 z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden${overBottomBar ? " max-sm:hidden" : ""}`}
       style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
     >
       Feedback

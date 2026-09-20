@@ -6,6 +6,7 @@ import { getFxRate } from "@/lib/fx";
 import type { DocumentType } from "@/lib/storage";
 import { storeImageForUser } from "@/lib/receiptImagesServer";
 import { pdfWithPages } from "@/lib/pdfPages";
+import { todayISO } from "@/lib/today";
 
 export const runtime = "nodejs";
 
@@ -117,7 +118,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: userId,
           client_id: null,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayISO(),
           vendor: (attachment.filename || body.subject || body.from || "Emailed document").slice(0, 200),
           category: null,
           amount: 0,
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: userId,
           client_id: null,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayISO(),
           vendor: (body.subject || body.from || "Emailed receipt").slice(0, 200),
           category: null,
           amount: 0,
@@ -237,7 +238,7 @@ export async function POST(req: Request) {
           .insert({
             user_id: userId,
             client_id: null,
-            date: result.date || new Date().toISOString().slice(0, 10),
+            date: result.date || todayISO(),
             vendor: result.vendor || body.subject || null,
             category: result.category,
             amount: sign * amount,

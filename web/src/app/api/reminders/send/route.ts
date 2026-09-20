@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { VatLineItem } from "@/lib/vat";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
+import { todayISO } from "@/lib/today";
 
 export const runtime = "nodejs";
 
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
 
   try {
     const admin = createClient(supabaseUrl, serviceRoleKey);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayISO();
 
     const { data: invoices, error: invErr } = await admin
       .from("invoices")

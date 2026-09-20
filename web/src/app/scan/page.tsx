@@ -27,6 +27,7 @@ import ContactField, { type Usage } from "@/components/ContactField";
 import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components/RegisterBits";
 import { useCompanyLookup } from "@/lib/companyConfigured";
 import { saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -102,11 +103,6 @@ const EMPTY_FORM: Form = {
 const TYPE_WORD: Record<TransactionalType, string> = { invoice: "Invoice", receipt: "Receipt", credit_note: "Credit note" };
 const SAVED_TYPE: Record<Mode, DocumentType> = { invoice: "invoice", receipt: "receipt", credit_note: "credit_note", archival: "other", contact: "other" };
 const TRANSACTIONAL: ScanDocumentType[] = ["receipt", "invoice", "credit_note"];
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function modeOf(f: Form): Mode {
   if (f.typeOverride) return f.typeOverride;
@@ -397,7 +393,7 @@ export default function ScanPage() {
   // Save all's progress while it runs.
   const [bulk, setBulk] = useState<string | null>(null);
 
-  const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayIso() }));
+  const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, date: todayISO() }));
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [fxLoading, setFxLoading] = useState(false);
   const [fxError, setFxError] = useState<string | null>(null);
@@ -768,7 +764,7 @@ export default function ScanPage() {
   // the camera opens, so backing out of the camera keeps the current scan.
   function resetDocument() {
     touchedRef.current = new Set();
-    setForm((f) => ({ ...EMPTY_FORM, date: todayIso(), category: f.category }));
+    setForm((f) => ({ ...EMPTY_FORM, date: todayISO(), category: f.category }));
     setSaveError(null);
     setDuplicate(null);
     setFxError(null);
@@ -959,7 +955,7 @@ export default function ScanPage() {
         const isShown = d.id === shown.id;
         let f: Form | null = isShown ? shown.form : null;
         if (!isShown && d.result) {
-          const read = formFromResult(d.result, { ...EMPTY_FORM, date: todayIso(), category: defaultCategory }, new Set(), suppliersRef.current, receiptList, false);
+          const read = formFromResult(d.result, { ...EMPTY_FORM, date: todayISO(), category: defaultCategory }, new Set(), suppliersRef.current, receiptList, false);
           f = { ...read, currency: d.result.currency && d.result.currency !== "GBP" ? d.result.currency : "GBP" };
         }
         let look = !f || d.error ? "couldn't be read" : lookReason(f, d.result, isShown ? shown.touched : new Set());

@@ -1,16 +1,15 @@
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./mock-server.mjs";
-import { makeDb, newId, sleep, bodyText } from "./mockdb.mjs";
+import { makeDb, newId, sleep, bodyText, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3950";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const db = makeDb();
 const UID = "00000000-0000-4000-8000-000000000001";
 const C = newId(), Q1 = newId(), Q2 = newId(), Q3 = newId();
-const today = new Date().toISOString().slice(0, 10);
 db.tables.business_profile.push({ user_id: UID, business_name: "Harness Plastering Ltd", vat_registered: false, inbox_token: "SECRET-INBOX" });
 db.tables.clients.push({ id: C, user_id: UID, name: "Jane Customer", email: "jane@example.com", address: "2 Road", kind: "client", archived: false, is_company: false, reminders_enabled: true, payment_terms: "14 days" });
-const quote = (id, number, status, valid) => ({ id, user_id: UID, client_id: C, number, date: today, valid_until: valid, items: [{ description: "Skim coat kitchen", quantity: 1, unitPrice: 900, vatRate: "standard" }], notes: "Two days", status, invoice_id: null, deposit_percent: null, deposit_amount: null, deposit_invoice_id: null, deposit_claimed: false });
+const quote = (id, number, status, valid) => ({ id, user_id: UID, client_id: C, number, date: todayISO(), valid_until: valid, items: [{ description: "Skim coat kitchen", quantity: 1, unitPrice: 900, vatRate: "standard" }], notes: "Two days", status, invoice_id: null, deposit_percent: null, deposit_amount: null, deposit_invoice_id: null, deposit_claimed: false });
 db.tables.quotes.push(quote(Q1, "Q-0001", "sent", "2099-01-01"), quote(Q2, "Q-0002", "draft", "2099-01-01"), quote(Q3, "Q-0003", "sent", "2020-01-01"));
 db.tables.quote_links = []; db.tables.invoices = []; db.tables.credit_notes = []; db.tables.push_subscriptions = []; db.tables.invoice_payments = [];
 const { server } = startMockServer(5555, db);
@@ -74,7 +73,7 @@ try {
   const again = await cust.evaluate(async (token) => (await fetch("/api/quote-links/respond", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, response: "declined", name: "x" }) })).status, l1.token);
   check("a second answer is refused", again === 409 && q1.status === "accepted", again);
 
-  db.tables.quote_links.push({ quote_id: Q3, user_id: UID, token: "e".repeat(43), created_at: today, first_viewed_at: null, last_viewed_at: null, view_count: 0, response: null, responded_at: null, responder_name: null });
+  db.tables.quote_links.push({ quote_id: Q3, user_id: UID, token: "e".repeat(43), created_at: todayISO(), first_viewed_at: null, last_viewed_at: null, view_count: 0, response: null, responded_at: null, responder_name: null });
   await cust.goto(`${BASE}/q/${"e".repeat(43)}`, { waitUntil: "networkidle0" });
   t = await bodyText(cust);
   check("an expired quote can't be accepted", t.includes("was valid until") && !t.includes("Accept quote"));

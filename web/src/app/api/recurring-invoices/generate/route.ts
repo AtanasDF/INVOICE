@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { todayISO } from "@/lib/today";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
 
   try {
     const admin = createClient(supabaseUrl, serviceRoleKey);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayISO();
 
     const { data: due, error: dueErr } = await admin
       .from("recurring_invoices")

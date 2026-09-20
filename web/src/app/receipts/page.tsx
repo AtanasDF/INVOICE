@@ -12,6 +12,7 @@ import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } fro
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 type ReceiptDraft = {
   clientId: string;
@@ -187,7 +188,7 @@ export default function ReceiptsPage() {
   const toLink = linkable.filter(({ receipt }) => !unticked.has(receipt.id));
   const linkListOpen = linkable.length <= 3 || showLinkable;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const receiptById = useMemo(() => new Map(receipts.map((r) => [r.id, r])), [receipts]);
   // Signed (negative) credit totals per invoice id, net and gross.
   const creditsByInvoice = useMemo(() => {
@@ -385,7 +386,7 @@ export default function ReceiptsPage() {
 
   function exportReceipts() {
     downloadCsv(
-      `receipts-${new Date().toISOString().slice(0, 10)}.csv`,
+      `receipts-${todayISO()}.csv`,
       filteredReceipts.map((r) => ({
         date: r.date,
         type: r.documentType,

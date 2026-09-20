@@ -1,8 +1,7 @@
-import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3700";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 const db = makeDb();
 const C = newId(), I1 = newId(), I2 = newId();
 db.tables.business_profile.push({ business_name: "Harness Ltd", vat_registered: true, show_overdue_reminders: false });

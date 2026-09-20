@@ -1,10 +1,9 @@
 // Two records for the same business: offer to merge, move everything over,
 // archive the duplicate (never delete).
-import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], quotes: [], recurring_invoices: [], recurring_expenses: [] });
 const client = (o) => ({ id: newId(), user_id: "x", name: "", email: "", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", ...o });
@@ -15,9 +14,9 @@ const SUPPLIER = client({ name: "Acme Kitchens Ltd", kind: "supplier" });
 const ALONE = client({ name: "Someone Else" });
 db.tables.clients.push(FULL, THIN, BYEMAIL, SUPPLIER, ALONE);
 db.tables.business_profile.push({ business_name: "Harness Plastering Ltd", vat_registered: true });
-const inv = (client_id, number) => ({ id: newId(), user_id: "x", client_id, date: today, number, items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: today, payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null });
+const inv = (client_id, number) => ({ id: newId(), user_id: "x", client_id, date: todayISO(), number, items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: todayISO(), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null });
 db.tables.invoices.push(inv(THIN.id, "INV-THIN-1"), inv(THIN.id, "INV-THIN-2"), inv(FULL.id, "INV-FULL-1"));
-db.tables.receipts.push({ id: newId(), user_id: "x", client_id: THIN.id, date: today, vendor: "Acme", category: "Supplies", amount: 10, vat_amount: 2, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+db.tables.receipts.push({ id: newId(), user_id: "x", client_id: THIN.id, date: todayISO(), vendor: "Acme", category: "Supplies", amount: 10, vat_amount: 2, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-merge-contacts" });
 page.on("dialog", (d) => d.accept());
 try {

@@ -3,12 +3,11 @@
 // job cost, and then check that every figure that follows — the dashboard,
 // the expenses, the VAT boxes and the tax set-aside — tells the same story.
 // This is the one test that walks the app the way it is actually used.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const flat = (t) => t.replace(/\s+/g, " ");
-const today = new Date().toISOString().slice(0, 10);
 
 // Nothing at all: no business details, no contacts, no documents.
 const db = makeDb();

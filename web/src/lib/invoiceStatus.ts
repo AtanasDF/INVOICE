@@ -1,6 +1,8 @@
 // Draft -> Sent -> Partial -> Paid. Overdue is never stored -- it's
 // always derived from status + due_date, so it can't drift out of sync
 // with "today" the way a stored flag would.
+import { todayISO } from "@/lib/today";
+
 export type InvoiceStatus = "draft" | "sent" | "partial" | "paid";
 
 export const INVOICE_STATUS_KINDS: InvoiceStatus[] = ["draft", "sent", "partial", "paid"];
@@ -15,7 +17,7 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 // Only a sent-or-partial invoice past its due date counts as overdue --
 // a draft was never issued so nothing's actually late, and a paid
 // invoice is done regardless of when it was due.
-export function isOverdue(status: InvoiceStatus, dueDate: string | null, today: string = new Date().toISOString().slice(0, 10)): boolean {
+export function isOverdue(status: InvoiceStatus, dueDate: string | null, today: string = todayISO()): boolean {
   return (status === "sent" || status === "partial") && !!dueDate && dueDate < today;
 }
 

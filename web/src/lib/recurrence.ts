@@ -6,6 +6,8 @@
 // unusual ones, so every step here stays anchored to UTC. Shared between
 // recurring expenses and recurring invoices -- same monthly-schedule math
 // either way.
+import { todayISO } from "@/lib/today";
+
 export function addMonths(dateStr: string, months: number): string {
   const d = new Date(dateStr);
   d.setUTCMonth(d.getUTCMonth() + months);
@@ -13,7 +15,7 @@ export function addMonths(dateStr: string, months: number): string {
 }
 
 export function nextDueFromDay(dayOfMonth: number): string {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayISO();
   const [y, m] = todayStr.split("-").map(Number);
   const candidate = new Date(Date.UTC(y, m - 1, dayOfMonth));
   if (candidate.toISOString().slice(0, 10) < todayStr) {

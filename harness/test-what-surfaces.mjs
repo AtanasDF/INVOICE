@@ -2,12 +2,11 @@
 // opens in the van: a bill he has to pay should appear before it's late,
 // an overdue invoice should be obvious, and nothing should shout at him
 // about something that isn't due for a fortnight.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, day } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const flat = (t) => t.replace(/\s+/g, " ");
-const day = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], receipt_pages: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [] });

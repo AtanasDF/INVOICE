@@ -2,21 +2,20 @@
 // button, and the camera asking once. Mocked database, no real camera:
 // getUserMedia is a canvas stream and the permission state is faked.
 import fs from "fs";
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, shot, newId, handle, SUPA } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, shot, newId, handle, SUPA, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3308";
 const DL = new URL("./downloads/", import.meta.url).pathname;
 const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], recurring_expenses: [], recurring_invoices: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], invoice_reminders_sent: [], receipt_pages: [] });
 const CLIENT = newId();
 db.tables.clients.push({ id: CLIENT, user_id: "x", name: "Big Co Ltd", email: "pay@bigco.example", address: "2 Client Road\nLeeds\nLS1 2AB", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "14 days", phone: "" });
 const INV = newId();
-db.tables.invoices.push({ id: INV, user_id: "x", client_id: CLIENT, date: today, number: "INV-000123", items: [{ description: "Plastering", quantity: 1, unitPrice: 500, vatRate: "zero" }], notes: "", due_date: today, payment_terms: "14 days", status: "sent", tags: [], vat_registered: false, cis_rate: null });
-db.tables.invoice_links.push({ invoice_id: INV, user_id: "x", token: "a".repeat(43), created_at: today, first_viewed_at: null, last_viewed_at: null, view_count: 0 });
+db.tables.invoices.push({ id: INV, user_id: "x", client_id: CLIENT, date: todayISO(), number: "INV-000123", items: [{ description: "Plastering", quantity: 1, unitPrice: 500, vatRate: "zero" }], notes: "", due_date: todayISO(), payment_terms: "14 days", status: "sent", tags: [], vat_registered: false, cis_rate: null });
+db.tables.invoice_links.push({ invoice_id: INV, user_id: "x", token: "a".repeat(43), created_at: todayISO(), first_viewed_at: null, last_viewed_at: null, view_count: 0 });
 db.tables.business_profile.push({
   user_id: "x",
   business_name: "Nasko Plastering",
@@ -255,7 +254,7 @@ try {
       base: BASE,
       profile: "profile-settings-add-old",
       // PostgREST refuses the whole write when a column it doesn't know
-      // about is in the body -- exactly what today's database would do.
+      // about is in the body -- exactly what todayISO()'s database would do.
       intercept: (req, u) => {
         if (u.origin !== SUPA || !u.pathname.startsWith("/rest/v1/business_profile") || req.method() === "GET" || req.method() === "OPTIONS") return false;
         const body = req.postData() ? JSON.parse(req.postData()) : null;
@@ -274,7 +273,7 @@ try {
     await sleep(700);
     const oldText = await bodyText(p4);
     check("columns absent: settings still loads as before", oldText.includes("Your business") && oldText.includes("harness@example.com") && !oldText.includes("Registered company name"), oldText.slice(0, 200));
-    check("columns absent: the address label is the one he has today", (await addressLabel(p4)).startsWith("Business address"), await addressLabel(p4));
+    check("columns absent: the address label is the one he has todayISO()", (await addressLabel(p4)).startsWith("Business address"), await addressLabel(p4));
     await setField(p4, 'input[placeholder="Account name, sort code, account number / IBAN, etc."]', "Sort 00-00-00", 0).catch(() => {});
     await p4.evaluate(() => { const t = document.querySelector("textarea"); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(t, "1 New Street"); t.dispatchEvent(new Event("input", { bubbles: true })); }).catch(() => {});
     await click(p4, "Save");

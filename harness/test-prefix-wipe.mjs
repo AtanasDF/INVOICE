@@ -6,11 +6,10 @@
 // recovery for that case saved the default profile, which on an existing
 // row is an upsert: business name, address, bank details, VAT registration
 // and the email-import token all blanked, and the counter reset to 1.
-import { UID, makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId } from "./mockdb.mjs";
+import { UID, makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [] });
@@ -34,7 +33,7 @@ db.tables.business_profile.push({
 });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "a@b.c", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
-const DRAFT = { id: newId(), user_id: "x", client_id: C, date: today, number: "DRAFT-x", items: [{ description: "Work", quantity: 1, unitPrice: 500, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
+const DRAFT = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "DRAFT-x", items: [{ description: "Work", quantity: 1, unitPrice: 500, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
 db.tables.invoices.push(DRAFT);
 
 const profile = () => db.tables.business_profile[0];

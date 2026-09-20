@@ -33,6 +33,15 @@ that nothing was keeping.
   `torch-bright.mjpeg` and `dark-nocv2.mjpeg` (used by `test-torch`, `test-torch-nocv`,
   neither in `run-all.sh`) are still missing a generator.
 
+## One trap worth knowing
+
+Seed rows with `UID` from `mockdb.mjs`, not a made-up `user_id: "x"`. Reads work either
+way (the mock enforces no RLS), so most suites get away with it — but an **upsert**
+matches its conflict target against what the app writes, which is the signed-in session's
+real id. Seeded as `"x"`, a `business_profile` upsert matches nothing, appends a second
+row, and a suite reading `tables[0]` sees the stale one and passes for the wrong reason.
+That cost an hour on 2026-09-20, chasing a fix that had been correct all along.
+
 ## Running it
 
 ```

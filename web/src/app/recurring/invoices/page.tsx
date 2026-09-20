@@ -19,6 +19,7 @@ import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
 import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 function RecurringTabs() {
   return (
@@ -58,7 +59,7 @@ export default function RecurringInvoicesPage() {
   }, []);
 
   const billableClients = clients.filter((c) => c.kind === "client" && !c.archived);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   function clientName(id: string) {
     return clients.find((c) => c.id === id)?.name || "No client";
@@ -136,11 +137,21 @@ export default function RecurringInvoicesPage() {
         status: "draft",
         tags: [],
       });
-      const next = addMonths(item.nextDueDate, 1);
-      await recurringInvoicesStore.update(item.id, { nextDueDate: next });
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));
     } catch (err) {
       setError(saveFailed(err, "Could not generate this invoice."));
+      setGeneratingId(null);
+      return;
+    }
+    // Same as "Log it" on the expenses side: the draft exists from here on,
+    // so the reminder stops offering to make it again whether or not the
+    // schedule write lands. Otherwise a failed second write reads as
+    // "nothing happened" and a retry makes a duplicate draft invoice.
+    const next = addMonths(item.nextDueDate, 1);
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));
+    try {
+      await recurringInvoicesStore.update(item.id, { nextDueDate: next });
+    } catch (err) {
+      setError(saveFailed(err, "The draft invoice is made, but the reminder didn't move on -- it'll ask again next time you open this page. Don't make it twice."));
     } finally {
       setGeneratingId(null);
     }

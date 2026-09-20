@@ -1,11 +1,10 @@
 // "Find it cheaper" on a quote line and on a comparison row: prepared
 // searches aimed at the line's own words, and a price guide to judge a
 // quote against. The guide call is intercepted; the searches are links.
-import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], invoice_payments: [], credit_notes: [], quote_links: [] });
 const CLIENT = newId();

@@ -2,18 +2,17 @@
 // the size of the things you have to hit with a thumb. Apple's own
 // guidance is 44x44pt; the inline text actions in this app are smaller by
 // design, so this holds the main buttons to it and reports the rest.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [] });
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
-const INV = { id: newId(), user_id: "x", client_id: C, date: today, number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: today, payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null };
+const INV = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: todayISO(), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null };
 db.tables.invoices.push(INV);
 
 const PAGES = [["/", "Dashboard"], ["/invoices", "Invoices"], [`/invoices/${INV.id}`, "An invoice"], ["/receipts/new", "New receipt"], ["/invoices/new", "New invoice"], ["/scan", "Scan"], ["/settings", "Settings"]];
@@ -65,5 +64,27 @@ try {
   for (const s of tiny.slice(0, 12)) console.log("TINY TARGET", s);
   check(`no button is under 32px to hit (${small.length} smaller)`, small.length === 0, small.slice(0, 5).join(" | "));
   check(`nothing tappable is under 14px tall (${tiny.length} shorter)`, tiny.length === 0, tiny.slice(0, 5).join(" | "));
+  // Nothing must sit on top of a button. clickText calls el.click() and
+  // never hit-tests, so a control covered by a floating element still
+  // "passed" every suite -- which is how the Feedback pill came to be
+  // parked on the Free invoice page's "More" button on a phone, hiding
+  // Print, Next invoice and Save to your account behind a tap that opened
+  // Feedback instead.
+  await page.setViewport({ width: 390, height: 780, deviceScaleFactor: 1 });
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
+  await sleep(1600);
+  const covered = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll("button, a[href]")) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > innerHeight) continue;
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) {
+        out.push({ label: (el.textContent || "").trim().slice(0, 24), over: (hit.textContent || "").trim().slice(0, 24) });
+      }
+    }
+    return out;
+  });
+  check("no button on the Free invoice page is covered by something else at 390px", covered.length === 0, JSON.stringify(covered).slice(0, 300));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

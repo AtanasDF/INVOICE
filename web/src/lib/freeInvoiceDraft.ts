@@ -1,5 +1,6 @@
 import type { InvoiceLayoutStyle, InvoiceLineKind, InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { computeInvoiceTotals, VAT_RATES, VatRateKind } from "@/lib/vat";
+import { todayISO } from "@/lib/today";
 
 export type FreeInvoiceLine = { description: string; quantity: number; unitPrice: number; vatRate: VatRateKind; kind: InvoiceLineKind };
 
@@ -70,8 +71,7 @@ export function currencySymbol(code: string | null): string {
 }
 
 export function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayISO();
 }
 
 export function addDays(iso: string, days: number): string {

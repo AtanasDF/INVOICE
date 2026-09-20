@@ -19,6 +19,7 @@ import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
 import { celebratePaid } from "@/components/PaidCelebration";
 import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -57,7 +58,7 @@ export default function InvoiceViewPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [showPayForm, setShowPayForm] = useState(false);
-  const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payDate, setPayDate] = useState(() => todayISO());
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod | "">("bank");
   const [paySaving, setPaySaving] = useState(false);
@@ -65,7 +66,7 @@ export default function InvoiceViewPage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [cnDate, setCnDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [cnDate, setCnDate] = useState(() => todayISO());
   const [cnAmount, setCnAmount] = useState("");
   const [cnReason, setCnReason] = useState("");
   const [cnSaving, setCnSaving] = useState(false);
@@ -269,7 +270,7 @@ export default function InvoiceViewPage() {
       }
       let all = pays;
       if (due > 0) {
-        const added = await paymentsStore.add({ invoiceId: invoice.id, date: new Date().toISOString().slice(0, 10), amount: due, method: null, note: "Marked as paid" });
+        const added = await paymentsStore.add({ invoiceId: invoice.id, date: todayISO(), amount: due, method: null, note: "Marked as paid" });
         all = [...pays, added];
         setPayments(all);
       }
@@ -461,7 +462,7 @@ export default function InvoiceViewPage() {
     setDuplicateError(null);
     setDuplicating(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const quoteTags = new Set((await quotesStore.all()).flatMap((q) => [`from ${q.number}`, depositTag(q.number)]));
       // Creates a new draft, same as New Invoice -- no real number and
       // no counter advance until it's marked sent.

@@ -10,9 +10,10 @@ import StatementDocument from "@/components/StatementDocument";
 import { buildStatement, statementText } from "@/lib/statement";
 import { shortDate } from "@/lib/quoteStatus";
 import { loadFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => todayISO();
 
 // Everything one customer has been invoiced, what they've paid, and what is
 // still owed — to print, share or send when chasing.

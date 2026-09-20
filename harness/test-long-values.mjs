@@ -1,12 +1,10 @@
 // Long names and big numbers, on a phone. A 60-character company name and
 // £1,234,567.89 must not push the page sideways, overlap anything, or have
 // digits cut off -- a truncated total is a wrong total to whoever reads it.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, day, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
-const day = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 const LONG = "Worcestershire & Herefordshire Building Contractors Limited";
 const LONGER = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch Joinery & Shopfitting Co-operative Limited";
@@ -19,12 +17,12 @@ db.tables.clients.push({ id: C, user_id: "x", name: LONGER, email: "accounts.pay
 const S = newId();
 db.tables.clients.push({ id: S, user_id: "x", name: "Travis Perkins Trading Company Limited (Kidderminster Branch)", email: "", address: "", kind: "supplier", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
 
-const BIG = { id: newId(), user_id: "x", client_id: C, date: today, number: "INV-000400", items: [
+const BIG = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "INV-000400", items: [
   { description: "Structural steelwork, fabrication and erection across the whole of phase two including all fixings", quantity: 1, unitPrice: 1029639.91, vatRate: "standard" },
 ], notes: "", due_date: day(-40), payment_terms: "30 days", status: "sent", tags: [], vat_registered: true, cis_rate: null };
 db.tables.invoices.push(BIG);
 db.tables.invoice_payments.push({ id: newId(), user_id: "x", invoice_id: BIG.id, date: day(-10), amount: 234567.89, method: "bank", note: "" });
-db.tables.receipts.push({ id: newId(), user_id: "x", client_id: S, date: today, vendor: "Travis Perkins Trading Company Limited (Kidderminster Branch)", category: "Supplies", amount: 987654.32, vat_amount: 197530.86, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "invoice", invoice_number: "TP-2026-000123456", due_date: day(2), paid: false, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+db.tables.receipts.push({ id: newId(), user_id: "x", client_id: S, date: todayISO(), vendor: "Travis Perkins Trading Company Limited (Kidderminster Branch)", category: "Supplies", amount: 987654.32, vat_amount: 197530.86, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "invoice", invoice_number: "TP-2026-000123456", due_date: day(2), paid: false, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
 
 const PAGES = [["/", "Dashboard"], ["/invoices", "Invoices"], [`/invoices/${BIG.id}`, "The invoice"], ["/receipts", "Receipts"], ["/clients", "Contacts"], ["/expenses", "Expenses"], ["/vat", "VAT"], [`/clients/${C}/statement`, "Statement"]];
 

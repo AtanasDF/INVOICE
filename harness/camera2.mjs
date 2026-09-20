@@ -8,7 +8,10 @@ export async function launch(clip) {
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: true,
-    userDataDir: OUT + "profile-" + clip.replace(/\W/g, ""),
+    // Was keyed on the clip name, so every suite playing large.mjpeg shared
+    // one profile directory and they knocked each other over when run
+    // together. Keyed on the suite instead.
+    userDataDir: OUT + "profile-" + ((process.argv[1] ?? "run").split("/").pop().replace(/\.mjs$/, "").replace(/\W/g, "") || "run") + "-" + clip.replace(/\W/g, ""),
     args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${OUT}${clip}`, "--no-first-run", "--autoplay-policy=no-user-gesture-required"],
   });
   const page = await browser.newPage();

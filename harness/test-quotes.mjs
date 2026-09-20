@@ -1,5 +1,5 @@
 import fs from "fs";
-import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3100";
 const DL = new URL("./downloads/", import.meta.url).pathname;
 fs.mkdirSync(DL, { recursive: true });
@@ -7,8 +7,7 @@ for (const f of fs.readdirSync(DL)) fs.unlinkSync(DL + f);
 
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
-const plus = (days) => { const d = new Date(today); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+const plus = (days) => { const d = new Date(todayISO()); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
 
 const db = makeDb();
 const C1 = newId(), C2 = newId(), S1 = newId();
@@ -131,9 +130,9 @@ try {
   check("invoiced quote has no send panel", !(await bodyText(page)).includes("Send quote"));
 
   const Q2 = newId(), INV2 = newId(), Q3 = newId(), Q4 = newId();
-  db.tables.invoices.push({ id: INV2, user_id: "x", client_id: C1, date: today, number: "DRAFT-x", items: [], notes: null, due_date: null, payment_terms: null, status: "draft", tags: ["from Q-0002"] });
-  db.tables.quotes.push({ id: Q2, user_id: "x", client_id: C1, number: "Q-0002", date: today, valid_until: null, items: [{ description: "a", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "invoiced", invoice_id: null });
-  db.tables.quotes.push({ id: Q3, user_id: "x", client_id: C1, number: "Q-0003", date: today, valid_until: null, items: [{ description: "b", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "invoiced", invoice_id: null });
+  db.tables.invoices.push({ id: INV2, user_id: "x", client_id: C1, date: todayISO(), number: "DRAFT-x", items: [], notes: null, due_date: null, payment_terms: null, status: "draft", tags: ["from Q-0002"] });
+  db.tables.quotes.push({ id: Q2, user_id: "x", client_id: C1, number: "Q-0002", date: todayISO(), valid_until: null, items: [{ description: "a", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "invoiced", invoice_id: null });
+  db.tables.quotes.push({ id: Q3, user_id: "x", client_id: C1, number: "Q-0003", date: todayISO(), valid_until: null, items: [{ description: "b", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "invoiced", invoice_id: null });
   db.tables.quotes.push({ id: Q4, user_id: "x", client_id: C1, number: "Q-0004", date: "2026-01-01", valid_until: "2026-01-31", items: [{ description: "c", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "sent", invoice_id: null });
 
   await page.goto(`${BASE}/quotes/${Q2}`, { waitUntil: "networkidle0" });
@@ -171,7 +170,7 @@ try {
   check("duplicate number refused with a clear message", true);
 
   const Q6 = newId();
-  db.tables.quotes.push({ id: Q6, user_id: "x", client_id: C1, number: "Q-0006", date: today, valid_until: null, items: [{ description: "d", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null });
+  db.tables.quotes.push({ id: Q6, user_id: "x", client_id: C1, number: "Q-0006", date: todayISO(), valid_until: null, items: [{ description: "d", quantity: 1, unitPrice: 10, vatRate: "standard" }], notes: "", status: "accepted", invoice_id: null });
   db.loseReply = { "POST invoices": 1 };
   await page.goto(`${BASE}/quotes/${Q6}`, { waitUntil: "networkidle0" });
   await waitText(page, "Turn into invoice");

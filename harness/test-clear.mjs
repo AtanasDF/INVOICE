@@ -1,4 +1,4 @@
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, shot, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, shot, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3301";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -63,7 +63,7 @@ try {
   check("receipt: one item left after removing one", rows === 1, String(rows));
   await clickClear();
   const rv = await page.evaluate(() => ({ vendor: document.querySelector('input[placeholder="Vendor / shop name"]').value, total: document.querySelector('input[placeholder^="Total paid"]').value, items: document.querySelectorAll('button[aria-label^="Remove item"]').length, date: document.querySelector('input[type=date]').value }));
-  check("receipt: cleared (vendor, total, items; date today)", rv.vendor === "" && rv.total === "" && rv.items === 0 && rv.date === new Date().toISOString().slice(0, 10), JSON.stringify(rv));
+  check("receipt: cleared (vendor, total, items; date todayISO())", rv.vendor === "" && rv.total === "" && rv.items === 0 && rv.date === new Date().toISOString().slice(0, 10), JSON.stringify(rv));
   check("receipt: nothing saved", db.tables.receipts.length === 0);
   await shot(page, "clear-receipt");
 
@@ -81,9 +81,8 @@ try {
   check("invoice: filled (client terms applied, 2 lines, CIS on)", before.lines === 2 && before.cis && before.terms === "14 days", JSON.stringify(before));
   await clickClear();
   const iv = await page.evaluate(() => ({ client: document.querySelector("select").value, lines: document.querySelectorAll('button[aria-label^="Remove line"]').length, desc: document.querySelector('input[placeholder^="Description (e.g. Monthly work"]').value, cis: document.querySelector("input[type=checkbox]").checked, terms: document.querySelector('input[placeholder^="Payment terms"]').value, notes: document.querySelector('textarea[placeholder="Notes (optional)"]').value, dates: [...document.querySelectorAll("input[type=date]")].map((d) => d.value) }));
-  const today = new Date().toISOString().slice(0, 10);
-  const due = new Date(Date.parse(today) + 30 * 86400000).toISOString().slice(0, 10);
-  check("invoice: cleared to a blank invoice dated today, due in 30 days", iv.client === "" && iv.lines === 1 && iv.desc === "" && !iv.cis && iv.terms === "" && iv.notes === "" && iv.dates[0] === today && iv.dates[1] === due, JSON.stringify(iv));
+    const due = new Date(Date.parse(todayISO()) + 30 * 86400000).toISOString().slice(0, 10);
+  check("invoice: cleared to a blank invoice dated todayISO(), due in 30 days", iv.client === "" && iv.lines === 1 && iv.desc === "" && !iv.cis && iv.terms === "" && iv.notes === "" && iv.dates[0] === todayISO() && iv.dates[1] === due, JSON.stringify(iv));
   check("invoice: nothing saved", db.tables.invoices.length === 0);
   await shot(page, "clear-invoice");
   const fits2 = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);

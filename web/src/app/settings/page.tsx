@@ -28,6 +28,7 @@ import AddressFields from "@/components/AddressFields";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -69,6 +70,15 @@ export default function SettingsPage() {
   const [inboxRevealed, setInboxRevealed] = useState(false);
   const [invoicePrefix, setInvoicePrefix] = useState("INV-");
   const [invoiceNextNumber, setInvoiceNextNumber] = useState("1");
+  // What the counter read when this page loaded. Everything else here is
+  // only ever changed by this form, but the invoice counter moves on its
+  // own every time an invoice is marked sent -- in another tab, or on the
+  // phone. Saving wrote the page-load value straight back over it, and
+  // because the number is then already taken, the next "Mark as sent"
+  // fails on the unique constraint and keeps failing (the aborted
+  // transaction rolls the increment back too), so invoicing jams until
+  // someone works out why and retypes the number.
+  const [loadedNextNumber, setLoadedNextNumber] = useState(1);
   const [vatRegistered, setVatRegistered] = useState(false);
   const [bankDetails, setBankDetails] = useState("");
   const [reminderTexts, setReminderTexts] = useState<Record<ReminderKind, string>>({ before: "", due: "", after: "", late: "", final: "" });
@@ -92,6 +102,7 @@ export default function SettingsPage() {
       setInboxToken(p.inboxToken);
       setInvoicePrefix(p.invoicePrefix);
       setInvoiceNextNumber(String(p.invoiceNextNumber));
+      setLoadedNextNumber(p.invoiceNextNumber);
       setVatRegistered(p.vatRegistered);
       setBankDetails(p.bankDetails);
       setReminderTexts({
@@ -192,6 +203,10 @@ export default function SettingsPage() {
     setSaved(false);
     setSaving(true);
     try {
+      // An untouched field writes back today's value, not this page's. A
+      // deliberate edit still wins -- that is what the field is for.
+      const typed = parseInt(invoiceNextNumber, 10) || 1;
+      const nextNumber = typed === loadedNextNumber ? (await businessProfileStore.get()).invoiceNextNumber : typed;
       const full = await businessProfileStore.save({
         businessName,
         registeredName,
@@ -204,7 +219,7 @@ export default function SettingsPage() {
         customCategories: categories,
         inboxToken,
         invoicePrefix,
-        invoiceNextNumber: parseInt(invoiceNextNumber, 10) || 1,
+        invoiceNextNumber: nextNumber,
         vatRegistered,
         bankDetails,
         reminderTextBefore: reminderTexts.before.trim() || null,
@@ -215,6 +230,8 @@ export default function SettingsPage() {
         reminderLatePaymentInterest: latePaymentInterest,
       });
       setMigrationPending(!full);
+      setLoadedNextNumber(nextNumber);
+      setInvoiceNextNumber(String(nextNumber));
       setSaved(true);
     } catch (err) {
       setError(saveFailed(err, "Could not save your profile."));
@@ -255,7 +272,7 @@ export default function SettingsPage() {
       // images themselves rather than links that expire.
       const receiptsWithImages = await Promise.all(receipts.map(async (r) => ({ ...r, imageDataUrl: await inlineImage(r.imageDataUrl) })));
       const pagesWithImages = await Promise.all(receiptPages.map(async (p) => ({ ...p, imageDataUrl: (await inlineImage(p.imageDataUrl)) ?? "" })));
-      downloadJson(`my-data-export-${new Date().toISOString().slice(0, 10)}.json`, {
+      downloadJson(`my-data-export-${todayISO()}.json`, {
         exportedAt: new Date().toISOString(),
         businessProfile: profile,
         clients,

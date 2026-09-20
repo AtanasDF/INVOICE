@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { addressKey, allow } from "@/lib/rateLimit";
 import { pushToOwner } from "@/lib/ownerPush";
 import type { LinePrice } from "@/lib/quoteCompare";
+import { todayISO } from "@/lib/today";
 
 export const runtime = "nodejs";
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   if (!prices || delivery === undefined) {
     return NextResponse.json({ ok: false, error: "Some of the prices couldn't be read. Check them and try again." }, { status: 400 });
   }
-  if (validUntil && validUntil < new Date().toISOString().slice(0, 10)) {
+  if (validUntil && validUntil < todayISO()) {
     return NextResponse.json({ ok: false, error: "The valid-until date is in the past." }, { status: 400 });
   }
   if (!allow(`qrrespond:${addressKey(req.headers.get("x-forwarded-for"))}`, 10, HOUR)) {

@@ -2,18 +2,17 @@
 // QWERTY keyboard costs a tap and a mis-type every single time; an email
 // field without the @ key does the same. Walks every form and reports any
 // field whose label says money/email/phone/number but whose input doesn't.
-import { makeDb, launchSignedIn, signIn, sleep, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [], quote_requests: [], quote_request_suppliers: [] });
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "1 Mill Lane\nBristol\nBS1 4DJ", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
-const INV = { id: newId(), user_id: "x", client_id: C, date: today, number: "DRAFT-k", items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
+const INV = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "DRAFT-k", items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
 db.tables.invoices.push(INV);
 
 const PAGES = [

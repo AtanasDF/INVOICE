@@ -1,10 +1,9 @@
-import { makeDb, launchSignedIn, signIn, sleep, newId, bodyText } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, newId, bodyText, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3400";
 const OUT = new URL(".", import.meta.url).pathname;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
-const shift = (d) => { const x = new Date(`${today}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
+const shift = (d) => { const x = new Date(`${todayISO()}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
 const short = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 const db = makeDb();

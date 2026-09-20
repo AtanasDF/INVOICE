@@ -31,6 +31,7 @@ import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 function ScanIcon() {
   return (
@@ -160,7 +161,7 @@ export default function Dashboard() {
         paymentsStore.all(),
       ]);
       if (cancelled) return;
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       // Compare "YYYY-MM" string prefixes rather than Date object fields --
       // constructing a Date from a bare date string and reading local
       // month/year back out is a real source of off-by-one-day bugs
@@ -208,7 +209,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const overdueInvoices = useMemo(
     () => outstandingInvoices.filter((o) => isOverdue(o.invoice.status, o.invoice.dueDate, today)),
     [outstandingInvoices, today]
@@ -242,9 +243,13 @@ export default function Dashboard() {
     [bills, today]
   );
 
+  // A failed load leaves every figure at its initial zero, and 0 clears the
+  // badge -- so "we couldn't reach your records" would take the number off
+  // the home-screen icon and read as "nothing is due", on the morning a
+  // bill falls due. The page already draws that distinction; the icon must.
   useEffect(() => {
-    if (!loading) showOnAppIcon(overdueInvoices.length + dueRecurringCount + billsDueSoon);
-  }, [loading, overdueInvoices.length, dueRecurringCount, billsDueSoon]);
+    if (!loading && !loadError) showOnAppIcon(overdueInvoices.length + dueRecurringCount + billsDueSoon);
+  }, [loading, loadError, overdueInvoices.length, dueRecurringCount, billsDueSoon]);
 
   async function markBillPaid(bill: Receipt) {
     setBillsError(null);

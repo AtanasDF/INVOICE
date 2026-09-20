@@ -8,6 +8,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { CreditNote, Invoice, Receipt, businessProfileStore, creditNotesStore, invoicesStore, receiptsStore } from "@/lib/storage";
 import { incomeOf } from "@/lib/periodIncome";
 import { loadFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 function monthKey(dateStr: string) {
   return dateStr.slice(0, 7);
@@ -44,7 +45,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "year" | "custom">("month");
-  const [weekAnchor, setWeekAnchor] = useState(() => new Date().toISOString().slice(0, 10));
+  const [weekAnchor, setWeekAnchor] = useState(() => todayISO());
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [year, setYear] = useState(() => String(new Date().getFullYear()));
   // Any arbitrary span -- three days, two weeks, a month and a half,
@@ -56,7 +57,7 @@ export default function ExpensesPage() {
     d.setUTCDate(d.getUTCDate() - 30);
     return d.toISOString().slice(0, 10);
   });
-  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(() => todayISO());
   const [viewMode, setViewMode] = useState<"expenses" | "combined">("expenses");
 
   useEffect(() => {

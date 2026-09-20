@@ -8,6 +8,7 @@ import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 function RecurringTabs() {
   return (
@@ -35,6 +36,7 @@ export default function RecurringExpensesPage() {
   const [supplierId, setSupplierId] = useState("");
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [saving, setSaving] = useState(false);
+  const [loggingId, setLoggingId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([recurringExpensesStore.all(), clientsStore.all(), businessProfileStore.get()])
@@ -50,7 +52,7 @@ export default function RecurringExpensesPage() {
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   function supplierName(id: string) {
     return clients.find((c) => c.id === id)?.name || "";
@@ -100,8 +102,15 @@ export default function RecurringExpensesPage() {
     }
   }
 
+  // Two writes, and the second one failing used to undo the first in the
+  // telling but not in the books: "Could not log this expense." while the
+  // receipt was already saved, with the Log it button still sitting there.
+  // A second tap wrote a second identical expense, and nothing flags it --
+  // the recurring path never runs findDuplicate.
   async function logNow(item: RecurringExpense) {
+    if (loggingId) return;
     setError(null);
+    setLoggingId(item.id);
     try {
       await receiptsStore.add({
         clientId: item.supplierId,
@@ -122,11 +131,21 @@ export default function RecurringExpensesPage() {
         tags: [],
         lineItems: [],
       });
-      const next = addMonths(item.nextDueDate, 1);
-      await recurringExpensesStore.update(item.id, { nextDueDate: next });
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));
     } catch (err) {
       setError(saveFailed(err, "Could not log this expense."));
+      setLoggingId(null);
+      return;
+    }
+    // The expense is in the books from here on, whatever happens to the
+    // schedule, so the reminder stops offering to log it either way.
+    const next = addMonths(item.nextDueDate, 1);
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));
+    try {
+      await recurringExpensesStore.update(item.id, { nextDueDate: next });
+    } catch (err) {
+      setError(saveFailed(err, "The expense is logged, but the reminder didn't move on -- it'll ask again next time you open this page. Don't log it twice."));
+    } finally {
+      setLoggingId(null);
     }
   }
 
@@ -222,8 +241,12 @@ export default function RecurringExpensesPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   {item.active && due && (
-                    <button onClick={() => logNow(item)} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white">
-                      Log it
+                    <button
+                      onClick={() => logNow(item)}
+                      disabled={loggingId === item.id}
+                      className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      {loggingId === item.id ? "Logging…" : "Log it"}
                     </button>
                   )}
                   <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600">

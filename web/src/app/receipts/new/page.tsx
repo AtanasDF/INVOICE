@@ -12,6 +12,7 @@ import { findDuplicate } from "@/lib/duplicates";
 import ClearFormButton from "@/components/ClearFormButton";
 import ContactField, { type Usage } from "@/components/ContactField";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function NewReceiptPage() {
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [clientId, setClientId] = useState("");
   const [supplierText, setSupplierText] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayISO());
   const [vendor, setVendor] = useState("");
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
   // What the user actually types is the TOTAL paid (what's printed on the
@@ -90,10 +91,20 @@ export default function NewReceiptPage() {
   }
 
   function handleFile(file: File) {
+    setError(null);
     const reader = new FileReader();
     reader.onload = async () => {
-      setImageDataUrl(await downscaleImageDataUrl(reader.result as string));
+      try {
+        setImageDataUrl(await downscaleImageDataUrl(reader.result as string));
+      } catch {
+        // Not saveFailed: this is our own decode failing, not Supabase, and
+        // its message ("Could not read this image.") says nothing about
+        // what to do instead. A HEIC straight off an iPhone is the common
+        // case, and Chrome can't decode one.
+        setError("Could not read this photo. Try a JPEG or PNG.");
+      }
     };
+    reader.onerror = () => setError("Could not read this photo. Try a JPEG or PNG.");
     reader.readAsDataURL(file);
   }
 
@@ -168,7 +179,7 @@ export default function NewReceiptPage() {
   function clearForm() {
     setClientId("");
     setSupplierText("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(todayISO());
     setVendor("");
     setCategory(mostUsedCategory(receipts.map((r) => r.category)) ?? CATEGORIES[0]);
     setTotalAmount("");

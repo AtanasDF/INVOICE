@@ -20,10 +20,11 @@ import {
 import { normalisePostcode } from "@/lib/addressLookup";
 import { supabase } from "@/lib/supabaseClient";
 import { errorText, loadFailed } from "@/lib/errorText";
+import { todayISO } from "@/lib/today";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => todayISO();
 
 // Business miles at HMRC's rates. Each trip is saved as an ordinary expense,
 // so it shows in the expense totals and the tax estimate like any other.

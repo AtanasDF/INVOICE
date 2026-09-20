@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { selfAssessmentNotice } from "@/lib/taxEstimate";
+import { todayISO } from "@/lib/today";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export const runtime = "nodejs";
 type DueCounts = { overdueInvoices: number; dueRecurring: number; dueBills: number };
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayISO();
 }
 
 function daysFromToday(days: number): string {

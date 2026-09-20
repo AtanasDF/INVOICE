@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { BusinessProfile, Client, Quote } from "@/lib/storage";
+import { todayISO } from "@/lib/today";
 
 export type PublicQuote = {
   quote: Quote;
@@ -36,7 +37,7 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
     admin.from("business_profile").select("business_name, address, vat_number, vat_registered").eq("user_id", link.user_id).maybeSingle(),
   ]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   return {
     // Ids left blank: none of them is needed in the customer's browser.
     quote: {

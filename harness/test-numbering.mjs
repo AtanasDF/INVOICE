@@ -2,18 +2,17 @@
 // then the next, with no gaps -- and what happens when the next number is
 // already taken. Atanas is starting his company's books at 1, so this is
 // his exact case.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [] });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "First Customer Ltd", email: "first@example.com", address: "1 Road\nBristol\nBS1 4DJ", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
 const draft = (n) => {
-  const inv = { id: newId(), user_id: "x", client_id: C, date: today, number: `DRAFT-${n}`, items: [{ description: "First job", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
+  const inv = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: `DRAFT-${n}`, items: [{ description: "First job", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: null, payment_terms: "", status: "draft", tags: [], vat_registered: null, cis_rate: null };
   db.tables.invoices.push(inv);
   return inv;
 };
