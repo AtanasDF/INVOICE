@@ -106,6 +106,18 @@ a brand-new, empty one.
   note is that both engines conform their output to the schema, so it shouldn't be
   reachable in production — the guard is there because the cost of being wrong is a dead
   page in the yard with the receipt in hand.
+- **The harness is in the repo now** (`harness/`, commit `221d9c4`). 179 files — 46 suites,
+  895 checks, the mock PostgREST, the fake camera, the runner, the tsconfig that recompiles
+  the app's own logic — had been living only in a session scratchpad, which is wiped without
+  warning. Source only, 1.6MB; Chrome profiles, `gen/` and the ~770MB of synthetic clips are
+  gitignored and `gen-*.py` regenerates the clips. `harness/README.md` explains it.
+- **Four security headers the live site was missing** (commit `54d1314`), found by reading
+  production's own headers rather than the code: HSTS and the private no-store on /i/ were
+  there, but nothing stopped the app being framed — and on an invoice page "Mark as paid"
+  and "Remove" are taps worth stealing. X-Frame-Options, `frame-ancestors 'self'`,
+  Referrer-Policy and nosniff now set; deliberately **no** Permissions-Policy, because the
+  scanner needs the camera and a wrong value there breaks it silently. Verified live after
+  the deploy, with the OpenCV immutable cache rule (the scanner's engine) still intact.
 - **Full regression: 46 suites, 895 checks, no failures**, in four minutes. Eight suites are new today (empty account, numbering, half-saved,
   keyboards, long values, no accidents, public links, labels, one total, round trip,
   currency, dark mode, route guards, RLS audit, one-handed).
