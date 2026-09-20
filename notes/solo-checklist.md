@@ -172,6 +172,15 @@ what is sent to a customer waits for him.
   `src/lib/addressLookup.ts` (left from the old AddressFinder). Flagged, not removed.
   The two `* 2.*` iCloud copies in the source tree are still there and still ignored.
 
+- **18. The reminder schedule against a fixed clock** — `test-reminder-clock.mjs` 24/24,
+  run straight off `src/lib/reminderTemplates.ts` (recompiled every run so it can't test a
+  stale copy). Each reminder fires on its own days and only those: -3 to -1, 0 to 2, 7 to
+  9, 14 to 16, 30 to 32, with the three-day catch-up never running into the next one, no
+  day firing twice, and nothing at all after the final notice. Statutory interest appears
+  only in the final notice, only to a business, only when it's switched on, with the right
+  fixed compensation (£40 / £70 / £100). "Unlimited Roofing" and "Limitless Design" are
+  correctly not read as companies. Nothing to fix.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three

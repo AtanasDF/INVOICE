@@ -66,6 +66,14 @@ a brand-new, empty one.
 - **Every control has a name** (checklist 7): `test-labels.mjs` 21/21 over twenty pages.
   **Dead code** (42): two unused functions in the whole codebase, flagged not removed.
 
+- **The reminder emails that go to his customers on their own** (checklist 18) were
+  checked against a fixed clock, straight off the app's own source: 24/24. Each reminder
+  fires on its own days only (-3..-1, 0..2, 7..9, 14..16, 30..32), the three-day catch-up
+  never runs into the next one, no day fires twice, nothing goes after the final notice,
+  and the statutory-interest paragraph is limited to the final notice, to a business, with
+  the setting on. Nothing to fix. The runner recompiles the module each time so the test
+  can't drift from the code.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;
