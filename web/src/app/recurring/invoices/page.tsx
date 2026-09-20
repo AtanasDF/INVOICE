@@ -158,6 +158,7 @@ export default function RecurringInvoicesPage() {
   }
 
   async function removeRecurring(id: string) {
+    if (!window.confirm("Remove this repeating invoice? It stops being made each month, and this can't be undone.")) return;
     setError(null);
     try {
       await recurringInvoicesStore.remove(id);

@@ -142,6 +142,7 @@ export default function RecurringExpensesPage() {
   }
 
   async function removeRecurring(id: string) {
+    if (!window.confirm("Remove this repeating expense? It stops being made each month, and this can't be undone.")) return;
     setError(null);
     try {
       await recurringExpensesStore.remove(id);

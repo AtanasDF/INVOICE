@@ -154,7 +154,9 @@ export default function ClientsPage() {
     }
   }
 
-  async function removeClient(id: string) {
+  async function removeClient(c: Client) {
+    if (!window.confirm(`Remove ${c.name}? Archive instead if they have any history with you — removing can't be undone.`)) return;
+    const id = c.id;
     setError(null);
     try {
       await clientsStore.remove(id);
@@ -386,7 +388,7 @@ export default function ClientsPage() {
                       <button onClick={() => toggleArchived(c)} className="text-sm font-medium text-neutral-600">
                         {c.archived ? "Unarchive" : "Archive"}
                       </button>
-                      <button onClick={() => removeClient(c.id)} className="text-sm text-red-600">
+                      <button onClick={() => removeClient(c)} className="text-sm text-red-600">
                         Remove
                       </button>
                     </div>

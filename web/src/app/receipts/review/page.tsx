@@ -104,6 +104,7 @@ export default function ReviewQueuePage() {
   }
 
   async function discard(r: Receipt) {
+    if (!window.confirm(`Discard ${r.vendor || "this document"}? It won't be saved to your records, and the email it came from is the only copy left.`)) return;
     setError(null);
     setBusyId(r.id);
     try {

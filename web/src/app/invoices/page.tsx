@@ -94,7 +94,12 @@ export default function InvoicesPage() {
     return clients.find((c) => c.id === id)?.name || "No client";
   }
 
-  async function removeInvoice(id: string) {
+  // Deleting is the one thing here that can't be undone, and Remove sits a
+  // thumb's width from View on a phone.
+  async function removeInvoice(inv: Invoice) {
+    const what = inv.status === "draft" ? "this draft" : `invoice ${displayInvoiceNumber(inv)}`;
+    if (!window.confirm(`Remove ${what}? It won't be in your records any more, and this can't be undone.`)) return;
+    const id = inv.id;
     setError(null);
     try {
       await invoicesStore.remove(id);
@@ -317,7 +322,7 @@ export default function InvoicesPage() {
                   <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
                   </Link>
-                  <button onClick={() => removeInvoice(inv.id)} className="text-sm text-red-600">Remove</button>
+                  <button onClick={() => removeInvoice(inv)} className="text-sm text-red-600">Remove</button>
                 </div>
               </div>
             );

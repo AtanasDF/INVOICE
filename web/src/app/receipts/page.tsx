@@ -202,7 +202,10 @@ export default function ReceiptsPage() {
     return map;
   }, [receipts]);
 
-  async function removeReceipt(id: string) {
+  async function removeReceipt(r: Receipt) {
+    const what = [r.vendor, money(r.amount + r.vatAmount)].filter(Boolean).join(", ");
+    if (!window.confirm(`Remove ${what || "this receipt"}? It won't be in your records any more, and this can't be undone.`)) return;
+    const id = r.id;
     setError(null);
     try {
       await receiptsStore.remove(id);
@@ -708,7 +711,7 @@ export default function ReceiptsPage() {
                     ★
                   </button>
                   <button onClick={() => startEditReceipt(r)} className="font-medium text-blue-600">Edit</button>
-                  <button onClick={() => removeReceipt(r.id)} className="text-red-600">Remove</button>
+                  <button onClick={() => removeReceipt(r)} className="text-red-600">Remove</button>
                 </div>
               </div>
               {detailsOpen && (

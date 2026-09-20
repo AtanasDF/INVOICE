@@ -290,8 +290,10 @@ export default function InvoiceViewPage() {
     }
   }
 
-  async function removePayment(id: string) {
+  async function removePayment(p: InvoicePayment) {
     if (!invoice) return;
+    if (!window.confirm(`Remove the ${money(p.amount)} received on ${p.date}? The balance goes back up, and this can't be undone.`)) return;
+    const id = p.id;
     setPayError(null);
     try {
       await paymentsStore.remove(id);
@@ -508,7 +510,9 @@ export default function InvoiceViewPage() {
     }
   }
 
-  async function removeCreditNote(id: string) {
+  async function removeCreditNote(note: CreditNote) {
+    if (!window.confirm(`Remove the credit note of ${money(note.amount)}? What the customer owes goes back up, and this can't be undone.`)) return;
+    const id = note.id;
     setCreditNotes((prev) => prev.filter((c) => c.id !== id));
     try {
       await creditNotesStore.remove(id);
@@ -890,7 +894,7 @@ export default function InvoiceViewPage() {
                   {p.method ? ` · ${PAYMENT_METHOD_LABELS[p.method]}` : ""}
                   {p.note ? ` · ${p.note}` : ""}
                 </span>
-                <button onClick={() => removePayment(p.id)} className="shrink-0 text-red-600">Remove</button>
+                <button onClick={() => removePayment(p)} className="shrink-0 text-red-600">Remove</button>
               </div>
             ))}
             <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: ${money(amountDue)}` : "Paid in full."}</p>
@@ -938,7 +942,7 @@ export default function InvoiceViewPage() {
             {creditNotes.map((c) => (
               <div key={c.id} className="flex items-center justify-between border-b pb-2 text-sm">
                 <span>{c.date} — {money(c.amount)}{c.reason ? ` · ${c.reason}` : ""}</span>
-                <button onClick={() => removeCreditNote(c.id)} className="text-red-600">Remove</button>
+                <button onClick={() => removeCreditNote(c)} className="text-red-600">Remove</button>
               </div>
             ))}
           </div>
