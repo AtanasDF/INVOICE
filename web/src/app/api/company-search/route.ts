@@ -16,7 +16,9 @@ const SIGNED_IN_TOTAL = 180;
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; items: CompanyMatch[] }>();
 
-const BASE = "https://api.company-information.service.gov.uk";
+// The sandbox register lives on another host, and the harness stands in for
+// it; same override as /api/company-check so both read the same register.
+const BASE = process.env.COMPANIES_HOUSE_API_BASE ?? "https://api.company-information.service.gov.uk";
 
 async function ask(path: string, key: string): Promise<Response | null> {
   try {

@@ -39,6 +39,11 @@ register holds and the document doesn't, and every company should be checked.
   (`company-register` in localStorage, `src/lib/companyRegister.ts`) so a later check asks
   for that exact company, and falls back to a name search on a phone that has never seen
   it. A one-line migration-029 adding `clients.company_number` would make it proper.
+- Main gained `/api/company-check` and a Check-a-company page while this branch was out
+  (the fuller report). No file overlaps: merging this branch touches only SESSIONS.md.
+  `/api/company-search` now reads the same `COMPANIES_HOUSE_API_BASE` override so both
+  talk to the same register. Worth deciding later whether the quiet per-field check should
+  read the report route instead of its own `number=`.
 - A page added to a scanned document re-reads it, which replaces the details: the register
   is asked again so its fill comes back with them (and the note never outlives it), while
   an Undo he made still stands.
