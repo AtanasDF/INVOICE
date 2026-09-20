@@ -107,3 +107,22 @@ what is sent to a customer waits for him.
 - **Dependencies (checked 2026-09-20):** `npm audit --omit=dev` finds nothing. Available
   bumps are all majors — TypeScript 7, ESLint 10, `@types/node` 26 — plus React 19.3 and
   the Anthropic SDK 0.127. Worth doing one at a time with the suites, not unattended.
+
+## Done overnight (2026-09-20)
+
+- **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
+  expense totals squashed to 43px boxes at 320px (they stack below 420px now), and the
+  invoice and quote tables pushed the page sideways (they scroll in their own box, print
+  unaffected). All 26 pages fit at 320, 375 and 430.
+- **39. A busy account** — 500 invoices, 2000 receipts, 300 contacts: dashboard 0.9s,
+  receipts 1.6s, expenses 3.1s, VAT 6.8s, contacts 2.0s, filtering 0.6s, and the
+  dashboard's owed total matches the invoices to the penny (`test-big-account.mjs`).
+- **43/47. One money formatter** — the app grouped thousands in some places and not
+  others; `src/lib/money.ts` is now the only one, used by 22 files. The sweep itself
+  briefly dropped the pound sign on the invoice page, which the suites caught.
+- **46. Dependencies** — no advisories; the available bumps are all majors.
+- **The camera-tip flake** — fixed at the source, not in the test: the how-to-allow tip no
+  longer shows when the browser says the camera is already granted, and the suites are
+  deterministic (7/7 and 3/3 repeatedly).
+- **The tax suite's drifting figure** — it hard-coded a set-aside that moves every day; it
+  now checks the figure against its own two parts and the year's tax.
