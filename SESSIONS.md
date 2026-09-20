@@ -118,6 +118,17 @@ a brand-new, empty one.
   checked whether email was configured before checking who was asking, so a stranger could
   tell a deployment with email on from one without. Commit `8f338ff`.
 
+- **The timer, part two: a stuck run was blocking every later one.** The manual run I
+  started at 09:13 to test it was still sitting on its first command (`git fetch`) four
+  hours later, waiting for a tool approval nobody was there to give — and while a run is
+  in progress the scheduler refuses to start another, so the :10 and :40 slots had been
+  quietly skipped all morning. That run is now stopped, so the schedule can fire again.
+  It will still stop on the approval prompt each time, but it will *start*, which means
+  there is a prompt sitting in the app waiting for one tap. Once that tap happens the
+  routine runs on its own. **This is the thing to do tonight**, and the stuck-run trap is
+  worth remembering: after granting the permission, check `list_task_runs` for a run stuck
+  with no recent activity and stop it, or the schedule stays blocked.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;

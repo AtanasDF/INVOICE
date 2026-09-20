@@ -273,6 +273,18 @@ what is sent to a customer waits for him.
   expenses page, the VAT boxes and the invoice list all tell the same story. No page fell
   over anywhere along the way.
 
+- **11. VAT to the penny** — `test-vat-pennies.mjs` 16/16: three rates on one invoice each
+  rounded on their own, a half-penny of 5% VAT rounded once and not twice, 0.33 of a day
+  and 12.5 hours, three 5p lines added before rounding rather than after, a negative line,
+  an empty invoice (£0.00, not NaN) and a thousand 7p lines adding up exactly.
+- **Dates read off a photograph** (my own) — `test-dates.mjs` 27/27. A date read wrong is
+  the quietest error in the app: the money and the supplier are right and the cost lands in
+  the wrong VAT quarter. 08/09/2026 is 8 September and is flagged as one an American
+  receipt would write the other way; 21/09 needs no asking; month names are never
+  ambiguous; 31/02, month 13 and 29 February in an ordinary year are all refused rather
+  than guessed; a card number is not mistaken for a date; and a repeating expense's next
+  date never runs off the end of a short month.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
