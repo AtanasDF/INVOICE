@@ -95,6 +95,10 @@ a brand-new, empty one.
   through `xargs -P` (the obvious zsh loop quietly ran them one at a time — no `wait -n`).
   `JOBS=1` puts it back to serial. 34 suites, ~800 checks.
 
+- **Full regression at the end of the morning: 37 suites, 743 checks, no failures**, in
+  four minutes. Eight suites are new today (empty account, numbering, half-saved,
+  keyboards, long values, no accidents, public links, labels, one total, round trip,
+  currency, dark mode, route guards, RLS audit, one-handed).
 - **SIX BACKUP TABLES HAVE NO ROW LEVEL SECURITY — migration-031 written, NOT applied.**
   An audit of all 41 tables this project creates: `clients_backup_20260914`,
   `receipts_backup_20260914`, `invoices_backup_20260914` and their `_2` twins were taken

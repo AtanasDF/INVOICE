@@ -219,6 +219,18 @@ what is sent to a customer waits for him.
   with no row level security. See SESSIONS.md: migration-031 is written and waiting for
   Atanas. All 41 backup tables are still present; none has been touched.
 
+- **5 + 9. One-handed, and on its side** — `test-one-handed.mjs` 16/16. Nothing runs off
+  the screen in landscape on any page, which is how the scanner gets held. One fix: the
+  quick messages ("On my way", "Running late", "Job done", "I've arrived") were 30px tall
+  against the 36-38px of every other button, and they are the ones tapped standing on
+  someone's driveway. The rest are 36-38px against Apple's 44pt guidance — consistent, and
+  a decision for Atanas rather than something to change behind his back, so the suite
+  guards against anything smaller appearing instead.
+- **48 + 49. Stale notes and half-done work** — CLAUDE.md updated (migration numbers with
+  031 written-not-applied, the three error-handling conventions, where the harness lives,
+  a fresh open-items list). No TODO or FIXME anywhere in the source, and no unmerged
+  branch: nothing was left half-finished.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
