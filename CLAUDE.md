@@ -259,7 +259,13 @@ Gemini billing is a Google AI Studio prepaid balance on billing account
 `COMPANIES_HOUSE_API_KEY` (not set yet; Atanas registers at the Companies House Developer
 Hub, creates a Live application and a REST API key) switches on the company name lookup
 (`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
-Settings. Without it those fields are plain inputs and nothing mentions the lookup.
+Settings. Without it those fields are plain inputs and nothing mentions the lookup. The
+same key switches on the free company check (`/check-company`, `/api/company-check`):
+status, officers, filings due, charges, insolvency, who controls it, in plain English
+from Companies House's own enumerations, plus prepared web/social searches (never
+scraped). Without the key that page says so and offers Companies House's own search.
+`COMPANIES_HOUSE_API_BASE` is optional and only points the lookups at the sandbox or a
+test stand-in; it defaults to the live API.
 UK address lookup (`/api/address-search`, behind `AddressFields`, the block of address
 fields used everywhere an address is typed) is
 free by default: postcodes.io (postcode check, place, post town from the built-up area)
