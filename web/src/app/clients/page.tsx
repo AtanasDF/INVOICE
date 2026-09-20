@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { DuplicatePair, duplicatePairs, pairKey, readIgnoredDuplicates, writeIgnoredDuplicates } from "@/lib/duplicateContacts";
+import { errorText } from "@/lib/errorText";
 
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
@@ -60,6 +62,10 @@ export default function ClientsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [textingId, setTextingId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
+  const [merging, setMerging] = useState<string | null>(null);
+  const [merged, setMerged] = useState<string | null>(null);
+  // Pairs put aside stay aside on this device.
+  const [ignored, setIgnored] = useState<string[]>(() => readIgnoredDuplicates());
 
   useEffect(() => {
     Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
@@ -81,6 +87,42 @@ export default function ClientsPage() {
     [clients, tab, showArchived]
   );
   const archivedCount = clients.filter((c) => c.kind === tab && c.archived).length;
+  const duplicates = useMemo(
+    () => duplicatePairs(clients).filter((p) => p.keep.kind === tab && !ignored.includes(pairKey(p))),
+    [clients, tab, ignored]
+  );
+
+  // Everything of the duplicate's moves to the one being kept; the duplicate
+  // is archived, never deleted.
+  async function merge(pair: DuplicatePair) {
+    const counts = [
+      [invoicesForClient(pair.duplicate.id).length, "invoice"],
+    ] as const;
+    const what = counts.filter(([n]) => n > 0).map(([n, word]) => `${n} ${word}${n === 1 ? "" : "s"}`).join(", ");
+    if (!window.confirm(`Move everything from "${pair.duplicate.name}"${what ? ` (${what})` : ""} to "${pair.keep.name}" and archive the duplicate?`)) return;
+    setMerging(pair.duplicate.id);
+    setError(null);
+    try {
+      const { moved, left } = await clientsStore.mergeInto(pair.duplicate.id, pair.keep.id);
+      const [c, inv] = await Promise.all([clientsStore.all(), invoicesStore.all()]);
+      setClients(c);
+      setInvoices(inv);
+      const total = Object.values(moved).reduce((a, b) => a + b, 0);
+      setMerged(
+        `Merged into ${pair.keep.name}${total ? `: ${total} record${total === 1 ? "" : "s"} moved` : ""}.${left.length ? ` Some rows stayed with the old record (${left.join(", ")}).` : ""}`
+      );
+    } catch (err) {
+      setError(errorText(err, "Couldn't merge those two."));
+    } finally {
+      setMerging(null);
+    }
+  }
+
+  function ignore(pair: DuplicatePair) {
+    const next = [...ignored, pairKey(pair)];
+    setIgnored(next);
+    writeIgnoredDuplicates(next);
+  }
 
   function startEdit(c: Client) {
     setEditingId(c.id);
@@ -192,6 +234,27 @@ export default function ClientsPage() {
       </Tip>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {merged && <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{merged}</p>}
+      {duplicates.map((pair) => (
+        <div key={pairKey(pair)} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+          <p className="text-sm">
+            <strong>{pair.keep.name}</strong> and <strong>{pair.duplicate.name}</strong> look like the same {tab}: {pair.why}.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => merge(pair)}
+              disabled={merging === pair.duplicate.id}
+              className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {merging === pair.duplicate.id ? "Merging…" : `Merge into ${pair.keep.name}`}
+            </button>
+            <button type="button" onClick={() => ignore(pair)} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
+              They&apos;re different
+            </button>
+          </div>
+        </div>
+      ))}
 
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>

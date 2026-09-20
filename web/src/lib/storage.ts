@@ -280,6 +280,30 @@ export const clientsStore = {
   // bringing a client back into the picker list), not "resume billing
   // them automatically." Resuming a specific recurring invoice or
   // expense stays a deliberate action on its own page.
+  // Two records for the same business: everything of the duplicate's moves
+  // to the one being kept, and the duplicate is archived, never deleted, so
+  // the old record is still there if a document ever needs tracing back.
+  // Anything that can't move (a quote request already asking both) stays
+  // put and is reported.
+  async mergeInto(duplicateId: string, keepId: string): Promise<{ moved: Record<string, number>; left: string[] }> {
+    const tables: [string, string][] = [
+      ["invoices", "client_id"],
+      ["receipts", "client_id"],
+      ["quotes", "client_id"],
+      ["recurring_invoices", "client_id"],
+      ["recurring_expenses", "supplier_id"],
+      ["quote_request_suppliers", "supplier_id"],
+    ];
+    const moved: Record<string, number> = {};
+    const left: string[] = [];
+    for (const [table, column] of tables) {
+      const { data, error } = await supabase.from(table).update({ [column]: keepId }).eq(column, duplicateId).select("id");
+      if (error) left.push(table);
+      else if (data?.length) moved[table] = data.length;
+    }
+    await clientsStore.archive(duplicateId);
+    return { moved, left };
+  },
   async unarchive(id: string): Promise<void> {
     const { error } = await supabase.from("clients").update({ archived: false }).eq("id", id);
     if (error) throw error;
