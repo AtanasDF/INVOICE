@@ -106,6 +106,40 @@ a brand-new, empty one.
   note is that both engines conform their output to the schema, so it shouldn't be
   reachable in production — the guard is there because the cost of being wrong is a dead
   page in the yard with the receipt in hand.
+- **A six-angle adversarial review of the codebase** (20 agents: six independent reviewers,
+  every finding then handed to a skeptic told to refute it). 14 findings, 12 survived
+  verification, 2 refuted. All 12 are now fixed or written up:
+  - **The worst was one of mine from this morning.** Clearing the invoice prefix — which is
+    exactly what Atanas wants, a bare series from 357358 — stores NULL, and Postgres makes
+    `invoice_prefix || number` NULL with it, raising the same "no business profile" as a
+    genuinely missing row. This morning's new-account fix matched that message and upserted
+    the defaults over the existing row: business name, VAT number, address, bank details,
+    the email-import token and his own reminder wording blanked, VAT registration off, the
+    series restarted at INV-1. Reproduced end to end first (2/14 against the old code,
+    14/14 against the new). Commit `134a3e3`.
+  - **Two wrong VAT figures**, both bound for HMRC's form: cash accounting under-declared
+    every CIS invoice for ever (£166.67 where £200 was charged, never picked up later), and
+    a credit note against an invoice that was never paid reclaimed VAT that had never been
+    accounted for. The existing suite had the second baked in as its expected answer, which
+    is why it survived. Commit `a096e80`.
+  - **A failed credit-note removal** left the invoice, the PDF and the email asking the
+    customer for money that had been credited; **an emailed EUR document** became pounds
+    when the rate lookup failed; **a reminder Resend refused** kept its claim and was never
+    retried, including the final notice. Commit `2eb45b5`.
+  - **A date that was never printed** silently became today's, unmarked; **"Save all ready"**
+    ignored the VAT figure's confidence; **a slow rate lookup** landed on whichever receipt
+    was open when it finished; **the tax headline** annualised from as little as one day
+    (£2,316 to set aside on a £5,000 invoice whose real tax is nil). Commit `8b8ff0c`.
+  - **migration-032 (written, NOT applied)**: merging two contacts could never move a quote
+    request — the owner is granted update on two columns of `quote_request_suppliers` and
+    Postgres refuses the statement whether or not a row matches — so every merge reported
+    rows left behind. The merge now looks before it writes, so the false alarm stops
+    meanwhile.
+  - **`feature/quote-vat-snapshot` (migration-033, NOT applied, not merged)**: a quote has
+    no VAT snapshot, so crossing the threshold re-prices quotes already sent — on the
+    customer's own link and on the button they tap to accept.
+  - Refuted and left alone: two scanning claims about currency handling.
+
 - **The harness is in the repo now** (`harness/`, commit `221d9c4`). 179 files — 46 suites,
   895 checks, the mock PostgREST, the fake camera, the runner, the tsconfig that recompiles
   the app's own logic — had been living only in a session scratchpad, which is wiped without

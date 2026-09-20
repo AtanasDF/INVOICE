@@ -10,7 +10,7 @@
 
 # Harness leftovers: Chrome profiles, generated clips and compiled logic are
 # all disposable; only the source in harness/ is kept.
-harness/node_modules/
+harness/node_modules
 harness/profile-*/
 harness/gen/
 harness/*.mjpeg
