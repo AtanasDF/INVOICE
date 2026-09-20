@@ -16,6 +16,12 @@ it is his real accounting record. Read this file before doing anything.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
 - `scanner-research.md` — competitor research and the scanner follow-up plan.
 - `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
+- The test harness lives outside the repo, in the session scratchpad at
+  `.../scratchpad/harness/`: headless Chrome against a mocked PostgREST (`mockdb.mjs`),
+  synthetic camera clips, and 36 `test-*.mjs` suites. `./run-all.sh` runs them four at a
+  time in about four minutes (`JOBS=1` for serial); `tsconfig.logic.json` recompiles the
+  app's pure logic (tax, reminders, CIS, VAT) fresh each run so those suites can't drift
+  from the source.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
@@ -36,9 +42,12 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-20:
-   migration-030, backup 015 — all applied and verified (028 created two new tables, so
-   it needed no backup; 029 added the registered name, company number and account kind to
-   business_profile; 030 added clients.company_number). Supabase grants anon/authenticated
+   migration-031, backup 015. Applied and verified up to 030 (028 created two new tables,
+   so it needed no backup; 029 added the registered name, company number and account kind
+   to business_profile; 030 added clients.company_number). **031 is written and NOT
+   applied** — it switches row level security on for the six 14-September backup tables,
+   which were created before that was habit and are readable by any signed-in account
+   until it runs. It only takes access away, so it needs no backup of its own. Supabase grants anon/authenticated
    everything on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -70,7 +79,13 @@ not the diff. Match the existing conventions: page header `h1.text-2xl.font-bold
 `p.mt-1.text-neutral-600`; cards `rounded-xl border bg-white p-5 text-neutral-900 shadow-sm`;
 primary button `rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white`;
 labels `text-xs text-neutral-500` above the control; badges `rounded-full px-2 py-0.5
-text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys only.
+text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys only. Three conventions worth knowing: a failed load uses
+`loadFailed()` and a failed save `saveFailed()` (both in `src/lib/errorText.ts`) — never
+`err instanceof Error ? err.message : "..."`, which is never true for a Supabase error and
+throws the reason away; a list's empty state is gated on `!error`, so "No invoices yet" can
+never stand in for a failed load; and anything that removes a record asks first with
+`window.confirm`, naming what goes. Long names wrap with `wrap-anywhere` (not
+`break-words`, which leaves min-content alone and lets one long word push the page).
 
 ## How the data is modelled
 
@@ -308,6 +323,21 @@ migrations and tests DB state in rolled-back transactions; its briefs land in
 `Claude outputs/` (untracked). Check `git log` before assuming you are alone. The folder
 sits under iCloud Desktop sync and sometimes spawns stray `name 2.ext` duplicates; diff
 them against the original before deleting.
+
+## Open items (2026-09-20)
+
+- **migration-031 is waiting for Atanas**: six backup tables from 14 September have no row
+  level security, so any signed-in account can read a snapshot of his clients, receipts and
+  invoices. The file only takes access away; the verification query is at its foot.
+- The scheduled task `invoicer-keep-working` cannot run unattended: it starts, then stops on
+  its first command waiting for a tool approval that was never granted (it was created
+  programmatically, so it has none). Atanas approves it once in the app, or sets its
+  permission mode. Moved to :10 and :40 past the hour, clear of the email routines.
+- `.claude/worktrees/` is 5.4GB of copies of the repo from finished feature branches, with
+  36GB free on the disk. Everything in them is in git history. Flagged, not touched.
+- Two unused exported functions, flagged not removed: `isMileage` (`src/lib/mileage.ts`,
+  duplicates `tripOf`) and `mergeAddress` (`src/lib/addressLookup.ts`, left from the old
+  AddressFinder). Two `* 2.*` iCloud copies sit in `src/` and are gitignored.
 
 ## Open items (2026-09-19)
 
