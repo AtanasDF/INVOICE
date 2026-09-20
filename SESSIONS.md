@@ -108,6 +108,14 @@ the scanner torch, the quotes redesign, wrapping invoice buttons, and the addres
   and Settings + one Add button + camera permission (`feature/settings-add`, with
   migration-029 for registered name/number and account kind — not applied yet).
 - `notes/future-ideas.md` now also holds the next five surprises to build.
+- **Check a company** merged and live (agent, `feature/check-company`): a public page at
+  `/check-company` that searches the register and reports status, age, registered office
+  (including formation-agent addresses and dispute flags), what it does in plain English,
+  previous names, accounts and confirmation statement with overdue called out, officers
+  and any disqualification, who controls it, charges and insolvency — with a factual
+  one-line summary, copy/share, and prepared web and social searches (never scraped).
+  Inert and self-explaining until `COMPANIES_HOUSE_API_KEY` is set; caches and rate limits
+  in place; 52/52 against a stand-in register.
 
 ## 2026-09-19 — Quotes UX (agent in a worktree), branch `feature/quotes-ux`
 
