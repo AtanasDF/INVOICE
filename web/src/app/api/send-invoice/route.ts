@@ -41,17 +41,20 @@ function ownInvoiceLink(value: unknown, origin: string, docType: "invoice" | "qu
 }
 
 export async function POST(req: Request) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "Email sending isn't switched on yet.", code: "not_configured" }, { status: 503 });
-  }
-
+  // Who is asking comes first. Answering "email isn't switched on yet" to
+  // someone who hasn't signed in tells a stranger about this deployment,
+  // and leaves anything added above the sign-in check reachable by anyone.
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
   if (!user) return NextResponse.json({ error: "Sign in to send invoices by email.", code: "sign_in" }, { status: 401 });
   if (!user.email_confirmed_at) {
     return NextResponse.json({ error: "Confirm your email address first (check your inbox for the sign-up link), then send." }, { status: 403 });
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: "Email sending isn't switched on yet.", code: "not_configured" }, { status: 503 });
   }
 
   let body: Record<string, unknown>;
