@@ -18,8 +18,12 @@ it is his real accounting record. Read this file before doing anything.
 - `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
 - `harness/` — the test harness, **now in the repo** (it used to live only in a session
   scratchpad, which is wiped without warning). Headless Chrome against a mocked PostgREST
-  (`mockdb.mjs`), plus pure-logic suites: 46 of them, 895 checks, `./run-all.sh` runs them
-  four at a time in about four minutes (`JOBS=1` for serial, `BASE` for the server).
+  (`mockdb.mjs`), plus pure-logic suites. `./run-all.sh` runs them four at a time in
+  about four minutes (`JOBS=1` for serial, `BASE` for the server). **`$BASE` is a
+  production build served by `next start`, not a watching dev server**: rebuild and
+  restart before running browser suites, or the run tests a bundle nobody wrote.
+  run-all.sh refuses to start when `web/src` is newer than `web/.next/BUILD_ID`
+  (`ALLOW_STALE=1` overrides).
   `tsconfig.logic.json` recompiles the app's own tax, reminder, CIS, VAT, date and
   recurrence code into `harness/gen/` every run, so those suites can never drift from the
   source. Only source is kept: Chrome profiles, `gen/` and the ~770MB of synthetic camera

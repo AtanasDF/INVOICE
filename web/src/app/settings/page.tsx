@@ -18,6 +18,7 @@ import {
 import { CATEGORIES, effectiveCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
+import { signOut } from "@/lib/signOut";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { DEFAULT_REMINDER_TEXT, REMINDER_SCHEDULE, ReminderKind } from "@/lib/reminderTemplates";
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
@@ -360,7 +361,7 @@ export default function SettingsPage() {
 
         <button
           type="button"
-          onClick={() => supabase.auth.signOut()}
+          onClick={() => void signOut()}
           className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
         >
           Sign out

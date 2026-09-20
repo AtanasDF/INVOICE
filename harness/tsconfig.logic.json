@@ -6,7 +6,11 @@
     "outDir": "gen",
     "rootDir": "/Users/nasko/Desktop/INVOICE/web/src",
     "baseUrl": "/Users/nasko/Desktop/INVOICE/web/src",
-    "paths": { "@/*": ["*"] },
+    "paths": {
+      "@/*": [
+        "*"
+      ]
+    },
     "skipLibCheck": true,
     "strict": false,
     "noEmitOnError": false
@@ -21,6 +25,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/recurrence.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/vatReturn.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/invoicePdf.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/freeInvoiceDraft.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/freeInvoiceDraft.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/periodIncome.ts"
   ]
 }

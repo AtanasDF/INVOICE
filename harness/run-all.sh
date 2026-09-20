@@ -37,7 +37,23 @@ SUITES=(
   test-check-company test-review-fixes test-uploads test-address-fields test-price-finder
   test-mileage test-statement test-vat-return test-merge-contacts test-quote-chase
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
+  test-period-income test-sign-out
 )
+
+# $BASE is served by `next start` from a BUILT app, not by a watching dev
+# server: edit a file and nothing on :3000 changes until it is rebuilt.
+# That has already cost a whole debugging session -- a suite passed on the
+# old bundle, then failed on the new one, for a fix that had been right all
+# along. So: refuse to run against a build older than the source.
+if [ -d "$APP/.next" ]; then
+  NEWEST_SRC=$(find "$APP/src" "$APP/next.config.ts" -type f -newer "$APP/.next/BUILD_ID" 2>/dev/null | head -1)
+  if [ -n "$NEWEST_SRC" ]; then
+    echo "STALE BUILD: $NEWEST_SRC is newer than $APP/.next/BUILD_ID."
+    echo "Run 'npm run build' in $APP and restart 'npx next start -p 3000' first,"
+    echo "or set ALLOW_STALE=1 to run anyway."
+    [ -z "$ALLOW_STALE" ] && exit 1
+  fi
+fi
 
 export OUT BASE
 print -l -- $SUITES | xargs -P "$JOBS" -n 1 ./run-one.sh

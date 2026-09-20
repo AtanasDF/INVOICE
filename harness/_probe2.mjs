@@ -1,0 +1,22 @@
+import { makeDb, launchSignedIn, signIn, sleep, newId } from "./mockdb.mjs";
+const BASE = "http://localhost:3000";
+const db = makeDb();
+Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], recurring_expenses: [], recurring_invoices: [], push_subscriptions: [] });
+db.tables.business_profile.push({ user_id: "x", business_name: "H", vat_registered: false, invoice_prefix: "INV-", invoice_next_number: 1, custom_categories: null });
+db.tables.push_subscriptions.push({ id: newId(), user_id: "x", endpoint: "https://push.example.test/sub/abc123", p256dh: "k", auth_key: "a" });
+const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-probe2" });
+page.on("console", (m) => console.log("PAGE:", m.type(), m.text().slice(0, 200)));
+await page.evaluateOnNewDocument((endpoint) => {
+  window.__u = false;
+  let sub = { endpoint, toJSON: () => ({ endpoint, keys: {} }), unsubscribe: () => { window.__u = true; sub = null; return Promise.resolve(true); } };
+  const reg = { pushManager: { getSubscription: () => Promise.resolve(sub) } };
+  Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { getRegistration: () => Promise.resolve(reg), register: () => Promise.resolve(reg), ready: Promise.resolve(reg) } });
+}, "https://push.example.test/sub/abc123");
+await signIn(page, BASE);
+await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+await sleep(1500);
+await page.evaluate(() => [...document.querySelectorAll("button")].find((x) => /^\s*Sign out\s*$/i.test(x.textContent ?? ""))?.click());
+await sleep(2500);
+console.log("unsubscribed:", await page.evaluate(() => window.__u));
+console.log("log:", JSON.stringify(db.log.map((e) => e.key)));
+await browser.close();

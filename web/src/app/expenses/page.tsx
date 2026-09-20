@@ -5,7 +5,8 @@ import { money } from "@/lib/money";
 
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Invoice, Receipt, invoicesStore, receiptsStore } from "@/lib/storage";
+import { CreditNote, Invoice, Receipt, businessProfileStore, creditNotesStore, invoicesStore, receiptsStore } from "@/lib/storage";
+import { incomeOf } from "@/lib/periodIncome";
 import { loadFailed } from "@/lib/errorText";
 
 function monthKey(dateStr: string) {
@@ -35,17 +36,11 @@ function endOfWeek(dateStr: string): string {
   d.setUTCDate(d.getUTCDate() + 6);
   return d.toISOString().slice(0, 10);
 }
-// Deliberately excl. VAT, unlike the invoices list/detail pages which
-// show the gross "amount due" -- VAT collected on an invoice isn't this
-// account's income, it's money held for HMRC, so it doesn't belong in a
-// profit/expenses figure.
-function invoiceTotal(inv: Invoice) {
-  return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-}
-
 export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [vatRegistered, setVatRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "year" | "custom">("month");
@@ -65,10 +60,12 @@ export default function ExpensesPage() {
   const [viewMode, setViewMode] = useState<"expenses" | "combined">("expenses");
 
   useEffect(() => {
-    Promise.all([receiptsStore.all(), invoicesStore.all()])
-      .then(([r, i]) => {
+    Promise.all([receiptsStore.all(), invoicesStore.all(), creditNotesStore.all(), businessProfileStore.get()])
+      .then(([r, i, c, profile]) => {
         setReceipts(r);
         setInvoices(i);
+        setCreditNotes(c);
+        setVatRegistered(profile.vatRegistered);
       })
       .catch((err) => setError(loadFailed(err, "your figures")))
       .finally(() => setLoading(false));
@@ -77,6 +74,13 @@ export default function ExpensesPage() {
   const weekStart = periodMode === "week" ? startOfWeek(weekAnchor) : "";
   const weekEnd = periodMode === "week" ? endOfWeek(weekAnchor) : "";
 
+  const inPeriod = useMemo(() => {
+    if (periodMode === "week") return (d: string) => d >= weekStart && d <= weekEnd;
+    if (periodMode === "month") return (d: string) => monthKey(d) === month;
+    if (periodMode === "year") return (d: string) => yearKey(d) === year;
+    return (d: string) => d >= customFrom && d <= customTo;
+  }, [periodMode, month, year, weekStart, weekEnd, customFrom, customTo]);
+
   const periodReceipts = useMemo(
     () =>
       receipts.filter((r) => {
@@ -84,22 +88,9 @@ export default function ExpensesPage() {
         // nobody's confirmed yet shouldn't count toward these figures
         // until it's actually been checked.
         if (r.needsReview) return false;
-        if (periodMode === "week") return r.date >= weekStart && r.date <= weekEnd;
-        if (periodMode === "month") return monthKey(r.date) === month;
-        if (periodMode === "year") return yearKey(r.date) === year;
-        return r.date >= customFrom && r.date <= customTo;
+        return inPeriod(r.date);
       }),
-    [receipts, periodMode, month, year, weekStart, weekEnd, customFrom, customTo]
-  );
-  const periodInvoices = useMemo(
-    () =>
-      invoices.filter((i) => {
-        if (periodMode === "week") return i.date >= weekStart && i.date <= weekEnd;
-        if (periodMode === "month") return monthKey(i.date) === month;
-        if (periodMode === "year") return yearKey(i.date) === year;
-        return i.date >= customFrom && i.date <= customTo;
-      }),
-    [invoices, periodMode, month, year, weekStart, weekEnd, customFrom, customTo]
+    [receipts, inPeriod]
   );
 
   const byCategory = useMemo(() => {
@@ -138,8 +129,17 @@ export default function ExpensesPage() {
     (acc, r) => ({ total: acc.total + r.amount, vat: acc.vat + r.vatAmount }),
     { total: 0, vat: 0 }
   );
-  const income = periodInvoices.reduce((s, inv) => s + invoiceTotal(inv), 0);
+  const income = useMemo(
+    () => incomeOf(invoices, creditNotes, vatRegistered, inPeriod),
+    [invoices, creditNotes, vatRegistered, inPeriod]
+  );
   const expensesInclVat = totals.total + totals.vat;
+  // What the spending actually costs this business. Without VAT
+  // registration the VAT on a cost can't be reclaimed, so it is part of
+  // the cost; registered, it comes back on the return and isn't. Income is
+  // already excl. VAT, so counting reclaimable VAT as a cost would put the
+  // Net figure out by the whole VAT bill. Same rule as the tax card.
+  const cost = vatRegistered ? totals.total : expensesInclVat;
   const chartData = byCategory.map(([category, v]) => ({ category, spend: Number((v.total + v.vat).toFixed(2)) }));
 
   if (loading) {
@@ -264,12 +264,12 @@ export default function ExpensesPage() {
             <div className="text-sm text-neutral-600">Invoiced (income)</div>
           </div>
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-            <div className="text-xl font-bold sm:text-2xl">{money(expensesInclVat)}</div>
-            <div className="text-sm text-neutral-600">Spent (incl. VAT)</div>
+            <div className="text-xl font-bold sm:text-2xl">{money(cost)}</div>
+            <div className="text-sm text-neutral-600">{vatRegistered ? "Spent (excl. reclaimable VAT)" : "Spent (incl. VAT)"}</div>
           </div>
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-            <div className={`text-2xl font-bold ${income - expensesInclVat < 0 ? "text-red-600" : ""}`}>
-              {money((income - expensesInclVat))}
+            <div className={`text-2xl font-bold ${income - cost < 0 ? "text-red-600" : ""}`}>
+              {money(income - cost)}
             </div>
             <div className="text-sm text-neutral-600">Net</div>
           </div>

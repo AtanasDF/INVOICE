@@ -8,7 +8,7 @@ import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useSearchParams } from "next/navigation";
-import { Client, ClientKind, Invoice, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
+import { Client, ClientKind, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
@@ -16,9 +16,22 @@ import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFields from "@/components/AddressFields";
 import TextCustomer from "@/components/TextCustomer";
 import { phoneLinks } from "@/lib/customerText";
+import { creditOffDue, invoiceCharge } from "@/lib/cis";
+import { invoiceVat } from "@/lib/invoiceBalance";
 
-function invoiceTotal(inv: Invoice) {
-  return inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+// What this customer was actually billed: gross, incl. VAT, less any CIS
+// the contractor keeps back -- the "Amount due" figure on the invoice
+// itself, and what the invoices list, the invoice page, the statement and
+// the emailed copy all show.
+//
+// It used to be the raw line-item subtotal, so a £1,000 + £200 VAT invoice
+// read £1,000 here and £1,200 everywhere else, and a CIS invoice read the
+// full total instead of what the contractor pays. Under this customer's
+// own name, beside a "Paid" badge, that is the one place the number has to
+// agree with the document they were sent.
+function invoiceTotal(inv: Invoice, vatRegistered: boolean, credited: number) {
+  const charge = invoiceCharge(inv, invoiceVat(inv, vatRegistered));
+  return Math.max(0, Math.round((charge.due - creditOffDue(charge, credited)) * 100) / 100);
 }
 
 type ClientDraft = {
@@ -63,21 +76,31 @@ export default function ClientsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [textingId, setTextingId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
+  const [vatRegistered, setVatRegistered] = useState(false);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [merging, setMerging] = useState<string | null>(null);
   const [merged, setMerged] = useState<string | null>(null);
   // Pairs put aside stay aside on this device.
   const [ignored, setIgnored] = useState<string[]>(() => readIgnoredDuplicates());
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), invoicesStore.all()])
-      .then(([c, inv]) => {
+    Promise.all([clientsStore.all(), invoicesStore.all(), creditNotesStore.all()])
+      .then(([c, inv, cn]) => {
         setClients(c);
         setInvoices(inv);
+        setCreditNotes(cn);
       })
       .catch((err) => setError(loadFailed(err, "your contacts")))
       .finally(() => setLoading(false));
-    businessProfileStore.get().then((p) => setBusinessName(p.businessName), () => {});
+    businessProfileStore.get().then((p) => {
+      setBusinessName(p.businessName);
+      setVatRegistered(p.vatRegistered);
+    }, () => {});
   }, []);
+
+  function creditedOn(invoiceId: string) {
+    return creditNotes.filter((c) => c.invoiceId === invoiceId).reduce((s, c) => s + c.amount, 0);
+  }
 
   function invoicesForClient(clientId: string) {
     return invoices
@@ -405,7 +428,7 @@ export default function ClientsPage() {
                       const overdue = isOverdue(inv.status, inv.dueDate);
                       return (
                         <div key={inv.id} className="flex items-center justify-between text-sm">
-                          <span>{displayInvoiceNumber(inv)} · {inv.date} · {money(invoiceTotal(inv))}</span>
+                          <span>{displayInvoiceNumber(inv)} · {inv.date} · {money(invoiceTotal(inv, vatRegistered, creditedOn(inv.id)))}</span>
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                             {invoiceStatusLabel(inv.status, overdue)}
                           </span>

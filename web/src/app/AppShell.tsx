@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { safeNext } from "@/lib/safeNext";
-import { supabase } from "@/lib/supabaseClient";
+import { signOut } from "@/lib/signOut";
 import { useWakeLock } from "@/lib/wakeLock";
 import PaidCelebration from "@/components/PaidCelebration";
 
@@ -32,7 +32,7 @@ function Header() {
             <Link href="/expenses">Expenses</Link>
             <Link href="/settings">Settings</Link>
             <button
-              onClick={() => supabase.auth.signOut()}
+              onClick={() => void signOut()}
               className="text-neutral-500 hover:text-neutral-900"
             >
               Sign out

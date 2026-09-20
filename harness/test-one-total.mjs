@@ -1,7 +1,8 @@
-// One invoice, six places it is shown: the list, the dashboard, its own
-// page, the CSV export, the statement and the VAT figures. They have to
+// One invoice, seven places it is shown: the list, the dashboard, its own
+// page, the customer's card on Clients, the CSV export, the statement and
+// the VAT figures. They have to
 // agree to the penny, or one of them is lying to him or to his customer.
-import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -75,6 +76,19 @@ try {
   const statement = await bodyText(page);
   const owing = num(moneyIn(statement, "Total owing"));
   check("the statement's total owing matches", owing !== null && Math.abs(owing - due) < 0.005, `statement ${owing} vs invoice ${due}`);
+
+  // The customer's own card on the Clients page, under "Payment history".
+  // It used to print the raw line-item subtotal -- no VAT, no CIS, no
+  // credit note -- so the one figure sitting under the customer's name,
+  // beside a status badge, disagreed with the document they were sent.
+  await page.goto(`${BASE}/clients`, { waitUntil: "networkidle0" });
+  await sleep(1600);
+  await clickText(page, "Payment history");
+  await sleep(900);
+  const card = await bodyText(page);
+  const onCard = num(moneyIn(card, "INV-60"));
+  check("the customer's own card shows what the invoice charged", onCard !== null && Math.abs(onCard - 835.52) < 0.005, `clients page ${onCard}, should be 835.52`);
+  check("...not the line items added up with no VAT and no CIS", onCard === null || Math.abs(onCard - 829.9) > 0.005, String(onCard));
 
   // VAT: the sale belongs to the quarter it was dated in, at its own rates.
   await page.goto(`${BASE}/vat`, { waitUntil: "networkidle0" });
