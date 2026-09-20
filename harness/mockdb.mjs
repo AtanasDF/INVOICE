@@ -57,8 +57,14 @@ export function handle(db, method, path, search, headers, body) {
   // sent, all in one transaction -- so a clash rolls the counter back.
   if (path === "/rest/v1/rpc/assign_invoice_number") {
     const profile = (db.tables.business_profile ?? [])[0];
-    if (!profile) return { status: 400, json: { message: "No business profile found for this account.", code: "P0001" } };
-    const number = `${profile.invoice_prefix ?? ""}${profile.invoice_next_number}`;
+    // Postgres: `invoice_prefix || (invoice_next_number - 1)::text` is
+    // strict, so a NULL prefix makes the whole thing NULL and raises the
+    // same message as a missing row. Reproducing that is the point -- the
+    // app used to treat the two alike and blank the profile.
+    if (!profile || profile.invoice_prefix === null || profile.invoice_prefix === undefined) {
+      return { status: 400, json: { message: "No business profile found for this account.", code: "P0001" } };
+    }
+    const number = `${profile.invoice_prefix}${profile.invoice_next_number}`;
     const invoices = (db.tables.invoices ??= []);
     const inv = invoices.find((i) => i.id === body?.p_invoice_id && i.status === "draft");
     if (!inv) return { status: 400, json: { message: `Invoice ${body?.p_invoice_id} was not found, not owned by this account, or is not a draft.`, code: "P0001" } };
@@ -120,7 +126,21 @@ export function handle(db, method, path, search, headers, body) {
     const lost = db.loseReply?.[key] ? (db.loseReply[key]--, true) : false;
     const input = Array.isArray(body) ? body : [body];
     const made = [];
+    // An upsert (on_conflict) REPLACES the matching row rather than adding
+    // one. Without this the mock quietly turned every upsert into an insert,
+    // which hid a bug that blanked the whole business profile.
+    const conflict = new URLSearchParams(search).get("on_conflict")
+      ?? ((headers.prefer ?? "").includes("resolution=merge-duplicates") && table === "business_profile" ? "user_id" : null);
     for (const r of input) {
+      if (conflict) {
+        const keys = conflict.split(",");
+        const at = rows.findIndex((x) => keys.every((k) => x[k] === (r[k] ?? UID)));
+        if (at >= 0) {
+          rows[at] = { ...rows[at], ...r };
+          made.push(rows[at]);
+          continue;
+        }
+      }
       const row = { id: newId(), user_id: UID, ...(DEFAULTS[table]?.() ?? {}), ...r };
       if (table === "quotes" && rows.some((x) => x.number === row.number)) return { status: 409, json: { message: "duplicate key", code: "23505" } };
       rows.push(row);

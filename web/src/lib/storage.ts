@@ -706,13 +706,28 @@ export const invoicesStore = {
       if (error.code === "23505") {
         throw new Error("The next invoice number is already in use — check Settings → Invoice numbering and adjust the next number.");
       }
-      // A brand-new account has no business_profile row until Settings is
-      // saved, and the counter lives on that row -- so the first invoice
-      // anyone ever issues would fail here, on the one action that matters
-      // most. Write the defaults the confirm panel already promised
-      // ("assigns invoice number INV-1") and issue it.
+      // "No business profile found for this account." has two causes, and
+      // they must not be treated alike. assign_invoice_number returns
+      // `invoice_prefix || (invoice_next_number - 1)::text`, and `||` is
+      // strict, so a NULL prefix makes that NULL and raises the same
+      // message as a missing row. Saving the defaults then is an upsert on
+      // an existing row: it would blank the business name, the address,
+      // the bank details, the VAT registration and the email-import token,
+      // and reset the counter to 1. Look at the row before deciding.
       if (/business profile/i.test(error.message ?? "")) {
-        await businessProfileStore.save(EMPTY_BUSINESS_PROFILE);
+        const { data: row } = await supabase.from("business_profile").select("user_id, invoice_prefix").maybeSingle();
+        if (!row) {
+          // Genuinely a new account: the first invoice anyone ever issues
+          // would fail here otherwise, on the one action that matters most.
+          await businessProfileStore.save(EMPTY_BUSINESS_PROFILE);
+        } else if (row.invoice_prefix === null) {
+          // A prefix cleared to run a bare numeric series. Put the empty
+          // string back, which concatenates fine, and touch nothing else.
+          const { error: fix } = await supabase.from("business_profile").update({ invoice_prefix: "" }).eq("user_id", row.user_id);
+          if (fix) throw fix;
+        } else {
+          throw error;
+        }
         const retry = await supabase.rpc("assign_invoice_number", { p_invoice_id: id });
         if (retry.error) throw retry.error;
         return retry.data as string;
@@ -875,6 +890,8 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     showOverdueReminders: r.show_overdue_reminders ?? true,
     customCategories: r.custom_categories ?? null,
     inboxToken: r.inbox_token,
+    // Only a row that never had one falls back; an empty prefix is kept
+    // empty, so Settings shows what is really stored rather than "INV-".
     invoicePrefix: r.invoice_prefix ?? "INV-",
     invoiceNextNumber: r.invoice_next_number ?? 1,
     vatRegistered: r.vat_registered ?? false,
@@ -930,7 +947,10 @@ export const businessProfileStore = {
       show_overdue_reminders: input.showOverdueReminders,
       custom_categories: input.customCategories,
       inbox_token: input.inboxToken,
-      invoice_prefix: input.invoicePrefix || null,
+      // Not `|| null`: an empty prefix is a real choice (a bare numeric
+      // series like 357358), and NULL breaks assign_invoice_number, whose
+      // `invoice_prefix || number` is strict. The empty string concatenates.
+      invoice_prefix: input.invoicePrefix,
       invoice_next_number: input.invoiceNextNumber,
       vat_registered: input.vatRegistered,
       bank_details: input.bankDetails || null,

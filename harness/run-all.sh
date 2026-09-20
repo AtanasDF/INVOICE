@@ -15,6 +15,10 @@ trap 'rm -rf "$OUT"' EXIT
 # The pure-logic suites (tax and reminders) run straight off the app's own
 # source, recompiled every run so they can never test a stale copy.
 if [ -f "$APP/src/lib/taxEstimate.ts" ]; then
+  mkdir -p gen
+  # The compiled logic is ESM; without this Node reads it as CommonJS and
+  # every logic suite dies on "does not provide an export named".
+  printf '{"type":"module"}' > gen/package.json
   "$APP/node_modules/.bin/tsc" -p tsconfig.logic.json >/dev/null 2>&1
   python3 - <<'REWRITE'
 import pathlib, re
@@ -27,7 +31,7 @@ fi
 
 SUITES=(
   test-tax-rules test-reminder-clock test-money-edges test-dates test-vat-pennies
-  test-first-week test-what-surfaces test-empty-account test-numbering test-half-saved test-keyboards test-long-values
+  test-first-week test-prefix-wipe test-what-surfaces test-empty-account test-numbering test-half-saved test-keyboards test-long-values
   test-no-accidents test-public-links test-labels test-one-total test-round-trip
   test-currency test-dark-mode test-route-guards test-rls-audit test-one-handed test-free-draft test-bad-scan test-print test-no-silent-contacts test-fit-sweep test-company-picker test-company-number
   test-check-company test-review-fixes test-uploads test-address-fields test-price-finder
