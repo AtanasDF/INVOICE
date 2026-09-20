@@ -39,6 +39,36 @@ changes.
 
 ## Verified facts
 
+- **A NULL invoice_prefix breaks invoice numbering, and looked like a missing profile.**
+  `assign_invoice_number` builds the number as `invoice_prefix || (invoice_next_number-1)`,
+  and `||` is strict in Postgres: a NULL prefix makes the whole expression NULL, so the
+  function raises 'No business profile found for this account.' even though the row is
+  there. Settings used to store a cleared prefix as NULL, and `businessProfileFromRow`
+  reads `?? "INV-"`, so the box showed "INV-" over a NULL row and nothing said otherwise.
+  Fixed 2026-09-20: an empty prefix is stored as the empty string, and the recovery path
+  looks at the row before deciding (missing row -> write defaults; NULL prefix -> repair
+  just the prefix; anything else -> rethrow). Never treat that message as proof the row is
+  missing.
+- **Supabase upserts REPLACE.** `businessProfileStore.save` upserts on user_id, so saving
+  a default profile over an existing row blanks every column it doesn't set. The mock in
+  the harness treated an upsert as a plain insert until 2026-09-20, which hid this.
+- **A CIS deduction is consideration received, for VAT.** The contractor pays that part to
+  HMRC on his behalf, so on the cash basis a settled CIS invoice counts in full, not just
+  the cash that arrived. Payments in this app are recorded against `due` (total less CIS),
+  so anything reading payments as consideration must scale by total/due.
+- **On the cash basis a credit note against an unpaid invoice has nothing to reverse** — no
+  VAT was ever declared on it. Counting it anyway reclaims tax never accounted for.
+- Next 16 answers `notFound()` from a streamed route with **200 and a noindex tag**, not
+  404 (documented: the headers have gone by the time the check runs). The noindex is what
+  keeps a dead link out of search.
+- Tailwind v4 reports computed colours as `lab()`/`oklch()`, which can't be parsed as three
+  numbers: paint them on a 1x1 canvas and read the pixel back to get true RGB.
+- `break-words` does not let a flex item shrink below its longest word (overflow-wrap
+  leaves min-content alone). `wrap-anywhere` does; long company names need it.
+- zsh has no `wait -n`, so the obvious "run N at a time" loop runs them one at a time.
+  `xargs -P` is what actually parallelises the harness.
+
+
 - Live Supabase is at migration-026 as of 2026-09-19: quote_links (grants as
   invoice_links; record_quote_link_view and respond_to_quote_link execute for
   service_role only). Verified rolled back: owner can't fake an answer or call respond,
