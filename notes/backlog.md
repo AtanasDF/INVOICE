@@ -67,7 +67,10 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## Tests for fixes that have none yet
 
-- [ ] 12. Delete-confirmation + rollback on the credit-note path
+- [x] 12. Delete-confirmation + rollback on the credit-note path —
+  `harness/test-credit-rollback.mjs` (11 checks). It found one more while being written:
+  after a failed removal, a later successful one left the old error on screen saying the
+  credit note was still on the invoice, when it had just gone.
 - [ ] 13. Email-import: inline signature images, unreadable-document filing
 - [ ] 14. Customer matching on a scanned invoice (exact-only)
 - [ ] 15. Free-page quote not importable as an invoice

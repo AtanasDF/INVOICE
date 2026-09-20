@@ -514,6 +514,9 @@ export default function InvoiceViewPage() {
   async function removeCreditNote(note: CreditNote) {
     if (!window.confirm(`Remove the credit note of ${money(note.amount)}? What the customer owes goes back up, and this can't be undone.`)) return;
     const id = note.id;
+    // A removal that failed leaves its message on screen; a later one that
+    // works must not leave it saying the credit note is still there.
+    setCnError(null);
     setCreditNotes((prev) => prev.filter((c) => c.id !== id));
     try {
       await creditNotesStore.remove(id);
