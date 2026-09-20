@@ -1,0 +1,101 @@
+# Tonight, in order
+
+Five things, about ten minutes. Each says what to do, what should happen, and what to
+tell me if it doesn't. Nothing here deletes anything.
+
+---
+
+## 1. Let the routine run on its own (1 minute)
+
+This is the one that unblocks everything else, because it lets work carry on while you're
+away.
+
+1. In the Claude app, open the session called **"Invoicer — pick the work back up
+   (every 30 min)"** from the list on the left.
+2. There is a permission request in it, asking to run a command. Choose the option that
+   says **don't ask again**.
+
+**Why it's stuck:** the routine was created programmatically, so it has no tool approvals,
+and a 4am run has nobody to tap Allow. It starts, stops on its first command, and waits.
+A run left waiting also blocks the next one, so the whole schedule stalls behind it.
+
+**Afterwards:** if a run is still sitting there with no activity, stop it, or the schedule
+stays blocked.
+
+---
+
+## 2. migration-031 — six backup tables anyone signed in can read (2 minutes)
+
+**This is the one with a real consequence.** `clients_backup_20260914`,
+`receipts_backup_20260914`, `invoices_backup_20260914` and their `_2` twins are snapshots
+of your clients, receipts and invoices from 14 September, and they have row level security
+switched off. Supabase gives every new table full access by default, and RLS is what takes
+it away again — those two backup files were written before that became habit. Any account
+signed in to the app can read all six.
+
+1. Supabase → your project → **SQL Editor**.
+2. Paste all of `web/supabase/migration-031-lock-down-early-backups.sql` and press **Run**.
+3. Paste the check query from the bottom of the same file. Every row should read
+   `rls = true` and `grants = 0`.
+
+It only takes access away: it creates nothing, changes no row, deletes nothing, and is
+safe to run twice.
+
+---
+
+## 3. migration-032 — merging two contacts can never move a quote request (1 minute)
+
+Merging "Travis Perkins" and "Travis Perkins Ltd" moves the invoices, receipts, quotes and
+repeating items fine, then reports *"Some rows stayed with the old record"* — every time,
+even between two contacts that have never been sent a quote request. The owner is granted
+update on only two columns of that table, and Postgres refuses the statement whether or
+not any row matches.
+
+1. Same SQL Editor: paste `web/supabase/migration-032-merge-quote-request-suppliers.sql`,
+   press **Run**.
+2. The check query at the foot should list three columns: `sent_at`, `supplier_id`, `token`.
+
+(The app already stops the false alarm meanwhile — it looks before it writes.)
+
+---
+
+## 4. migration-033 and the branch — a quote re-prices itself if you register for VAT
+
+Not urgent, but it decides something: **a quote you have already sent re-prices itself if
+you switch VAT on.** An invoice remembers the setting it was issued under; a quote doesn't.
+So a quote sent at £4,800 while you're not registered shows the customer £5,760 the day
+you cross the threshold — on their own link, and on the button they tap to accept.
+
+The fix is written and tested on the branch **`feature/quote-vat-snapshot`**, and it does
+not merge until you have run its migration.
+
+1. Run `web/supabase/migration-033-quote-vat-registered.sql` (one nullable column, nothing
+   rewritten, safe to run twice).
+2. Tell me, and I'll merge the branch and re-run everything.
+
+If you'd rather leave it, nothing breaks today — you're not VAT registered yet, so there
+is no wrong price to show anyone.
+
+---
+
+## 5. Two things worth deciding, not doing
+
+- **`.claude/worktrees/` is 5.4GB** of old copies of the project from finished branches,
+  with 36GB free on the disk. Everything in them is in git history. I have not touched
+  them. Say the word and they go.
+- **Your Settings still hold placeholder business details**, and the VAT-registered switch
+  is off. Reminders and invoice emails use the business name and bank details from there,
+  so until they're filled in, a customer gets an invoice with nowhere to pay it. Five
+  minutes on the Settings page, whenever suits.
+
+---
+
+## Where your invoice numbers stand
+
+You said you want to start at 1 for the new company. Settings holds a **Prefix** and a
+**Next number**. For a bare series with no letters, clear the Prefix box and set Next
+number to 1.
+
+Clearing that box used to be a trap — it wiped the whole business profile and restarted
+the series at INV-1. That was fixed today (`134a3e3`), and there is a test that fails
+against the old code, so it is safe now.
