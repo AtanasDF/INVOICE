@@ -21,11 +21,13 @@ const ALLOWED_KEY = "camera-allowed";
 
 let known: CameraPermission = "unknown";
 
-// Whether this browser can tell us the real permission state. Chrome and
-// Edge can; Safari and Firefox can't for the camera.
-function canAskBrowser(): boolean {
-  return typeof navigator !== "undefined" && !!navigator.permissions?.query;
-}
+// Whether this browser has actually answered a camera permission query.
+// Not whether navigator.permissions exists: Safari has the Permissions API
+// and simply rejects the "camera" name, so the presence of `query` says
+// nothing. Only a query that really resolved proves the browser can
+// correct us later, which is the whole condition for writing a refusal
+// down at all.
+let browserAnswers = false;
 
 function remember(state: CameraPermission) {
   known = state;
@@ -40,7 +42,7 @@ function remember(state: CameraPermission) {
     // about a block the app was holding itself. One mis-tap would end the
     // in-app scanner on that phone for good. It stays in memory for this
     // page instead, which is all the browser's own refusal lasts.
-    else if (state === "denied" && canAskBrowser()) localStorage.setItem(ALLOWED_KEY, "0");
+    else if (state === "denied" && browserAnswers) localStorage.setItem(ALLOWED_KEY, "0");
   } catch {
     // storage blocked -- the state just won't survive a page load
   }
@@ -77,6 +79,7 @@ export async function cameraPermission(): Promise<CameraPermission> {
   try {
     const perm = await navigator.permissions?.query({ name: "camera" as PermissionName });
     if (perm) {
+      browserAnswers = true;
       remember(perm.state);
       perm.onchange = () => remember(perm.state);
       return perm.state;
