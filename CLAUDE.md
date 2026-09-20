@@ -16,12 +16,15 @@ it is his real accounting record. Read this file before doing anything.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
 - `scanner-research.md` — competitor research and the scanner follow-up plan.
 - `SESSIONS.md` — one entry per session, newest first; read it first, append yours last.
-- The test harness lives outside the repo, in the session scratchpad at
-  `.../scratchpad/harness/`: headless Chrome against a mocked PostgREST (`mockdb.mjs`),
-  synthetic camera clips, and 36 `test-*.mjs` suites. `./run-all.sh` runs them four at a
-  time in about four minutes (`JOBS=1` for serial); `tsconfig.logic.json` recompiles the
-  app's pure logic (tax, reminders, CIS, VAT) fresh each run so those suites can't drift
-  from the source.
+- `harness/` — the test harness, **now in the repo** (it used to live only in a session
+  scratchpad, which is wiped without warning). Headless Chrome against a mocked PostgREST
+  (`mockdb.mjs`), plus pure-logic suites: 46 of them, 895 checks, `./run-all.sh` runs them
+  four at a time in about four minutes (`JOBS=1` for serial, `BASE` for the server).
+  `tsconfig.logic.json` recompiles the app's own tax, reminder, CIS, VAT, date and
+  recurrence code into `harness/gen/` every run, so those suites can never drift from the
+  source. Only source is kept: Chrome profiles, `gen/` and the ~770MB of synthetic camera
+  clips are gitignored, and `gen-*.py` regenerates the clips. `harness/README.md` has the
+  rest. Run it from a scratchpad copy if you don't want profile directories in the tree.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
