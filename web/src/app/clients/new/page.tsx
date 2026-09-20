@@ -147,6 +147,7 @@ export default function NewClientPage() {
         defaultCurrency,
         contactPerson,
         phone,
+        companyNumber: (company ?? check.company)?.number ?? "",
         remindersEnabled,
       });
       const known = company ?? check.company;

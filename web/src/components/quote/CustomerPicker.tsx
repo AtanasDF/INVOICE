@@ -187,6 +187,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
           defaultCurrency: "",
           contactPerson: isCompany ? contactPerson.trim() : "",
           phone: phone.trim(),
+          companyNumber: "",
           remindersEnabled: true,
         })
       );

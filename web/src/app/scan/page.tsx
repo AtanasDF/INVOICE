@@ -392,6 +392,13 @@ export default function ScanPage() {
   // What the register put into the form for the document open now, so it
   // can be taken back out.
   const [registerFill, setRegisterFill] = useState<{ key: string; what: string } | null>(null);
+
+  // A company number the register filled in belongs on the supplier's row
+  // when one is added from this document.
+  function registerCompanyNumber(f: Form): string {
+    const found = (f.details.other ?? []).find((o) => /company number/i.test(o.label))?.value ?? "";
+    return /^[A-Z0-9]{6,10}$/.test(found.toUpperCase()) ? found.toUpperCase() : "";
+  }
   const [recheck, setRecheck] = useState(0);
   const filledRef = useRef<string | null>(null);
   const undoneRef = useRef<string | null>(null);
@@ -836,6 +843,7 @@ export default function ScanPage() {
         defaultCurrency: form.currency === "GBP" ? "" : form.currency,
         contactPerson: form.contactPerson,
         phone: form.details.supplierPhone ?? "",
+        companyNumber: registerCompanyNumber(form),
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, created]);

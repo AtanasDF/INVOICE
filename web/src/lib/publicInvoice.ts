@@ -71,6 +71,7 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
           defaultCurrency: "",
           contactPerson: "",
           phone: "",
+          companyNumber: "",
           remindersEnabled: true,
           archived: false,
         }

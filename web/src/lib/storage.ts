@@ -17,6 +17,9 @@ export type Client = {
   defaultCurrency: string;
   contactPerson: string;
   phone: string;
+  // Companies House number, when this contact was picked from the
+  // register (migration-030). Empty when it wasn't, or isn't a company.
+  companyNumber: string;
   // Payment reminders (3 days before due / on due date / 7 days after)
   // go out for this client unless turned off here. Only meaningful for
   // kind "client" -- suppliers are never invoiced, so it's ignored for them.
@@ -186,6 +189,7 @@ type ClientRow = {
   phone: string | null;
   reminders_enabled: boolean | null;
   archived: boolean | null;
+  company_number?: string | null;
 };
 
 function clientFromRow(r: ClientRow): Client {
@@ -202,6 +206,7 @@ function clientFromRow(r: ClientRow): Client {
     contactPerson: r.contact_person ?? "",
     phone: r.phone ?? "",
     remindersEnabled: r.reminders_enabled ?? true,
+    companyNumber: r.company_number ?? "",
     archived: r.archived ?? false,
   };
 }
@@ -229,6 +234,7 @@ export const clientsStore = {
         contact_person: input.contactPerson || null,
         phone: input.phone || null,
         reminders_enabled: input.remindersEnabled,
+        company_number: input.companyNumber || null,
         archived: false,
       })
       .select()
@@ -254,6 +260,7 @@ export const clientsStore = {
     if (patch.contactPerson !== undefined) dbPatch.contact_person = patch.contactPerson || null;
     if (patch.phone !== undefined) dbPatch.phone = patch.phone || null;
     if (patch.remindersEnabled !== undefined) dbPatch.reminders_enabled = patch.remindersEnabled;
+    if (patch.companyNumber !== undefined) dbPatch.company_number = patch.companyNumber || null;
     const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
     if (error) throw error;
   },

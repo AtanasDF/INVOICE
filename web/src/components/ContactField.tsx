@@ -123,7 +123,9 @@ export default function ContactField({
   // A company already saved under this name doesn't need adding again.
   const saved = useMemo(() => new Set(contacts.map((c) => normaliseSupplierName(c.name))), [contacts]);
   const register = items.filter((c) => !saved.has(normaliseSupplierName(c.name)));
-  const numberHint = recallCompany(selectedId)?.number ?? null;
+  // The number saved on the row (migration-030) is the sure one; a
+  // contact added before that column existed still has it on the device.
+  const numberHint = selected?.companyNumber || recallCompany(selectedId)?.number || null;
   const checked = selected ? selected.name : checkTyped ? text : "";
   const check = useRegisterCheck(checked, numberHint, on && !!checked.trim(), onCheck, recheck);
 
@@ -158,6 +160,9 @@ export default function ContactField({
         defaultCurrency: "",
         contactPerson: "",
         phone: "",
+        // The register pick's number goes on the row, so every device
+        // checks the right company, not just this one.
+        companyNumber: pending.number,
         remindersEnabled: true,
       });
       rememberCompany(created.id, pending);
