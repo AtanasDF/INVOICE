@@ -137,6 +137,19 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   clients with `is_company` true.
 - A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
   and in the push cron from 3 days before `due_date`.
+- Mileage is an ordinary expense, not a table of its own: vendor and category "Mileage",
+  no VAT, the trip in `receipts.details.mileage` (`src/lib/mileage.ts` holds HMRC's rates,
+  the 10,000-mile split and the postcode road estimate).
+- Two records for one business are merged with `clientsStore.mergeInto(duplicate, keep)`:
+  invoices, receipts, quotes, recurring items and quote requests are repointed and the
+  duplicate is **archived, never deleted** (`src/lib/duplicateContacts.ts` finds the
+  pairs; a client and a supplier of the same name are never a pair).
+- A customer's statement (`src/lib/statement.ts`, `/clients/<id>/statement`) and the VAT
+  figures for a quarter (`src/lib/vatReturn.ts`, `/vat`, both bases, boxes 1/4/5/6/7) are
+  worked out from the same rules as the invoice page; neither files anything anywhere.
+- "Find it cheaper" on a quote or comparison line (`src/lib/priceSearch.ts`,
+  `priceGuide.ts`, `POST /api/price-guide`, Gemini, 120/hour/user) prepares searches and
+  gives a usual-price range; it never reads live prices and says so.
 - Suppliers are `clients` rows with `kind = 'supplier'`. A scanned document is linked to a
   supplier only when the form showed it (read-time match) or the names are exactly the same
   at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
