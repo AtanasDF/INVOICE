@@ -19,6 +19,22 @@ a brand-new, empty one.
   Fixed: every load catches, stops loading, suppresses the empty state while an error shows,
   and says one plain sentence. Pages that already caught printed the database's own wording;
   `loadFailed()` in `src/lib/errorText.ts` keeps that for the console. Commit `84595ce`.
+- **The first invoice a new account ever issues** (checklist 16). A new account has no
+  `business_profile` row until Settings is saved, and `assign_invoice_number` reads the
+  counter off it — so the very first "Mark as sent" failed with "Could not mark this
+  invoice sent.", moments after the confirm panel promised "assigns invoice number INV-1".
+  `markSentWithNumber` now writes the defaults and issues it. The panel's catch used
+  `err instanceof Error`, never true for a Supabase error, so every real reason was
+  replaced by the fallback — `errorText` now. The invoice page's own load had no catch
+  either: an unreachable database showed "Invoice not found". `test-numbering.mjs` 11/11,
+  and the mock now implements `assign_invoice_number` as the migration defines it.
+  Commit `b0eb3ba`.
+- **Nothing half-saved when the signal drops** (checklist 40). `test-half-saved.mjs`, 12/12
+  — and this one is a clean bill of health, not a fix: a payment whose status update is cut
+  off is written exactly once and says so; a failed receipt save leaves no row and a retry
+  writes one; a quote whose invoice write fails is released, not left claimed; a reply lost
+  after the invoice was written finds that invoice instead of making a second.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;

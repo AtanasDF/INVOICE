@@ -123,6 +123,20 @@ what is sent to a customer waits for him.
   `loadFailed()` in `src/lib/errorText.ts` keeps that for the console and shows one plain
   sentence instead.
 
+- **16. Numbering from 1 on a new account** — found and fixed the worst first-run bug
+  there is: a brand-new account has no `business_profile` row (it only appears when
+  Settings is saved) and the number counter lives on it, so the very first "Mark as sent"
+  failed with "Could not mark this invoice sent." — right after the panel had promised
+  "assigns invoice number INV-1". It now writes the defaults and issues it.
+  `test-numbering.mjs` 11/11: first invoice, no gap to the second, a clash explained and
+  the counter left alone.
+- **40. Nothing half-saved when the connection dies** — `test-half-saved.mjs` 12/12, and
+  the app came out of it well: a payment whose status update is cut off is written once
+  and says so ("the payment is saved, but the status couldn't be updated"); a receipt that
+  fails to save leaves no row and a second attempt writes one, not two; a quote whose
+  invoice write fails is given back rather than left claimed; and a lost reply after the
+  invoice was written finds the invoice that exists instead of making a second one.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
