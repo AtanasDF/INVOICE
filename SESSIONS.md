@@ -211,6 +211,15 @@ the scanner torch, the quotes redesign, wrapping invoice buttons, and the addres
   and Settings + one Add button + camera permission (`feature/settings-add`, with
   migration-029 for registered name/number and account kind — not applied yet).
 - `notes/future-ideas.md` now also holds the next five surprises to build.
+- Full pass on merged main, everything green: fit sweep 26/26, company picker 39/39,
+  company number on the row 5/5, settings/add/camera 36/36, check a company 52/52, review
+  fixes 21/21, uploads 15/15, multi-docs 33/33, clear 22/22, quotes fixes 11/11, receipts
+  74/74, address 18/18, price finder 13/13, mileage 13/13, statement 10/10, VAT 13/13,
+  merge 11/11, quote chase 8/8, CIS 14/14, delight 8/8, texts 12/12, tips 7/7, share 3/3,
+  far 35/35, bent 64/64, camera tip 3/3. Two stale expectations were corrected (the dark
+  clip may now show the torch hint; the texts suite follows the new Send card) and the
+  camera-tip flake was fixed at the source: the how-to-allow tip no longer appears when
+  the browser says the camera is already granted.
 - **The register on every contact field** merged (agent, `feature/company-picker`): free
   text with a ▾ that opens the saved contacts (most used first, then A-Z), typing searches
   saved contacts and then Companies House, and picking a register company offers to add it
