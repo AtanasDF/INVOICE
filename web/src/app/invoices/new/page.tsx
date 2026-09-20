@@ -13,7 +13,7 @@ import { CameraIcon } from "@/components/icons";
 import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
-import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
+import { normaliseSupplierName } from "@/lib/supplierMatch";
 import type { TypedVat } from "@/lib/invoiceFromText";
 import { looksLikeCompany } from "@/lib/reminderTemplates";
 import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
@@ -92,7 +92,17 @@ export default function NewInvoicePage() {
   // A file handed over by "Upload a file" is a copy too, whatever the
   // address says yet.
   const [copyMode] = useState(() => new URLSearchParams(window.location.search).get("scan") === "1" || uploadMarked());
-  const [draft] = useState(() => (copyMode ? null : readFreeInvoiceDraft()));
+  // The Free page and the quote builder share one stored draft. A quote
+  // left there must not walk into a sales invoice: the lines, terms and any
+  // CIS rate would come with it (a quote hides CIS, so a deduction the
+  // customer never saw would appear), the banner would only say "Imported
+  // from your free invoice", and saving clears the draft -- so the quote he
+  // had not finished with would be gone. /quotes/new already gates on this.
+  const [draft] = useState(() => {
+    if (copyMode) return null;
+    const d = readFreeInvoiceDraft();
+    return d && d.docType === "quote" ? null : d;
+  });
   const [date, setDate] = useState(() => draft?.date || todayIso());
   const [dueDate, setDueDate] = useState(() => (draft ? importedDueDate(draft, date).dueDate : addDays(date, 30)));
   const [dueDateManual, setDueDateManual] = useState(() => !!draft && importedDueDate(draft, date).manual);
@@ -453,9 +463,15 @@ export default function NewInvoicePage() {
   function applyCopy(t: InvoiceTemplate, lists: Lists, typed?: { vat: TypedVat }) {
     const name = t.customer.name?.trim() ?? "";
     const billable = lists.clients.filter((c) => c.kind === "client" && !c.archived);
-    const match = name ? matchSupplier(name, billable) : null;
-    // Only the same name is offered back: a fuzzy match could unarchive
-    // someone else.
+    // Only the same name, not a near one. matchSupplier falls through to
+    // deliberately loose tiers -- containment with a four-character floor,
+    // then any two shared words -- which is right for linking a receipt to
+    // a supplier he can see, and wrong here: "Riverside Building Services"
+    // matched "Hillside Building Services", the picked customer replaced
+    // the name on the document, and the invoice went out to the wrong one.
+    // Anything less than the same name is left as typed, so he chooses.
+    const match = name ? billable.find((c) => normaliseSupplierName(c.name) === normaliseSupplierName(name)) ?? null : null;
+    // Same rule for an archived one: offered back only on the same name.
     const archived =
       name && !match ? lists.clients.find((c) => c.kind === "client" && c.archived && normaliseSupplierName(c.name) === normaliseSupplierName(name)) : null;
     const keepClient = !!typed && !name;

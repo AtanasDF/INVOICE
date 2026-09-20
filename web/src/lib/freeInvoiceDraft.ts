@@ -135,8 +135,24 @@ export function nextInvoiceNumber(number: string): string {
   const last = runs[runs.length - 1];
   const before = runs[runs.length - 2];
   const year = new Date().getFullYear();
-  const isYear = (run: string) => run.length === 4 && Math.abs(Number(run) - year) <= 1;
-  const target = before && isYear(last[0]) && !/^(19|20)\d\d$/.test(before[0]) ? before : last;
+  // What can be a year at the end of an invoice number: 2026 or 2025 or
+  // even 2019 written in full, and 26 or 25 written short. The old rule
+  // only accepted four digits within a year of today, so "3/25", "4/26"
+  // and "0042/2023" all fell through and the YEAR was incremented while
+  // the sequence stood still -- "3/25" became "3/26", a number he had
+  // already sent to somebody else. Incrementing a year never gives the
+  // next invoice number, so anything that reads as one is skipped over.
+  const isYear = (run: string) => {
+    const v = Number(run);
+    if (run.length === 4) return v >= 1990 && v <= year + 1;
+    // Two digits: this year, the last few, or next year. A sequence number
+    // that happens to look like one is protected by the rule below -- a
+    // year is only skipped when there is another run in front of it to
+    // bump instead.
+    if (run.length === 2) return v <= (year % 100) + 1 && v >= (year % 100) - 8;
+    return false;
+  };
+  const target = before && isYear(last[0]) && !isYear(before[0]) ? before : last;
   const next = String(Number(target[0]) + 1).padStart(target[0].length, "0");
   return n.slice(0, target.index) + next + n.slice(target.index! + target[0].length);
 }

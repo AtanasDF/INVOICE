@@ -102,6 +102,40 @@ export async function POST(req: Request) {
 
     const created: string[] = [];
 
+    // A document that could not be read must still be visible. The reader
+    // fails for ordinary reasons -- the model is busy (429), overloaded
+    // (529), or the read runs past its token budget -- and until now that
+    // unwound to a 500 and the attachment was simply gone: no retry, no
+    // bounce to the sender, nothing in the app, and the only trace a line
+    // in `wrangler tail` that nobody is watching. Filing it for review with
+    // the document attached is the same promise the no-attachment path
+    // above already makes.
+    const fileUnread = async (attachment: { filename: string; mimeType: string; base64: string }, why: string) => {
+      const stored = await storeImageForUser(admin, userId, attachment.mimeType, attachment.base64).catch(() => null);
+      const { data, error } = await admin
+        .from("receipts")
+        .insert({
+          user_id: userId,
+          client_id: null,
+          date: new Date().toISOString().slice(0, 10),
+          vendor: (attachment.filename || body.subject || body.from || "Emailed document").slice(0, 200),
+          category: null,
+          amount: 0,
+          vat_amount: 0,
+          image_data_url: stored,
+          notes: `This came in by email and could not be read automatically (${why}). The document is attached — fill the figures in by hand, or discard it.\n\nFrom: ${body.from || "unknown"}\nSubject: ${body.subject || ""}`,
+          starred: false,
+          needs_review: true,
+          warranty_months: null,
+          tags: ["via-email", "unread"],
+          line_items: [],
+        })
+        .select("id")
+        .single();
+      if (!error && data) created.push(data.id);
+      return !error;
+    };
+
     if (usableAttachments.length === 0) {
       // Nothing extractable -- still surface the email itself rather than
       // silently dropping it, so it's at least visible that something
@@ -132,7 +166,13 @@ export async function POST(req: Request) {
     }
 
     for (const attachment of usableAttachments) {
-      const documents = await extractDocuments([{ mediaType: attachment.mimeType, base64: attachment.base64 }], []);
+      let documents;
+      try {
+        documents = await extractDocuments([{ mediaType: attachment.mimeType, base64: attachment.base64 }], []);
+      } catch (err) {
+        await fileUnread(attachment, err instanceof Error ? err.message.slice(0, 120) : "the reader failed");
+        continue;
+      }
       for (const [index, result] of documents.entries()) {
         const file = await documentFile(attachment, documents, index);
         const documentType: DocumentType =
@@ -226,7 +266,11 @@ export async function POST(req: Request) {
           })
           .select("id")
           .single();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) {
+          // One row refused must not abandon the attachments behind it.
+          await fileUnread(attachment, `it could not be saved: ${error.message.slice(0, 100)}`);
+          continue;
+        }
         created.push(data.id);
       }
     }

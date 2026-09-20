@@ -63,6 +63,8 @@ export default function QuoteRequestPage() {
   const busyRef = useRef(false);
   const genRef = useRef(0);
   const [entry, setEntry] = useState<string | null>(null);
+  // Read by the background refresh, which must not reload under an open form.
+  const entryRef = useRef<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
@@ -94,10 +96,21 @@ export default function QuoteRequestPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    entryRef.current = entry;
+  }, [entry]);
+
   // Answers arrive while the page is in the background: coming back to it
   // shows them.
   useEffect(() => {
     const refresh = () => {
+      // Not while a prices form is open. The form's draft is frozen when it
+      // opens, but the row it checks against is read fresh every render --
+      // so a reload here would quietly adopt an answer the supplier sent in
+      // the meantime as "the one he has seen", and saving would overwrite
+      // their own prices with his without the clash ever being noticed.
+      // The answer is still picked up the moment he closes the form.
+      if (entryRef.current) return;
       if (document.visibilityState === "visible" && !busyRef.current) load().catch(() => {});
     };
     window.addEventListener("focus", refresh);

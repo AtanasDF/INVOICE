@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { parseAmount } from "@/components/free-invoice/fields";
+import { amountOrNull } from "@/components/free-invoice/fields";
 import { LinePrice, RequestItem, formatPence, quantityText, supplierTotal } from "@/lib/quoteCompare";
 
 const INPUT = "w-full rounded-lg border px-3 py-2";
@@ -33,9 +33,13 @@ export function draftFrom(items: RequestItem[], from?: { prices: Record<string, 
 
 const amountOf = (text: string): number | null | "bad" => {
   if (!text.trim()) return null;
-  if (!/\d/.test(text)) return "bad";
-  const n = parseAmount(text);
-  return n < 0 ? "bad" : n;
+  // Anything that isn't a plain number is refused, not read as nothing.
+  // The box's own placeholder ("per length", "per m2") invites exactly the
+  // answer that used to break this: "12.50 per length" parsed to 0, the
+  // response submitted, and that supplier was cheapest on the line at
+  // £0.00 for ever after.
+  const n = amountOrNull(text);
+  return n === null || n < 0 ? "bad" : n;
 };
 
 // What the draft says, or why it can't be sent. Every line needs a price
@@ -47,12 +51,14 @@ export function readDraft(items: RequestItem[], d: PriceDraft, requireEvery = tr
   for (const [n, item] of items.entries()) {
     const l = d.lines[item.id];
     const price = l.unavailable ? null : amountOf(l.text);
-    if (price === "bad") return { ok: false, error: `Check the price for line ${n + 1} (${item.description}).` };
+    // Say what is wrong with it: a supplier who typed "12.50 per length"
+    // has no way to guess that the words are the problem.
+    if (price === "bad") return { ok: false, error: `Line ${n + 1} (${item.description}): put the price as just a number, like 12.50 — no words or ranges.` };
     if (price === null && !l.unavailable && requireEvery) return { ok: false, error: `Add a price for line ${n + 1} (${item.description}), or tick "Can't supply".` };
     prices[item.id] = { price, unavailable: l.unavailable, note: l.note.trim() };
   }
   const delivery = amountOf(d.delivery);
-  if (delivery === "bad") return { ok: false, error: "Check the delivery cost." };
+  if (delivery === "bad") return { ok: false, error: "Put the delivery cost as just a number, like 25 — or leave it empty if there isn't one." };
   return { ok: true, prices, delivery };
 }
 

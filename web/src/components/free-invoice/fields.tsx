@@ -21,11 +21,21 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 // What's shown must be what's stored: "1,200.50" is 1200.5 and a decimal
 // comma ("2,5") is 2.5, where parseFloat alone would store 1 and 2.
 export function parseAmount(text: string): number {
+  return amountOrNull(text) ?? 0;
+}
+
+// The same reading, but able to say "there is something here and it isn't a
+// number". parseAmount answers 0 to both an empty box and to "12.50 per
+// length", which is right for a form where 0 means nothing typed and wrong
+// anywhere a price is being judged: a supplier answering a quote request
+// that way had their line taken as £0.00 and won the comparison on it.
+export function amountOrNull(text: string): number | null {
   let t = text.replace(/[\s£$€]/g, "");
+  if (!t) return null;
   if (t.includes(",") && !t.includes(".") && /^-?\d+,\d{1,2}$/.test(t)) t = t.replace(",", ".");
   else t = t.replace(/,/g, "");
   const n = Number(t);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : null;
 }
 
 export function NumberInput({ value, onChange, className = INPUT, ...rest }: {
