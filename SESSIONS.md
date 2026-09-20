@@ -74,6 +74,16 @@ a brand-new, empty one.
   the setting on. Nothing to fix. The runner recompiles the module each time so the test
   can't drift from the code.
 
+- **The tax figure he'll set money aside on** (checklist 19) checked against HMRC's rules
+  worked out by hand: 37/37. Every band, the £100k taper and its 60p-in-the-pound trap,
+  Class 4, the 5/6 April boundary, the Self Assessment dates, a loss, and CIS as tax
+  already paid. Nothing to fix. The harness can now run the app's own pure logic directly
+  (`tsconfig.logic.json` compiles `taxEstimate`, `reminderTemplates`, `cis`, `vat` and
+  `invoiceBalance` fresh on every run), which is how the reminder clock is tested too.
+- **What goes in comes back out** (checklist 31): apostrophes, ampersands, accents and a £
+  in a note all survive, empty stays empty rather than "null", a penny reads £0.01, and a
+  credit note comes off the month. `test-round-trip.mjs` 10/10.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;

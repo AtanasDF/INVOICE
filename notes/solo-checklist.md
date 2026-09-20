@@ -181,6 +181,20 @@ what is sent to a customer waits for him.
   fixed compensation (£40 / £70 / £100). "Unlimited Roofing" and "Limitless Design" are
   correctly not read as companies. Nothing to fix.
 
+- **19. The tax figures, against HMRC's rules worked out by hand** — `test-tax-rules.mjs`
+  37/37, run straight off `src/lib/taxEstimate.ts`. Every band (£20k → £1,486; £50,270 →
+  £7,540; £60k → £11,432; £125,140 → £42,516; £150k → £53,703), the personal-allowance
+  taper and the 60p-in-the-pound trap between £100,000 and £125,140, Class 4 at 6% and 2%,
+  the tax year boundary at 5/6 April, the Self Assessment dates and the 14-day warning, a
+  loss (no tax, and shown as a loss), CIS counted as tax already paid, and no projection in
+  the first month. Nothing to fix. Worth writing down: the "tax so far" is deliberately the
+  year's tax at this rate times the year gone, not tax on the profit so far — a full year's
+  allowance against a part year would understate it and make CIS look like a refund.
+- **31. What goes in comes back out** — `test-round-trip.mjs` 10/10: an apostrophe, an
+  ampersand, an em dash, an accent and a £ sign in a note all survive; empty fields stay
+  empty rather than becoming "null"; a one-penny receipt reads £0.01; a credit note reads
+  back as money coming off and takes itself off the month's total.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
