@@ -36,10 +36,9 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-20:
-   migration-027, backup 013 (all applied); migration-028 (quote requests, new tables
-   only) is on `feature/quote-requests`, not applied; migration-029 + backup 014
-   (business_profile: registered name, company number, account kind) are on
-   `feature/settings-add`, not applied. Supabase grants anon/authenticated
+   migration-030, backup 015 — all applied and verified (028 created two new tables, so
+   it needed no backup; 029 added the registered name, company number and account kind to
+   business_profile; 030 added clients.company_number). Supabase grants anon/authenticated
    everything on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -164,7 +163,11 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
   supplier only when the form showed it (read-time match) or the names are exactly the same
   at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
   marks "No supplier" picked on purpose, so the receipts list doesn't offer to link it.
-- Quote requests (migration-028, branch `feature/quote-requests`): Atanas asking
+  `clients.company_number` (migration-030) is kept when a contact is picked from the
+  Companies House register, so a later check asks about that exact company rather than
+  matching by name; contacts saved before it still carry the number on the device
+  (`src/lib/companyRegister.ts`).
+- Quote requests (migration-028, applied 2026-09-20): Atanas asking
   suppliers to price a list. `quote_requests` (items with ids, needed_by, site_address,
   open/closed, `choice` = his pick per line) and one `quote_request_suppliers` row per
   supplier (token for `/r/<token>`, sent_at, waiting/replied/declined, `prices` keyed by
