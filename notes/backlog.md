@@ -72,7 +72,10 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   after a failed removal, a later successful one left the old error on screen saying the
   credit note was still on the invoice, when it had just gone.
 - [ ] 13. Email-import: inline signature images, unreadable-document filing
-- [ ] 14. Customer matching on a scanned invoice (exact-only)
+- [x] 14. Customer matching on a scanned invoice (exact-only) —
+  `harness/test-exact-customer.mjs`: "Riverside Building Services" must not pick
+  "Hillside Building Services" (two shared words was enough for the old loose match, and
+  the matched customer REPLACES the name on the document), while the same name still does.
 - [x] 15. Free-page quote not importable as an invoice — `harness/test-quote-not-invoice.mjs`
   (8 checks), including that a real invoice draft still imports, so the gate isn't too wide.
 - [x] 16. Supplier price "12.50 per length" rejected, not £0 —
