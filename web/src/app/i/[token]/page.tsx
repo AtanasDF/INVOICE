@@ -10,13 +10,10 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
   const data = await loadPublicInvoice(token);
-  if (!data) notFound();
+  const hidden = { robots: { index: false, follow: false }, referrer: "no-referrer" } as const;
+  if (!data) return { title: "Invoice", ...hidden };
   const from = data.profile.businessName ? ` from ${data.profile.businessName}` : "";
-  return {
-    title: `Invoice ${data.invoice.number}${from}`,
-    robots: { index: false, follow: false },
-    referrer: "no-referrer",
-  };
+  return { title: `Invoice ${data.invoice.number}${from}`, ...hidden };
 }
 
 export default async function PublicInvoicePage({ params }: { params: Promise<{ token: string }> }) {
