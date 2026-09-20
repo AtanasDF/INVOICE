@@ -196,7 +196,10 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
         ? matchSupplier(result.vendor, supplierList)
         : (exactSupplier(result.vendor, supplierList) ?? null);
   const credited = receiptList.find((r) => r.documentType === "invoice" && sameNumber(r.invoiceNumber, result.creditedInvoiceNumber));
-  const lines = result.lineItems.map((li) => ({
+  // Same belt-and-braces as documentDetailsFromScan: conformToSchema
+  // guarantees the list, and a missing one must read as no lines rather
+  // than take the page down.
+  const lines = (result.lineItems ?? []).map((li) => ({
     description: li.description,
     quantity: String(li.quantity),
     unitPrice: String(li.unitPrice),
