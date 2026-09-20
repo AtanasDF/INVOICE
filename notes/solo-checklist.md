@@ -195,6 +195,12 @@ what is sent to a customer waits for him.
   empty rather than becoming "null"; a one-penny receipt reads £0.01; a credit note reads
   back as money coming off and takes itself off the month's total.
 
+- **15. Receipts in another currency** — `test-currency.mjs` 11/11. A $100 receipt is
+  stored as £79 at the rate of the day, with the original amount, the currency and the rate
+  kept alongside it; when the rate service is down the app says so and takes a rate typed
+  by hand; and with no rate at all nothing is ever saved as £0.00, which would have put a
+  real cost into his books as nothing. Nothing to fix.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
