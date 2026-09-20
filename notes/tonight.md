@@ -87,6 +87,14 @@ is no wrong price to show anyone.
   is off. Reminders and invoice emails use the business name and bank details from there,
   so until they're filled in, a customer gets an invoice with nowhere to pay it. Five
   minutes on the Settings page, whenever suits.
+- **One receipt may be £91.67 too high — and only you can say.** The Currys PC World
+  receipt from 14 September was saved about 75 minutes before the bug was fixed that had
+  the app treat the till total as the net figure. It reads amount £549.99, VAT £91.67, so
+  the dashboard counts the purchase as £641.66. If £549.99 is what you actually paid at
+  the till, the amount should be £458.32 with the VAT left alone. I have not touched it:
+  it's your accounting record, and "he typed the till total" is an inference, not a fact.
+  The read-only check, and the correction to run only if you confirm, are at the foot of
+  `Claude outputs/invoicer-backlog-brief.md`.
 
 ---
 
