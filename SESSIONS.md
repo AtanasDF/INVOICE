@@ -35,6 +35,23 @@ a brand-new, empty one.
   writes one; a quote whose invoice write fails is released, not left claimed; a reply lost
   after the invoice was written finds that invoice instead of making a second.
 
+- **Nothing goes on one tap any more.** Every Remove — invoice, receipt, contact, payment,
+  credit note, both repeats, and Discard on the review queue — deleted immediately, and on
+  the invoices list Remove sits about twelve pixels from "View / print". Each now asks,
+  naming what goes ("the £200 received on 2026-09-20 — the balance goes back up").
+  `test-no-accidents.mjs` 28/28. Commit `031b185`.
+- **Long names, big numbers, and phone keyboards.** A 100-character customer name pushed
+  five pages sideways at 375px (worst 659px) and a seven-figure total was clipped on the
+  dashboard; `wrap-anywhere` (not `break-words`, which leaves min-content alone) plus
+  `min-w-0`/`shrink-0` fixed it — `test-long-values.mjs` 26/26, commit `e8d4f4a`. Three
+  email boxes opened the full keyboard instead of the email one — `test-keyboards.mjs`
+  12/12, commit `b4a2f3d`.
+- **Sixty-eight swallowed save errors.** `err instanceof Error ? err.message : "..."` is
+  never true for a Supabase error, so a failed save always showed the same generic line,
+  including losing signal mid-save. `saveFailed()` handles no signal, the database's own
+  codes, our functions' own messages, and otherwise keeps the caller's sentence.
+  Commit `b250b4a`. All 26 suites green.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;

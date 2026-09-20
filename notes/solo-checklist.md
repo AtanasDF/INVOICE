@@ -137,6 +137,23 @@ what is sent to a customer waits for him.
   invoice write fails is given back rather than left claimed; and a lost reply after the
   invoice was written finds the invoice that exists instead of making a second one.
 
+- **3. The keyboard each field asks for** — `test-keyboards.mjs` 12/12 over eleven forms.
+  Three email boxes were plain text (new contact, editing a contact, the contact block on
+  a scan), so a phone opened the full keyboard with no @ and capitalised the address.
+  Every money and quantity field was already right.
+- **8. Long names and big numbers** — `test-long-values.mjs` 26/26. A 100-character
+  customer name pushed five pages sideways on a 375px phone (the invoices list to 659px),
+  and £1,185,185.18 was cut off on the dashboard. `break-words` was already there and
+  doesn't help: overflow-wrap leaves min-content alone, so a flex item still won't shrink
+  below its longest word. `wrap-anywhere` plus `min-w-0`/`shrink-0` on the rows fixes it.
+- **5 (in part) + the rule about never deleting** — every Remove in the app deleted on the
+  first tap, twelve pixels from "View / print" on a phone. All seven now ask first and say
+  what goes. `test-no-accidents.mjs` 28/28.
+- **44 (rest of it). Sixty-eight swallowed save errors** — `err instanceof Error ?
+  err.message : "..."` is never true for a Supabase error, so every failed save showed the
+  same generic line. `saveFailed()` now gives plain English for no signal and for the
+  database's own codes, and keeps the caller's sentence otherwise.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
