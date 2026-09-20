@@ -262,7 +262,7 @@ export function buildReport(raw: Raw, now = new Date()): CompanyReport {
     charges: charges(raw.charges),
     insolvency: insolvency(raw.insolvency),
     control: control(raw.control, p),
-    website: typeof p.website === "string" && p.website.trim() ? p.website.trim() : null,
+    website: typeof p.website === "string" && /^https?:\/\/\S+$/i.test(p.website.trim()) ? p.website.trim() : null,
     summary: [],
     missing: raw.missing,
     registerUrl: registerUrl(number),
