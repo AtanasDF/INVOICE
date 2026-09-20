@@ -151,8 +151,11 @@ never stand in for a failed load; and anything that removes a record asks first 
   (invoice_id, kind) is claimed before sending). The statutory-interest line goes only in
   the final notice, only with `business_profile.reminder_late_payment_interest`, only to
   clients with `is_company` true.
-- A "bill" is `document_type = 'invoice' and paid = false`; it surfaces on the dashboard
-  and in the push cron from 3 days before `due_date`.
+- A "bill" is `document_type = 'invoice' and paid = false`. The dashboard's **Bills to pay**
+  card lists every one of them, however far off, because that is what a list of what you owe
+  is for; the amber banner, the push cron and the badge on the app icon count only the ones
+  due within 3 days (or already late), so nothing nags about a bill due in a fortnight.
+  A bill still waiting to be reviewed is left out of both.
 - Mileage is an ordinary expense, not a table of its own: vendor and category "Mileage",
   no VAT, the trip in `receipts.details.mileage` (`src/lib/mileage.ts` holds HMRC's rates,
   the 10,000-mile split and the postcode road estimate).
