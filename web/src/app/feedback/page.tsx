@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Feedback, feedbackStore } from "@/lib/storage";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 const CATEGORIES = ["Bug", "Confusing", "Missing feature", "Other"];
 
@@ -34,7 +34,7 @@ export default function FeedbackPage() {
       setItems((prev) => [created, ...prev]);
       setMessage("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send feedback.");
+      setError(saveFailed(err, "Could not send feedback."));
     } finally {
       setSaving(false);
     }

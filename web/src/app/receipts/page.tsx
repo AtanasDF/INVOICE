@@ -11,7 +11,7 @@ import { money } from "@/lib/money";
 import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } from "@/lib/supplierLinks";
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 type ReceiptDraft = {
   clientId: string;
@@ -211,7 +211,7 @@ export default function ReceiptsPage() {
       await receiptsStore.remove(id);
       setReceipts((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove receipt.");
+      setError(saveFailed(err, "Could not remove receipt."));
     }
   }
 
@@ -222,7 +222,7 @@ export default function ReceiptsPage() {
       await receiptsStore.update(r.id, { starred: next });
     } catch (err) {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, starred: !next } : x)));
-      setError(err instanceof Error ? err.message : "Could not update receipt.");
+      setError(saveFailed(err, "Could not update receipt."));
     }
   }
 
@@ -233,7 +233,7 @@ export default function ReceiptsPage() {
       await receiptsStore.update(r.id, { paid: true });
     } catch (err) {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, paid: false } : x)));
-      setError(err instanceof Error ? err.message : "Could not mark this invoice as paid.");
+      setError(saveFailed(err, "Could not mark this invoice as paid."));
     }
   }
 
@@ -294,7 +294,7 @@ export default function ReceiptsPage() {
       const rate = await getFxRate(next, "GBP");
       setEditDraft((prev) => (prev ? { ...prev, fxRateInput: String(rate) } : prev));
     } catch (err) {
-      setEditFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
+      setEditFxError(saveFailed(err, "Couldn't fetch an exchange rate -- enter one manually."));
     } finally {
       setEditFxLoading(false);
     }
@@ -336,7 +336,7 @@ export default function ReceiptsPage() {
       setEditingId(null);
       setEditDraft(null);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Could not save changes.");
+      setEditError(saveFailed(err, "Could not save changes."));
     } finally {
       setEditBusy(false);
     }

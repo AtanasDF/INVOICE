@@ -22,6 +22,7 @@ import UploadFilesButton from "@/components/UploadFilesButton";
 import ContactField, { type Usage } from "@/components/ContactField";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
+import { saveFailed } from "@/lib/errorText";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -368,7 +369,7 @@ export default function NewInvoicePage() {
         );
       }
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : "Scan failed.");
+      setScanError(saveFailed(err, "Scan failed."));
     } finally {
       setScanning(false);
     }
@@ -391,7 +392,7 @@ export default function NewInvoicePage() {
       const lists = await (listsRef.current ?? Promise.resolve(fallbackLists()));
       applyCopy(body.template, lists);
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : "Couldn't read the invoice.");
+      setScanError(saveFailed(err, "Couldn't read the invoice."));
     } finally {
       setScanning(false);
     }
@@ -423,7 +424,7 @@ export default function NewInvoicePage() {
       ].filter(Boolean);
       setTypedNote({ ok: true, text: ["Filled in from what you typed. Check it before saving.", ...warnings].join(" ") });
     } catch (err) {
-      setTypedNote({ ok: false, text: err instanceof Error ? err.message : "Couldn't turn that into an invoice." });
+      setTypedNote({ ok: false, text: saveFailed(err, "Couldn't turn that into an invoice.") });
     } finally {
       setTyping(false);
     }
@@ -571,7 +572,7 @@ export default function NewInvoicePage() {
       setCustomerText("");
       setNewCustomer(null);
     } catch (err) {
-      setAddClientError(err instanceof Error ? err.message : "Could not add the client.");
+      setAddClientError(saveFailed(err, "Could not add the client."));
     } finally {
       setAddingClient(false);
     }
@@ -600,7 +601,7 @@ export default function NewInvoicePage() {
       if (imported) clearFreeInvoiceDraft();
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save invoice.");
+      setError(saveFailed(err, "Could not save invoice."));
       setSaving(false);
     }
   }

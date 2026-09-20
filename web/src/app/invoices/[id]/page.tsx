@@ -18,7 +18,7 @@ import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
 import { celebratePaid } from "@/components/PaidCelebration";
-import { errorText, loadFailed } from "@/lib/errorText";
+import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -183,7 +183,7 @@ export default function InvoiceViewPage() {
       await invoicesStore.update(invoice.id, { status: next });
     } catch (err) {
       setInvoice({ ...invoice, status: prevStatus });
-      setStatusError(err instanceof Error ? err.message : "Could not update status.");
+      setStatusError(saveFailed(err, "Could not update status."));
     } finally {
       setStatusSaving(false);
     }
@@ -239,14 +239,14 @@ export default function InvoiceViewPage() {
       setShowPayForm(false);
       setPayAmount("");
     } catch (err) {
-      setPayError(err instanceof Error ? err.message : "Could not record the payment.");
+      setPayError(saveFailed(err, "Could not record the payment."));
     } finally {
       setPaySaving(false);
     }
     if (!saved) return;
     const done = saved;
     const next = await syncStatus(invoice, done.notes, done.pays, invoiceVat(invoice, vatRegistered)).catch((err) => {
-      setStatusError(err instanceof Error ? err.message : "The payment is saved, but the status couldn't be updated. Reload to fix it.");
+      setStatusError(saveFailed(err, "The payment is saved, but the status couldn't be updated. Reload to fix it."));
       return null;
     });
     if (next === "paid") celebrate(done.pays);
@@ -284,7 +284,7 @@ export default function InvoiceViewPage() {
         celebrate(all);
       }
     } catch (err) {
-      setStatusError(err instanceof Error ? err.message : "Could not mark it paid.");
+      setStatusError(saveFailed(err, "Could not mark it paid."));
     } finally {
       setStatusSaving(false);
     }
@@ -300,7 +300,7 @@ export default function InvoiceViewPage() {
       const { pays, notes } = await freshFigures();
       await syncStatus(invoice, notes, pays, invoiceVat(invoice, vatRegistered), true);
     } catch (err) {
-      setPayError(err instanceof Error ? err.message : "Could not remove the payment.");
+      setPayError(saveFailed(err, "Could not remove the payment."));
     }
   }
 
@@ -320,7 +320,7 @@ export default function InvoiceViewPage() {
       setLink(await invoiceLinksStore.replace(invoice.id));
       setLinkCopied(false);
     } catch (err) {
-      setLinkError(err instanceof Error ? err.message : "Couldn't replace the link.");
+      setLinkError(saveFailed(err, "Couldn't replace the link."));
     } finally {
       setLinkBusy(false);
     }
@@ -334,7 +334,7 @@ export default function InvoiceViewPage() {
       await navigator.clipboard.writeText(url).catch(() => {});
       setLinkCopied(true);
     } catch (err) {
-      setLinkError(err instanceof Error ? err.message : "Couldn't make the link.");
+      setLinkError(saveFailed(err, "Couldn't make the link."));
     } finally {
       setLinkBusy(false);
     }
@@ -355,7 +355,7 @@ export default function InvoiceViewPage() {
       setInvoice({ ...invoice, dueDate: editDueDate || null, paymentTerms: editPaymentTerms, notes: editNotes, tags });
       setEditingDetails(false);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Could not save changes.");
+      setEditError(saveFailed(err, "Could not save changes."));
     } finally {
       setEditSaving(false);
     }
@@ -392,7 +392,7 @@ export default function InvoiceViewPage() {
       const fresh = await invoicesStore.get(invoice.id);
       setInvoice(fresh);
     } catch (err) {
-      setDraftError(err instanceof Error ? err.message : "Could not save this draft.");
+      setDraftError(saveFailed(err, "Could not save this draft."));
     } finally {
       setDraftSaving(false);
     }
@@ -480,7 +480,7 @@ export default function InvoiceViewPage() {
       });
       router.push(`/invoices/${created.id}`);
     } catch (err) {
-      setDuplicateError(err instanceof Error ? err.message : "Could not duplicate this invoice.");
+      setDuplicateError(saveFailed(err, "Could not duplicate this invoice."));
       setDuplicating(false);
     }
   }
@@ -504,7 +504,7 @@ export default function InvoiceViewPage() {
       setShowCnForm(false);
       await syncStatus(invoice, notes, payments, invoiceVat(invoice, vatRegistered));
     } catch (err) {
-      setCnError(err instanceof Error ? err.message : "Could not save credit note.");
+      setCnError(saveFailed(err, "Could not save credit note."));
     } finally {
       setCnSaving(false);
     }

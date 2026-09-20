@@ -30,7 +30,7 @@ import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 function ScanIcon() {
   return (
@@ -253,7 +253,7 @@ export default function Dashboard() {
       await receiptsStore.update(bill.id, { paid: true });
     } catch (err) {
       setBills((prev) => [...prev, bill]);
-      setBillsError(err instanceof Error ? err.message : "Could not mark this bill as paid.");
+      setBillsError(saveFailed(err, "Could not mark this bill as paid."));
     }
   }
 

@@ -7,6 +7,7 @@ import { useCompanyLookup } from "@/lib/companyConfigured";
 import { normaliseSupplierName } from "@/lib/supplierMatch";
 import { rememberCompany, recallCompany, searchRegister } from "@/lib/companyRegister";
 import { CompanyRow, type RegisterCheck, RegisterNote, oneLine, useRegisterCheck } from "@/components/RegisterBits";
+import { saveFailed } from "@/lib/errorText";
 
 export type Usage = Record<string, { count: number; last: string }>;
 
@@ -170,7 +171,7 @@ export default function ContactField({
       onSelect(created);
       setPending(null);
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : `Could not add the ${word}.`);
+      setAddError(saveFailed(err, `Could not add the ${word}.`));
     } finally {
       setAdding(false);
     }

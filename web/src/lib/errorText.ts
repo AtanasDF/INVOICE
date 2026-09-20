@@ -4,6 +4,30 @@ export function errorText(err: unknown, fallback: string): string {
   return typeof message === "string" && message ? message : fallback;
 }
 
+// A save that failed. Errors the app raised itself are already written for
+// the person reading them ("This invoice has payments recorded against it")
+// and go straight through; the database's own codes and a dropped
+// connection get plain English instead of "Failed to fetch" or "23505".
+export function saveFailed(err: unknown, fallback: string): string {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  const message = typeof e?.message === "string" ? e.message : "";
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) {
+    return "Couldn't reach your records. Check your connection and try again.";
+  }
+  if (err instanceof Error) return message || fallback;
+  const code = typeof e?.code === "string" ? e.code : "";
+  if (code === "23505") return "That one is already there.";
+  if (code === "23503") return "Something else in your records is linked to this, so it can't be changed.";
+  if (code === "42501") return "This account isn't allowed to do that.";
+  if (code === "PGRST204") return "This needs a database change that hasn't been run yet. Nothing was saved.";
+  // P0001 is one of our own database functions raising its own sentence.
+  if (code === "P0001" && message) return message;
+  // Anything else: the caller's sentence knows what was being done, which
+  // "XX000" never will. The real one goes to the console.
+  console.error(fallback, err);
+  return fallback;
+}
+
 // A page that couldn't load says the same plain thing however it failed:
 // "JSON object requested, multiple rows returned" tells the person holding
 // the phone nothing, and what they can actually do is check their signal.

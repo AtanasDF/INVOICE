@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
+import { saveFailed } from "@/lib/errorText";
 
 type Status =
   | { kind: "idle" }
@@ -79,7 +80,7 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
       }
     } catch (err) {
       setShareState("error");
-      setShareError(err instanceof Error ? err.message : "Couldn't make the PDF.");
+      setShareError(saveFailed(err, "Couldn't make the PDF."));
     }
   }
 
@@ -89,7 +90,7 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
       const pdf = await currentPdf();
       pdf.save(filename);
     } catch (err) {
-      setShareError(err instanceof Error ? err.message : "Couldn't make the PDF.");
+      setShareError(saveFailed(err, "Couldn't make the PDF."));
     }
   }
 
@@ -219,7 +220,7 @@ export function EmailForm({
       setStatus({ kind: "sent", to: body.to ?? to, copied: !!body.copied, number });
       onSent?.();
     } catch (err) {
-      setStatus({ kind: "error", message: err instanceof Error ? err.message : "The email couldn't be sent." });
+      setStatus({ kind: "error", message: saveFailed(err, "The email couldn't be sent.") });
     }
   }
 

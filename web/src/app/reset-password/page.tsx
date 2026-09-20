@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { saveFailed } from "@/lib/errorText";
 
 type Status = "checking" | "ready" | "invalid" | "done";
 
@@ -61,7 +62,7 @@ export default function ResetPasswordPage() {
       setStatus("done");
       setTimeout(() => router.replace("/"), 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update your password.");
+      setError(saveFailed(err, "Could not update your password."));
     } finally {
       setSaving(false);
     }

@@ -20,6 +20,7 @@ import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon, TorchIcon } from "@/components/icons";
 import BatchReview, { Shot, groupShots } from "@/components/scan/BatchReview";
 import Tip from "@/components/Tip";
+import { saveFailed } from "@/lib/errorText";
 
 type Point = { x: number; y: number };
 type Quad = [Point, Point, Point, Point];
@@ -1638,7 +1639,7 @@ export default function DocumentCapture({
         rearmAtRef.current = 0;
       }
       resetStable();
-      showFailure(err instanceof Error ? err.message : "Could not read this image.");
+      showFailure(saveFailed(err, "Could not read this image."));
       return;
     }
     if (multi) {
@@ -1700,7 +1701,7 @@ export default function DocumentCapture({
       stopStream();
       onCapture?.(file);
     } catch (err) {
-      showFailure(err instanceof Error ? err.message : "Could not read this file.");
+      showFailure(saveFailed(err, "Could not read this file."));
     }
   }
 

@@ -26,6 +26,7 @@ import FieldFlag, { Confidence } from "@/components/scan/FieldFlag";
 import ContactField, { type Usage } from "@/components/ContactField";
 import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components/RegisterBits";
 import { useCompanyLookup } from "@/lib/companyConfigured";
+import { saveFailed } from "@/lib/errorText";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -478,7 +479,7 @@ export default function ScanPage() {
       })
       .catch((err) => {
         setScanning(false);
-        setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+        setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -537,7 +538,7 @@ export default function ScanPage() {
       startBatch(docs, l);
     } catch (err) {
       setScanning(false);
-      setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+      setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
     }
   }
 
@@ -592,7 +593,7 @@ export default function ScanPage() {
           if (latest()) onRead(id, parts);
         },
         (err) => {
-          if (latest()) onReadFailed(id, err instanceof Error ? err.message : "Scanning failed.");
+          if (latest()) onReadFailed(id, saveFailed(err, "Scanning failed."));
         }
       );
     readsRef.current.set(id, read);
@@ -628,7 +629,7 @@ export default function ScanPage() {
         lists = await loadLists();
       } catch (err) {
         setScanning(false);
-        setScanError(err instanceof Error ? err.message : "Couldn't load your suppliers and receipts.");
+        setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
         return;
       }
     }
@@ -812,7 +813,7 @@ export default function ScanPage() {
       const rate = await getFxRate(next, "GBP");
       set({ fxRateInput: String(rate) });
     } catch (err) {
-      setFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
+      setFxError(saveFailed(err, "Couldn't fetch an exchange rate -- enter one manually."));
     } finally {
       setFxLoading(false);
     }
@@ -851,7 +852,7 @@ export default function ScanPage() {
       pickSupplier(created.id, [...suppliers, created]);
       setSupplierSaved(true);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save.");
+      setSaveError(saveFailed(err, "Could not save."));
     } finally {
       setSaving(false);
     }
@@ -906,7 +907,7 @@ export default function ScanPage() {
       if (d) updateDoc(d.id, { done: "saved", look: null });
       if (!advance()) router.push("/receipts");
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save.");
+      setSaveError(saveFailed(err, "Could not save."));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -985,7 +986,7 @@ export default function ScanPage() {
       setSummary({ saved: saved.size, looks: todo.filter((d) => looks.has(d.id)).map((d) => `${names.get(d.id)} (${looks.get(d.id)})`) });
       if (!saved.has(shown.id) || !advance()) window.scrollTo({ top: 0 });
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save.");
+      setSaveError(saveFailed(err, "Could not save."));
     } finally {
       savingRef.current = false;
       setSaving(false);

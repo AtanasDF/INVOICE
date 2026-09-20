@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { saveFailed } from "@/lib/errorText";
 
 type Point = { x: number; y: number };
 
@@ -185,7 +186,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
       onChange(await signatureFromPhoto(file));
       setDrawing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read this image.");
+      setError(saveFailed(err, "Could not read this image."));
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { saveFailed } from "@/lib/errorText";
 
 function PasswordField({
   value,
@@ -88,7 +89,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(saveFailed(err, "Something went wrong."));
     } finally {
       setBusy(false);
     }

@@ -11,7 +11,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { findDuplicate } from "@/lib/duplicates";
 import ClearFormButton from "@/components/ClearFormButton";
 import ContactField, { type Usage } from "@/components/ContactField";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -121,7 +121,7 @@ export default function NewReceiptPage() {
       const rate = await getFxRate(next, "GBP");
       setFxRateInput(String(rate));
     } catch (err) {
-      setFxError(err instanceof Error ? err.message : "Couldn't fetch an exchange rate -- enter one manually.");
+      setFxError(saveFailed(err, "Couldn't fetch an exchange rate -- enter one manually."));
     } finally {
       setFxLoading(false);
     }
@@ -233,7 +233,7 @@ export default function NewReceiptPage() {
       });
       router.push("/receipts");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save receipt.");
+      setError(saveFailed(err, "Could not save receipt."));
       setSaving(false);
     }
   }

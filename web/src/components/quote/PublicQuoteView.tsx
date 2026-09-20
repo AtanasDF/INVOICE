@@ -6,6 +6,7 @@ import { longDate } from "@/components/invoice/InvoiceDocument";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicQuote } from "@/lib/publicQuote";
+import { saveFailed } from "@/lib/errorText";
 
 type Answer = "accepted" | "declined";
 
@@ -51,7 +52,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       const pdf = await renderInvoicePdf(sheetRef.current);
       pdf.save(pdfFilenameFor(q.number, "quote"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't make the PDF.");
+      setError(saveFailed(err, "Couldn't make the PDF."));
     } finally {
       setMaking(false);
     }
@@ -71,7 +72,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       setAnswered(response);
       setConfirming(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "That didn't work. Try again.");
+      setError(saveFailed(err, "That didn't work. Try again."));
     } finally {
       setSending(false);
     }

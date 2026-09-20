@@ -5,6 +5,7 @@ import PriceForm, { draftFrom, readDraft } from "@/components/quoteRequest/Price
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { LinePrice, RequestItem, cellFor, formatPence, quantityText, supplierTotal } from "@/lib/quoteCompare";
 import type { PublicQuoteRequest } from "@/lib/publicQuoteRequest";
+import { saveFailed } from "@/lib/errorText";
 
 type Sent = { prices: Record<string, LinePrice>; delivery: number | null; vatIncluded: boolean; validUntil: string | null; note: string };
 
@@ -87,7 +88,7 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
       setDeclining(false);
       window.scrollTo({ top: 0 });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "That didn't work. Try again.");
+      setError(saveFailed(err, "That didn't work. Try again."));
     } finally {
       setSending(false);
     }

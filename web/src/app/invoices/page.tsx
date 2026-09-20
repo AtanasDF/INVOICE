@@ -11,7 +11,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
 
@@ -105,7 +105,7 @@ export default function InvoicesPage() {
       await invoicesStore.remove(id);
       setInvoices((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove invoice.");
+      setError(saveFailed(err, "Could not remove invoice."));
     }
   }
 
@@ -137,7 +137,7 @@ export default function InvoicesPage() {
       setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
       celebratePaid({ amount: all.reduce((s, p) => s + p.amount, 0), from: clients.find((c) => c.id === inv.clientId)?.name, number: inv.number });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update invoice.");
+      setError(saveFailed(err, "Could not update invoice."));
     } finally {
       setMarking((m) => m.filter((id) => id !== inv.id));
     }

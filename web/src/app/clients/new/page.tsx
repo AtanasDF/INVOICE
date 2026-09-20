@@ -17,6 +17,7 @@ import AddressFields from "@/components/AddressFields";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
+import { saveFailed } from "@/lib/errorText";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -95,7 +96,7 @@ export default function NewClientPage() {
       setFound(contacts);
       fill(contacts[best], best);
     } catch (err) {
-      setReadError(err instanceof Error ? err.message : "Couldn't read that.");
+      setReadError(saveFailed(err, "Couldn't read that."));
     } finally {
       setReading(false);
     }
@@ -154,7 +155,7 @@ export default function NewClientPage() {
       if (known) rememberCompany(created.id, known);
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save client.");
+      setError(saveFailed(err, "Could not save client."));
       setSaving(false);
     }
   }

@@ -5,7 +5,7 @@ import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } fr
 import { effectiveCategories } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 type DraftState = {
   vendor: string;
@@ -97,7 +97,7 @@ export default function ReviewQueuePage() {
       });
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save this receipt.");
+      setError(saveFailed(err, "Could not save this receipt."));
     } finally {
       setBusyId(null);
     }
@@ -111,7 +111,7 @@ export default function ReviewQueuePage() {
       await receiptsStore.remove(r.id);
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove this receipt.");
+      setError(saveFailed(err, "Could not remove this receipt."));
     } finally {
       setBusyId(null);
     }

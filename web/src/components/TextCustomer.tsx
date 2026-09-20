@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MINUTES, PRESET_LABELS, QuoteSummary, TextPreset, greeting, greetingName, phoneLinks, presetText, smsHref, whatsAppHref } from "@/lib/customerText";
 import type { Client } from "@/lib/storage";
+import { saveFailed } from "@/lib/errorText";
 
 const CHIP = "rounded-full border px-3 py-1 text-sm";
 const CHIP_ON = "border-neutral-900 bg-neutral-900 text-white";
@@ -61,7 +62,7 @@ export default function TextCustomer({
       setMade(url);
       setEdited((e) => (e === null ? null : `${e.trimEnd()}\n${url}`));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't make the link.");
+      setError(saveFailed(err, "Couldn't make the link."));
     } finally {
       setMaking(false);
     }

@@ -28,6 +28,7 @@ import {
   writeFreeInvoiceDraft,
 } from "@/lib/freeInvoiceDraft";
 import Tip from "@/components/Tip";
+import { saveFailed } from "@/lib/errorText";
 
 const MAX_PAGES = 3;
 const TOO_LARGE = "These pages are too large to send together (about 2.5MB total). Use smaller photos or a lower-resolution PDF.";
@@ -140,7 +141,7 @@ export default function FreeInvoiceBuilder() {
       setStage("editor");
     } catch (err) {
       if (run !== runRef.current) return;
-      setReadError(err instanceof Error ? err.message : "Couldn't read the invoice.");
+      setReadError(saveFailed(err, "Couldn't read the invoice."));
     } finally {
       if (run === runRef.current) setReading(false);
     }

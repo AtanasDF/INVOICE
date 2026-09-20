@@ -26,7 +26,7 @@ import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFields from "@/components/AddressFields";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -121,7 +121,7 @@ export default function SettingsPage() {
       setInboxToken(token);
       setInboxRevealed(false);
     } catch (err) {
-      setInboxError(err instanceof Error ? err.message : "Could not generate an import address.");
+      setInboxError(saveFailed(err, "Could not generate an import address."));
     } finally {
       setInboxBusy(false);
     }
@@ -149,7 +149,7 @@ export default function SettingsPage() {
         setPushEnabled(true);
       }
     } catch (err) {
-      setPushError(err instanceof Error ? err.message : "Could not update notification settings.");
+      setPushError(saveFailed(err, "Could not update notification settings."));
     } finally {
       setPushBusy(false);
     }
@@ -216,7 +216,7 @@ export default function SettingsPage() {
       setMigrationPending(!full);
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save your profile.");
+      setError(saveFailed(err, "Could not save your profile."));
     } finally {
       setSaving(false);
     }
@@ -268,7 +268,7 @@ export default function SettingsPage() {
         feedback,
       });
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : "Could not export your data.");
+      setExportError(saveFailed(err, "Could not export your data."));
     } finally {
       setExporting(false);
     }

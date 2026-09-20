@@ -18,7 +18,7 @@ import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } fr
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
 import ClearFormButton from "@/components/ClearFormButton";
-import { loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 function RecurringTabs() {
   return (
@@ -110,7 +110,7 @@ export default function RecurringInvoicesPage() {
       setNotes("");
       setDayOfMonth("1");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      setError(saveFailed(err, "Could not save."));
     } finally {
       setSaving(false);
     }
@@ -140,7 +140,7 @@ export default function RecurringInvoicesPage() {
       await recurringInvoicesStore.update(item.id, { nextDueDate: next });
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nextDueDate: next } : i)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate this invoice.");
+      setError(saveFailed(err, "Could not generate this invoice."));
     } finally {
       setGeneratingId(null);
     }
@@ -153,7 +153,7 @@ export default function RecurringInvoicesPage() {
       await recurringInvoicesStore.update(item.id, { active: next });
     } catch (err) {
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, active: !next } : i)));
-      setError(err instanceof Error ? err.message : "Could not update.");
+      setError(saveFailed(err, "Could not update."));
     }
   }
 
@@ -164,7 +164,7 @@ export default function RecurringInvoicesPage() {
       await recurringInvoicesStore.remove(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove.");
+      setError(saveFailed(err, "Could not remove."));
     }
   }
 

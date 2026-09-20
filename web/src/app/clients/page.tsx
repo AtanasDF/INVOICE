@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { money } from "@/lib/money";
 import { DuplicatePair, duplicatePairs, pairKey, readIgnoredDuplicates, writeIgnoredDuplicates } from "@/lib/duplicateContacts";
-import { errorText, loadFailed } from "@/lib/errorText";
+import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
@@ -148,7 +148,7 @@ export default function ClientsPage() {
       setEditingId(null);
       setDraft(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save changes.");
+      setError(saveFailed(err, "Could not save changes."));
     } finally {
       setBusyId(null);
     }
@@ -162,7 +162,7 @@ export default function ClientsPage() {
       await clientsStore.remove(id);
       setClients((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove client.");
+      setError(saveFailed(err, "Could not remove client."));
     }
   }
 
@@ -177,7 +177,7 @@ export default function ClientsPage() {
       await (next ? clientsStore.archive(c.id) : clientsStore.unarchive(c.id));
     } catch (err) {
       setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: !next } : x)));
-      setError(err instanceof Error ? err.message : "Could not update.");
+      setError(saveFailed(err, "Could not update."));
     }
   }
 
