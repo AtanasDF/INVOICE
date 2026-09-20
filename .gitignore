@@ -15,3 +15,7 @@ harness/profile-*/
 harness/gen/
 harness/*.mjpeg
 harness/*.log
+
+# Finished feature branches' worktrees: 5.4GB of copies of this repo, every
+# line of it already in git history. The launch config beside them is kept.
+.claude/worktrees/
