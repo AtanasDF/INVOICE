@@ -40,7 +40,25 @@ try {
   check("the total owing is right", t.includes("£3,280.00"), t.slice(t.indexOf("Owing as at"), t.indexOf("Owing as at") + 120));
   check("payments and credit notes come off", t.includes("£200.00") && t.includes("−£120.00"), t.slice(t.indexOf("Charged"), t.indexOf("Charged") + 300));
   check("what's late, and the oldest, is called out", /£2,080\.00 of that is late/.test(t) && /oldest by 10\d days \(INV-100\)/.test(t), t.slice(t.indexOf("of that is late") - 40, t.indexOf("of that is late") + 80));
-  check("ageing buckets add up", t.includes("Not yet late") && t.includes("90+ days") && t.includes("£1,200.00") && t.includes("£1,080.00"), t.slice(t.indexOf("How old it is"), t.indexOf("How old it is") + 200));
+  // WHICH box each amount sits in, not just that the boxes and the amounts
+  // both exist somewhere -- the old check passed either way, and "Not yet
+  // late" was holding everything up to 30 days late while the same sheet
+  // said "£2,080.00 of that is late".
+  const ageingBox = await page.evaluate(() => {
+    const head = [...document.querySelectorAll("p")].find((x) => /How old it is/i.test(x.textContent ?? ""));
+    const grid = head?.parentElement;
+    return grid ? grid.innerText : "";
+  });
+  const under = (label) => {
+    const at = ageingBox.indexOf(label);
+    if (at < 0) return null;
+    const m = ageingBox.slice(at + label.length, at + label.length + 40).match(/£[\d,]+\.\d{2}/);
+    return m ? m[0] : null;
+  };
+  check("the not-yet-late box holds only what isn't late", under("Not yet late") === "£1,200.00", `${under("Not yet late")} in "Not yet late" (INV-102 alone)` + " | " + ageingBox.replace(/\s+/g, " ").slice(0, 200));
+  check("an invoice 5 days late is filed as 1-30 days late", under("1–30 days late") === "£1,080.00", `${under("1–30 days late")} | ` + ageingBox.replace(/\s+/g, " ").slice(0, 200));
+  check("the 100-day-old one is over 60 days late", under("Over 60 days late") === "£1,000.00", `${under("Over 60 days late")} | ` + ageingBox.replace(/\s+/g, " ").slice(0, 200));
+  check("the boxes add up to the total owing", ["Not yet late", "1–30 days late", "31–60 days late", "Over 60 days late"].reduce((sum, l) => sum + Number((under(l) ?? "£0.00").replace(/[£,]/g, "")), 0) === 3280, ageingBox.replace(/\s+/g, " ").slice(0, 220));
   check("who it's from and for, and how to pay", t.includes("Harness Plastering Ltd") && t.includes("Acme Kitchens Ltd") && t.includes("Sort 12-34-56"), t.slice(0, 200));
   check("share, PDF, print and copy are all offered", t.includes("Share (WhatsApp") && t.includes("Download PDF") && t.includes("Print") && t.includes("Copy the figures"));
   check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));

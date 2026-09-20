@@ -65,9 +65,15 @@ export function buildStatement(
     .sort((a, b) => (a.date === b.date ? a.number.localeCompare(b.number) : a.date < b.date ? -1 : 1));
 
   const owing = lines.filter((l) => l.balance > 0);
+  // The boxes have to mean what they say: "Not yet late" used to hold
+  // everything up to 30 days late, so a statement could state "£1,080.00 of
+  // that is late", show the row as "5 days late", and then file that same
+  // £1,080 under not yet due -- on the one summary of the debt's age the
+  // customer's accounts department reads, which is what decides the order
+  // they pay in.
   const ageing = owing.reduce<Ageing>(
     (acc, l) => {
-      const where = l.daysLate > 90 ? "d90" : l.daysLate > 60 ? "d60" : l.daysLate > 30 ? "d30" : "current";
+      const where = l.daysLate > 60 ? "d90" : l.daysLate > 30 ? "d60" : l.daysLate > 0 ? "d30" : "current";
       acc[where] = Math.round((acc[where] + l.balance) * 100) / 100;
       return acc;
     },

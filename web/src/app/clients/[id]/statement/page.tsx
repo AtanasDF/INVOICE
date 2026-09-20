@@ -60,7 +60,7 @@ export default function StatementPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="print:hidden">
         <Link href="/clients" className="text-sm text-neutral-500">← Clients &amp; suppliers</Link>
         <h1 className="mt-1 text-2xl font-bold">Statement</h1>
         <p className="mt-1 wrap-anywhere text-neutral-600">{client ? `Everything ${client.name} has been invoiced, and what's still owed.` : "Loading…"}</p>
@@ -70,7 +70,7 @@ export default function StatementPage() {
 
       {statement && client && (
         <>
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-sm text-neutral-600">Owing as at {shortDate(asAt)}</span>
               <span className="text-2xl font-bold">{money(statement.outstanding)}</span>

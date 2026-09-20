@@ -86,9 +86,9 @@ export default function StatementDocument({ statement, client, profile, asAt }: 
           <div className="mt-1 grid grid-cols-4 gap-2 text-center">
             {[
               { label: "Not yet late", value: ageing.current },
-              { label: "30+ days", value: ageing.d30 },
-              { label: "60+ days", value: ageing.d60 },
-              { label: "90+ days", value: ageing.d90 },
+              { label: "1–30 days late", value: ageing.d30 },
+              { label: "31–60 days late", value: ageing.d60 },
+              { label: "Over 60 days late", value: ageing.d90 },
             ].map((b) => (
               <div key={b.label} className="rounded-lg border p-2">
                 <p className="text-xs text-neutral-500">{b.label}</p>
