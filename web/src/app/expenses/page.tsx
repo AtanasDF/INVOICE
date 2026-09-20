@@ -156,7 +156,10 @@ export default function ExpensesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-bold">{periodTitle} expenses</h1>
-          <Link href="/mileage" className="text-sm font-medium text-blue-600">Mileage →</Link>
+          <span className="flex flex-wrap gap-3 text-sm font-medium text-blue-600">
+            <Link href="/mileage">Mileage →</Link>
+            <Link href="/vat">VAT →</Link>
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border text-sm">
