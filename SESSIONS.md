@@ -84,6 +84,17 @@ a brand-new, empty one.
   in a note all survive, empty stays empty rather than "null", a penny reads £0.01, and a
   credit note comes off the month. `test-round-trip.mjs` 10/10.
 
+- **Dark mode and contrast** (checklist 6 and 10): 36/36. Every piece of text on six pages
+  meets WCAG AA in light and in forced dark, and no input box ends up with its text the
+  same colour as its background, which is what Safari does by itself on a dark phone. The
+  app stays light either way, as intended. Nothing to fix.
+- **Foreign-currency receipts** (15): 11/11 — a $100 receipt stores as £79 with the
+  original, the currency and the rate kept; a dead rate service is said out loud and takes
+  a rate typed by hand; and with no rate at all nothing is ever saved as £0.00.
+- **The harness** (47): the full run is 4 minutes instead of 11, four suites at a time
+  through `xargs -P` (the obvious zsh loop quietly ran them one at a time — no `wait -n`).
+  `JOBS=1` puts it back to serial. 34 suites, ~800 checks.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;

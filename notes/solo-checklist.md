@@ -201,6 +201,18 @@ what is sent to a customer waits for him.
   by hand; and with no rate at all nothing is ever saved as £0.00, which would have put a
   real cost into his books as nothing. Nothing to fix.
 
+- **6 + 10. Contrast, and what happens if the phone forces dark mode** —
+  `test-dark-mode.mjs` 36/36. Every piece of text on six pages meets WCAG AA contrast
+  (4.5:1, or 3:1 for large type), in light and with `prefers-color-scheme: dark` forced,
+  and no input box ends up with its text the same colour as its background — the thing
+  Safari does by itself when the phone is dark. The app stays light either way, which is
+  the intention. Nothing to fix. (Measuring this needed a canvas trick: Tailwind v4 reports
+  colours as `lab()`, which can't be read as three numbers.)
+- **47. The harness itself** — the full run went from about eleven minutes to about four by
+  running four suites at a time; each has its own mock database and Chrome profile, so they
+  don't touch each other. `JOBS=1 ./run-all.sh` puts it back to serial if a timing-sensitive
+  suite ever starts flaking.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
