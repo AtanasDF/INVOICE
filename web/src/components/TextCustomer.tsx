@@ -5,7 +5,9 @@ import { MINUTES, PRESET_LABELS, QuoteSummary, TextPreset, greeting, greetingNam
 import type { Client } from "@/lib/storage";
 import { saveFailed } from "@/lib/errorText";
 
-const CHIP = "rounded-full border px-3 py-1 text-sm";
+// py-2 rather than py-1: these are tapped one-handed on site, and at py-1
+// they came out 30px tall against the 36-38px of every other button here.
+const CHIP = "rounded-full border px-3 py-2 text-sm";
 const CHIP_ON = "border-neutral-900 bg-neutral-900 text-white";
 
 // "On my way", "Running late" and the like, written for the customer and
