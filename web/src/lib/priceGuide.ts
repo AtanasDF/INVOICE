@@ -1,4 +1,5 @@
 import { extractStructured, type ScanEngine } from "@/lib/extractors";
+import { money } from "@/lib/money";
 import type { PriceKind } from "@/lib/priceSearch";
 
 // What something usually costs in the UK, as a guide before looking. The
@@ -60,7 +61,7 @@ export async function priceGuide(
   const said = [
     `Item: ${input.description}`,
     input.quantity ? `Quantity: ${input.quantity}${input.unit ? ` ${input.unit}` : ""}` : "",
-    input.priced ? `A supplier has quoted £${input.priced.toFixed(2)} per unit, ex VAT.` : "",
+    input.priced ? `A supplier has quoted ${money(input.priced)} per unit, ex VAT.` : "",
     input.want ? `What's wanted: ${input.want}` : "",
     `This is ${input.kind === "job" ? "work being done" : "a product being bought"}.`,
   ]

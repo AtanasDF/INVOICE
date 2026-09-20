@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { money } from "@/lib/money";
 import { paymentsStore } from "@/lib/storage";
 import { haptic } from "@/lib/haptics";
 
@@ -16,7 +17,7 @@ export function celebratePaid(paid: Paid) {
   window.dispatchEvent(new CustomEvent<Paid>(EVENT, { detail: paid }));
 }
 
-const money = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 export default function PaidCelebration() {
   const [paid, setPaid] = useState<(Paid & { key: number }) | null>(null);

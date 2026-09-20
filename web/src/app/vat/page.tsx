@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react";
 import { CreditNote, Invoice, InvoicePayment, Receipt, businessProfileStore, creditNotesStore, invoicesStore, paymentsStore, receiptsStore } from "@/lib/storage";
 import { VatBasis, previousQuarter, quarterLabel, quarterOf, vatFigures } from "@/lib/vatReturn";
@@ -8,7 +9,7 @@ import { shortDate } from "@/lib/quoteStatus";
 import { errorText } from "@/lib/errorText";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
-const money = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // The figures for a VAT return, from what's already in the app: something to

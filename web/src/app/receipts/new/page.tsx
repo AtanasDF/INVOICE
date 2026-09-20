@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
@@ -355,7 +356,7 @@ export default function NewReceiptPage() {
         {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
         {totalAmount && (
           <p className="text-xs text-neutral-500">
-            → £{gbpAmounts().netGbp.toFixed(2)} excl. VAT{currency !== "GBP" ? `, £${gbpAmounts().vatGbp.toFixed(2)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.
+            → {money(gbpAmounts().netGbp)} excl. VAT{currency !== "GBP" ? `, ${money(gbpAmounts().vatGbp)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.
           </p>
         )}
 

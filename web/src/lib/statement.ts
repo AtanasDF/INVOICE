@@ -1,4 +1,5 @@
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
+import { money } from "@/lib/money";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 
@@ -87,7 +88,6 @@ export function buildStatement(
 }
 
 export function statementText(s: Statement, opts: { from: string; to: string; asAt: string; longDate: (iso: string) => string }): string {
-  const money = (n: number) => `£${n.toFixed(2)}`;
   const rows = s.lines
     .filter((l) => l.balance > 0)
     .map((l) => `${l.number} — ${opts.longDate(l.date)} — ${money(l.balance)} owing${l.daysLate > 0 ? ` (${l.daysLate} days late)` : ""}`);

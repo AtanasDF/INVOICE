@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -742,7 +743,7 @@ export default function NewInvoicePage() {
                   onClick={() => addSuggestedItem(s.description, s.unitPrice, s.vatRate)}
                   className="rounded-full border px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                 >
-                  + {s.description} (£{s.unitPrice.toFixed(2)})
+                  + {s.description} ({money(s.unitPrice)})
                 </button>
               ))}
             </div>
@@ -839,17 +840,17 @@ export default function NewInvoicePage() {
           {profile?.vatRegistered && (
             <>
               <div className="flex justify-end text-neutral-600">
-                <span>Subtotal: £{totals.subtotal.toFixed(2)}</span>
+                <span>Subtotal: {money(totals.subtotal)}</span>
               </div>
               {totals.vatByRate.map((v) => (
                 <div key={v.kind} className="flex justify-end text-neutral-600">
-                  <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
+                  <span>{VAT_RATE_LABELS[v.kind]}: {money(v.vat)}</span>
                 </div>
               ))}
             </>
           )}
           <div className="flex items-center justify-between pt-1">
-            <div className="text-lg font-bold">Total: £{totals.total.toFixed(2)}</div>
+            <div className="text-lg font-bold">Total: {money(totals.total)}</div>
             <button onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {saving ? "Saving…" : "Save draft"}
             </button>

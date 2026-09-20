@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
@@ -287,18 +288,18 @@ export default function InvoicesPage() {
                     )}
                   </div>
                   <div className="text-sm text-neutral-500">
-                    {inv.date} · £{netTotal(inv).toFixed(2)}
+                    {inv.date} · {money(netTotal(inv))}
                     {notes.length > 0 && (
                       <>
-                        {" "}<span className="line-through">£{total(inv).toFixed(2)}</span> after £{creditOffDue(charge(inv), creditedAmount).toFixed(2)} credited
+                        {" "}<span className="line-through">{money(total(inv))}</span> after {money(creditOffDue(charge(inv), creditedAmount))} credited
                       </>
                     )}
-                    {paidSoFar(inv) > 0 && inv.status !== "paid" && ` · £${paidSoFar(inv).toFixed(2)} paid, £${balance(inv).toFixed(2)} still owed`}
+                    {paidSoFar(inv) > 0 && inv.status !== "paid" && ` · ${money(paidSoFar(inv))} paid, ${money(balance(inv))} still owed`}
                     {inv.dueDate && ` · due ${inv.dueDate}`}
                   </div>
                   {notes.map((c) => (
                     <div key={c.id} className="pl-4 text-xs text-neutral-500">
-                      Credit note {c.date} · −£{c.amount.toFixed(2)}{c.reason && ` · ${c.reason}`}
+                      Credit note {c.date} · {money(-c.amount)}{c.reason && ` · ${c.reason}`}
                     </div>
                   ))}
                   {inv.tags.length > 0 && (

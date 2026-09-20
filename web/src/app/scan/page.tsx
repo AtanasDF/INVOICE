@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { amount, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
@@ -1052,7 +1053,7 @@ export default function ScanPage() {
   }
 
   const amounts = gbpAmounts(form);
-  const money = (n: number) => `${form.currency === "GBP" ? "£" : `${form.currency} `}${n.toFixed(2)}`;
+  const money = (n: number) => (form.currency === "GBP" ? gbp(n) : `${form.currency} ${amount(n)}`);
   const linesSum = form.lines.reduce((sum, l) => sum + lineTotalOf(l), 0);
   const enteredTotal = parseFloat(form.totalAmount);
   const linesMismatch =
@@ -1433,7 +1434,7 @@ export default function ScanPage() {
             )}
             {form.totalAmount && (
               <p className="text-xs text-neutral-500">
-                → {mode === "credit_note" ? "Refund of " : ""}£{amounts.netGbp.toFixed(2)} net · £{amounts.vatGbp.toFixed(2)} VAT · £{(amounts.netGbp + amounts.vatGbp).toFixed(2)} total
+                → {mode === "credit_note" ? "Refund of " : ""}{money(amounts.netGbp)} net · {money(amounts.vatGbp)} VAT · {money((amounts.netGbp + amounts.vatGbp))} total
                 {form.currency !== "GBP" ? ", recorded in GBP" : ""}.
               </p>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react";
 import { Receipt, receiptsStore } from "@/lib/storage";
 import {
@@ -21,7 +22,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { errorText } from "@/lib/errorText";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
-const money = (n: number) => `£${n.toFixed(2)}`;
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // Business miles at HMRC's rates. Each trip is saved as an ordinary expense,

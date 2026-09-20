@@ -1,8 +1,9 @@
 import type { BusinessProfile, Client } from "@/lib/storage";
+import { money } from "@/lib/money";
 import type { Statement } from "@/lib/statement";
 import { shortDate } from "@/lib/quoteStatus";
 
-const money = (n: number) => `£${n.toFixed(2)}`;
+
 
 // The statement as it prints: who it's from, who it's for, every issued
 // invoice with what came off it, and what is still owed.

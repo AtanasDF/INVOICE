@@ -1,11 +1,12 @@
 "use client";
 
 import type { Client, Receipt } from "@/lib/storage";
+import { money } from "@/lib/money";
 import { normaliseSupplierName } from "@/lib/supplierMatch";
 
 function invoiceLabel(inv: Receipt, clients: Client[]): string {
   const supplier = clients.find((c) => c.id === inv.clientId)?.name || inv.vendor || "Unknown supplier";
-  return `${inv.invoiceNumber || "No number"} · ${supplier} · £${(inv.amount + inv.vatAmount).toFixed(2)} · ${inv.date}`;
+  return `${inv.invoiceNumber || "No number"} · ${supplier} · ${money((inv.amount + inv.vatAmount))} · ${inv.date}`;
 }
 
 export function sortInvoicesForCredit(invoices: Receipt[], clientId: string, vendor: string): Receipt[] {

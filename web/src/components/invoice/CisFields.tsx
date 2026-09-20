@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { money } from "@/lib/money";
 import { CIS_RATES, CIS_RATE_LABELS, cisDeduction, labourNet } from "@/lib/cis";
 import type { InvoiceItem } from "@/lib/storage";
 
@@ -65,12 +66,12 @@ export function CisSummary({ items, rate, total }: { items: InvoiceItem[]; rate:
     <>
       <div className="flex justify-end text-neutral-600">
         <span>
-          CIS deduction ({rate}% of £{Math.max(0, labourNet(items)).toFixed(2)} labour):{" "}
-          <span className="whitespace-nowrap">−£{cis.toFixed(2)}</span>
+          CIS deduction ({rate}% of {money(Math.max(0, labourNet(items)))} labour):{" "}
+          <span className="whitespace-nowrap">{money(-cis)}</span>
         </span>
       </div>
       <div className="flex justify-end font-medium">
-        <span>The contractor pays you: £{(Math.round((total - cis) * 100) / 100).toFixed(2)}</span>
+        <span>The contractor pays you: {money((Math.round((total - cis) * 100) / 100))}</span>
       </div>
     </>
   );

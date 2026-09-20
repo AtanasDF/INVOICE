@@ -1,13 +1,14 @@
 "use client";
 
 import { longDate } from "@/components/invoice/InvoiceDocument";
+import { money } from "@/lib/money";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 import { VAT_RATE_LABELS } from "@/lib/vat";
 import { creditOffDue, invoiceCharge, labourNet } from "@/lib/cis";
 
 // A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
-const signedMoney = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(n).toFixed(2)}`;
+const signedMoney = (n: number) => `${n < 0 ? "−" : ""}${money(Math.abs(n))}`;
 
 // The issued invoice as the customer sees it: on screen, printed, and as
 // the PDF that's emailed or shared (forPdf drops notes meant for the owner).
@@ -74,7 +75,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
                 {cis && it.kind === "materials" && <span className="text-neutral-500"> (materials)</span>}
               </td>
               <td className="py-2 text-right">{it.quantity}</td>
-              <td className="py-2 text-right">£{it.unitPrice.toFixed(2)}</td>
+              <td className="py-2 text-right">{money(it.unitPrice)}</td>
               {vatRegistered && <td className="py-2 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}
               <td className="py-2 text-right">{signedMoney(it.quantity * it.unitPrice)}</td>
             </tr>
@@ -87,15 +88,15 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         {vatRegistered && (
           <>
             <div className="flex justify-end text-neutral-600">
-              <span>Subtotal (excl. VAT): £{totals.subtotal.toFixed(2)}</span>
+              <span>Subtotal (excl. VAT): {money(totals.subtotal)}</span>
             </div>
             {totals.vatByRate.map((v) => (
               <div key={v.kind} className="flex justify-end text-neutral-600">
-                <span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span>
+                <span>{VAT_RATE_LABELS[v.kind]}: {money(v.vat)}</span>
               </div>
             ))}
             <div className="flex justify-end text-neutral-600">
-              <span>Total: £{totals.total.toFixed(2)}</span>
+              <span>Total: {money(totals.total)}</span>
             </div>
           </>
         )}
@@ -103,32 +104,32 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
           <>
             {!vatRegistered && (
               <div className="flex justify-end text-neutral-600">
-                <span>Total: £{totals.total.toFixed(2)}</span>
+                <span>Total: {money(totals.total)}</span>
               </div>
             )}
             <div className="flex justify-end text-neutral-600">
               <span>
-                CIS deduction ({invoice.cisRate}% of £{labourShown.toFixed(2)} labour{creditNoteTotal > 0 ? " after credit" : ""}):{" "}
-                <span className="whitespace-nowrap">−£{cisShown.toFixed(2)}</span>
+                CIS deduction ({invoice.cisRate}% of {money(labourShown)} labour{creditNoteTotal > 0 ? " after credit" : ""}):{" "}
+                <span className="whitespace-nowrap">{money(-cisShown)}</span>
               </span>
             </div>
           </>
         )}
         {creditNotes.map((c) => (
           <div key={c.id} className="flex justify-end text-neutral-500">
-            <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: −£{c.amount.toFixed(2)}</span>
+            <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: {money(-c.amount)}</span>
           </div>
         ))}
         {payments.map((p) => (
           <div key={p.id} className="flex justify-end text-neutral-500">
-            <span>Payment received {longDate(p.date)}: −£{p.amount.toFixed(2)}</span>
+            <span>Payment received {longDate(p.date)}: {money(-p.amount)}</span>
           </div>
         ))}
       </div>
 
       <div className="mt-4 flex justify-end">
         <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">
-          <div className="text-2xl font-extrabold">Amount due: £{amountDue.toFixed(2)}</div>
+          <div className="text-2xl font-extrabold">Amount due: {money(amountDue)}</div>
           {invoice.dueDate && invoice.status !== "paid" && (
             <div className="text-base font-bold text-neutral-700">Due: {longDate(invoice.dueDate)}</div>
           )}

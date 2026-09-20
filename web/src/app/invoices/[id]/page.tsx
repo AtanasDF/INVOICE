@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { amount, money } from "@/lib/money";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoiceLink, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoiceLinkUrl, invoiceLinksStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
 import { invoiceBalance, invoiceVat, statusFromPayments, syncedStatus } from "@/lib/invoiceBalance";
@@ -28,7 +29,7 @@ function addDays(dateStr: string, days: number): string {
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
 const sum = (rows: { amount: number }[]) => rows.reduce((s, r) => s + r.amount, 0);
-const money = (n: number) => (Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 
 // "Sort code: 12-34-56" lines become label/value rows in the email.
@@ -219,7 +220,7 @@ export default function InvoiceViewPage() {
     try {
       const { pays, notes, due } = await freshFigures();
       if (amount > due + 0.005) {
-        setPayError(due > 0 ? `That's more than the £${money(due)} still owed.` : "Nothing is owed on this invoice.");
+        setPayError(due > 0 ? `That's more than the ${money(due)} still owed.` : "Nothing is owed on this invoice.");
         return;
       }
       const added = await paymentsStore.add({ invoiceId: invoice.id, date: payDate, amount, method: payMethod || null, note: "" });
@@ -610,14 +611,14 @@ export default function InvoiceViewPage() {
           <div className="space-y-1 border-t pt-3 text-sm">
             {vatRegistered && (
               <>
-                <div className="flex justify-end text-neutral-600"><span>Subtotal: £{draftTotals.subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-end text-neutral-600"><span>Subtotal: {money(draftTotals.subtotal)}</span></div>
                 {draftTotals.vatByRate.map((v) => (
-                  <div key={v.kind} className="flex justify-end text-neutral-600"><span>{VAT_RATE_LABELS[v.kind]}: £{v.vat.toFixed(2)}</span></div>
+                  <div key={v.kind} className="flex justify-end text-neutral-600"><span>{VAT_RATE_LABELS[v.kind]}: {money(v.vat)}</span></div>
                 ))}
               </>
             )}
             <div className="flex items-center justify-between pt-1">
-              <div className="text-lg font-bold">Total: £{draftTotals.total.toFixed(2)}</div>
+              <div className="text-lg font-bold">Total: {money(draftTotals.total)}</div>
               <div className="flex gap-2">
                 <button
                   onClick={saveDraftOnly}
@@ -798,10 +799,10 @@ export default function InvoiceViewPage() {
           customerEmail: client?.email ?? "",
           number: invoice.number,
           total: paid
-            ? `£${money(Math.max(0, totals.due - creditOffDue(totals, creditNoteTotal)))}, paid`
+            ? `${money(Math.max(0, totals.due - creditOffDue(totals, creditNoteTotal)))}, paid`
             : paidSoFar > 0
-              ? `£${money(amountDue)} (after £${money(paidSoFar)} received)`
-              : `£${money(amountDue)}`,
+              ? `${money(amountDue)} (after ${money(paidSoFar)} received)`
+              : `${money(amountDue)}`,
           dueDate: invoice.dueDate && !paid ? longDate(invoice.dueDate) : "",
           // A paid invoice is a copy for their records: no amount to pay, no
           // bank details.
@@ -830,7 +831,7 @@ export default function InvoiceViewPage() {
             <button
               onClick={() => {
                 setShowPayForm((v) => !v);
-                setPayAmount(money(amountDue).replace(/,/g, ""));
+                setPayAmount(amount(amountDue).replace(/,/g, ""));
               }}
               className="text-sm font-medium text-blue-600"
             >
@@ -870,14 +871,14 @@ export default function InvoiceViewPage() {
             {payments.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm">
                 <span>
-                  {longDate(p.date)} — £{money(p.amount)}
+                  {longDate(p.date)} — {money(p.amount)}
                   {p.method ? ` · ${PAYMENT_METHOD_LABELS[p.method]}` : ""}
                   {p.note ? ` · ${p.note}` : ""}
                 </span>
                 <button onClick={() => removePayment(p.id)} className="shrink-0 text-red-600">Remove</button>
               </div>
             ))}
-            <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: £${money(amountDue)}` : "Paid in full."}</p>
+            <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: ${money(amountDue)}` : "Paid in full."}</p>
           </div>
         )}
         {!showPayForm && payError && <p className="mt-2 text-sm text-red-600">{payError}</p>}
@@ -906,7 +907,7 @@ export default function InvoiceViewPage() {
             {invoice.cisRate !== null && (
               <p className="text-xs text-neutral-500">
                 Credit the value of the work, before CIS: what the contractor pays drops by the same share. To cancel the whole invoice,
-                credit its total of £{money(totals.total)}.
+                credit its total of {money(totals.total)}.
               </p>
             )}
             {cnError && <p className="text-sm text-red-600">{cnError}</p>}
@@ -921,7 +922,7 @@ export default function InvoiceViewPage() {
           <div className="mt-3 space-y-2">
             {creditNotes.map((c) => (
               <div key={c.id} className="flex items-center justify-between border-b pb-2 text-sm">
-                <span>{c.date} — £{c.amount.toFixed(2)}{c.reason ? ` · ${c.reason}` : ""}</span>
+                <span>{c.date} — {money(c.amount)}{c.reason ? ` · ${c.reason}` : ""}</span>
                 <button onClick={() => removeCreditNote(c.id)} className="text-red-600">Remove</button>
               </div>
             ))}

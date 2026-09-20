@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -234,15 +235,15 @@ export default function ExpensesPage() {
 
       <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-          <div className="text-xl font-bold sm:text-2xl">£{totals.total.toFixed(2)}</div>
+          <div className="text-xl font-bold sm:text-2xl">{money(totals.total)}</div>
           <div className="text-sm text-neutral-600">Total excl. VAT</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-          <div className="text-xl font-bold sm:text-2xl">£{totals.vat.toFixed(2)}</div>
+          <div className="text-xl font-bold sm:text-2xl">{money(totals.vat)}</div>
           <div className="text-sm text-neutral-600">VAT to keep for review</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-          <div className="text-xl font-bold sm:text-2xl">£{expensesInclVat.toFixed(2)}</div>
+          <div className="text-xl font-bold sm:text-2xl">{money(expensesInclVat)}</div>
           <div className="text-sm text-neutral-600">Total incl. VAT</div>
         </div>
       </div>
@@ -250,16 +251,16 @@ export default function ExpensesPage() {
       {viewMode === "combined" && (
         <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-            <div className="text-xl font-bold sm:text-2xl">£{income.toFixed(2)}</div>
+            <div className="text-xl font-bold sm:text-2xl">{money(income)}</div>
             <div className="text-sm text-neutral-600">Invoiced (income)</div>
           </div>
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
-            <div className="text-xl font-bold sm:text-2xl">£{expensesInclVat.toFixed(2)}</div>
+            <div className="text-xl font-bold sm:text-2xl">{money(expensesInclVat)}</div>
             <div className="text-sm text-neutral-600">Spent (incl. VAT)</div>
           </div>
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className={`text-2xl font-bold ${income - expensesInclVat < 0 ? "text-red-600" : ""}`}>
-              £{(income - expensesInclVat).toFixed(2)}
+              {money((income - expensesInclVat))}
             </div>
             <div className="text-sm text-neutral-600">Net</div>
           </div>
@@ -277,7 +278,7 @@ export default function ExpensesPage() {
                 <XAxis dataKey="category" tick={{ fontSize: 12, fill: "#737373" }} axisLine={{ stroke: "#e5e5e5" }} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#737373" }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `£${v}`} />
                 <Tooltip
-                  formatter={(value) => [`£${Number(value).toFixed(2)}`, "Spend incl. VAT"]}
+                  formatter={(value) => [`${money(Number(value))}`, "Spend incl. VAT"]}
                   contentStyle={{ borderRadius: 8, borderColor: "#e5e5e5", fontSize: 13 }}
                 />
                 <Bar dataKey="spend" fill="#171717" radius={[4, 4, 0, 0]} maxBarSize={80} />
@@ -290,7 +291,7 @@ export default function ExpensesPage() {
             <div key={cat} className="flex items-center justify-between border-b pb-2 text-sm">
               <span>{cat}</span>
               <span className="text-neutral-600">
-                £{v.total.toFixed(2)} excl. VAT · £{(v.total + v.vat).toFixed(2)} incl. VAT
+                {money(v.total)} excl. VAT · {money((v.total + v.vat))} incl. VAT
               </span>
             </div>
           ))}

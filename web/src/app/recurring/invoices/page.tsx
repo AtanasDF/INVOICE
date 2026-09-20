@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react";
 import {
   BusinessProfile,
@@ -245,7 +246,7 @@ export default function RecurringInvoicesPage() {
         <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional, carried onto each generated invoice)" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
         {profile?.vatRegistered && (
-          <div className="text-right text-sm text-neutral-600">Subtotal: £{totals.subtotal.toFixed(2)}</div>
+          <div className="text-right text-sm text-neutral-600">Subtotal: {money(totals.subtotal)}</div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex items-center justify-between gap-3">
@@ -271,7 +272,7 @@ export default function RecurringInvoicesPage() {
                     {clientName(item.clientId)}
                   </div>
                   <div className="text-sm text-neutral-500">
-                    £{total.toFixed(2)} · {item.items.length} {item.items.length === 1 ? "line" : "lines"}
+                    {money(total)} · {item.items.length} {item.items.length === 1 ? "line" : "lines"}
                     {" · "}
                     {item.active ? (due ? <span className="font-medium text-amber-700">Due {item.nextDueDate}</span> : `Next: ${item.nextDueDate}`) : "Paused"}
                   </div>

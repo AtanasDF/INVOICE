@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { DuplicatePair, duplicatePairs, pairKey, readIgnoredDuplicates, writeIgnoredDuplicates } from "@/lib/duplicateContacts";
 import { errorText } from "@/lib/errorText";
 
@@ -398,7 +399,7 @@ export default function ClientsPage() {
                       const overdue = isOverdue(inv.status, inv.dueDate);
                       return (
                         <div key={inv.id} className="flex items-center justify-between text-sm">
-                          <span>{displayInvoiceNumber(inv)} · {inv.date} · £{invoiceTotal(inv).toFixed(2)}</span>
+                          <span>{displayInvoiceNumber(inv)} · {inv.date} · {money(invoiceTotal(inv))}</span>
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                             {invoiceStatusLabel(inv.status, overdue)}
                           </span>

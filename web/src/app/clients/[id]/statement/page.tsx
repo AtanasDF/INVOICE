@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
@@ -10,7 +11,7 @@ import { buildStatement, statementText } from "@/lib/statement";
 import { shortDate } from "@/lib/quoteStatus";
 import { errorText } from "@/lib/errorText";
 
-const money = (n: number) => `£${n.toFixed(2)}`;
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // Everything one customer has been invoiced, what they've paid, and what is

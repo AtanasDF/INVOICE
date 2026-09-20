@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react";
 import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
@@ -210,7 +211,7 @@ export default function RecurringExpensesPage() {
                     {item.description}
                   </div>
                   <div className="text-sm text-neutral-500">
-                    £{(item.amount + item.vatAmount).toFixed(2)} · {item.category}{item.supplierId ? ` · ${supplierName(item.supplierId)}` : ""}
+                    {money((item.amount + item.vatAmount))} · {item.category}{item.supplierId ? ` · ${supplierName(item.supplierId)}` : ""}
                     {" · "}
                     {item.active ? (due ? <span className="font-medium text-amber-700">Due {item.nextDueDate}</span> : `Next: ${item.nextDueDate}`) : "Paused"}
                   </div>

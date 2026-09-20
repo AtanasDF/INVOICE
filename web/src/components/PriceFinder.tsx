@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { money } from "@/lib/money";
 import { PriceKind, priceKindOf, searchPlaces, webSearch } from "@/lib/priceSearch";
 import type { PriceGuide } from "@/lib/priceGuide";
 import { supabase } from "@/lib/supabaseClient";
 import { errorText } from "@/lib/errorText";
 
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
-const money = (n: number) => `£${n.toFixed(2)}`;
+
 
 // "Find it cheaper" for one line of a quote: the searches a trade would run,
 // aimed at what the line says, plus a guide to what it usually costs so a

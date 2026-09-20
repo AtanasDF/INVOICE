@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { money } from "@/lib/money";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -364,15 +365,15 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link href="/invoices" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
-          <div className="text-3xl font-bold">£{owedToMe.toFixed(2)}</div>
+          <div className="text-3xl font-bold">{money(owedToMe)}</div>
           <div className="mt-1 text-sm text-neutral-600">Owed to you</div>
         </Link>
         <Link href="/invoices" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
-          <div className={`text-3xl font-bold ${overdueAmount > 0 ? "text-red-700" : ""}`}>£{overdueAmount.toFixed(2)}</div>
+          <div className={`text-3xl font-bold ${overdueAmount > 0 ? "text-red-700" : ""}`}>{money(overdueAmount)}</div>
           <div className="mt-1 text-sm text-neutral-600">Overdue</div>
         </Link>
         <Link href="/expenses" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
-          <div className="text-3xl font-bold">£{(monthTotal + monthVat).toFixed(2)}</div>
+          <div className="text-3xl font-bold">{money((monthTotal + monthVat))}</div>
           <div className="mt-1 text-sm text-neutral-600">Spent this month</div>
         </Link>
       </div>
@@ -404,7 +405,7 @@ export default function Dashboard() {
                     <span className={due.className}> · {due.text}</span>
                   </span>
                   <span className="flex items-center gap-3 whitespace-nowrap">
-                    <span className="font-medium">£{(b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)).toFixed(2)}</span>
+                    <span className="font-medium">{money((b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)))}</span>
                     <button onClick={() => markBillPaid(b)} className="font-medium text-blue-600">Mark as paid</button>
                   </span>
                 </div>
@@ -432,7 +433,7 @@ export default function Dashboard() {
                     #{o.invoice.number} · {o.clientName}
                     {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · due {o.invoice.dueDate}</span>}
                   </span>
-                  <span className="font-medium">£{o.amountDue.toFixed(2)}</span>
+                  <span className="font-medium">{money(o.amountDue)}</span>
                 </Link>
               );
             })}
@@ -451,7 +452,7 @@ export default function Dashboard() {
           {buckets.map((b) => (
             <div key={b.label} className="flex items-center justify-between text-sm">
               <span className="text-neutral-600">{b.label}</span>
-              <span className="font-medium">£{b.total.toFixed(2)}</span>
+              <span className="font-medium">{money(b.total)}</span>
             </div>
           ))}
         </div>
@@ -463,15 +464,15 @@ export default function Dashboard() {
         <h2 className="font-semibold">This month so far</h2>
         <div className="mt-3 grid grid-cols-3 gap-4">
           <div>
-            <div className="text-2xl font-bold">£{monthTotal.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{money(monthTotal)}</div>
             <div className="text-sm text-neutral-600">Spent excl. VAT</div>
           </div>
           <div>
-            <div className="text-2xl font-bold">£{monthVat.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{money(monthVat)}</div>
             <div className="text-sm text-neutral-600">VAT on those costs</div>
           </div>
           <div>
-            <div className="text-2xl font-bold">£{(monthTotal + monthVat).toFixed(2)}</div>
+            <div className="text-2xl font-bold">{money((monthTotal + monthVat))}</div>
             <div className="text-sm text-neutral-600">Spent incl. VAT</div>
           </div>
         </div>
