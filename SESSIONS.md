@@ -52,6 +52,20 @@ a brand-new, empty one.
   codes, our functions' own messages, and otherwise keeps the caller's sentence.
   Commit `b250b4a`. All 26 suites green.
 
+- **A dead link now says something human** (checklist 33). There was no not-found or error
+  page anywhere: a customer opening a stopped invoice link got Next's bare 404, which reads
+  as "this business is dodgy" rather than "this link is old". /i/, /q/ and /r/ each have
+  their own page now, saying what probably happened and what to do, and giving nothing away
+  about whether the token existed; the app itself gets a 404 with a way back and an error
+  boundary that says nothing is lost. `test-public-links.mjs` 31/31, commit `451bcff`.
+- **Every total agrees, everywhere** (checklist 20). One invoice with mixed VAT rates, 12.5
+  hours of labour, CIS, a credit note and a part payment: £972.62 total, £91.50 CIS (a
+  fifth of the labour *after* the credit), £535.52 owed — identical on the invoice, the
+  list, the dashboard and the statement. `test-one-total.mjs` 12/12. Nothing to fix; the
+  CIS-after-credit rule is cleverer than it first looks and is now written down in the test.
+- **Every control has a name** (checklist 7): `test-labels.mjs` 21/21 over twenty pages.
+  **Dead code** (42): two unused functions in the whole codebase, flagged not removed.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;

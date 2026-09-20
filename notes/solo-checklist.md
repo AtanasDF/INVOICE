@@ -154,6 +154,24 @@ what is sent to a customer waits for him.
   same generic line. `saveFailed()` now gives plain English for no signal and for the
   database's own codes, and keeps the caller's sentence otherwise.
 
+- **20. Every total, in every place it shows** — `test-one-total.mjs` 12/12. One invoice
+  with mixed VAT rates, an awkward quantity (12.5 hours), CIS on the labour, a credit note
+  and a part payment: £829.90 net, £142.72 VAT charged per rate, £972.62 total, £91.50 CIS
+  (a fifth of the labour *after* the credit), £535.52 still owed — the same figure on the
+  invoice, the list, the dashboard and the customer's statement. Nothing to fix.
+- **7. Every control has a name** — `test-labels.mjs` 21/21 across twenty pages: no button
+  or link anywhere reads as just "button" to a screen reader. Nothing to fix.
+- **33. The pages a customer sees when a link is dead** — there was no not-found page at
+  all, so a stopped or replaced invoice link showed Next's bare 404. Each of /i/, /q/ and
+  /r/ has its own now, plus a 404 and an error page for the app. `test-public-links.mjs`
+  31/31. Next answers these 200 with a noindex tag rather than 404 — documented behaviour
+  for a streamed route, since the headers have already gone by the time the link is found
+  to be dead.
+- **42. Dead code** — only two exported functions in the whole codebase are used nowhere:
+  `isMileage` in `src/lib/mileage.ts` (duplicates `tripOf`) and `mergeAddress` in
+  `src/lib/addressLookup.ts` (left from the old AddressFinder). Flagged, not removed.
+  The two `* 2.*` iCloud copies in the source tree are still there and still ignored.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
