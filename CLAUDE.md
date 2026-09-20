@@ -27,7 +27,8 @@ it is his real accounting record. Read this file before doing anything.
   `tsconfig.logic.json` recompiles the app's own tax, reminder, CIS, VAT, date and
   recurrence code into `harness/gen/` every run, so those suites can never drift from the
   source. Only source is kept: Chrome profiles, `gen/` and the ~770MB of synthetic camera
-  clips are gitignored, and `gen-*.py` regenerates the clips. `harness/README.md` has the
+  clips are gitignored, and `gen-*.py` regenerates the clips (`gen-large.py` makes
+  `large.mjpeg`, which nine suites need; two torch clips still have no generator). `harness/README.md` has the
   rest. Run it from a scratchpad copy if you don't want profile directories in the tree.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.

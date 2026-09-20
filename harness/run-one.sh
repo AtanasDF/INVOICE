@@ -2,10 +2,23 @@
 # One suite, writing its summary to $OUT/<name>.txt. Used by run-all.sh
 # through xargs, which is what actually gets several running at once --
 # zsh has no `wait -n`, so the obvious loop quietly ran them one by one.
+#
+# A suite that dies before printing its {"passed":N,"total":N} line used to
+# be reported as "0 fails", which reads exactly like a pass. Three suites
+# sat like that for a whole run: their camera clip was missing, Chrome
+# never got a video frame, puppeteer timed out, and the summary line said
+# nothing was wrong. A crash is a failure and says so.
 t=$1
 [ -f "$t.mjs" ] || exit 0
 out=$(node "$t.mjs" 2>&1)
+summary=$(print -r -- "$out" | grep -o '{"passed":[0-9]*,"total":[0-9]*}' | tail -1)
+fails=$(print -r -- "$out" | grep -c '^FAIL')
 {
-  print -r -- "== $t $(print -r -- "$out" | tail -1) $(print -r -- "$out" | grep -c '^FAIL') fails"
+  if [ -z "$summary" ]; then
+    print -r -- "== $t CRASHED -- no summary line (suite did not finish)"
+    print -r -- "$out" | grep -E "Error|error:|TimeoutError|ENOENT|Cannot find" | head -3
+  else
+    print -r -- "== $t $summary $fails fails"
+  fi
   print -r -- "$out" | grep '^FAIL' | head -5
 } > "$OUT/$t.txt"
