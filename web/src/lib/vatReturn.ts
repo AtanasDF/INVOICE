@@ -1,5 +1,6 @@
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { computeInvoiceTotals } from "@/lib/vat";
+import { invoiceCharge } from "@/lib/cis";
 import type { CreditNote, Invoice, InvoicePayment, Receipt } from "@/lib/storage";
 
 // The figures a VAT return asks for, worked out from the invoices and
@@ -19,6 +20,10 @@ export type VatFigures = {
   box7: number;
   sales: { id: string; date: string; number: string; net: number; vat: number }[];
   purchases: { id: string; date: string; vendor: string; net: number; vat: number }[];
+  // Credit notes the cash basis could only count in part, or not at all,
+  // because the money they cancel never arrived. Shown on the page so the
+  // figure is never quietly different from what he expects.
+  creditsHeldBack: number;
 };
 
 const pence = (n: number) => Math.round(n * 100);
@@ -70,7 +75,18 @@ export function vatFigures(
     // On the invoice basis the whole invoice counts in the period it was
     // issued; on the cash basis only the money that actually moved, split
     // into net and VAT in the same proportion as the invoice.
-    const gross = basis === "invoice" ? (inRange(inv.date, period.from, period.to) ? totals.total : 0) : paidIn;
+    //
+    // A CIS payment is smaller than the consideration: what the customer
+    // owes is the total less the CIS, and every payment figure in the app
+    // goes by that, but the deduction is the contractor handing part of the
+    // same consideration to HMRC on his behalf. Counting only the cash
+    // would under-declare the VAT on every CIS invoice for ever, since no
+    // later payment ever arrives to pick the rest up. Scaling the payment
+    // back up by total/due restores it: paying the whole balance counts the
+    // whole invoice, half the balance counts half.
+    const charge = invoiceCharge(inv, invoiceVat(inv, accountVat));
+    const consideration = charge.cis > 0 && charge.due > 0 ? (pence(paidIn) * charge.total) / charge.due / 100 : paidIn;
+    const gross = basis === "invoice" ? (inRange(inv.date, period.from, period.to) ? totals.total : 0) : consideration;
     if (gross <= 0) continue;
     const vat = round(Math.round(pence(gross) * vatShare));
     const net = round(pence(gross) - pence(vat));
@@ -80,15 +96,33 @@ export function vatFigures(
   }
 
   // A credit note takes sales and their VAT back out, in the period it was
-  // raised (both bases: the money is returned or never comes).
+  // raised. On the invoice basis that is the whole note: the sale was
+  // declared when it was issued, so cancelling it reverses the lot.
+  //
+  // On the cash basis nothing was declared until the money arrived, so a
+  // credit note against an invoice that was never paid has nothing to
+  // reverse -- taking it off anyway reclaims VAT that was never accounted
+  // for, and quietly eats output tax that is genuinely due when there is
+  // other work in the quarter. It counts only in proportion to what was
+  // actually received on that invoice.
+  let creditsHeldBack = 0;
   for (const note of creditNotes) {
     if (!inRange(note.date, period.from, period.to)) continue;
     const inv = invoices.find((i) => i.id === note.invoiceId);
     if (!inv) continue;
     const totals = computeInvoiceTotals(inv.items, invoiceVat(inv, accountVat));
     if (totals.total <= 0) continue;
-    const vat = round(Math.round(pence(note.amount) * (totals.totalVat / totals.total)));
-    const net = round(pence(note.amount) - pence(vat));
+    let amount = note.amount;
+    if (basis === "cash") {
+      const charge = invoiceCharge(inv, invoiceVat(inv, accountVat));
+      const paidEver = payments.filter((p) => p.invoiceId === inv.id).reduce((s, p) => s + p.amount, 0);
+      const share = charge.due > 0 ? Math.min(1, paidEver / charge.due) : paidEver > 0 ? 1 : 0;
+      amount = round(Math.round(pence(note.amount) * share));
+      if (amount < note.amount) creditsHeldBack++;
+    }
+    if (amount <= 0) continue;
+    const vat = round(Math.round(pence(amount) * (totals.totalVat / totals.total)));
+    const net = round(pence(amount) - pence(vat));
     box1 -= pence(vat);
     box6 -= pence(net);
     sales.push({ id: note.id, date: note.date, number: `Credit against ${inv.number}`, net: -net, vat: -vat });
@@ -115,5 +149,6 @@ export function vatFigures(
     box7: round(box7),
     sales: sales.sort((a, b) => (a.date < b.date ? -1 : 1)),
     purchases: purchases.sort((a, b) => (a.date < b.date ? -1 : 1)),
+    creditsHeldBack,
   };
 }

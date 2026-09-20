@@ -18,6 +18,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/vat.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/invoiceBalance.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/documentDate.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/recurrence.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/recurrence.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/vatReturn.ts"
   ]
 }

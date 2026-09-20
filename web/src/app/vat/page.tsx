@@ -185,9 +185,17 @@ export default function VatPage() {
               </div>
             </div>
           )}
+          {f.creditsHeldBack > 0 && (
+            <p className="mt-3 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+              {f.creditsHeldBack === 1 ? "One credit note is" : `${f.creditsHeldBack} credit notes are`} counted only in part here, or not at
+              all: on cash accounting a sale is declared when the money arrives, so cancelling an invoice that was never paid has no VAT to take
+              back. On the invoice basis {f.creditsHeldBack === 1 ? "it comes" : "they come"} off in full.
+            </p>
+          )}
           <p className="mt-3 text-xs text-neutral-500">
             A summary to check, not a filing: nothing here is sent to HMRC. Documents still waiting to be reviewed are left out, and anything on a
-            margin or reverse-charge scheme needs checking by hand.
+            margin or reverse-charge scheme needs checking by hand. On cash accounting, a CIS deduction counts as money received — the contractor
+            pays that part to HMRC on your behalf — so a CIS invoice counts in full once its balance is settled.
           </p>
         </div>
       )}

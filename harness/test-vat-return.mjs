@@ -50,10 +50,17 @@ try {
   check("a draft is never in it", !t.includes("DRAFT-1"));
   check("unreviewed documents are left out", !t.includes("Unreviewed"), t.slice(0, 200));
 
-  // Cash basis: only the £1200 that actually came in, less the credit note.
+  // Cash basis: only the £1200 that actually came in. The £600 credit note
+  // is against INV-101, which was NEVER PAID, so on this basis no VAT was
+  // ever declared on it and there is nothing to take back -- box 1 stays at
+  // the £200 from INV-100. This expectation used to read £100/£500, which
+  // baked in a real bug: the credit came off unconditionally and reclaimed
+  // £100 of VAT that had never been accounted for. The page says when a
+  // credit is held back like this.
   await clickText(page, "When money moved");
   await sleep(400);
-  check("cash basis counts money in, not invoices", (await row(1)).includes("£100.00") && (await row(6)).includes("£500.00"), `${await row(1)} | ${await row(6)}`);
+  check("cash basis counts money in, not invoices", (await row(1)).includes("£200.00") && (await row(6)).includes("£1,000.00"), `${await row(1)} | ${await row(6)}`);
+  check("and says a credit note was held back, rather than changing the figure silently", /counted only in part|not at\s+all/i.test(await bodyText(page)), (await bodyText(page)).replace(/\s+/g, " ").slice(0, 300));
   check("it explains what each basis means", (await bodyText(page)).includes("Cash accounting: sales count when the money came in"));
 
   await clickText(page, "By invoice date");
