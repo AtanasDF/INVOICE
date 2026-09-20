@@ -86,6 +86,29 @@ the scanner torch, the quotes redesign, wrapping invoice buttons, and the addres
 - A 30-minute scheduled task ("Invoicer — pick the work back up") now restarts the work by
   itself whenever this session is asleep; it exits quietly if another session is active.
 
+**Overnight, after his list came in (all live on main)**
+
+- **Find it cheaper** on every quote line and every compared item: searches built from the
+  line's own words (price comparison and the merchants, or Checkatrade/MyBuilder/Rated
+  People for work), a box for what he actually wants, and "What should this cost?" — a
+  guide to the usual UK range ex VAT that flags a quote above or below it and names
+  cheaper alternatives (`priceSearch.ts`, `priceGuide.ts`, `/api/price-guide`, Gemini,
+  120/hour/user). Real-model check: plasterboard £9.50-13.50 a sheet, skimming a lounge
+  £600-1,200, ~3s. 13/13.
+- **Five surprises**, each tested: **mileage** at HMRC's rates (45p/25p with the 10,000
+  threshold split mid-trip, 24p/20p, postcode-to-postcode road estimate, saved as an
+  ordinary expense — 13/13); **statement of account** per customer (what's owed, ageing
+  30/60/90, share/PDF/print/copy — 10/10); **VAT figures** for a quarter on both bases
+  (boxes 1/4/5/6/7, drafts and unreviewed left out, lines openable, copy — 13/13);
+  **merge two records for the same business** (name/email/phone, everything moves, the
+  duplicate is archived not deleted, "they're different" remembered — 11/11); **nudge
+  quiet quotes** (sent 5+ days, still open and in date, message ready to text — 8/8).
+- Agents running on his other asks: the company register on every company field
+  (`feature/company-picker`), the free "check a company" tool (`feature/check-company`),
+  and Settings + one Add button + camera permission (`feature/settings-add`, with
+  migration-029 for registered name/number and account kind — not applied yet).
+- `notes/future-ideas.md` now also holds the next five surprises to build.
+
 ## 2026-09-19 — Quotes UX (agent in a worktree), branch `feature/quotes-ux`
 
 **Brief (Atanas, from his phone):** quotes should look better, pick the recipient from all

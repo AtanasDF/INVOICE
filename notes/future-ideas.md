@@ -29,3 +29,21 @@ When one of these starts, move it out of here and into the session log.
 - **Offline scan queue.** Keep captures on the phone until there's signal (needs a caching
   service worker; worth doing with an iPhone to test on).
 - **Paywall.** Whole app paid except the Free invoice page. Design conversation first.
+
+## Queued surprises (2026-09-20) — the next five, when there's time
+
+1. **Getting started checklist.** A new account is asked for what the app needs to be
+   useful — business details, VAT setting, where invoice numbers start, bank details for
+   the footer, first client — as a short list that ticks itself off. Atanas is starting a
+   company from scratch, so this is worth doing properly once.
+2. **One money screen.** Everything owed to him and everything he owes on a single page,
+   in the order it matters: overdue first, then due this week, then the rest. One tap to
+   chase or to mark paid.
+3. **Saved prices.** The things he charges for, with his usual price, so a quote or an
+   invoice is a few taps: pick, set the quantity, done. Learns from what he has already
+   invoiced rather than asking him to type a price list.
+4. **Jobs.** A job or site holds its quote, its invoices, its receipts and its photos
+   together, so a whole job can be looked at (and its profit seen) in one place.
+5. **Monday morning summary.** One push on a Monday: what came in last week, what's
+   overdue, what's due this week, whose quote is waiting. Short enough to read on the way
+   to a job.
