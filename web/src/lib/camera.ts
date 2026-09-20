@@ -30,10 +30,9 @@ function remember(state: CameraPermission) {
   }
 }
 
-// What the last camera did, without asking anything: enough for a screen
-// to say up front that the camera is blocked instead of opening onto a
-// black rectangle.
-export function rememberedCamera(): CameraPermission {
+// What the last camera did: all Safari leaves to go on, since it has no
+// Permissions API for the camera.
+function rememberedCamera(): CameraPermission {
   if (known !== "unknown") return known;
   try {
     const stored = localStorage.getItem(ALLOWED_KEY);
