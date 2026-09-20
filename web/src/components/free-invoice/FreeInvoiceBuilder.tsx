@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CaptureButton from "@/components/CaptureButton";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
@@ -291,6 +292,9 @@ export default function FreeInvoiceBuilder() {
               </div>
             </div>
           </div>
+          <p className="mt-4 text-sm text-neutral-600">
+            New customer? <Link href="/check-company" className="font-medium underline">Check the company</Link> first — free, straight from the Companies House register.
+          </p>
         </div>
       )}
 

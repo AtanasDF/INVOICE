@@ -23,6 +23,7 @@ function Header() {
         {user ? (
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
             <Link href="/free-invoice">Free invoice</Link>
+            <Link href="/check-company">Check a company</Link>
             <Link href="/">Home</Link>
             <Link href="/clients">Clients & suppliers</Link>
             <Link href="/receipts">Receipts &amp; bills</Link>
@@ -40,6 +41,7 @@ function Header() {
         ) : (
           <nav className="flex items-center gap-x-4 text-sm font-medium text-neutral-600">
             <Link href="/free-invoice">Free invoice</Link>
+            <Link href="/check-company">Check a company</Link>
             <Link href="/login">Sign in</Link>
           </nav>
         )}
@@ -59,7 +61,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   // password) -- unlike /login, being authenticated here must NOT
   // bounce them away before they finish.
   const isResetPasswordPage = pathname === "/reset-password";
-  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/");
+  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/free-invoice" || pathname === "/check-company" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/");
 
   useEffect(() => {
     if (loading) return;
