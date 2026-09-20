@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useSearchParams } from "next/navigation";
@@ -296,6 +298,11 @@ export default function ClientsPage() {
                         <button onClick={() => setTextingId(textingId === c.id ? null : c.id)} className="text-sm font-medium text-blue-600">
                           {textingId === c.id ? "Close" : "Text"}
                         </button>
+                      )}
+                      {clientInvoices.length > 0 && (
+                        <Link href={`/clients/${c.id}/statement`} className="text-sm font-medium text-blue-600">
+                          Statement
+                        </Link>
                       )}
                       {clientInvoices.length > 0 && (
                         <button

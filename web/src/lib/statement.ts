@@ -1,0 +1,102 @@
+import { creditOffDue, invoiceCharge } from "@/lib/cis";
+import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
+import type { CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
+
+// A statement of account: every issued invoice for one customer, what has
+// come off it, and what is still owed — the figures the invoice page shows,
+// gathered in one place so it can be sent to chase payment.
+
+export type StatementLine = {
+  id: string;
+  date: string;
+  dueDate: string | null;
+  number: string;
+  charged: number;
+  credited: number;
+  paid: number;
+  balance: number;
+  daysLate: number;
+};
+
+export type Ageing = { current: number; d30: number; d60: number; d90: number };
+
+export type Statement = {
+  lines: StatementLine[];
+  outstanding: number;
+  charged: number;
+  paid: number;
+  credited: number;
+  overdue: number;
+  ageing: Ageing;
+  oldest: StatementLine | null;
+};
+
+const pence = (n: number) => Math.round(n * 100);
+const days = (from: string, to: string) => Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000);
+
+export function buildStatement(
+  invoices: Invoice[],
+  creditNotes: CreditNote[],
+  payments: InvoicePayment[],
+  accountVat: boolean,
+  today: string
+): Statement {
+  const lines = invoices
+    .filter((inv) => inv.status !== "draft")
+    .map((inv): StatementLine => {
+      const charge = invoiceCharge(inv, invoiceVat(inv, accountVat));
+      const creditedFace = creditNotes.filter((c) => c.invoiceId === inv.id).reduce((sum, c) => sum + c.amount, 0);
+      const credited = creditOffDue(charge, creditedFace);
+      const paid = payments.filter((p) => p.invoiceId === inv.id).reduce((sum, p) => sum + p.amount, 0);
+      const balance = invoiceBalance({ total: charge.due, credited, paid, status: inv.status });
+      return {
+        id: inv.id,
+        date: inv.date,
+        dueDate: inv.dueDate,
+        number: inv.number,
+        charged: charge.due,
+        credited,
+        paid,
+        balance,
+        daysLate: inv.dueDate && balance > 0 ? Math.max(0, days(inv.dueDate, today)) : 0,
+      };
+    })
+    .sort((a, b) => (a.date === b.date ? a.number.localeCompare(b.number) : a.date < b.date ? -1 : 1));
+
+  const owing = lines.filter((l) => l.balance > 0);
+  const ageing = owing.reduce<Ageing>(
+    (acc, l) => {
+      const where = l.daysLate > 90 ? "d90" : l.daysLate > 60 ? "d60" : l.daysLate > 30 ? "d30" : "current";
+      acc[where] = Math.round((acc[where] + l.balance) * 100) / 100;
+      return acc;
+    },
+    { current: 0, d30: 0, d60: 0, d90: 0 }
+  );
+
+  const sum = (pick: (l: StatementLine) => number) => Math.round(lines.reduce((t, l) => t + pence(pick(l)), 0)) / 100;
+  return {
+    lines,
+    outstanding: sum((l) => l.balance),
+    charged: sum((l) => l.charged),
+    paid: sum((l) => l.paid),
+    credited: sum((l) => l.credited),
+    overdue: Math.round(owing.filter((l) => l.daysLate > 0).reduce((t, l) => t + pence(l.balance), 0)) / 100,
+    ageing,
+    oldest: owing.filter((l) => l.daysLate > 0).sort((a, b) => b.daysLate - a.daysLate)[0] ?? null,
+  };
+}
+
+export function statementText(s: Statement, opts: { from: string; to: string; asAt: string; longDate: (iso: string) => string }): string {
+  const money = (n: number) => `£${n.toFixed(2)}`;
+  const rows = s.lines
+    .filter((l) => l.balance > 0)
+    .map((l) => `${l.number} — ${opts.longDate(l.date)} — ${money(l.balance)} owing${l.daysLate > 0 ? ` (${l.daysLate} days late)` : ""}`);
+  return [
+    `Statement of account for ${opts.to}`,
+    `From ${opts.from}, as at ${opts.longDate(opts.asAt)}`,
+    "",
+    ...(rows.length ? rows : ["Nothing outstanding — thank you."]),
+    "",
+    `Total owing: ${money(s.outstanding)}`,
+  ].join("\n");
+}
