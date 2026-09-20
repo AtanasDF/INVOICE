@@ -264,6 +264,15 @@ what is sent to a customer waits for him.
   the due date and the bank details — and carries none of the app's navigation or buttons
   onto the customer's copy, and fits an A4 page. Nothing to fix.
 
+- **His actual first week, end to end** (my own, and the one that matters most) —
+  `test-first-week.mjs` 17/17 on an account with nothing in it at all: add Mrs Henderson,
+  write the first invoice, save it as a draft (no real number yet), issue it as **number
+  1**, record the payment, watch it move itself to paid with nothing owing, log the £120 the
+  job cost — and then every figure that follows agrees: the dashboard stops saying the
+  account is empty, shows £0.00 owed because it is paid, and the month's spending, the
+  expenses page, the VAT boxes and the invoice list all tell the same story. No page fell
+  over anywhere along the way.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three

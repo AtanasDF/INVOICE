@@ -95,7 +95,10 @@ a brand-new, empty one.
   through `xargs -P` (the obvious zsh loop quietly ran them one at a time — no `wait -n`).
   `JOBS=1` puts it back to serial. 34 suites, ~800 checks.
 
-- **Full regression: 41 suites, 808 checks, no failures**, in four minutes. Eight suites are new today (empty account, numbering, half-saved,
+- **`test-first-week.mjs` walks the whole thing the way he will actually use it** — empty
+  account, add a customer, write invoice number 1, issue it, get paid, log the cost, and
+  check the dashboard, expenses, VAT and the list all agree afterwards. 17/17.
+- **Full regression: 42 suites, 825 checks, no failures**, in four minutes. Eight suites are new today (empty account, numbering, half-saved,
   keyboards, long values, no accidents, public links, labels, one total, round trip,
   currency, dark mode, route guards, RLS audit, one-handed).
 - **SIX BACKUP TABLES HAVE NO ROW LEVEL SECURITY — migration-031 written, NOT applied.**
