@@ -285,6 +285,19 @@ what is sent to a customer waits for him.
   than guessed; a card number is not mistaken for a date; and a repeating expense's next
   date never runs off the end of a short month.
 
+- **30. No contact is ever added without being asked** — `test-no-silent-contacts.mjs`
+  13/13. Typing a new supplier's name into the picker on a receipt, or scanning a receipt
+  from a supplier who isn't in the list, adds nobody: both offer "Add as new supplier" and
+  wait to be asked. The name is still kept on the receipt itself, and not a single write
+  to the contacts table happens along the way. That is what keeps the list from filling up
+  with "TRAVIS PERKINS", "Travis Perkins Ltd" and "travis perkins".
+- **What the dashboard puts in front of him** (my own) — `test-what-surfaces.mjs` 14/14:
+  the overdue invoice and the one not yet late both there, the paid one not cluttering it,
+  a bill due in two days shown before it's late, a bill already late saying how late, a
+  bill three weeks off on the list but not counted as needing paying soon, the receipt
+  waiting to be checked counted, and marking a bill paid taking it off there and then
+  without deleting anything.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three

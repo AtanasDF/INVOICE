@@ -98,7 +98,15 @@ a brand-new, empty one.
 - **`test-first-week.mjs` walks the whole thing the way he will actually use it** — empty
   account, add a customer, write invoice number 1, issue it, get paid, log the cost, and
   check the dashboard, expenses, VAT and the list all agree afterwards. 17/17.
-- **Full regression: 42 suites, 825 checks, no failures**, in four minutes. Eight suites are new today (empty account, numbering, half-saved,
+- **A bug my own sloppy mock had been hiding.** `test-bad-scan` was answering with
+  `documents` and no `result`, which the client reads as a failed scan — so all three of
+  its cases were testing the same error path, not "read the page, found nothing on it".
+  With the mock answering the way `/api/scan` really answers, the scan screen crashed on an
+  empty read: `Object.entries(undefined)`. Guarded (commit `845e251`), though the honest
+  note is that both engines conform their output to the schema, so it shouldn't be
+  reachable in production — the guard is there because the cost of being wrong is a dead
+  page in the yard with the receipt in hand.
+- **Full regression: 46 suites, 895 checks, no failures**, in four minutes. Eight suites are new today (empty account, numbering, half-saved,
   keyboards, long values, no accidents, public links, labels, one total, round trip,
   currency, dark mode, route guards, RLS audit, one-handed).
 - **SIX BACKUP TABLES HAVE NO ROW LEVEL SECURITY — migration-031 written, NOT applied.**
