@@ -213,6 +213,12 @@ what is sent to a customer waits for him.
   don't touch each other. `JOBS=1 ./run-all.sh` puts it back to serial if a timing-sensitive
   suite ever starts flaking.
 
+- **35 + 37. The routes and the tables** — `test-route-guards.mjs` 35/35 (all eighteen
+  server routes refuse the way they should; `/api/send-invoice` checked its configuration
+  before its caller, now fixed) and `test-rls-audit.mjs` 5/5, which found six backup tables
+  with no row level security. See SESSIONS.md: migration-031 is written and waiting for
+  Atanas. All 41 backup tables are still present; none has been touched.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three

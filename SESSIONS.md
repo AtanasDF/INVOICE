@@ -95,6 +95,23 @@ a brand-new, empty one.
   through `xargs -P` (the obvious zsh loop quietly ran them one at a time — no `wait -n`).
   `JOBS=1` puts it back to serial. 34 suites, ~800 checks.
 
+- **SIX BACKUP TABLES HAVE NO ROW LEVEL SECURITY — migration-031 written, NOT applied.**
+  An audit of all 41 tables this project creates: `clients_backup_20260914`,
+  `receipts_backup_20260914`, `invoices_backup_20260914` and their `_2` twins were taken
+  with `create table ... as table ...` and nothing after it. Supabase grants anon and
+  authenticated everything on a new public table by default, so with RLS off any signed-in
+  account could read all six — a copy of the clients, receipts and invoices of 14 September.
+  Every backup from 003 onwards enables RLS, and every live table has RLS and an owner
+  policy, so only these six were left open. `migration-031-lock-down-early-backups.sql`
+  switches RLS on and revokes the grants; it creates nothing, changes no row and deletes
+  nothing, so it needs no backup file, and it is safe to run twice. **Atanas runs it** (the
+  verification query is at the foot of the file). `test-rls-audit.mjs` 5/5 fails if a table
+  is ever added without RLS again. Commit `8ef561f`.
+- **Every server route, called the way a stranger would** (checklist 35):
+  `test-route-guards.mjs` 35/35 over all eighteen. One real fix: `/api/send-invoice`
+  checked whether email was configured before checking who was asking, so a stranger could
+  tell a deployment with email on from one without. Commit `8f338ff`.
+
 - **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
   was awake and online all night, and the other routines on the machine did run this morning
   (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;
