@@ -78,7 +78,10 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   `harness/test-price-words.mjs`. Needed `record_quote_request_response` implemented in
   `mockdb.mjs` first: the owner-side answer path was untestable without it, which also
   blocked item 17.
-- [ ] 17. Quote-request background refresh not adopting a supplier's answer
+- [x] 17. Quote-request background refresh not adopting a supplier's answer —
+  `harness/test-answer-clash.mjs` (7 checks): the refresh holds off while the prices form
+  is open, a save against a moved-on answer is refused and says so, closing the form picks
+  the answer up, and what a later save replaces is kept in `previous`.
 - [ ] 18. VAT snapshot branch — merge-readiness re-run
 
 ## Checklist items still open
