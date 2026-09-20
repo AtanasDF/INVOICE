@@ -36,7 +36,7 @@ const NOTHING: RegisterCheck = { company: null, note: null, checking: false };
 // suppliers are sole traders, and "not on the register" about a plumber
 // is noise. `onResult` fires when an answer lands, so a form can fill its
 // gaps from it without watching the returned state.
-export function useRegisterCheck(name: string, numberHint: string | null, on: boolean, onResult?: (check: RegisterCheck) => void): RegisterCheck {
+export function useRegisterCheck(name: string, numberHint: string | null, on: boolean, onResult?: (check: RegisterCheck) => void, recheck = 0): RegisterCheck {
   const [state, setState] = useState<RegisterCheck>(NOTHING);
   const report = useRef(onResult);
   useEffect(() => {
@@ -70,7 +70,7 @@ export function useRegisterCheck(name: string, numberHint: string | null, on: bo
       clearTimeout(timer);
       controller.abort();
     };
-  }, [name, numberHint, on]);
+  }, [name, numberHint, on, recheck]);
   return state;
 }
 

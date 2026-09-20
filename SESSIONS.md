@@ -39,7 +39,10 @@ register holds and the document doesn't, and every company should be checked.
   (`company-register` in localStorage, `src/lib/companyRegister.ts`) so a later check asks
   for that exact company, and falls back to a name search on a phone that has never seen
   it. A one-line migration-029 adding `clients.company_number` would make it proper.
-- Tests (dev server on 3306, mocked DB): new `test-company-picker.mjs` 36/36 twice.
+- A page added to a scanned document re-reads it, which replaces the details: the register
+  is asked again so its fill comes back with them (and the note never outlives it), while
+  an Undo he made still stands.
+- Tests (dev server on 3306, mocked DB): new `test-company-picker.mjs` 39/39.
   Regressions: review-fixes 21/21, clear 22/22, multi-docs 33/33, uploads 15/15,
   fit-sweep 26/26. The older `test-company.mjs` is 7/8 then errors, the same as on main
   before this branch: it still expects the Free page's old address textarea, which the

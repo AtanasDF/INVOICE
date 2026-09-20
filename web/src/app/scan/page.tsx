@@ -392,6 +392,7 @@ export default function ScanPage() {
   // What the register put into the form for the document open now, so it
   // can be taken back out.
   const [registerFill, setRegisterFill] = useState<{ key: string; what: string } | null>(null);
+  const [recheck, setRecheck] = useState(0);
   const filledRef = useRef<string | null>(null);
   const undoneRef = useRef<string | null>(null);
   const previousDetailsRef = useRef<DocumentDetails>({});
@@ -541,6 +542,11 @@ export default function ScanPage() {
   function applyResult(result: ScanResult) {
     const touched = touchedRef.current;
     setForm((f) => formFromResult(result, f, touched, suppliersRef.current, receiptsRef.current, true));
+    // A reading replaces the details, so whatever the register put there is
+    // gone: ask again and let it fill the new gaps. An undo still stands.
+    filledRef.current = null;
+    setRegisterFill(null);
+    setRecheck((n) => n + 1);
     if (touched.has("currency") || touched.has("fxRateInput")) return;
     if (result.currency && result.currency !== "GBP") onCurrencyChange(result.currency);
     else {
@@ -1254,6 +1260,7 @@ export default function ScanPage() {
                 onCreated={(c) => setClients((prev) => [...prev, c])}
                 onCheck={onRegisterCheck}
                 checkTyped
+                recheck={recheck}
                 usage={supplierUsage}
                 text={form.vendor}
                 onText={(v) => patch({ vendor: v })}

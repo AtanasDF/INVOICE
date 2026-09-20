@@ -46,6 +46,7 @@ export default function ContactField({
   listLabel,
   onCheck,
   checkTyped = false,
+  recheck,
   id,
   inputClassName = "w-full rounded-lg border px-3 py-2 pr-10",
 }: {
@@ -67,6 +68,9 @@ export default function ContactField({
   // Check a name typed in but not picked, for a form whose text is the
   // name on a document rather than a search box.
   checkTyped?: boolean;
+  // Bumped when the form behind the field is filled in again, so the
+  // answer is asked for once more and anything it fed in comes back.
+  recheck?: number;
   id?: string;
   inputClassName?: string;
 }) {
@@ -121,7 +125,7 @@ export default function ContactField({
   const register = items.filter((c) => !saved.has(normaliseSupplierName(c.name)));
   const numberHint = recallCompany(selectedId)?.number ?? null;
   const checked = selected ? selected.name : checkTyped ? text : "";
-  const check = useRegisterCheck(checked, numberHint, on && !!checked.trim(), onCheck);
+  const check = useRegisterCheck(checked, numberHint, on && !!checked.trim(), onCheck, recheck);
 
   const rows = [...filtered.map((c) => ({ contact: c, company: null as CompanyMatch | null })), ...register.map((c) => ({ contact: null as Client | null, company: c }))];
   const listOpen = open && !!query && (rows.length > 0 || searching);
