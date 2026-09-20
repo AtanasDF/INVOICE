@@ -706,6 +706,17 @@ export const invoicesStore = {
       if (error.code === "23505") {
         throw new Error("The next invoice number is already in use — check Settings → Invoice numbering and adjust the next number.");
       }
+      // A brand-new account has no business_profile row until Settings is
+      // saved, and the counter lives on that row -- so the first invoice
+      // anyone ever issues would fail here, on the one action that matters
+      // most. Write the defaults the confirm panel already promised
+      // ("assigns invoice number INV-1") and issue it.
+      if (/business profile/i.test(error.message ?? "")) {
+        await businessProfileStore.save(EMPTY_BUSINESS_PROFILE);
+        const retry = await supabase.rpc("assign_invoice_number", { p_invoice_id: id });
+        if (retry.error) throw retry.error;
+        return retry.data as string;
+      }
       throw error;
     }
     return data as string;

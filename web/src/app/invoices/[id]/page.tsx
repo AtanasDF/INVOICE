@@ -18,6 +18,7 @@ import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
 import { celebratePaid } from "@/components/PaidCelebration";
+import { errorText, loadFailed } from "@/lib/errorText";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -114,10 +115,20 @@ export default function InvoiceViewPage() {
   const [sendPreviewNumber, setSendPreviewNumber] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      try {
+        await loadInto();
+      } catch (err) {
+        if (!cancelled) setLoadError(loadFailed(err, "this invoice"));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    async function loadInto() {
       const inv = await invoicesStore.get(params.id);
       if (cancelled) return;
       setInvoice(inv);
@@ -148,7 +159,6 @@ export default function InvoiceViewPage() {
         setDraftNotes(inv.notes);
         setDraftTagsInput(inv.tags.join(", "));
       }
-      setLoading(false);
     }
     load();
     return () => {
@@ -435,7 +445,10 @@ export default function InvoiceViewPage() {
       }
       setSendPanelOpen(false);
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "Could not mark this invoice sent.");
+      // Supabase errors are plain objects, not Errors: instanceof would
+      // hide the reason behind the fallback on exactly the failures worth
+      // reading.
+      setSendError(errorText(err, "Could not mark this invoice sent."));
     } finally {
       setSendBusy(false);
     }
@@ -512,6 +525,8 @@ export default function InvoiceViewPage() {
   }
 
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
+  // "Invoice not found" would be a lie when the database simply wasn't reachable.
+  if (loadError) return <p className="text-sm text-red-600">{loadError}</p>;
   if (!invoice) return <p className="text-sm text-neutral-500">Invoice not found.</p>;
 
   const vatRegistered = profile?.vatRegistered ?? false;
