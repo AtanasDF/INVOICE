@@ -104,3 +104,6 @@ what is sent to a customer waits for him.
   expectation when the torch work settles.
 - **Money screens don't group by job**, so a job's profit can't be seen; queued as a
   future idea, but the data is already there (tags).
+- **Dependencies (checked 2026-09-20):** `npm audit --omit=dev` finds nothing. Available
+  bumps are all majors — TypeScript 7, ESLint 10, `@types/node` 26 — plus React 19.3 and
+  the Anthropic SDK 0.127. Worth doing one at a time with the suites, not unattended.
