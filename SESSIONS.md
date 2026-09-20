@@ -211,6 +211,23 @@ the scanner torch, the quotes redesign, wrapping invoice buttons, and the addres
   and Settings + one Add button + camera permission (`feature/settings-add`, with
   migration-029 for registered name/number and account kind — not applied yet).
 - `notes/future-ideas.md` now also holds the next five surprises to build.
+- **The register on every contact field** merged (agent, `feature/company-picker`): free
+  text with a ▾ that opens the saved contacts (most used first, then A-Z), typing searches
+  saved contacts and then Companies House, and picking a register company offers to add it
+  with its registered name, number and office — nothing is saved without a tap. The scan
+  review fills a missing address and the company number from the register, marked and
+  undoable, and anywhere a company's name shows, a dissolved or liquidated company says so.
+  All of it invisible without the key. 39/39. Follow-up by me: **migration-030** (+ backup
+  015, applied and verified) puts `clients.company_number` on the row instead of the
+  device, so every phone checks the right company (5/5).
+- **Settings, one Add button and the camera** merged (agent, `feature/settings-add`,
+  migration-029 + backup 014 applied and verified): an account card (email, sign-in link,
+  where the data lives, export, how to close it, sign out), registered company name and
+  number kept apart from the trading name and printed small in the invoice footer when
+  both are set, account kind labelling the address, one "+ Add" sheet (scan, upload, by
+  hand, invoice, quote) with the direct Upload from files button kept beside it, and one
+  camera permission path for every scanner with the iPhone instructions when it's blocked.
+  36/36. What iOS actually allows is written up in the agent's notes.
 - **Check a company** merged and live (agent, `feature/check-company`): a public page at
   `/check-company` that searches the register and reports status, age, registered office
   (including formation-agent addresses and dispute flags), what it does in plain English,
