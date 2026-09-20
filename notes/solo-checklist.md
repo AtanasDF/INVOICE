@@ -231,6 +231,24 @@ what is sent to a customer waits for him.
   a fresh open-items list). No TODO or FIXME anywhere in the source, and no unmerged
   branch: nothing was left half-finished.
 
+- **14 + 17. The awkward ends of the money rules** — `test-money-edges.mjs` 33/33 straight
+  off `cis.ts` and `invoiceBalance.ts`: CIS at 20% and 30% on a mixed labour-and-materials
+  job, materials never deducted from, an unmarked line counted as labour; a credit note for
+  more than the invoice can't turn into money owed back; an over-payment never shows a
+  negative balance; two payments on the same day; removing the last payment un-pays the
+  invoice, while one marked paid by hand keeps what he set; a credit note that clears an
+  invoice marks it paid with no payment at all; a draft never takes a status from figures.
+  Nothing to fix.
+- **45. Bundle** — baseline for next time: `.next/static` is 3.8MB uncompressed, biggest
+  chunk 500K. Nothing is loaded that needn't be: the two AI SDKs are server-side only,
+  jsPDF and html-to-image are imported only when a PDF is actually made, OpenCV isn't
+  bundled at all, and recharts is the one heavy static import, on `/expenses` alone.
+- **The public Free invoice page** (my own, not on the list) — `test-free-draft.mjs` 6/6.
+  A stranger with no account can fill it in, reload by accident, wander off to another page
+  and come back, and their invoice is still there; and nothing they type reaches any
+  database. That page is where someone meets this app, and losing their work would be the
+  last thing they ever did on it.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
