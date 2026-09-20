@@ -90,3 +90,17 @@ Keep a running list of improvements worth doing, and start the safest ones: smal
 things that need no decision from him (wording, empty states, loading states, a missing
 confirmation, an obvious shortcut). Anything that changes money, the database shape, or
 what is sent to a customer waits for him.
+
+## Spotted while working (2026-09-20), worth doing
+
+- **Thousands separators.** £4477.50 should read £4,477.50 everywhere. One shared
+  formatter (`src/lib/money.ts`) and every local copy of it; the suites compare these
+  strings, so update them in the same commit.
+- **Atanas's Settings still says "not VAT registered"** and the business details are
+  placeholders. Nothing to fix in code; tell him, since it changes every invoice.
+- **The camera-tip suite is timing-flaky** (about 2 in 3 pass). Make it deterministic
+  rather than re-running it.
+- **`test-far-v2` expects no hint on a dark clip**, which the torch now gives. Update that
+  expectation when the torch work settles.
+- **Money screens don't group by job**, so a job's profit can't be seen; queued as a
+  future idea, but the data is already there (tags).
