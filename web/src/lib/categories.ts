@@ -12,6 +12,7 @@ export const CATEGORIES = [
   "Bills",
   "Gas & Electric",
   "Meals",
+  "Mileage",
   "Supplies",
   "Equipment",
   "Other",

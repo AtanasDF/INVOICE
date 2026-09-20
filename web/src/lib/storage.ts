@@ -63,9 +63,12 @@ export type DocumentDetails = {
   // Set when the supplier was cleared on purpose, so a name match isn't
   // offered back later.
   noSupplier?: true;
+  // A mileage claim's trip (see src/lib/mileage.ts): never read off a
+  // document, so it isn't one of the scanned details.
+  mileage?: { miles: number; from: string; to: string; vehicle: string; rate: number; purpose: string };
 };
 
-export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier">, string> = {
+export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage">, string> = {
   accountNumber: "Account number",
   sortCode: "Sort code",
   iban: "IBAN",

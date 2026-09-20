@@ -187,7 +187,7 @@ async function pickPaf(udprn: string, key: string): Promise<string[] | null> {
 // anonymous page); everyone else the free OpenStreetMap lookup. POST keeps
 // what people type out of request logs.
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as { q?: unknown; pick?: unknown; free?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { q?: unknown; pick?: unknown; free?: unknown; where?: unknown };
   if (!allow(`address:ip:${addressKey(req.headers.get("x-forwarded-for"))}`, PER_ADDRESS, FIVE_MINUTES)) {
     return json("osm", [], { busy: true }, 429);
   }
@@ -215,6 +215,19 @@ export async function POST(req: Request) {
 
   const q = typeof body.q === "string" ? body.q.replace(/\s+/g, " ").trim().slice(0, 100) : "";
   if (q.length < 3) return json(key && userId ? "paf" : "osm", []);
+
+  // Where a postcode is, for working out how far a trip was. Free, and the
+  // same postcodes.io lookup the address search already makes.
+  if (body.where === true) {
+    const postcode = normalisePostcode(q);
+    if (!postcode) return NextResponse.json({ error: "Not a postcode." }, { status: 400 });
+    const { body: found } = await getJson<{ result?: { latitude?: number; longitude?: number } }>(
+      `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`
+    );
+    const at = found?.result;
+    if (!at?.latitude || !at.longitude) return NextResponse.json({ error: "Postcode not found." }, { status: 404 });
+    return NextResponse.json({ at: { lat: at.latitude, lon: at.longitude } });
+  }
   let paf = !!key && !!userId && body.free !== true;
   const cached = (source: AddressSource) => {
     const hit = cache.get(`${source}:${q.toLowerCase()}`);

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Invoice, Receipt, invoicesStore, receiptsStore } from "@/lib/storage";
@@ -152,7 +154,10 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <h1 className="text-2xl font-bold">{periodTitle} expenses</h1>
+        <div>
+          <h1 className="text-2xl font-bold">{periodTitle} expenses</h1>
+          <Link href="/mileage" className="text-sm font-medium text-blue-600">Mileage →</Link>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border text-sm">
             <button
