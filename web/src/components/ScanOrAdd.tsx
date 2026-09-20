@@ -1,22 +1,15 @@
-import Link from "next/link";
-import { CameraIcon } from "@/components/icons";
-import UploadFilesButton from "@/components/UploadFilesButton";
+import AddAnything from "@/components/AddAnything";
 
-// The camera is the main way in, photos or PDFs already on the phone next,
-// and typing it in by hand underneath.
+// A list page's own scan and by-hand routes, folded into the one Add
+// button: two buttons per page asking "receipt or invoice?" before the
+// work starts was the thing to be rid of.
 export default function ScanOrAdd({ scanHref, scanLabel, addHref }: { scanHref: string; scanLabel: string; addHref: string }) {
   return (
-    <div className="flex flex-col items-end gap-1.5">
-      <Link href={scanHref} className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white">
-        <CameraIcon className="h-5 w-5" />
-        {scanLabel}
-      </Link>
-      {/* The scan page reads several documents in one go; copying an invoice
-          or filling in a client takes one. */}
-      <UploadFilesButton href={scanHref} multiple={scanHref.startsWith("/scan")} />
-      <Link href={addHref} className="text-sm font-medium text-neutral-600">
-        + Add manually
-      </Link>
-    </div>
+    <AddAnything
+      also={[
+        { href: scanHref, label: scanLabel, hint: "Photograph one and fill this page's form from it" },
+        { href: addHref, label: "Fill it in by hand" },
+      ]}
+    />
   );
 }

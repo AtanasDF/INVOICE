@@ -14,6 +14,7 @@ import {
   writeAutoZoom,
   writeScannerMode,
 } from "@/lib/platform";
+import { SAFARI_CAMERA_TIP, openCamera } from "@/lib/camera";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon, TorchIcon } from "@/components/icons";
@@ -146,12 +147,6 @@ const AUTO_ZOOM_LOST_MS = 1500;
 const PINCH_CSS_MAX = 3;
 const AUTO_ZOOM_COOLDOWN_MS = 800;
 const FIT_MARGIN = 0.06;
-// getUserMedia can hang indefinitely rather than reject in some real
-// browser/OS blocking states (camera access blocked at the OS level for
-// the whole browser, not just this site, is the most common one) -- with
-// no timeout, that's exactly the "stuck on Starting camera... forever,
-// no error, no prompt" dead end. This bounds it.
-const CAMERA_TIMEOUT_MS = 8000;
 const CV_ERROR_MAX = 140;
 const GREEN = "#4ADE80";
 // The page itself turns green as it locks on: a faint wash once it is
@@ -163,13 +158,6 @@ const GUIDE_IDLE = "rgba(255,255,255,0.7)";
 const GUIDE_WIDTH = 0.8;
 const GUIDE_MAX_HEIGHT = 0.9;
 const A4_RATIO = Math.SQRT2;
-// A website can't make Safari remember a camera "Allow"; only the phone's
-// settings can. Shown when Safari had to ask.
-const SAFARI_CAMERA_TIP =
-  "Asked for the camera every time? Set it once: iPhone Settings → Safari (under Apps) → Camera → Allow. Or in Safari: aA → Website Settings → Camera → Allow.";
-// A grant Safari already remembers comes back at once; anything slower means
-// someone had to tap Allow.
-const ASKED_AFTER_MS = 700;
 // The shot is a still from the camera where the browser can take one
 // (Safari 18.4+, Chrome): several times a video frame's pixels, which is
 // what makes a receipt from further away readable. Safari hands back its
@@ -666,6 +654,17 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// The iPhone's own camera opens through a file input, which never asks
+// this site for permission -- so it still works when the in-app scanner
+// is blocked, and that dead end now says so.
+function NativeCameraEscape({ onSwitch }: { onSwitch: () => void }) {
+  return (
+    <button onClick={onSwitch} className="text-xs text-white/70 underline">
+      Use the iPhone camera instead — it doesn&apos;t need this permission
+    </button>
+  );
+}
+
 export default function DocumentCapture({
   onCapture,
   onBatch,
@@ -996,48 +995,21 @@ export default function DocumentCapture({
         }
       }
 
-      if (!navigator.mediaDevices?.getUserMedia) {
-        if (!cancelled) setStatus("unsupported");
+      // The permission check, the prompt and the "did it have to ask"
+      // answer all live in lib/camera, so every capture screen in the app
+      // asks at most once and reads the same state.
+      const opened = await openCamera({ facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } });
+      if (cancelled) {
+        if (opened.ok) opened.stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      if (!opened.ok) {
+        setStatus(opened.reason);
         return;
       }
 
-      // Where supported (Chrome/Edge; Safari and Firefox don't implement
-      // the Permissions API for camera), check the existing grant first.
-      // If it's already denied, calling getUserMedia again wouldn't show
-      // a prompt at all -- going straight to the "denied" explanation
-      // avoids relying on getUserMedia to reject promptly (or at all) in
-      // that state.
       try {
-        const perm = await navigator.permissions?.query({ name: "camera" as PermissionName });
-        if (perm?.state === "denied") {
-          if (!cancelled) setStatus("denied");
-          return;
-        }
-      } catch {
-        // Permissions API unsupported or "camera" not a recognized name
-        // on this browser -- fall through and just try getUserMedia.
-      }
-
-      let timedOut = false;
-      const timeout = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          timedOut = true;
-          reject(new Error("timeout"));
-        }, CAMERA_TIMEOUT_MS);
-      });
-
-      const askedAt = Date.now();
-      try {
-        const stream = await Promise.race([
-          navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          }),
-          timeout,
-        ]);
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
+        const stream = opened.stream;
         streamRef.current = stream;
         // A capture on the previous stream (the scanner mode switched mid-
         // photo) was dropped; this one starts clear.
@@ -1095,11 +1067,11 @@ export default function DocumentCapture({
           setZoomRange(null);
         }
         setStatus("live");
-        if (isIOS() && Date.now() - askedAt > ASKED_AFTER_MS) setCameraHint(true);
+        if (isIOS() && opened.asked) setCameraHint(true);
         rafRef.current = requestAnimationFrame(loop);
       } catch {
         if (cancelled) return;
-        setStatus(timedOut ? "timeout" : "denied");
+        setStatus("denied");
       }
     }
 
@@ -1925,6 +1897,7 @@ export default function DocumentCapture({
             <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
               Try again
             </button>
+            {iOSMode && <NativeCameraEscape onSwitch={() => switchScannerMode("native")} />}
           </div>
         )}
         {status === "denied" && (
@@ -1934,6 +1907,7 @@ export default function DocumentCapture({
             <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
               Try again
             </button>
+            {iOSMode && <NativeCameraEscape onSwitch={() => switchScannerMode("native")} />}
           </div>
         )}
         {status === "unsupported" && (

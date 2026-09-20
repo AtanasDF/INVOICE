@@ -35,9 +35,11 @@ it is his real accounting record. Read this file before doing anything.
    `add column if not exists`, guarded `do $$ ... $$` blocks for constraints/policies,
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
-   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-19:
+   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-20:
    migration-027, backup 013 (all applied); migration-028 (quote requests, new tables
-   only) is on `feature/quote-requests`, not applied. Supabase grants anon/authenticated
+   only) is on `feature/quote-requests`, not applied; migration-029 + backup 014
+   (business_profile: registered name, company number, account kind) are on
+   `feature/settings-add`, not applied. Supabase grants anon/authenticated
    everything on a new table by default: revoke explicitly (see migration-020).
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
@@ -150,6 +152,14 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 - "Find it cheaper" on a quote or comparison line (`src/lib/priceSearch.ts`,
   `priceGuide.ts`, `POST /api/price-guide`, Gemini, 120/hour/user) prepares searches and
   gives a usual-price range; it never reads live prices and says so.
+- The business profile (migration-029, applied 2026-09-20): `business_name` is
+  the trading name and the headline on every document; `registered_name` and
+  `company_number` are what Companies House holds and print small in the invoice footer
+  (`IssuedInvoice`, so screen, print, PDF and the /i/ link alike) only when both are set.
+  `account_kind` (limited / sole_trader / personal, null = not said) only labels the
+  address today. All three are read `?? null` and written separately, so the branch works
+  against a database without them: a PGRST204 retries the save without them and
+  `businessProfileStore.save` returns false, which Settings says out loud.
 - Suppliers are `clients` rows with `kind = 'supplier'`. A scanned document is linked to a
   supplier only when the form showed it (read-time match) or the names are exactly the same
   at save; no supplier is ever created without "Add as supplier". `receipts.details.noSupplier`
@@ -223,6 +233,18 @@ text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys on
 - iOS defaults to the in-app scanner (`scanner-mode` in localStorage; `native` opts back
   into the OS camera). `CaptureButton` is the label-wrapped capture input on the native
   path so one tap opens the camera.
+- One way in: `AddAnything` is the "+ Add" button and its sheet (Scan it, Upload a photo or
+  PDF, Add a receipt by hand, Write an invoice, Write a quote). `ScanOrAdd` renders it with
+  the page's own scan and by-hand routes passed as `also`, dropped when they'd repeat a
+  standard row, so the invoices, receipts and clients lists need no change of their own.
+- Camera permission goes through `src/lib/camera.ts` and nowhere else: `openCamera()` asks
+  the Permissions API first (Chrome/Edge only — Safari has none for the camera), never
+  calls getUserMedia when it answers denied, remembers granted/denied in module state and
+  `camera-allowed` in localStorage, and returns `asked` (state was prompt, or the call took
+  over 700ms) which is what shows `SAFARI_CAMERA_TIP`. A refusal is remembered, other
+  failures aren't, so a busy camera can still be retried. The denied and timeout screens
+  offer the iPhone camera, which goes through a file input and needs no site permission;
+  `AddAnything` warns before the tap when the state is already denied.
 - Far receipts (2026-09-19): `pageCandidates` takes four-corner shapes down to 1.2% of the
   work frame, but under 6% only if `looksLikePaper` (lighter than a ring around it, little
   printed round it, clear of the edge, aspect <= 8); torn/curled receipts via convex hull.

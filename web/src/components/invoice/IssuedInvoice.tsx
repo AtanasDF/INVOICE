@@ -149,7 +149,15 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
           <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
         </div>
       )}
-  
+
+      {/* A limited company has to state its registered name and number on
+          its invoices, whatever it trades as (Companies Act 2006 s.82).
+          Nothing shows for a sole trader, who has neither. */}
+      {profile?.registeredName && profile?.companyNumber && (
+        <footer className="mt-6 border-t pt-3 text-xs text-neutral-500">
+          Registered name: {profile.registeredName}. Company number: {profile.companyNumber}.
+        </footer>
+      )}
     </>
   );
 }

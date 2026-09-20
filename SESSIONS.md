@@ -4,6 +4,61 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-20 — Settings' account section, one Add button, the camera asks once (`feature/settings-add`)
+
+**Brief (via the lead session, from Atanas):** Settings should hold account information
+(sign-in help and the usual), company name and business name kept apart, and the address
+labelled business or personal depending on what the app is for; "add a receipt" and "add an
+invoice" should be one button that asks which, with the scanner recognising the type
+itself; and allowing the camera once should be enough for every camera in the app.
+
+**Done (branch `feature/settings-add`, not merged; migration-029 NOT applied — Atanas runs it):**
+
+- **Settings** opens with a Your account card: the signed-in email, "Email me a sign-in
+  link" (Supabase's recovery mail — it signs the browser in and lets him set a password),
+  where the data lives (Supabase, EU/Ireland, private bucket, 7-day signed links, shared
+  invoice links the one exception), the JSON export moved up here, and how to ask for the
+  account to be closed (no delete button anywhere, by design).
+- **Names kept apart**: `business_name` stays the trading name and the headline;
+  `registered_name` + `company_number` are new and print small in the invoice footer
+  ("Registered name: X. Company number: Y.") — on screen, in print, in the PDF and on the
+  /i/ link, since `IssuedInvoice` is all four. Only shown when both are set, so nothing
+  changes for a sole trader. The registered-name box uses the Companies House lookup and
+  fills the number from the pick.
+- **Account kind** (`account_kind`: limited / sole_trader / personal, null = not said):
+  today it only decides "Business address" vs "Your address" (and "Business name" vs "Your
+  name"), and whether the registered-company block shows. The wider "the app adapts" idea
+  stays parked in `notes/future-ideas.md`.
+- **migration-029** (+ backup 014) adds those three nullable columns to `business_profile`
+  with a check constraint that allows null. The branch runs against today's database
+  untouched: reads are `?? null`, and the save writes the three columns separately, so a
+  PGRST204 ("no such column") retries without them and the page says what didn't save.
+- **One Add button** (`AddAnything`): a sheet with Scan it ("a receipt, a supplier invoice
+  or a credit note — the scanner works out which"), Upload a photo or PDF, Add a receipt by
+  hand, Write an invoice, Write a quote. `ScanOrAdd` now renders it with the page's own scan
+  and by-hand routes folded in (dropped when they'd repeat a standard row), so the invoices,
+  receipts and clients lists get it without their files being touched. The dashboard's three
+  "+ …" links are the one button; Scan tile, upload and "Add a client or company" stay.
+- **Camera asks once** (`src/lib/camera.ts`): one `openCamera()` for the whole app — asks
+  the Permissions API first, never calls getUserMedia when it says denied, remembers the
+  answer for later screens (module state + a localStorage flag, since Safari has no
+  Permissions API for the camera), and reports whether the browser had to ask. The denied
+  screen keeps the iPhone tip and now offers the iPhone camera, which needs no permission at
+  all. The Add sheet warns before he taps Scan if the camera is blocked.
+- Tests: `test-settings-add.mjs` 36/36 (mocked DB and a canvas camera, including a database
+  with the new columns absent). Re-ran on 3308: fit sweep 26/26 (my copy of the updated
+  one — /mileage, /vat, /check-company aren't on this branch and 404), clear 22/22,
+  camera-tip 2/2, tips 6/7. The tips miss is the machine, not the code: getUserMedia took
+  3985 ms under load 7.8, and "asked?" is still decided by that timing (Chrome's fake camera
+  reports the permission as granted, so the API can't decide it here).
+- `npx tsc --noEmit`, `npx eslint .` clean; `npx next build --webpack` clean (Turbopack
+  can't follow a worktree's symlinked `node_modules`).
+
+**Open:** migration-029 to run and verify; whether a "granted" Permissions API answer should
+suppress the "asked every time" tip outright (it would fail `test-camera-tip`, which fakes a
+slow prompt in a browser that reports granted); the lead's one-line wiring is not needed —
+the list pages pick the new button up through `ScanOrAdd`.
+
 ## 2026-09-19 — Several documents in one scan, Save all ready (`feature/multi-docs`)
 
 **Brief (via the lead session, from Atanas):** a scan should find every document on it,

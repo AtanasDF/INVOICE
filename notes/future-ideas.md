@@ -5,17 +5,19 @@ When one of these starts, move it out of here and into the session log.
 
 ## 2026-09-20 (from his phone, overnight)
 
-- **Everything adapts to the user.** Once Settings knows who the account is for (a limited
-  company, a sole trader, or personal use), the whole app should follow: wording, which
-  fields show, which reports matter, what the dashboard leads with. One setting, many
-  effects — worth doing properly in one go rather than field by field.
-- **Business vs personal address.** Settings holds both, and each document uses the right
-  one. Tied to the setting above.
-- **Company name and business name kept apart.** The registered name (Companies House) and
-  the trading name shown to customers are different things. Invoices need both in the right
-  places (UK law: a limited company must show its registered name and number).
-- **Account section in Settings.** Sign-in help, email change, password, sessions, export
-  everything, delete the account, where the data lives, what the app costs.
+- **Everything adapts to the user.** Settings now knows who the account is for (a limited
+  company, a sole trader, or personal use — `business_profile.account_kind`, migration-029),
+  but only the address label follows it. The rest is still parked: wording, which fields
+  show, which reports matter, what the dashboard leads with. One setting, many effects —
+  worth doing properly in one go rather than field by field.
+- **Business vs personal address.** Settings holds one address, labelled after the account
+  kind. Holding both at once, and each document picking the right one, is still parked and
+  tied to the item above.
+- (Built 2026-09-20, branch `feature/settings-add`: the registered name and company number
+  are their own fields and print in the invoice footer, trading name still the headline.)
+- **Account section in Settings.** Built 2026-09-20 apart from changing the email address
+  and listing signed-in devices, which Supabase doesn't expose from the client. What the
+  app costs waits on the paywall conversation.
 - **Bank connection (Open Banking, read-only).** Payments in and out matched to invoices
   and bills by themselves. See `claude-notes.md` "Queued work" item 8 for the detail.
 - **Products and jobs price search.** Beyond the first version (a prepared search per line):
