@@ -14,7 +14,7 @@ import {
   writeAutoZoom,
   writeScannerMode,
 } from "@/lib/platform";
-import { SAFARI_CAMERA_TIP, openCamera } from "@/lib/camera";
+import { SAFARI_CAMERA_TIP, forgetCameraDenial, openCamera } from "@/lib/camera";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon, TorchIcon } from "@/components/icons";
@@ -949,11 +949,19 @@ export default function DocumentCapture({
   );
 
   function retry() {
+    // Ask the browser again rather than repeating our own remembered no.
+    // Without this, Try again on the blocked screen re-reads the refusal we
+    // stored and fails without the camera ever being consulted -- a button
+    // that cannot work, under a tip telling him to change a setting that
+    // would then make no difference.
+    forgetCameraDenial();
     setStatus("starting");
     setRetryKey((k) => k + 1);
   }
 
   function switchScannerMode(mode: ScannerMode) {
+    // Choosing the in-app scanner again is a request to use the camera.
+    if (mode === "inapp") forgetCameraDenial();
     writeScannerMode(mode);
     setStatus("starting");
     setScannerMode(mode);

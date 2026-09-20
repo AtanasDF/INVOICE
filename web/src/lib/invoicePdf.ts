@@ -15,8 +15,19 @@ function breakPoints(sheet: HTMLElement): number[] {
 
 // Each A4 page's slice of the sheet, [start, end) in CSS pixels. Page one
 // keeps the sheet's own top margin; later pages get the margin added back.
-export function pageSlices(breaks: number[]): [number, number][] {
-  const contentEnd = breaks.length ? breaks[breaks.length - 1] : PAGE_HEIGHT - PAGE_MARGIN;
+//
+// `height` is how tall the sheet really is. It used to be inferred from the
+// last break point, which is a different thing: break points are where a
+// page MAY be cut, and everything under the items table -- the VAT
+// breakdown, the CIS deduction, the payments, the "Amount due" box and the
+// notes -- is plain divs and spans, none of which is one. On a long invoice
+// from an account with no bank details and no registered-company footer
+// (there is nothing else down there to break on) the last break point is
+// the bottom of the table, so the customer's PDF stopped at the final line
+// item with no total on it at all.
+export function pageSlices(breaks: number[], height?: number): [number, number][] {
+  const lastBreak = breaks.length ? breaks[breaks.length - 1] : 0;
+  const contentEnd = Math.max(height ?? 0, lastBreak) || PAGE_HEIGHT - PAGE_MARGIN;
   const slices: [number, number][] = [];
   let start = 0;
   while (start < contentEnd) {
@@ -50,7 +61,9 @@ export async function renderInvoicePdf(sheet: HTMLElement): Promise<{ base64: st
 
   const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const ptPerCss = pdf.internal.pageSize.getWidth() / PAGE_WIDTH;
-  pageSlices(breakPoints(sheet)).forEach(([start, end], page) => {
+  // The sheet's own height is the content's bottom; scrollHeight rather
+  // than offsetHeight, so nothing that overflows its box is lost.
+  pageSlices(breakPoints(sheet), Math.round(Math.max(sheet.scrollHeight, sheet.getBoundingClientRect().height))).forEach(([start, end], page) => {
     const sy = Math.round(start * pxPerCss);
     const sh = Math.min(canvas.height - sy, Math.round((end - start) * pxPerCss));
     if (sh <= 0) return;
