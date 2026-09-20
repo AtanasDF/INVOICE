@@ -220,6 +220,19 @@ the scanner torch, the quotes redesign, wrapping invoice buttons, and the addres
   clip may now show the torch hint; the texts suite follows the new Send card) and the
   camera-tip flake was fixed at the source: the how-to-allow tip no longer appears when
   the browser says the camera is already granted.
+- **Then, alone, from the checklist:** every page fits 320px as well as 375 and 430 (the
+  expense totals stack, the document tables scroll in their own box); a busy account (500
+  invoices, 2000 receipts, 300 contacts) opens and filters in about a second, and the
+  dashboard's owed matches the invoices to the penny; one money formatter everywhere, so
+  £4,477.50 reads the same on every screen (the sweep briefly dropped the pound sign on
+  the invoice page — the suites caught it); dependencies checked (no advisories); the tax
+  suite no longer hard-codes a figure that drifts daily; every suite now honours BASE.
+- Final tally, all green: fit sweep 26 (×3 widths), company picker 39, company number 5,
+  settings/add/camera 36, check a company 52, review fixes 21, uploads 15, multi-docs 33,
+  clear 22, quotes fixes 11, receipts 74, address 18, price finder 13, mileage 13,
+  statement 10, VAT 13, merge 11, quote chase 8, CIS 14, delight 8, texts 12, tips 7,
+  share 3, camera tip 3, lines 7, payments 13, tax 5, VAT snapshot 4, quotes 34, deposits
+  17, Free quote 12, busy account 9.
 - **The register on every contact field** merged (agent, `feature/company-picker`): free
   text with a ▾ that opens the saved contacts (most used first, then A-Z), typing searches
   saved contacts and then Companies House, and picking a register company offers to add it
