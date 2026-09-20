@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Comparison, Offer, Picks, Plan, RequestItem, cellFor, cheapestFor, formatPence, isExpired, planFor, quantityText, supplierTotal } from "@/lib/quoteCompare";
 import { shortDate } from "@/lib/quoteStatus";
+import PriceFinder from "@/components/PriceFinder";
 
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
@@ -32,6 +34,7 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
   // Back to following the best value.
   onFollow: () => void;
 }) {
+  const [finding, setFinding] = useState<string | null>(null);
   const { single, split, recommended, splitSaves, uncovered, eligible } = comparison;
   const current = planFor(offers, items, picks);
   const naive = planFor(offers, items, Object.fromEntries(items.map((i) => [i.id, cheapestFor(eligible, i)[0] ?? null])));
@@ -108,6 +111,14 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
                       <th scope="row" className="sticky left-0 z-10 max-w-36 border-b bg-white py-2 pr-2 text-left align-top font-normal">
                         <span className="block">{item.description}</span>
                         <span className="block text-xs text-neutral-500">{quantityText(item)}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFinding(finding === item.id ? null : item.id)}
+                          aria-expanded={finding === item.id}
+                          className="mt-0.5 text-xs font-medium text-blue-600"
+                        >
+                          {finding === item.id ? "Close" : "Find cheaper"}
+                        </button>
                       </th>
                       {offers.map((o) => {
                         const c = cellFor(o, item);
@@ -169,6 +180,24 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
               </tbody>
             </table>
           </div>
+          {finding && (
+            <div className="mt-3">
+              {(() => {
+                const item = items.find((i) => i.id === finding)!;
+                const prices = offers.map((o) => cellFor(o, item)).flatMap((c) => (c.kind === "price" ? [c.ex] : []));
+                const best = prices.length ? Math.min(...prices) / 100 : null;
+                return (
+                  <PriceFinder
+                    description={item.description}
+                    quantity={item.quantity}
+                    unit={item.unit}
+                    priced={best !== null && item.quantity ? Math.round((best / item.quantity) * 100) / 100 : best}
+                    onClose={() => setFinding(null)}
+                  />
+                );
+              })()}
+            </div>
+          )}
           {offers.some((o) => o.vatIncluded) && <p className="mt-2 text-xs text-neutral-500">Prices quoted with VAT are shown here without it (at 20%) so they compare like for like.</p>}
           {(waiting.length > 0 || declined.length > 0) && (
             <p className="mt-2 text-xs text-neutral-500">

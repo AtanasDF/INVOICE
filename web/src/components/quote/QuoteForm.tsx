@@ -5,6 +5,7 @@ import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
 import CustomerPicker, { NewCustomerStart } from "@/components/quote/CustomerPicker";
 import ClearFormButton from "@/components/ClearFormButton";
+import PriceFinder from "@/components/PriceFinder";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
 import { depositGross } from "@/lib/quoteDeposit";
@@ -42,6 +43,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   const [v, setV] = useState<QuoteFormValue>(initial.items.length ? initial : { ...initial, items: [{ ...BLANK_LINE }] });
   const anyone = () => clients.some((c) => !c.archived);
   const [adding, setAdding] = useState<NewCustomerStart | null>(() => newCustomer ?? (anyone() || clients.some((c) => c.id === initial.clientId) ? null : NO_ONE));
+  // Which line is being priced up against what it usually costs.
+  const [finding, setFinding] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<QuoteFormValue>) => setV((prev) => ({ ...prev, ...patch }));
@@ -128,6 +131,18 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
             >
               ✕
             </button>
+            {l.description.trim() && (
+              <div className="col-span-12">
+                <button type="button" onClick={() => setFinding(finding === i ? null : i)} aria-expanded={finding === i} className="text-xs font-medium text-blue-600">
+                  {finding === i ? "Close" : "Find it cheaper"}
+                </button>
+                {finding === i && (
+                  <div className="mt-2">
+                    <PriceFinder description={l.description} quantity={l.quantity} priced={l.unitPrice || null} onClose={() => setFinding(null)} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
         <button type="button" onClick={() => set({ items: [...v.items, { ...BLANK_LINE }] })} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
