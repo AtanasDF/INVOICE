@@ -37,13 +37,21 @@ export default {
       const rawBuffer = await new Response(message.raw).arrayBuffer();
       const parsed = await PostalMime.parse(rawBuffer);
 
-      const attachments = (parsed.attachments || [])
-        .filter((a) => a.mimeType && a.content)
-        .map((a) => ({
-          filename: a.filename || "attachment",
-          mimeType: a.mimeType,
-          base64: arrayBufferToBase64(a.content as ArrayBuffer),
-        }));
+      // An HTML signature's logo and social icons arrive in `attachments`
+      // like anything else, marked inline/related, and they come FIRST in a
+      // normal multipart email -- the real invoice is in a later part. The
+      // app keeps the first five, so a supplier with five icons in their
+      // footer had their actual invoice thrown away and five junk receipts
+      // filed instead. Inline parts are only used when there is nothing
+      // else, so an image pasted into the body of a message still works.
+      const usable = (parsed.attachments || []).filter((a) => a.mimeType && a.content);
+      const isInline = (a: (typeof usable)[number]) => a.disposition === "inline" || (a as { related?: boolean }).related === true;
+      const real = usable.filter((a) => !isInline(a));
+      const attachments = (real.length ? real : usable).map((a) => ({
+        filename: a.filename || "attachment",
+        mimeType: a.mimeType,
+        base64: arrayBufferToBase64(a.content as ArrayBuffer),
+      }));
 
       const res = await fetch(env.APP_INGEST_URL, {
         method: "POST",
