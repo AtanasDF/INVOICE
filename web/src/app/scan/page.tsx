@@ -1229,7 +1229,7 @@ export default function ScanPage() {
             </div>
             <div>
               <label className="text-xs text-neutral-500">Email</label>
-              <input className="w-full rounded-lg border px-3 py-2" value={form.contactEmail} onChange={(e) => patch({ contactEmail: e.target.value })} />
+              <input type="email" className="w-full rounded-lg border px-3 py-2" value={form.contactEmail} onChange={(e) => patch({ contactEmail: e.target.value })} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Notes</label>

@@ -244,6 +244,8 @@ export default function NewClientPage() {
         {isCompany && check.company && <p className="text-xs text-neutral-500">Company {check.company.number} on the Companies House register.</p>}
         {isCompany && <RegisterNote check={check} />}
         <input
+          type="email"
+          autoComplete="email"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Email (optional)"
           value={email}
