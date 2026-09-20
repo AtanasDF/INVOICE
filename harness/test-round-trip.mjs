@@ -49,6 +49,15 @@ try {
   check("the name reads back on screen exactly", list.includes(NAME), list.replace(/\s+/g, " ").slice(0, 300));
   check("no mangled punctuation anywhere", !/&amp;|&#39;|&quot;|\\u00/.test(list), list.replace(/\s+/g, " ").slice(0, 300));
 
+  // And it reads back into the EDIT BOX the same way, which the list can't
+  // tell you: innerText never contains what is in an input, so a name
+  // mangled on its way into the form would leave every check above green.
+  await clickText(page, "Edit");
+  await sleep(900);
+  const fields = await page.evaluate(() => [...document.querySelectorAll("input, textarea")].map((i) => i.value));
+  check("the name is put back in the edit box exactly as typed", fields.includes(NAME), JSON.stringify(fields.filter(Boolean).slice(0, 6)));
+  check("...with nothing escaped or doubled on the way in", !fields.some((v) => /&amp;|&#39;|&quot;|\\u00/.test(v)), JSON.stringify(fields.filter((v) => /&|\\u/.test(v))));
+
   // A receipt for a penny, and one for an awkward fraction of an hour.
   const penny = { id: newId(), user_id: "x", client_id: null, date: todayISO(), vendor: "Car park", category: "Transport & Taxis", amount: 0.01, vat_amount: 0, image_data_url: null, notes: NOTE, starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null };
   db.tables.receipts.push(penny);
