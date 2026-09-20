@@ -38,10 +38,11 @@ export function greeting(name: string, isCompany: boolean, contactPerson: string
   return who ? `Hi ${who},` : "Hi,";
 }
 
-export type TextPreset = "quote" | "onMyWay" | "late" | "arrived" | "done" | "thanks";
+export type TextPreset = "quote" | "quoteChase" | "onMyWay" | "late" | "arrived" | "done" | "thanks";
 
 export const PRESET_LABELS: Record<TextPreset, string> = {
   quote: "Here's your quote",
+  quoteChase: "Any thoughts on the quote?",
   onMyWay: "On my way",
   late: "Running late",
   arrived: "I've arrived",
@@ -58,6 +59,8 @@ export function presetText(preset: TextPreset, { hi, from, minutes, link, quote 
   switch (preset) {
     case "quote":
       return `${hi} here's your quote${quote?.total ? ` for ${quote.total}` : ""}${quote?.validUntil ? `, valid until ${quote.validUntil}` : ""}.${link ? ` You can see it and accept it here: ${link}` : ""}${from ? `\n${from}` : ""}`;
+    case "quoteChase":
+      return `${hi} just checking you got the quote${quote?.total ? ` for ${quote.total}` : ""}${quote?.validUntil ? ` (it holds until ${quote.validUntil})` : ""} — any thoughts, or anything you'd like changed?${link ? ` It's here: ${link}` : ""}${from ? `\n${from}` : ""}`;
     case "onMyWay":
       return `${hi}${me} I'm on my way and should be with you in about ${minutes} minutes.`;
     case "late":
