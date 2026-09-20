@@ -33,7 +33,10 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
     inv.client_id
       ? admin.from("clients").select("name, email, address, vat_number, is_company").eq("id", inv.client_id).eq("user_id", link.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    admin.from("business_profile").select("business_name, address, vat_number, vat_registered, bank_details").eq("user_id", link.user_id).maybeSingle(),
+    // The whole row, because naming migration-029's columns would break
+    // this page on a database that hasn't had it run yet; only the fields
+    // the printed invoice shows are passed on below.
+    admin.from("business_profile").select("*").eq("user_id", link.user_id).maybeSingle(),
     admin.from("credit_notes").select("date, amount, reason").eq("invoice_id", inv.id).eq("user_id", link.user_id),
     admin.from("invoice_payments").select("date, amount").eq("invoice_id", inv.id).eq("user_id", link.user_id).order("date"),
   ]);
@@ -75,6 +78,8 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
     // Only what the printed invoice shows; nothing else from Settings.
     profile: {
       businessName: bp?.business_name ?? "",
+      registeredName: bp?.registered_name ?? "",
+      companyNumber: bp?.company_number ?? "",
       address: bp?.address ?? "",
       vatNumber: bp?.vat_number ?? "",
       vatRegistered: bp?.vat_registered ?? false,

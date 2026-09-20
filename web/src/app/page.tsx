@@ -21,6 +21,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
+import AddAnything from "@/components/AddAnything";
 import Tip from "@/components/Tip";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import TaxSoFar from "@/components/TaxSoFar";
@@ -347,17 +348,14 @@ export default function Dashboard() {
           </Link>
         )}
         <div className="grid flex-1 grid-cols-1 gap-2">
+          {/* One button for a receipt, an invoice or a quote; the tile
+              beside it stays the one-tap camera. */}
+          <AddAnything />
           <UploadFilesButton
             href="/scan"
             label="Upload photos or PDFs"
             buttonClassName="flex w-full items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md"
           />
-          <Link href="/receipts/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
-            + Add a receipt manually
-          </Link>
-          <Link href="/invoices/new" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
-            + Create an invoice
-          </Link>
           <Link href="/clients" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
             + Add a client or company
           </Link>

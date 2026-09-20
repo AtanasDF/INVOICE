@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  AccountKind,
   businessProfileStore,
   clientsStore,
   creditNotesStore,
@@ -23,9 +24,28 @@ import { parseSequenceNumber } from "@/lib/invoiceNumber";
 import { inlineImage } from "@/lib/receiptImages";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFields from "@/components/AddressFields";
+import { useAuth } from "@/lib/authContext";
+import { supabase } from "@/lib/supabaseClient";
+
+// A limited company must show its registered name and number on its
+// invoices (Companies Act 2006 s.82); a sole trader has neither, and
+// personal use has no business at all. Nothing else follows from this
+// yet -- see notes/future-ideas.md.
+const ACCOUNT_KINDS: { value: AccountKind; label: string; hint: string }[] = [
+  { value: "limited", label: "A limited company", hint: "Registered at Companies House" },
+  { value: "sole_trader", label: "A sole trader", hint: "Self-employed, working under your own name or a trading name" },
+  { value: "personal", label: "Personal use", hint: "Keeping track of your own spending" },
+];
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [businessName, setBusinessName] = useState("");
+  const [registeredName, setRegisteredName] = useState("");
+  const [companyNumber, setCompanyNumber] = useState("");
+  const [accountKind, setAccountKind] = useState<AccountKind | null>(null);
+  const [migrationPending, setMigrationPending] = useState(false);
+  const [signInBusy, setSignInBusy] = useState(false);
+  const [signInNote, setSignInNote] = useState<string | null>(null);
   const [vatNumber, setVatNumber] = useState("");
   const [address, setAddress] = useState("");
   const [showOverdueReminders, setShowOverdueReminders] = useState(true);
@@ -60,6 +80,9 @@ export default function SettingsPage() {
   useEffect(() => {
     Promise.all([businessProfileStore.get(), invoicesStore.all()]).then(([p, invoices]) => {
       setBusinessName(p.businessName);
+      setRegisteredName(p.registeredName);
+      setCompanyNumber(p.companyNumber);
+      setAccountKind(p.accountKind);
       setVatNumber(p.vatNumber);
       setAddress(p.address);
       setShowOverdueReminders(p.showOverdueReminders);
@@ -166,8 +189,11 @@ export default function SettingsPage() {
     setSaved(false);
     setSaving(true);
     try {
-      await businessProfileStore.save({
+      const full = await businessProfileStore.save({
         businessName,
+        registeredName,
+        companyNumber,
+        accountKind,
         vatNumber,
         address,
         logoUrl: null,
@@ -185,12 +211,25 @@ export default function SettingsPage() {
         reminderTextFinal: reminderTexts.final.trim() || null,
         reminderLatePaymentInterest: latePaymentInterest,
       });
+      setMigrationPending(!full);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your profile.");
     } finally {
       setSaving(false);
     }
+  }
+
+  // The same email Supabase sends for "forgot my password": opening it
+  // signs this browser in and lands on /reset-password, so it works both
+  // as a way back in and as a way to change the password.
+  async function emailSignInLink() {
+    if (!user?.email) return;
+    setSignInNote(null);
+    setSignInBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/reset-password` });
+    setSignInNote(error ? error.message : `Sent to ${user.email}. The link signs you in and lets you set a new password.`);
+    setSignInBusy(false);
   }
 
   async function exportData() {
@@ -236,20 +275,123 @@ export default function SettingsPage() {
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
 
   const nextNumberTooLow = (parseInt(invoiceNextNumber, 10) || 0) <= highestExistingNumber && highestExistingNumber > 0;
+  // Registered details stay on screen once they're filled in, whatever the
+  // kind says, so changing your mind can't hide what's printed.
+  const limited = accountKind === "limited" || !!registeredName || !!companyNumber;
+  const personal = accountKind === "personal";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Your business</h1>
+        <h1 className="text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-neutral-600">
-          Fill this in once — it fills in automatically on every invoice you create from now on.
+          Your business details fill in automatically on every invoice you create. Your account and your data are here too.
         </p>
+      </div>
+
+      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div>
+          <h2 className="font-semibold">Your account</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            You&apos;re signed in as <span className="font-medium text-neutral-900">{user?.email ?? "—"}</span>. That address
+            is the one reminders and invoice emails come back to when a customer replies.
+          </p>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Getting back in</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Signed out, or forgotten the password? Ask for a link by email — it opens the app already signed in and lets
+            you set a new password. From the sign-in screen it&apos;s the same thing: <strong>Forgotten your password?</strong>
+          </p>
+          <button
+            type="button"
+            onClick={emailSignInLink}
+            disabled={signInBusy || !user?.email}
+            className="mt-2 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+          >
+            {signInBusy ? "Sending…" : "Email me a sign-in link"}
+          </button>
+          {signInNote && <p className="mt-2 text-sm text-neutral-600">{signInNote}</p>}
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Where your data lives</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            In a Postgres database run by Supabase in the EU (Ireland), locked to your account: every table is read and
+            written only by the signed-in owner. Scanned photos and PDFs sit in a private bucket and are handed out as
+            links that expire after seven days. Invoice and quote links you share are the one exception — anyone holding
+            that address sees that one document, until you stop the link from its page.
+          </p>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Take it all with you</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, recurring
+            expenses and feedback — as one JSON file, with the scanned images and PDFs inside it. Invoices, receipts and
+            clients also export as CSV from their own pages, for a spreadsheet or an accountant.
+          </p>
+          {exportError && <p className="mt-2 text-sm text-red-600">{exportError}</p>}
+          <button
+            type="button"
+            onClick={exportData}
+            disabled={exporting}
+            className="mt-2 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+          >
+            {exporting ? "Preparing your download…" : "Download all my data"}
+          </button>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Closing the account</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            There&apos;s no delete button anywhere in this app, on purpose: an accounting record you&apos;ve thrown away by
+            accident can&apos;t be got back, and HMRC expects you to keep it for six years. To have the account and
+            everything in it removed, ask through <a href="/feedback" className="underline">Feedback</a> and it&apos;s done
+            by hand, once, after you&apos;ve exported what you want to keep.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => supabase.auth.signOut()}
+          className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
+        >
+          Sign out
+        </button>
       </div>
 
       <form onSubmit={save} className="space-y-6">
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div>
-            <label className="text-xs text-neutral-500">Business name</label>
+            <h2 className="font-semibold">Your business</h2>
+            <p className="mt-1 text-sm text-neutral-600">Fill this in once and it goes on every invoice, quote and reminder.</p>
+          </div>
+
+          <fieldset>
+            <legend className="text-xs text-neutral-500">What are you using this for?</legend>
+            <div className="mt-1 space-y-1">
+              {ACCOUNT_KINDS.map((k) => (
+                <label key={k.value} className="flex items-start gap-2 text-sm">
+                  <input
+                    className="mt-1"
+                    type="radio"
+                    name="account-kind"
+                    checked={accountKind === k.value}
+                    onChange={() => setAccountKind(k.value)}
+                  />
+                  <span>
+                    {k.label}
+                    <span className="block text-xs text-neutral-500">{k.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div>
+            <label className="text-xs text-neutral-500">{personal ? "Your name" : "Business name"}</label>
             <CompanyNameInput
               className="w-full rounded-lg border px-3 py-2"
               lookupPlaceholder="Limited company? Type to find it on Companies House"
@@ -262,8 +404,46 @@ export default function SettingsPage() {
                 if (fillAddress) setAddress(fillAddress);
               }}
             />
+            <p className="mt-1 text-xs text-neutral-500">
+              {limited
+                ? "The name customers know you by — the headline on every document. If it isn't the name on the register, fill that in below as well."
+                : "The name customers know you by — the headline on every document."}
+            </p>
           </div>
-          <AddressFields address={address} onAddress={setAddress} label="Business address (optional)" />
+
+          {limited && (
+            <div className="space-y-3 rounded-lg border bg-neutral-50 p-3">
+              <p className="text-sm text-neutral-600">
+                A limited company must show its registered name and company number on its invoices (Companies Act 2006).
+                Fill both in and they print small at the foot of the invoice, leaving your trading name as the headline.
+              </p>
+              <div>
+                <label className="text-xs text-neutral-500">Registered company name</label>
+                <CompanyNameInput
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="As registered at Companies House"
+                  lookupPlaceholder="Type to find it on Companies House"
+                  value={registeredName}
+                  onChange={setRegisteredName}
+                  onPick={(c) => {
+                    setRegisteredName(c.name);
+                    setCompanyNumber(c.number);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500">Company number</label>
+                <input
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="e.g. 12345678"
+                  value={companyNumber}
+                  onChange={(e) => setCompanyNumber(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <AddressFields address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address (optional)"} />
           <p className="text-xs text-neutral-500">
             A logo can go here too once file storage is set up — not yet, so this is text-only for now.
           </p>
@@ -452,30 +632,17 @@ export default function SettingsPage() {
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        {saved && <p className="text-sm text-green-700">Saved.</p>}
+        {saved && !migrationPending && <p className="text-sm text-green-700">Saved.</p>}
+        {saved && migrationPending && (
+          <p className="text-sm text-amber-700">
+            Saved, apart from what you&apos;re using the app for and the registered company details: this database hasn&apos;t
+            had migration-029 run against it yet. Everything else is in.
+          </p>
+        )}
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : "Save"}
         </button>
       </form>
-
-      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <div>
-          <h2 className="font-semibold">Your data</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, recurring expenses,
-            and feedback — as a single JSON file, including any scanned images and PDFs attached to your receipts.
-          </p>
-        </div>
-        {exportError && <p className="text-sm text-red-600">{exportError}</p>}
-        <button
-          type="button"
-          onClick={exportData}
-          disabled={exporting}
-          className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-        >
-          {exporting ? "Preparing your download…" : "Download all my data"}
-        </button>
-      </div>
 
       <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <div>

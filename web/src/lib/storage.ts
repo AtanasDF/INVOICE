@@ -741,8 +741,19 @@ export const creditNotesStore = {
   },
 };
 
+export type AccountKind = "limited" | "sole_trader" | "personal";
+
 export type BusinessProfile = {
+  // The trading name: the headline on every document. A limited company's
+  // registered name and number (as filed at Companies House) are separate,
+  // and the Companies Act requires them on its invoices -- printed small
+  // in the footer, only when both are set.
   businessName: string;
+  registeredName: string;
+  companyNumber: string;
+  // What the account is for. Null until it's chosen, and today it only
+  // decides whether the address is "Business address" or "Your address".
+  accountKind: AccountKind | null;
   vatNumber: string;
   address: string;
   logoUrl: string | null;
@@ -785,6 +796,10 @@ export type BusinessProfile = {
 
 type BusinessProfileRow = {
   business_name: string | null;
+  // migration-029; absent from the row until it has been run
+  registered_name?: string | null;
+  company_number?: string | null;
+  account_kind?: AccountKind | null;
   vat_number: string | null;
   address: string | null;
   logo_url: string | null;
@@ -806,6 +821,9 @@ type BusinessProfileRow = {
 function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
   return {
     businessName: r.business_name ?? "",
+    registeredName: r.registered_name ?? "",
+    companyNumber: r.company_number ?? "",
+    accountKind: r.account_kind ?? null,
     vatNumber: r.vat_number ?? "",
     address: r.address ?? "",
     logoUrl: r.logo_url,
@@ -827,6 +845,9 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
 
 const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   businessName: "",
+  registeredName: "",
+  companyNumber: "",
+  accountKind: null,
   vatNumber: "",
   address: "",
   logoUrl: null,
@@ -851,9 +872,11 @@ export const businessProfileStore = {
     if (error) throw error;
     return data ? businessProfileFromRow(data as BusinessProfileRow) : EMPTY_BUSINESS_PROFILE;
   },
-  async save(input: BusinessProfile): Promise<void> {
+  // False when the trading/registered name split couldn't be written
+  // because migration-029 hasn't been run yet -- everything else saved.
+  async save(input: BusinessProfile): Promise<boolean> {
     const user_id = await currentUserId();
-    const { error } = await supabase.from("business_profile").upsert({
+    const row = {
       user_id,
       business_name: input.businessName || null,
       vat_number: input.vatNumber || null,
@@ -873,8 +896,23 @@ export const businessProfileStore = {
       reminder_text_final: input.reminderTextFinal || null,
       reminder_late_payment_interest: input.reminderLatePaymentInterest,
       updated_at: new Date().toISOString(),
-    });
+    };
+    const added = {
+      registered_name: input.registeredName || null,
+      company_number: input.companyNumber || null,
+      account_kind: input.accountKind,
+    };
+    const { error } = await supabase.from("business_profile").upsert({ ...row, ...added });
+    // Until migration-029 has been run those three columns don't exist and
+    // PostgREST refuses the whole write (PGRST204); everything else about
+    // the profile still has to save.
+    if (error?.code === "PGRST204") {
+      const { error: retry } = await supabase.from("business_profile").upsert(row);
+      if (retry) throw retry;
+      return false;
+    }
     if (error) throw error;
+    return true;
   },
 };
 

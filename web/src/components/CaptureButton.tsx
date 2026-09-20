@@ -9,6 +9,10 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 // the user's own tap, so on the native-camera path the trigger IS the
 // input (label-wrapped, like the dashboard tile) rather than a button
 // that mounts DocumentCapture and needs a second "Take a photo" tap.
+// That path asks this site for nothing -- the photo comes from the OS
+// camera through the file picker -- so it works whatever the site's
+// camera permission is, and there is no prompt here to suppress. The
+// other path opens DocumentCapture, which asks once through lib/camera.
 export default function CaptureButton({ onCapture, onOpen, beforeOpen, className, disabled, children, accept }: {
   onCapture: (file: CapturedFile) => void;
   onOpen: () => void;
