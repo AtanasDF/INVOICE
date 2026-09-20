@@ -4,6 +4,40 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-20 (morning) — Atanas awake and steering, Mac desktop app (Opus 5)
+
+**In flight:** the 50-item solo checklist, starting with the account Atanas is actually in:
+a brand-new, empty one.
+
+- **An empty account, and what every page does when the load fails** (checklist 4, 38, 44).
+  New suite `harness/test-empty-account.mjs`: all 22 signed-in pages against a database with
+  nothing in it, then each page's own load failed in turn — 132 checks, green. It found a
+  real bug: ten pages loaded with `.then()` and no `.catch()` (dashboard, invoices,
+  contacts, receipts, review queue, files, expenses, settings, both recurring lists), so a
+  failed load left them stuck on "Loading…" (settings, dashboard) or showing the empty
+  state — "No invoices yet", "£0.00" — on books that are someone's real accounting record.
+  Fixed: every load catches, stops loading, suppresses the empty state while an error shows,
+  and says one plain sentence. Pages that already caught printed the database's own wording;
+  `loadFailed()` in `src/lib/errorText.ts` keeps that for the console. Commit `84595ce`.
+- **The 30-minute timer never fired, and now we know why.** Not sleep — he confirmed the Mac
+  was awake and online all night, and the other routines on the machine did run this morning
+  (email watch 10:08, the two keep-alives 09:50/09:52). `invoicer-keep-working` had 0 runs;
+  its 08:39 and 09:09 slots were skipped with nothing recorded. Triggered by hand it starts
+  in seconds and then stops dead on its very first command (`git fetch`) waiting for
+  permission — no git process ever runs. The routine was created programmatically, so it has
+  no tool approvals, and an unattended run has nobody to tap Allow. Moved to :10 and :40
+  (clear of the other routines), completion notifications on, and the task file now tells
+  each run to set itself five jobs of its own — things needing nothing from him — and append
+  them to the checklist under "Found on the day". **Waiting on Atanas:** approve the routine
+  once in the app, or say the word and its permission mode gets set so it never asks.
+- **iCloud duplicates broke the build.** `.next` had 181 stray `name 2.ext` copies (the
+  known iCloud Desktop habit); Turbopack refused to open its cache over `CURRENT 2` and tsc
+  reported conflicts from `routes.d 2.ts`. Nothing deleted — they were moved out to the
+  scratchpad (`scratchpad/icloud-dupes/`, same paths) and the build went clean. Three more
+  sit in the source tree (`UploadFilesButton 2.tsx`, `supplierLinks 2.ts`,
+  `013-backup-before-migration-027 2.sql`); all three are byte-identical to their originals
+  and `.gitignore` already has `* 2.*`, so they are ignored, not lost. Flagged, not removed.
+
 ## 2026-09-20 — Settings' account section, one Add button, the camera asks once (`feature/settings-add`)
 
 **Brief (via the lead session, from Atanas):** Settings should hold account information

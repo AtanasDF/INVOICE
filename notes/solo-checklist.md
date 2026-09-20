@@ -108,6 +108,21 @@ what is sent to a customer waits for him.
   bumps are all majors — TypeScript 7, ESLint 10, `@types/node` 26 — plus React 19.3 and
   the Anthropic SDK 0.127. Worth doing one at a time with the suites, not unattended.
 
+## Done in the morning (2026-09-20)
+
+- **4 + 38. An empty account, and every list's loading / failed state** — a new suite
+  (`harness/test-empty-account.mjs`) walks all 22 signed-in pages against a database with
+  nothing in it, then fails each page's load in turn: 132 checks, all green. It found a
+  real one, below.
+- **44. Errors a user should see, swallowed** — ten pages loaded with `.then()` and no
+  `.catch()`: dashboard, invoices, contacts, receipts, the review queue, files, expenses,
+  settings, both recurring lists. A failed load left them on "Loading…" for ever or showed
+  the empty state — "No invoices yet" on books that are someone's real records. They all
+  catch now, and the empty state is suppressed while an error is showing. Pages that did
+  catch printed the database's own words ("JSON object requested, multiple rows returned");
+  `loadFailed()` in `src/lib/errorText.ts` keeps that for the console and shows one plain
+  sentence instead.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
