@@ -827,7 +827,7 @@ export default function InvoiceViewPage() {
 
       {client && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
-          <h2 className="mb-3 font-semibold">Text {client.name}</h2>
+          <h2 className="mb-3 wrap-anywhere font-semibold">Text {client.name}</h2>
           <TextCustomer
             key={invoice.status}
             client={client}

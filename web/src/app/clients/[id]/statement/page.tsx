@@ -62,7 +62,7 @@ export default function StatementPage() {
       <div>
         <Link href="/clients" className="text-sm text-neutral-500">← Clients &amp; suppliers</Link>
         <h1 className="mt-1 text-2xl font-bold">Statement</h1>
-        <p className="mt-1 text-neutral-600">{client ? `Everything ${client.name} has been invoiced, and what's still owed.` : "Loading…"}</p>
+        <p className="mt-1 wrap-anywhere text-neutral-600">{client ? `Everything ${client.name} has been invoiced, and what's still owed.` : "Loading…"}</p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

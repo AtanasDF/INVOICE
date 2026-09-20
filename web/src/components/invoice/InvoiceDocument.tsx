@@ -67,7 +67,7 @@ function BillTo({ d, dense }: { d: FreeInvoiceDraft; dense?: boolean }) {
   return (
     <section>
       <p className={`font-semibold uppercase tracking-wider text-neutral-500 ${dense ? "text-[10px]" : "text-xs"}`}>{d.docType === "quote" ? "For" : "Bill to"}</p>
-      <p className={`font-semibold ${dense ? "" : "mt-1 text-base"}`}>{c.name || "Customer name"}</p>
+      <p className={`wrap-anywhere font-semibold ${dense ? "" : "mt-1 text-base"}`}>{c.name || "Customer name"}</p>
       {c.address && <p className="whitespace-pre-line text-neutral-600">{c.address}</p>}
       {c.email && <p className="text-neutral-600">{c.email}</p>}
     </section>

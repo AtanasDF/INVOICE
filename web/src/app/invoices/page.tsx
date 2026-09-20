@@ -272,9 +272,9 @@ export default function InvoicesPage() {
             const notes = creditNotesByInvoice.get(inv.id) ?? [];
             const creditedAmount = credited(inv);
             return (
-              <div key={inv.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-                <div>
-                  <div className="flex items-center gap-2 font-medium">
+              <div key={inv.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 wrap-anywhere font-medium">
                     {displayInvoiceNumber(inv)} · {clientName(inv.clientId)}
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                       {invoiceStatusLabel(inv.status, overdue)}
@@ -290,7 +290,7 @@ export default function InvoicesPage() {
                       </button>
                     )}
                   </div>
-                  <div className="text-sm text-neutral-500">
+                  <div className="wrap-anywhere text-sm text-neutral-500">
                     {inv.date} · {money(netTotal(inv))}
                     {notes.length > 0 && (
                       <>
@@ -313,7 +313,7 @@ export default function InvoicesPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-3">
+                <div className="flex shrink-0 gap-3">
                   <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
                   </Link>

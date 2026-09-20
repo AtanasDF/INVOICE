@@ -414,12 +414,12 @@ export default function Dashboard() {
               const due = billDueLabel(b.dueDate, today);
               return (
                 <div key={b.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
-                  <span>
+                  <span className="min-w-0 wrap-anywhere">
                     {supplierNames.get(b.clientId) || b.vendor || "Unknown supplier"}
                     {b.invoiceNumber && <span className="text-neutral-500"> · {b.invoiceNumber}</span>}
                     <span className={due.className}> · {due.text}</span>
                   </span>
-                  <span className="flex items-center gap-3 whitespace-nowrap">
+                  <span className="flex shrink-0 items-center gap-3 whitespace-nowrap">
                     <span className="font-medium">{money((b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)))}</span>
                     <button onClick={() => markBillPaid(b)} className="font-medium text-blue-600">Mark as paid</button>
                   </span>
@@ -442,13 +442,13 @@ export default function Dashboard() {
                 <Link
                   key={o.invoice.id}
                   href={`/invoices/${o.invoice.id}`}
-                  className="flex items-center justify-between border-b pb-2 text-sm last:border-b-0 last:pb-0"
+                  className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0"
                 >
-                  <span>
+                  <span className="min-w-0 wrap-anywhere">
                     #{o.invoice.number} · {o.clientName}
                     {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · due {o.invoice.dueDate}</span>}
                   </span>
-                  <span className="font-medium">{money(o.amountDue)}</span>
+                  <span className="shrink-0 font-medium">{money(o.amountDue)}</span>
                 </Link>
               );
             })}
@@ -479,15 +479,15 @@ export default function Dashboard() {
         <h2 className="font-semibold">This month so far</h2>
         <div className="mt-3 grid grid-cols-3 gap-4">
           <div>
-            <div className="text-2xl font-bold">{money(monthTotal)}</div>
+            <div className="wrap-anywhere text-2xl font-bold">{money(monthTotal)}</div>
             <div className="text-sm text-neutral-600">Spent excl. VAT</div>
           </div>
           <div>
-            <div className="text-2xl font-bold">{money(monthVat)}</div>
+            <div className="wrap-anywhere text-2xl font-bold">{money(monthVat)}</div>
             <div className="text-sm text-neutral-600">VAT on those costs</div>
           </div>
           <div>
-            <div className="text-2xl font-bold">{money((monthTotal + monthVat))}</div>
+            <div className="wrap-anywhere text-2xl font-bold">{money((monthTotal + monthVat))}</div>
             <div className="text-sm text-neutral-600">Spent incl. VAT</div>
           </div>
         </div>

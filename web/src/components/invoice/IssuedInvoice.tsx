@@ -50,7 +50,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
 
       <div className="mt-6">
         <p className="text-sm font-medium text-neutral-500">Billed to</p>
-        <p className="font-medium">{client?.name || "—"}</p>
+        <p className="wrap-anywhere font-medium">{client?.name || "—"}</p>
         {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
         {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}
         {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
