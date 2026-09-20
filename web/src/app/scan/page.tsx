@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
@@ -22,6 +22,9 @@ import DocumentDetailsFields from "@/components/scan/DocumentDetailsFields";
 import PaidChoice from "@/components/scan/PaidChoice";
 import CreditOfSelect from "@/components/scan/CreditOfSelect";
 import FieldFlag, { Confidence } from "@/components/scan/FieldFlag";
+import ContactField, { type Usage } from "@/components/ContactField";
+import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components/RegisterBits";
+import { useCompanyLookup } from "@/lib/companyConfigured";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -385,6 +388,14 @@ export default function ScanPage() {
   const [fxError, setFxError] = useState<string | null>(null);
   const [supplierSaved, setSupplierSaved] = useState(false);
   const [supplierDuplicate, setSupplierDuplicate] = useState(false);
+  const [supplierCheck, setSupplierCheck] = useState<RegisterCheck>({ company: null, note: null, checking: false });
+  // What the register put into the form for the document open now, so it
+  // can be taken back out.
+  const [registerFill, setRegisterFill] = useState<{ key: string; what: string } | null>(null);
+  const [recheck, setRecheck] = useState(0);
+  const filledRef = useRef<string | null>(null);
+  const undoneRef = useRef<string | null>(null);
+  const previousDetailsRef = useRef<DocumentDetails>({});
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -465,8 +476,20 @@ export default function ScanPage() {
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
+  const supplierUsage = useMemo(() => {
+    const out: Usage = {};
+    for (const r of receipts) {
+      if (!r.clientId) continue;
+      const seen = out[r.clientId];
+      out[r.clientId] = { count: (seen?.count ?? 0) + 1, last: seen && seen.last > r.date ? seen.last : r.date };
+    }
+    return out;
+  }, [receipts]);
   const scannedInvoices = receipts.filter((r) => r.documentType === "invoice");
+  const lookupOn = useCompanyLookup();
   const mode = modeOf(form);
+  // A business card names a company too, so it gets the same check.
+  const cardCheck = useRegisterCheck(form.vendor, null, lookupOn && mode === "contact");
   const baseMode = modeOf({ ...form, typeOverride: null });
   const heading = headingFor(form, mode);
   const position = walk ? walk.docs.findIndex((d) => d.id === walk.current) : -1;
@@ -519,6 +542,11 @@ export default function ScanPage() {
   function applyResult(result: ScanResult) {
     const touched = touchedRef.current;
     setForm((f) => formFromResult(result, f, touched, suppliersRef.current, receiptsRef.current, true));
+    // A reading replaces the details, so whatever the register put there is
+    // gone: ask again and let it fill the new gaps. An undo still stands.
+    filledRef.current = null;
+    setRegisterFill(null);
+    setRecheck((n) => n + 1);
     if (touched.has("currency") || touched.has("fxRateInput")) return;
     if (result.currency && result.currency !== "GBP") onCurrencyChange(result.currency);
     else {
@@ -660,8 +688,10 @@ export default function ScanPage() {
   // Suppliers as they are now: one added while an earlier document in the
   // batch was open must be matched against the next.
   const suppliersRef = useRef<Client[]>([]);
+  const formRef = useRef(form);
   useEffect(() => {
     suppliersRef.current = suppliers;
+    formRef.current = form;
   });
 
   function openDoc(d: WalkDoc) {
@@ -721,6 +751,45 @@ export default function ScanPage() {
     setDuplicate(null);
     setFxError(null);
     setTypePickerOpen(false);
+    setRegisterFill(null);
+    filledRef.current = null;
+    undoneRef.current = null;
+  }
+
+
+  // What the document didn't print but the register holds: the registered
+  // address when none was read, and the company number. Never over what
+  // the document said, and undoable. `set`, not `patch`, so a re-read of
+  // the document still wins and the fill is worked out again after it.
+  function onRegisterCheck(check: RegisterCheck) {
+    setSupplierCheck(check);
+    const c = check.company;
+    const f = formRef.current;
+    const key = `${walkRef.current?.current ?? 0}:${normaliseSupplierName(f.vendor)}`;
+    if (!c || !f.vendor.trim() || filledRef.current === key || undoneRef.current === key) return;
+    filledRef.current = key;
+    const previous = f.details;
+    const next: DocumentDetails = { ...previous };
+    const added: string[] = [];
+    if (!previous.supplierAddress?.trim() && c.address) {
+      // One line: the detail fields are single-line inputs, which drop \n.
+      next.supplierAddress = c.address.replace(/\n/g, ", ");
+      added.push("the registered address");
+    }
+    if (!(previous.other ?? []).some((o) => /company number/i.test(o.label))) {
+      next.other = [...(previous.other ?? []), { label: "Company number", value: c.number }];
+      added.push("the company number");
+    }
+    if (!added.length) return;
+    previousDetailsRef.current = previous;
+    set({ details: next });
+    setRegisterFill({ key, what: added.join(" and ") });
+  }
+
+  function undoRegisterFill() {
+    undoneRef.current = registerFill?.key ?? null;
+    set({ details: previousDetailsRef.current });
+    setRegisterFill(null);
   }
 
   async function onCurrencyChange(next: string) {
@@ -1143,6 +1212,7 @@ export default function ScanPage() {
               <label className="text-xs text-neutral-500">Company name</label>
               <input className="w-full rounded-lg border px-3 py-2" value={form.vendor} onChange={(e) => patch({ vendor: e.target.value })} />
               <FieldFlag confidence={form.vendorConf} />
+              <RegisterNote check={cardCheck} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Contact person</label>
@@ -1181,36 +1251,46 @@ export default function ScanPage() {
         ) : (
           <>
             <div>
-              <label className="text-xs text-neutral-500">Supplier</label>
-              {!form.clientId && (
-                <div className="mt-1 flex gap-2">
-                  <input
-                    className="w-full rounded-lg border px-3 py-2 font-medium"
-                    placeholder="Supplier name as printed"
-                    value={form.vendor}
-                    onChange={(e) => patch({ vendor: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    onClick={addAsSupplier}
-                    disabled={saving || !form.vendor.trim()}
-                    className="shrink-0 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-                  >
-                    Add as new supplier
-                  </button>
-                </div>
-              )}
+              <ContactField
+                kind="supplier"
+                label="Supplier"
+                contacts={suppliers}
+                selectedId={form.clientId}
+                onSelect={(c) => pickSupplier(c?.id ?? "")}
+                onCreated={(c) => setClients((prev) => [...prev, c])}
+                onCheck={onRegisterCheck}
+                checkTyped
+                recheck={recheck}
+                usage={supplierUsage}
+                text={form.vendor}
+                onText={(v) => patch({ vendor: v })}
+                placeholder="Supplier name as printed"
+                emptyOption={form.clientId ? "No supplier / general expense" : "Or pick an existing supplier…"}
+                inputClassName="w-full rounded-lg border px-3 py-2 pr-10 font-medium"
+              />
               <FieldFlag confidence={form.vendorConf} />
-              <select
-                className="mt-2 w-full rounded-lg border px-3 py-2"
-                value={form.clientId}
-                onChange={(e) => pickSupplier(e.target.value)}
-              >
-                <option value="">{form.clientId ? "No supplier / general expense" : "Or pick an existing supplier…"}</option>
-                {suppliers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              {!form.clientId && (
+                <button
+                  type="button"
+                  onClick={addAsSupplier}
+                  disabled={saving || !form.vendor.trim()}
+                  className="mt-2 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
+                >
+                  Add as new supplier
+                </button>
+              )}
+              {registerFill && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  Companies House filled in {registerFill.what}, which the document doesn&apos;t show.{" "}
+                  <button type="button" onClick={undoRegisterFill} className="font-medium underline">Undo</button>
+                </p>
+              )}
+              {supplierCheck.company && supplierCheck.company.name !== form.vendor && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  Registered as {supplierCheck.company.name}.{" "}
+                  <button type="button" onClick={() => patch({ vendor: supplierCheck.company!.name })} className="font-medium underline">Use that name</button>
+                </p>
+              )}
               {form.clientId && form.vendor && (
                 <p className="mt-1 text-xs text-neutral-500">Read as &quot;{form.vendor}&quot;.</p>
               )}

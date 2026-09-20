@@ -18,6 +18,7 @@ import { looksLikeCompany } from "@/lib/reminderTemplates";
 import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
 import { withKinds } from "@/lib/cis";
 import UploadFilesButton from "@/components/UploadFilesButton";
+import ContactField, { type Usage } from "@/components/ContactField";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 
@@ -77,6 +78,8 @@ export default function NewInvoicePage() {
   const [pastInvoices, setPastInvoices] = useState<Invoice[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [clientId, setClientId] = useState("");
+  // What he has typed into the customer field without picking anyone yet.
+  const [customerText, setCustomerText] = useState("");
   // The free-invoice draft is read once, on mount: the form is empty then by
   // construction, and the gate never server-renders this page, so lazy
   // initialisers are safe and avoid a setState-in-effect cascade.
@@ -177,7 +180,7 @@ export default function NewInvoicePage() {
   }
 
   const filled =
-    !!(clientId || paymentTerms || notes || tagsInput || typed || newCustomer || copied || imported || cisRate !== null || dueDateManual || date !== todayIso()) ||
+    !!(clientId || customerText || paymentTerms || notes || tagsInput || typed || newCustomer || copied || imported || cisRate !== null || dueDateManual || date !== todayIso()) ||
     items.length !== 1 ||
     !!items[0].description ||
     items[0].unitPrice !== 0 ||
@@ -188,6 +191,7 @@ export default function NewInvoicePage() {
     if (imported) clearFreeInvoiceDraft();
     const today = todayIso();
     setClientId("");
+    setCustomerText("");
     setDate(today);
     setDueDate(addDays(today, 30));
     setDueDateManual(false);
@@ -211,6 +215,17 @@ export default function NewInvoicePage() {
   }
 
   const billableClients = clients.filter((c) => c.kind === "client" && !c.archived);
+
+  // Who he invoices most, so the arrow shows them first.
+  const clientUsage = useMemo(() => {
+    const out: Usage = {};
+    for (const inv of pastInvoices) {
+      if (!inv.clientId) continue;
+      const seen = out[inv.clientId];
+      out[inv.clientId] = { count: (seen?.count ?? 0) + 1, last: seen && seen.last > inv.date ? seen.last : inv.date };
+    }
+    return out;
+  }, [pastInvoices]);
 
   const suggestedItems = useMemo(() => {
     if (!clientId) return [];
@@ -263,6 +278,7 @@ export default function NewInvoicePage() {
 
   function onClientChange(id: string) {
     setClientId(id);
+    if (id) setCustomerText("");
     if (!cisTouchedRef.current) {
       const known = clientCisRate(id);
       setCisRateState((current) => known ?? (cisFromScanRef.current ? current : null));
@@ -444,6 +460,7 @@ export default function NewInvoicePage() {
     const forClientId = keepClient ? clientId : (match?.id ?? "");
     if (!keepClient) {
       setClientId(forClientId);
+      setCustomerText(match ? "" : name);
       setNewCustomer(
         !match && name
           ? { name: archived?.name ?? name, email: t.customer.email ?? "", address: t.customer.address ?? "", archivedId: archived?.id }
@@ -549,6 +566,7 @@ export default function NewInvoicePage() {
       });
       setClients((prev) => [...prev, c]);
       setClientId(c.id);
+      setCustomerText("");
       setNewCustomer(null);
     } catch (err) {
       setAddClientError(err instanceof Error ? err.message : "Could not add the client.");
@@ -699,10 +717,18 @@ export default function NewInvoicePage() {
             </button>
           </div>
         )}
-        <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => onClientChange(e.target.value)}>
-          <option value="">Select a client or company</option>
-          {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <ContactField
+          kind="client"
+          contacts={billableClients}
+          selectedId={clientId}
+          onSelect={(c) => onClientChange(c?.id ?? "")}
+          onCreated={(c) => setClients((prev) => [...prev, c])}
+          usage={clientUsage}
+          text={customerText}
+          onText={setCustomerText}
+          placeholder="Customer — type a name, or tap the arrow"
+          emptyOption="Select a client or company"
+        />
 
         {suggestedItems.length > 0 && (
           <div>

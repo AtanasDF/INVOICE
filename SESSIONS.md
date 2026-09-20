@@ -58,6 +58,54 @@ itself; and allowing the camera once should be enough for every camera in the ap
 suppress the "asked every time" tip outright (it would fail `test-camera-tip`, which fakes a
 slow prompt in a browser that reports granted); the lead's one-line wiring is not needed —
 the list pages pick the new button up through `ScanOrAdd`.
+## 2026-09-20 — Pick a company from anywhere, check it against the register (`feature/company-picker`)
+
+**Brief (via the lead session, from Atanas):** the new-invoice form only lets him choose a
+saved company; it should be free text tied to the Companies House register, with an arrow
+on the right for his saved ones, most used first then alphabetical. Everything with a
+company name or address should have the register. Scanners should fill in what the
+register holds and the document doesn't, and every company should be checked.
+
+**Done so far (branch `feature/company-picker`, no schema change):**
+
+- `ContactField` (new): one customer/supplier field. Free text with a ▾ on the right that
+  is a real `<select>` (so a phone opens its own picker) holding the saved contacts, most
+  used first under "Most used", then "A–Z". Typing filters the saved ones and, with a key,
+  searches Companies House under "On the register". A register pick opens a card with the
+  registered name, company number and registered office and only saves it on "Add as
+  client/supplier" — nothing is ever created by typing.
+- Used on New invoice (customer), New receipt (supplier) and the scan review (supplier).
+  The new client/supplier form keeps `CompanyNameInput`, which now shares the same rows.
+- `/api/company-search` also answers `number=` (a company's profile, the only place the
+  register publishes a status) and `scope=all` (dissolved companies included, for checking
+  a name already on a document). Same auth, same limits, same per-instance cache.
+- Scan review: the registered address (only when none was read) and the company number are
+  filled in from the register, marked, and undoable. A dissolved or liquidated company, or
+  a Ltd name with nothing on the register, says so plainly wherever the name is shown.
+- Without `COMPANIES_HOUSE_API_KEY` nothing mentions the register: no register rows, no
+  notes, no gap-fill, and no lookups at all. The field is then a searchable picker over
+  his saved contacts, most used first.
+- A name is only checked against the register once it is committed (a picked contact, or
+  the printed name on a scan), not on every keystroke; the typeahead only searches while
+  the list is open. So one call per pause, not two.
+- The company number has nowhere to live on `clients` without a migration, and the brief
+  ruled schema changes out: it is kept on the device against the saved row
+  (`company-register` in localStorage, `src/lib/companyRegister.ts`) so a later check asks
+  for that exact company, and falls back to a name search on a phone that has never seen
+  it. A one-line migration-029 adding `clients.company_number` would make it proper.
+- Main gained `/api/company-check` and a Check-a-company page while this branch was out
+  (the fuller report). No file overlaps: merging this branch touches only SESSIONS.md.
+  `/api/company-search` now reads the same `COMPANIES_HOUSE_API_BASE` override so both
+  talk to the same register. Worth deciding later whether the quiet per-field check should
+  read the report route instead of its own `number=`.
+- A page added to a scanned document re-reads it, which replaces the details: the register
+  is asked again so its fill comes back with them (and the note never outlives it), while
+  an Undo he made still stands.
+- Tests (dev server on 3306, mocked DB): new `test-company-picker.mjs` 39/39.
+  Regressions: review-fixes 21/21, clear 22/22, multi-docs 33/33, uploads 15/15,
+  fit-sweep 26/26. The older `test-company.mjs` is 7/8 then errors, the same as on main
+  before this branch: it still expects the Free page's old address textarea, which the
+  address rework replaced. tsc, eslint, build clean.
 
 ## 2026-09-19 — Several documents in one scan, Save all ready (`feature/multi-docs`)
 
