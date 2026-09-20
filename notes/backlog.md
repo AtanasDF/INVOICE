@@ -74,7 +74,10 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 - [ ] 13. Email-import: inline signature images, unreadable-document filing
 - [ ] 14. Customer matching on a scanned invoice (exact-only)
 - [ ] 15. Free-page quote not importable as an invoice
-- [ ] 16. Supplier price "12.50 per length" rejected, not £0
+- [x] 16. Supplier price "12.50 per length" rejected, not £0 —
+  `harness/test-price-words.mjs`. Needed `record_quote_request_response` implemented in
+  `mockdb.mjs` first: the owner-side answer path was untestable without it, which also
+  blocked item 17.
 - [ ] 17. Quote-request background refresh not adopting a supplier's answer
 - [ ] 18. VAT snapshot branch — merge-readiness re-run
 

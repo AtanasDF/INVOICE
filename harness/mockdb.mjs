@@ -91,6 +91,52 @@ export function handle(db, method, path, search, headers, body) {
     link.first_viewed_at = link.first_viewed_at ?? now;
     return { status: 200, json: [{ quote_id: link.quote_id, user_id: link.user_id, first_view: link.view_count === 1 }] };
   }
+  // The owner typing in or scanning a supplier's answer (migration-028).
+  // Faithful to the parts a suite can tell apart: it refuses an answer that
+  // changed since the page loaded (40001), a closed request, an unknown
+  // status, and a negative delivery; it keeps what it replaces in
+  // `previous`; and it drops prices for items that aren't on the request.
+  // Without it the whole owner-side answer path was untestable, and a
+  // suite that tried it just saw nothing happen.
+  if (path === "/rest/v1/rpc/record_quote_request_response") {
+    const b = body ?? {};
+    const row = (db.tables.quote_request_suppliers ?? []).find((r) => r.id === b.p_id);
+    if (!row) return { status: 400, json: { message: "That supplier isn't on one of your requests.", code: "42501" } };
+    const req = (db.tables.quote_requests ?? []).find((r) => r.id === row.request_id);
+    if (!req || req.status !== "open") return { status: 400, json: { message: "This request is closed. Reopen it to change a supplier's prices.", code: "55000" } };
+    if ((row.responded_at ?? null) !== (b.p_seen_responded_at ?? null)) {
+      return { status: 400, json: { message: "This supplier's answer has changed since the page loaded (they may have replied online). Reload to see it.", code: "40001" } };
+    }
+    if (!["waiting", "replied", "declined"].includes(b.p_status) || (b.p_status !== "waiting" && !["manual", "scan"].includes(b.p_source))) {
+      return { status: 400, json: { message: "That isn't an answer the app knows.", code: "22023" } };
+    }
+    if (b.p_delivery != null && b.p_delivery < 0) return { status: 400, json: { message: "Delivery can't be less than £0.", code: "22023" } };
+    const replied = b.p_status === "replied";
+    if (row.status !== "waiting") {
+      row.previous = [...(row.previous ?? []), {
+        status: row.status, source: row.source, responded_at: row.responded_at, responder_name: row.responder_name,
+        prices: row.prices, delivery: row.delivery, vat_included: row.vat_included, valid_until: row.valid_until,
+        note: row.note, document_path: row.document_path, replaced_at: new Date().toISOString(),
+      }];
+    }
+    const ids = new Set((req.items ?? []).map((i) => i.id));
+    const clean = {};
+    for (const [k, v] of Object.entries(b.p_prices ?? {})) if (ids.has(k)) clean[k] = v;
+    Object.assign(row, {
+      status: b.p_status,
+      source: b.p_status === "waiting" ? null : b.p_source,
+      responded_at: b.p_status === "waiting" ? null : new Date().toISOString(),
+      responder_name: null,
+      prices: replied ? clean : {},
+      delivery: replied ? b.p_delivery : null,
+      vat_included: replied && !!b.p_vat_included,
+      valid_until: replied ? b.p_valid_until : null,
+      note: b.p_status === "waiting" ? "" : String(b.p_note ?? "").slice(0, 2000),
+      document_path: b.p_status === "waiting" ? null : b.p_document_path,
+    });
+    return { status: 200, json: null };
+  }
+
   if (path === "/rest/v1/rpc/respond_to_quote_link") {
     const { p_token, p_response, p_name } = body ?? {};
     if (!["accepted", "declined"].includes(p_response)) return { status: 200, json: [] };
