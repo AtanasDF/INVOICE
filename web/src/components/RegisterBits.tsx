@@ -30,11 +30,12 @@ const NOTHING: RegisterCheck = { company: null, note: null, checking: false };
 // What the register says about a name that is already in the form. A
 // remembered company number asks for that company's profile, which is the
 // only place the register publishes a status; without one it searches by
-// name (dissolved companies included) and only trusts an exact match.
-// A name with no company ending is left alone: most of his suppliers are
-// sole traders, and "not on the register" about a plumber is noise.
-// `onResult` fires when an answer lands, so a form can fill its gaps from
-// it without watching the returned state.
+// name (dissolved companies included) and only trusts an exact match --
+// a printed "Northside Joinery" does find NORTHSIDE JOINERY LTD. Nothing
+// found is only worth saying about a name that ends in Ltd: most of his
+// suppliers are sole traders, and "not on the register" about a plumber
+// is noise. `onResult` fires when an answer lands, so a form can fill its
+// gaps from it without watching the returned state.
 export function useRegisterCheck(name: string, numberHint: string | null, on: boolean, onResult?: (check: RegisterCheck) => void): RegisterCheck {
   const [state, setState] = useState<RegisterCheck>(NOTHING);
   const report = useRef(onResult);
@@ -43,7 +44,7 @@ export function useRegisterCheck(name: string, numberHint: string | null, on: bo
   });
   useEffect(() => {
     const wanted = name.trim();
-    const skip = !on || (!numberHint && (wanted.length < 3 || !looksLikeCompany(wanted)));
+    const skip = !on || (!numberHint && wanted.length < 3);
     const controller = new AbortController();
     const settle = (next: RegisterCheck) => {
       setState(next);
@@ -60,7 +61,7 @@ export function useRegisterCheck(name: string, numberHint: string | null, on: bo
           ? await companyByNumber(numberHint, controller.signal)
           : bestRegisterMatch(wanted, await searchRegister(wanted, { all: true, signal: controller.signal }));
         if (controller.signal.aborted) return;
-        settle({ company, note: company ? registerNote(company.status) : NOT_ON_REGISTER, checking: false });
+        settle({ company, note: company ? registerNote(company.status) : looksLikeCompany(wanted) ? NOT_ON_REGISTER : null, checking: false });
       } catch {
         if (!controller.signal.aborted) settle(NOTHING);
       }

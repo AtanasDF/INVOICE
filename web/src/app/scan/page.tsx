@@ -766,7 +766,8 @@ export default function ScanPage() {
     const next: DocumentDetails = { ...previous };
     const added: string[] = [];
     if (!previous.supplierAddress?.trim() && c.address) {
-      next.supplierAddress = c.address;
+      // One line: the detail fields are single-line inputs, which drop \n.
+      next.supplierAddress = c.address.replace(/\n/g, ", ");
       added.push("the registered address");
     }
     if (!(previous.other ?? []).some((o) => /company number/i.test(o.label))) {
@@ -1252,6 +1253,7 @@ export default function ScanPage() {
                 onSelect={(c) => pickSupplier(c?.id ?? "")}
                 onCreated={(c) => setClients((prev) => [...prev, c])}
                 onCheck={onRegisterCheck}
+                checkTyped
                 usage={supplierUsage}
                 text={form.vendor}
                 onText={(v) => patch({ vendor: v })}

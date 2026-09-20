@@ -45,6 +45,7 @@ export default function ContactField({
   emptyOption,
   listLabel,
   onCheck,
+  checkTyped = false,
   id,
   inputClassName = "w-full rounded-lg border px-3 py-2 pr-10",
 }: {
@@ -63,6 +64,9 @@ export default function ContactField({
   // The register's answer about the name in the field, for a form that
   // fills its own gaps from it.
   onCheck?: (check: RegisterCheck) => void;
+  // Check a name typed in but not picked, for a form whose text is the
+  // name on a document rather than a search box.
+  checkTyped?: boolean;
   id?: string;
   inputClassName?: string;
 }) {
@@ -92,7 +96,7 @@ export default function ContactField({
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      if (!on || query.length < 3) {
+      if (!on || !open || query.length < 3) {
         setItems([]);
         return;
       }
@@ -110,13 +114,14 @@ export default function ContactField({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, on]);
+  }, [query, on, open]);
 
   // A company already saved under this name doesn't need adding again.
   const saved = useMemo(() => new Set(contacts.map((c) => normaliseSupplierName(c.name))), [contacts]);
   const register = items.filter((c) => !saved.has(normaliseSupplierName(c.name)));
   const numberHint = recallCompany(selectedId)?.number ?? null;
-  const check = useRegisterCheck(selected ? selected.name : text, numberHint, on && !!shown.trim(), onCheck);
+  const checked = selected ? selected.name : checkTyped ? text : "";
+  const check = useRegisterCheck(checked, numberHint, on && !!checked.trim(), onCheck);
 
   const rows = [...filtered.map((c) => ({ contact: c, company: null as CompanyMatch | null })), ...register.map((c) => ({ contact: null as Client | null, company: c }))];
   const listOpen = open && !!query && (rows.length > 0 || searching);

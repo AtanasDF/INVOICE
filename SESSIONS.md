@@ -29,7 +29,21 @@ register holds and the document doesn't, and every company should be checked.
   filled in from the register, marked, and undoable. A dissolved or liquidated company, or
   a Ltd name with nothing on the register, says so plainly wherever the name is shown.
 - Without `COMPANIES_HOUSE_API_KEY` nothing mentions the register: no register rows, no
-  notes, no gap-fill. The field is then a searchable picker over his saved contacts.
+  notes, no gap-fill, and no lookups at all. The field is then a searchable picker over
+  his saved contacts, most used first.
+- A name is only checked against the register once it is committed (a picked contact, or
+  the printed name on a scan), not on every keystroke; the typeahead only searches while
+  the list is open. So one call per pause, not two.
+- The company number has nowhere to live on `clients` without a migration, and the brief
+  ruled schema changes out: it is kept on the device against the saved row
+  (`company-register` in localStorage, `src/lib/companyRegister.ts`) so a later check asks
+  for that exact company, and falls back to a name search on a phone that has never seen
+  it. A one-line migration-029 adding `clients.company_number` would make it proper.
+- Tests (dev server on 3306, mocked DB): new `test-company-picker.mjs` 36/36 twice.
+  Regressions: review-fixes 21/21, clear 22/22, multi-docs 33/33, uploads 15/15,
+  fit-sweep 26/26. The older `test-company.mjs` is 7/8 then errors, the same as on main
+  before this branch: it still expects the Free page's old address textarea, which the
+  address rework replaced. tsc, eslint, build clean.
 
 ## 2026-09-19 — Several documents in one scan, Save all ready (`feature/multi-docs`)
 
