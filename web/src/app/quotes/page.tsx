@@ -8,7 +8,7 @@ import { quoteStatusBadgeClass, quoteStatusLabel, shortDate } from "@/lib/quoteS
 import { depositGross } from "@/lib/quoteDeposit";
 import { todayIso } from "@/lib/freeInvoiceDraft";
 import Tip from "@/components/Tip";
-import { errorText } from "@/lib/errorText";
+import { loadFailed } from "@/lib/errorText";
 import TextCustomer from "@/components/TextCustomer";
 import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
 
@@ -30,7 +30,7 @@ export default function QuotesPage() {
         setClients(c);
         setProfile(biz);
       })
-      .catch((err) => setError(errorText(err, "Could not load quotes.")))
+      .catch((err) => setError(loadFailed(err, "your quotes")))
       .finally(() => setLoading(false));
   }, []);
 

@@ -7,7 +7,7 @@ import QuoteForm, { QuoteFormValue, defaultValidUntil } from "@/components/quote
 import type { NewCustomerStart } from "@/components/quote/CustomerPicker";
 import { Client, InvoiceItem, businessProfileStore, clientsStore, nextQuoteNumber, quotesStore } from "@/lib/storage";
 import { clearFreeInvoiceDraft, readFreeInvoiceDraft, todayIso } from "@/lib/freeInvoiceDraft";
-import { errorText } from "@/lib/errorText";
+import { loadFailed } from "@/lib/errorText";
 import { looksLikeCompany } from "@/lib/reminderTemplates";
 
 export default function NewQuotePage() {
@@ -55,7 +55,7 @@ export default function NewQuotePage() {
           initial: { clientId: "", number: nextQuoteNumber(quotes), date, validUntil: defaultValidUntil(date), items: [], notes: "", deposit: null },
         });
       })
-      .catch((err) => setError(errorText(err, "Could not load your clients.")));
+      .catch((err) => setError(loadFailed(err, "your clients", "You can still fill this in.")));
   }, []);
 
   async function save(v: QuoteFormValue) {

@@ -6,6 +6,7 @@ import { money } from "@/lib/money";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Invoice, Receipt, invoicesStore, receiptsStore } from "@/lib/storage";
+import { loadFailed } from "@/lib/errorText";
 
 function monthKey(dateStr: string) {
   return dateStr.slice(0, 7);
@@ -46,6 +47,7 @@ export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "year" | "custom">("month");
   const [weekAnchor, setWeekAnchor] = useState(() => new Date().toISOString().slice(0, 10));
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -63,11 +65,13 @@ export default function ExpensesPage() {
   const [viewMode, setViewMode] = useState<"expenses" | "combined">("expenses");
 
   useEffect(() => {
-    Promise.all([receiptsStore.all(), invoicesStore.all()]).then(([r, i]) => {
-      setReceipts(r);
-      setInvoices(i);
-      setLoading(false);
-    });
+    Promise.all([receiptsStore.all(), invoicesStore.all()])
+      .then(([r, i]) => {
+        setReceipts(r);
+        setInvoices(i);
+      })
+      .catch((err) => setError(loadFailed(err, "your figures")))
+      .finally(() => setLoading(false));
   }, []);
 
   const weekStart = periodMode === "week" ? startOfWeek(weekAnchor) : "";
@@ -140,6 +144,11 @@ export default function ExpensesPage() {
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+  // Zeroes would read as "you spent nothing", which is the opposite of
+  // "we couldn't reach your records".
+  if (error) {
+    return <p className="text-sm text-red-600">{error}</p>;
   }
 
   const periodLabel =

@@ -11,6 +11,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { findDuplicate } from "@/lib/duplicates";
 import ClearFormButton from "@/components/ClearFormButton";
 import ContactField, { type Usage } from "@/components/ContactField";
+import { loadFailed } from "@/lib/errorText";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -53,13 +54,17 @@ export default function NewReceiptPage() {
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]).then(([c, r, profile]) => {
-      setClients(c);
-      setReceipts(r);
-      setCategories(effectiveCategories(profile.customCategories));
-      const usual = mostUsedCategory(r.map((receipt) => receipt.category));
-      if (usual) setCategory(usual);
-    });
+    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()])
+      .then(([c, r, profile]) => {
+        setClients(c);
+        setReceipts(r);
+        setCategories(effectiveCategories(profile.customCategories));
+        const usual = mostUsedCategory(r.map((receipt) => receipt.category));
+        if (usual) setCategory(usual);
+      })
+      // The form still works without them: only the supplier list and the
+      // usual category are missing, so say so rather than block the page.
+      .catch((err) => setError(loadFailed(err, "your suppliers and categories", "You can still fill this in.")));
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);

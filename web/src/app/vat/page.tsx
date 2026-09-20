@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { CreditNote, Invoice, InvoicePayment, Receipt, businessProfileStore, creditNotesStore, invoicesStore, paymentsStore, receiptsStore } from "@/lib/storage";
 import { VatBasis, previousQuarter, quarterLabel, quarterOf, vatFigures } from "@/lib/vatReturn";
 import { shortDate } from "@/lib/quoteStatus";
-import { errorText } from "@/lib/errorText";
+import { loadFailed } from "@/lib/errorText";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -27,7 +27,7 @@ export default function VatPage() {
   useEffect(() => {
     Promise.all([invoicesStore.all(), creditNotesStore.all(), paymentsStore.all(), receiptsStore.all(), businessProfileStore.get()])
       .then(([invoices, credits, payments, receipts, profile]) => setData({ invoices, credits, payments, receipts, vatRegistered: profile.vatRegistered }))
-      .catch((err) => setError(errorText(err, "Couldn't load your figures.")));
+      .catch((err) => setError(loadFailed(err, "your figures")));
   }, []);
 
   const f = data ? vatFigures(data.invoices, data.credits, data.payments, data.receipts, data.vatRegistered, { from, to }, basis) : null;

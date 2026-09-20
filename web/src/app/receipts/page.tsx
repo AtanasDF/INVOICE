@@ -11,6 +11,7 @@ import { money } from "@/lib/money";
 import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } from "@/lib/supplierLinks";
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
+import { loadFailed } from "@/lib/errorText";
 
 type ReceiptDraft = {
   clientId: string;
@@ -149,14 +150,16 @@ export default function ReceiptsPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get(), receiptPagesStore.counts()]).then(([c, r, profile, counts]) => {
-      setClients(c);
-      setReceipts(r);
-      setCategories(effectiveCategories(profile.customCategories));
-      setPageCounts(counts);
-      setLinkSkips(readLinkSkips());
-      setLoading(false);
-    });
+    Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get(), receiptPagesStore.counts()])
+      .then(([c, r, profile, counts]) => {
+        setClients(c);
+        setReceipts(r);
+        setCategories(effectiveCategories(profile.customCategories));
+        setPageCounts(counts);
+        setLinkSkips(readLinkSkips());
+      })
+      .catch((err) => setError(loadFailed(err, "your receipts")))
+      .finally(() => setLoading(false));
   }, []);
 
   // All suppliers, including archived ones -- used for filtering, where
@@ -525,7 +528,7 @@ export default function ReceiptsPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-2">
-          {filteredReceipts.length === 0 && (
+          {filteredReceipts.length === 0 && !error && (
             <p className="text-sm text-neutral-500">
               {hasActiveFilters ? (
                 "Nothing matches these filters."

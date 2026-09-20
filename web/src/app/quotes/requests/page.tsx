@@ -7,7 +7,7 @@ import { ANSWER_BADGES, ANSWER_LABELS, QuoteRequest, RequestSupplier, answerKey,
 import { formatPence, supplierTotal } from "@/lib/quoteCompare";
 import { shortDate } from "@/lib/quoteStatus";
 import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
-import { errorText } from "@/lib/errorText";
+import { loadFailed } from "@/lib/errorText";
 
 export default function QuoteRequestsPage() {
   const [requests, setRequests] = useState<QuoteRequest[]>([]);
@@ -23,7 +23,7 @@ export default function QuoteRequestsPage() {
         setRows(s);
         setClients(c);
       })
-      .catch((err) => setError(errorText(err, "Could not load your requests.")))
+      .catch((err) => setError(loadFailed(err, "your quote requests")))
       .finally(() => setLoading(false));
   }, []);
 

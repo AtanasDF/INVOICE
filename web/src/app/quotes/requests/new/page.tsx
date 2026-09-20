@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import RequestForm from "@/components/quoteRequest/RequestForm";
 import { Client, clientsStore } from "@/lib/storage";
 import { RequestInput, quoteRequestsStore, requestSuppliersStore } from "@/lib/quoteRequests";
-import { errorText } from "@/lib/errorText";
+import { loadFailed } from "@/lib/errorText";
 
 const EMPTY: RequestInput = { title: "", items: [], notes: "", neededBy: null, siteAddress: "" };
 
@@ -19,7 +19,7 @@ export default function NewQuoteRequestPage() {
     clientsStore
       .all()
       .then((all) => setSuppliers(all.filter((c) => c.kind === "supplier" && !c.archived)))
-      .catch((err) => setError(errorText(err, "Could not load your suppliers.")));
+      .catch((err) => setError(loadFailed(err, "your suppliers", "You can still fill this in.")));
   }, []);
 
   // The suppliers are added after the request exists; if that fails, the

@@ -9,7 +9,7 @@ import { ShareButtons, useDocumentPdf } from "@/components/SendInvoicePanel";
 import StatementDocument from "@/components/StatementDocument";
 import { buildStatement, statementText } from "@/lib/statement";
 import { shortDate } from "@/lib/quoteStatus";
-import { errorText } from "@/lib/errorText";
+import { loadFailed } from "@/lib/errorText";
 
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -34,7 +34,7 @@ export default function StatementPage() {
           profile,
         })
       )
-      .catch((err) => setError(errorText(err, "Couldn't load the statement.")));
+      .catch((err) => setError(loadFailed(err, "the statement")));
   }, [id]);
 
   const statement = data ? buildStatement(data.invoices, data.credits, data.payments, data.profile.vatRegistered, asAt) : null;

@@ -11,6 +11,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { INVOICE_STATUS_KINDS, INVOICE_STATUS_LABELS, InvoiceStatus, displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
+import { loadFailed } from "@/lib/errorText";
 
 type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
 
@@ -32,14 +33,16 @@ export default function InvoicesPage() {
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
-    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get(), creditNotesStore.all(), paymentsStore.all()]).then(([inv, c, biz, cn, pay]) => {
-      setInvoices(inv);
-      setClients(c);
-      setProfile(biz);
-      setCreditNotes(cn);
-      setPayments(pay);
-      setLoading(false);
-    });
+    Promise.all([invoicesStore.all(), clientsStore.all(), businessProfileStore.get(), creditNotesStore.all(), paymentsStore.all()])
+      .then(([inv, c, biz, cn, pay]) => {
+        setInvoices(inv);
+        setClients(c);
+        setProfile(biz);
+        setCreditNotes(cn);
+        setPayments(pay);
+      })
+      .catch((err) => setError(loadFailed(err, "your invoices")))
+      .finally(() => setLoading(false));
   }, []);
 
   // Gross (incl. VAT) less any CIS the contractor keeps back -- what the
@@ -255,7 +258,7 @@ export default function InvoicesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {filteredInvoices.length === 0 && (
+          {filteredInvoices.length === 0 && !error && (
             <p className="text-sm text-neutral-500">
               {hasActiveFilters ? (
                 "No invoices match these filters."

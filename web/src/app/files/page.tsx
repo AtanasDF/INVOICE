@@ -6,12 +6,14 @@ import { Client, Receipt, ReceiptPage, clientsStore, receiptPagesStore, receipts
 import { isPdfDataUrl } from "@/lib/fileType";
 import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
+import { loadFailed } from "@/lib/errorText";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [pageCounts, setPageCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [filterSupplierId, setFilterSupplierId] = useState("");
@@ -21,12 +23,14 @@ export default function FilesPage() {
   const previewIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    Promise.all([receiptsStore.all(), clientsStore.all(), receiptPagesStore.counts()]).then(([r, c, counts]) => {
-      setReceipts(r);
-      setClients(c);
-      setPageCounts(counts);
-      setLoading(false);
-    });
+    Promise.all([receiptsStore.all(), clientsStore.all(), receiptPagesStore.counts()])
+      .then(([r, c, counts]) => {
+        setReceipts(r);
+        setClients(c);
+        setPageCounts(counts);
+      })
+      .catch((err) => setError(loadFailed(err, "your documents")))
+      .finally(() => setLoading(false));
   }, []);
 
   function openPreview(r: Receipt) {
@@ -35,9 +39,15 @@ export default function FilesPage() {
     setPreviewIndex(0);
     setPreviewPages(null);
     if (!pageCounts.get(r.id)) return;
-    receiptPagesStore.forReceipt(r.id).then((pages) => {
-      if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages });
-    });
+    receiptPagesStore
+      .forReceipt(r.id)
+      .then((pages) => {
+        if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages });
+      })
+      // Page 1 is already on screen; without this the extra pages spin forever.
+      .catch(() => {
+        if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages: [] });
+      });
   }
 
   function closePreview() {
@@ -94,6 +104,8 @@ export default function FilesPage() {
 
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
+      ) : error ? (
+        <p className="text-sm text-red-600">{error}</p>
       ) : files.length === 0 ? (
         <p className="text-sm text-neutral-500">
           {hasActiveFilters ? (

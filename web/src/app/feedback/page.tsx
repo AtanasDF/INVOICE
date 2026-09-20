@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Feedback, feedbackStore } from "@/lib/storage";
+import { loadFailed } from "@/lib/errorText";
 
 const CATEGORIES = ["Bug", "Confusing", "Missing feature", "Other"];
 
@@ -16,10 +17,11 @@ export default function FeedbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    feedbackStore.all().then((f) => {
-      setItems(f);
-      setLoading(false);
-    });
+    feedbackStore
+      .all()
+      .then(setItems)
+      .catch((err) => setError(loadFailed(err, "what you've noted before", "You can still add to it.")))
+      .finally(() => setLoading(false));
   }, []);
 
   async function submit(e: React.FormEvent) {

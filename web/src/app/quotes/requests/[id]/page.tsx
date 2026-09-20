@@ -27,7 +27,7 @@ import {
 } from "@/lib/quoteRequests";
 import { Picks, compare, formatPence, planFor, quantityText, supplierTotal } from "@/lib/quoteCompare";
 import { todayIso } from "@/lib/freeInvoiceDraft";
-import { errorText } from "@/lib/errorText";
+import { errorText, loadFailed } from "@/lib/errorText";
 
 const PRIMARY = "rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50";
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
@@ -90,7 +90,7 @@ export default function QuoteRequestPage() {
         apply(d);
         if (new URLSearchParams(window.location.search).get("suppliers") === "failed") setError("The request was saved, but the suppliers couldn't be added. Add them below.");
       })
-      .catch((err) => setError(errorText(err, "Could not load the request.")))
+      .catch((err) => setError(loadFailed(err, "this request")))
       .finally(() => setLoading(false));
   }, [id]);
 

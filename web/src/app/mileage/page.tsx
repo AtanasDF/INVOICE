@@ -19,7 +19,7 @@ import {
 } from "@/lib/mileage";
 import { normalisePostcode } from "@/lib/addressLookup";
 import { supabase } from "@/lib/supabaseClient";
-import { errorText } from "@/lib/errorText";
+import { errorText, loadFailed } from "@/lib/errorText";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -44,7 +44,7 @@ export default function MileagePage() {
     receiptsStore
       .all()
       .then(setReceipts)
-      .catch((err) => setError(errorText(err, "Couldn't load your trips.")));
+      .catch((err) => setError(loadFailed(err, "your trips")));
   }, []);
 
   const trips = (receipts ?? []).filter((r) => tripOf(r));

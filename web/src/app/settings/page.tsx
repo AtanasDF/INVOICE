@@ -26,6 +26,7 @@ import CompanyNameInput from "@/components/CompanyNameInput";
 import AddressFields from "@/components/AddressFields";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
+import { loadFailed } from "@/lib/errorText";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -104,8 +105,9 @@ export default function SettingsPage() {
         .map((inv) => parseSequenceNumber(inv.number, p.invoicePrefix))
         .filter((n): n is number => n !== null);
       setHighestExistingNumber(sequenceNumbers.length ? Math.max(...sequenceNumbers) : 0);
-      setLoading(false);
-    });
+    })
+      .catch((err) => setError(loadFailed(err, "your settings")))
+      .finally(() => setLoading(false));
     getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
   }, []);
 
@@ -273,6 +275,9 @@ export default function SettingsPage() {
   }
 
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
+  // Empty boxes here would look like settings that had been wiped, and
+  // saving over them would wipe them for real.
+  if (error) return <p className="text-sm text-red-600">{error}</p>;
 
   const nextNumberTooLow = (parseInt(invoiceNextNumber, 10) || 0) <= highestExistingNumber && highestExistingNumber > 0;
   // Registered details stay on screen once they're filled in, whatever the

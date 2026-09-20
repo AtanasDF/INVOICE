@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { money } from "@/lib/money";
 import { DuplicatePair, duplicatePairs, pairKey, readIgnoredDuplicates, writeIgnoredDuplicates } from "@/lib/duplicateContacts";
-import { errorText } from "@/lib/errorText";
+import { errorText, loadFailed } from "@/lib/errorText";
 
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
@@ -69,11 +69,13 @@ export default function ClientsPage() {
   const [ignored, setIgnored] = useState<string[]>(() => readIgnoredDuplicates());
 
   useEffect(() => {
-    Promise.all([clientsStore.all(), invoicesStore.all()]).then(([c, inv]) => {
-      setClients(c);
-      setInvoices(inv);
-      setLoading(false);
-    });
+    Promise.all([clientsStore.all(), invoicesStore.all()])
+      .then(([c, inv]) => {
+        setClients(c);
+        setInvoices(inv);
+      })
+      .catch((err) => setError(loadFailed(err, "your contacts")))
+      .finally(() => setLoading(false));
     businessProfileStore.get().then((p) => setBusinessName(p.businessName), () => {});
   }, []);
 
@@ -261,7 +263,7 @@ export default function ClientsPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {visibleClients.length === 0 && archivedCount === 0 && (
+          {visibleClients.length === 0 && archivedCount === 0 && !error && (
             <p className="text-sm text-neutral-500">
               No {tab}s yet. Scan a business card, letter or invoice to add one, or add one manually.
             </p>

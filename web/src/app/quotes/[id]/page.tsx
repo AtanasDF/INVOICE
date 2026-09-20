@@ -15,7 +15,7 @@ import { invoiceVat } from "@/lib/invoiceBalance";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, shortDate, termsLength } from "@/lib/quoteStatus";
-import { errorText } from "@/lib/errorText";
+import { errorText, loadFailed } from "@/lib/errorText";
 import { depositDeductions, depositGross, depositLines, depositTag } from "@/lib/quoteDeposit";
 
 type Open = Exclude<QuoteStatus, "invoiced">;
@@ -94,7 +94,7 @@ export default function QuotePage() {
         setDepositOrphan(d.depositOrphan);
         setLink(d.link);
       })
-      .catch((err) => setError(errorText(err, "Could not load the quote.")))
+      .catch((err) => setError(loadFailed(err, "this quote")))
       .finally(() => setLoading(false));
   }, [id]);
 

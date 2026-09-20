@@ -7,6 +7,7 @@ import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsS
 import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import ClearFormButton from "@/components/ClearFormButton";
+import { loadFailed } from "@/lib/errorText";
 
 function RecurringTabs() {
   return (
@@ -36,14 +37,16 @@ export default function RecurringExpensesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([recurringExpensesStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([r, c, profile]) => {
-      setItems(r);
-      setClients(c);
-      const active = effectiveCategories(profile.customCategories);
-      setCategories(active);
-      setCategory(active[0]);
-      setLoading(false);
-    });
+    Promise.all([recurringExpensesStore.all(), clientsStore.all(), businessProfileStore.get()])
+      .then(([r, c, profile]) => {
+        setItems(r);
+        setClients(c);
+        const active = effectiveCategories(profile.customCategories);
+        setCategories(active);
+        setCategory(active[0]);
+      })
+      .catch((err) => setError(loadFailed(err, "what repeats each month")))
+      .finally(() => setLoading(false));
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
@@ -201,7 +204,7 @@ export default function RecurringExpensesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {items.length === 0 && <p className="text-sm text-neutral-500">No recurring expenses set up yet.</p>}
+          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring expenses set up yet.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             return (

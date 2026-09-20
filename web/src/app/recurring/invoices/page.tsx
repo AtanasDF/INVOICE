@@ -18,6 +18,7 @@ import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } fr
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
 import ClearFormButton from "@/components/ClearFormButton";
+import { loadFailed } from "@/lib/errorText";
 
 function RecurringTabs() {
   return (
@@ -46,12 +47,14 @@ export default function RecurringInvoicesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([recurringInvoicesStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([r, c, biz]) => {
-      setItems(r);
-      setClients(c);
-      setProfile(biz);
-      setLoading(false);
-    });
+    Promise.all([recurringInvoicesStore.all(), clientsStore.all(), businessProfileStore.get()])
+      .then(([r, c, biz]) => {
+        setItems(r);
+        setClients(c);
+        setProfile(biz);
+      })
+      .catch((err) => setError(loadFailed(err, "your repeating invoices")))
+      .finally(() => setLoading(false));
   }, []);
 
   const billableClients = clients.filter((c) => c.kind === "client" && !c.archived);
@@ -261,7 +264,7 @@ export default function RecurringInvoicesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {items.length === 0 && <p className="text-sm text-neutral-500">No recurring invoices set up yet.</p>}
+          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring invoices set up yet.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             const total = computeInvoiceTotals(item.items, profile?.vatRegistered ?? false).total;

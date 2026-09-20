@@ -5,6 +5,7 @@ import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } fr
 import { effectiveCategories } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
+import { loadFailed } from "@/lib/errorText";
 
 type DraftState = {
   vendor: string;
@@ -50,14 +51,16 @@ export default function ReviewQueuePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([receiptsStore.all(), clientsStore.all(), businessProfileStore.get()]).then(([r, c, profile]) => {
-      const pending = r.filter((x) => x.needsReview);
-      setReceipts(pending);
-      setClients(c);
-      setCategories(effectiveCategories(profile.customCategories));
-      setDrafts(Object.fromEntries(pending.map((x) => [x.id, draftFor(x)])));
-      setLoading(false);
-    });
+    Promise.all([receiptsStore.all(), clientsStore.all(), businessProfileStore.get()])
+      .then(([r, c, profile]) => {
+        const pending = r.filter((x) => x.needsReview);
+        setReceipts(pending);
+        setClients(c);
+        setCategories(effectiveCategories(profile.customCategories));
+        setDrafts(Object.fromEntries(pending.map((x) => [x.id, draftFor(x)])));
+      })
+      .catch((err) => setError(loadFailed(err, "the review queue")))
+      .finally(() => setLoading(false));
   }, []);
 
   function updateDraft(id: string, patch: Partial<DraftState>) {
@@ -126,7 +129,7 @@ export default function ReviewQueuePage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {receipts.length === 0 ? (
+      {receipts.length === 0 && !error ? (
         <p className="text-sm text-neutral-500">Nothing waiting on review.</p>
       ) : (
         <div className="space-y-4">

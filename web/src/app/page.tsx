@@ -30,6 +30,7 @@ import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
+import { loadFailed } from "@/lib/errorText";
 
 function ScanIcon() {
   return (
@@ -71,6 +72,7 @@ export default function Dashboard() {
   const isIOS = useIsIOS();
   const { user } = useAuth();
   const [scanHandoffBusy, setScanHandoffBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [outstandingInvoices, setOutstandingInvoices] = useState<{ invoice: Invoice; amountDue: number; clientName: string }[]>([]);
   const [monthTotal, setMonthTotal] = useState(0);
@@ -139,6 +141,15 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      try {
+        await loadInto();
+      } catch (err) {
+        if (!cancelled) setLoadError(loadFailed(err, "your dashboard"));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    async function loadInto() {
       const [clients, receipts, invoices, profile, recurring, creditNotes, payments] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
@@ -190,7 +201,6 @@ export default function Dashboard() {
       }
       setBillCredits(credits);
       setSupplierNames(new Map(clients.map((c) => [c.id, c.name])));
-      setLoading(false);
     }
     load();
     return () => {
@@ -262,6 +272,11 @@ export default function Dashboard() {
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+  // Zeroes across the dashboard would read as "nothing is owed to you",
+  // which is a very different thing from "we couldn't reach your records".
+  if (loadError) {
+    return <p className="text-sm text-red-600">{loadError}</p>;
   }
 
   return (
