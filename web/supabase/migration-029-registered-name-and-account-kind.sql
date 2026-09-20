@@ -46,19 +46,29 @@ end $$;
 --     -> CHECK (account_kind IS NULL OR (account_kind = ANY (ARRAY['limited'::text, 'sole_trader'::text, 'personal'::text])))
 --   select count(*) from public.business_profile where registered_name is not null or company_number is not null or account_kind is not null;
 --     -> 0 (nothing was backfilled)
---   select count(*) from (select * from public.business_profile_backup_20260920_m029 b
---     except select user_id, business_name, vat_number, address, logo_url, show_overdue_reminders, custom_categories,
---       inbox_token, invoice_prefix, invoice_next_number, vat_registered, bank_details, reminder_text_before,
---       reminder_text_due, reminder_text_after, reminder_text_late, reminder_text_final,
---       reminder_late_payment_interest, updated_at from public.business_profile) d;
---     -> 0 (every column the row already had is untouched; list the backup's own columns if this project's
---        business_profile has since gained others)
+--   Every column the row already had, untouched, both ways (as json, so column order
+--   doesn't come into it, minus the three new keys). Each must return 0:
+--     select count(*) from (
+--       select to_jsonb(b) from public.business_profile_backup_20260920_m029 b
+--       except
+--       select to_jsonb(p) - 'registered_name' - 'company_number' - 'account_kind' from public.business_profile p) d;
+--     select count(*) from (
+--       select to_jsonb(p) - 'registered_name' - 'company_number' - 'account_kind' from public.business_profile p
+--       except
+--       select to_jsonb(b) from public.business_profile_backup_20260920_m029 b) d;
+--   If the app still says the columns don't exist after this, PostgREST's schema cache
+--   hasn't caught up: notify pgrst, 'reload schema';
 --   The owner's existing policy still covers the new columns (business_profile_owner_all is FOR ALL on the
 --   table, not per column), so no grant or policy change is needed. Rolled back as authenticated:
 --     begin;
 --     set local role authenticated;
 --     set local request.jwt.claims = '{"sub":"<atanas uuid>","role":"authenticated"}';
---     update public.business_profile set account_kind = 'sole_trader' where user_id = '<atanas uuid>';   -- 1 row
---     update public.business_profile set account_kind = 'ltd' where user_id = '<atanas uuid>';           -- must fail the check
---     do $$ begin raise exception 'rollback'; end $$;
+--     update public.business_profile set account_kind = 'sole_trader', registered_name = 'Test Ltd',
+--       company_number = '00000000' where user_id = '<atanas uuid>';   -- 1 row: the owner can write all three
+--     select account_kind, registered_name, company_number from public.business_profile where user_id = '<atanas uuid>';
+--     do $$ begin raise exception 'rolled back on purpose'; end $$;    -- nothing above is kept
+--     rollback;
+--   And, separately, that a wrong value is refused (this one aborts the transaction itself):
+--     begin;
+--     update public.business_profile set account_kind = 'ltd' where user_id = '<atanas uuid>';  -- must fail the check
 --     rollback;
