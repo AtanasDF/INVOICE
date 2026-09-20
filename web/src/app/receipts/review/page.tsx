@@ -228,10 +228,19 @@ export default function ReviewQueuePage() {
                         inputMode="decimal"
                       />
                     </div>
-                    {r.originalCurrency && r.originalAmount != null && (
+                    {r.originalCurrency && r.originalAmount != null && r.fxRate != null && (
                       <p className="text-xs text-neutral-500">
                         Originally {r.originalCurrency} {r.originalAmount.toFixed(2)} — converted at the time using a
-                        rate of {r.fxRate?.toFixed(4)}. Edit the GBP figures above if that looks off.
+                        rate of {r.fxRate.toFixed(4)}. Edit the GBP figures above if that looks off.
+                      </p>
+                    )}
+                    {/* No rate was available, so the figures above are still
+                        in the other currency. Saying it quietly in grey is
+                        not enough: approving it books the wrong number. */}
+                    {r.originalCurrency && r.fxRate == null && (
+                      <p className="rounded-lg bg-amber-50 p-2 text-xs font-medium text-amber-800">
+                        This is a {r.originalCurrency} document and no exchange rate could be fetched, so the figures above are
+                        {" "}{r.originalCurrency}, not pounds. Put the pound amounts in before approving it.
                       </p>
                     )}
 

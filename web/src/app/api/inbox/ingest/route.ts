@@ -159,12 +159,20 @@ export async function POST(req: Request) {
             originalCurrency = result.currency;
             fxRate = rate;
           } catch {
-            // Couldn't get a rate -- store the raw figures as GBP rather
-            // than dropping the receipt; the amount will be visibly wrong
-            // in the currency it's actually in, but that's exactly what
-            // the review queue is for.
+            // No rate (the lookup timed out, or the ECB set has none for
+            // this currency -- AED is offered and isn't covered). Keep the
+            // figures rather than drop the document, but record what
+            // currency they are actually in: without that the review queue
+            // shows a bare number in a box labelled "Total (£)", and a
+            // EUR 1,450 invoice is approved as £1,450 with the VAT on it
+            // reclaimed. With it, the reviewer is told the conversion is
+            // missing and can put the right figure in.
             amount = Math.max(0, total - vat);
             vatAmount = vat;
+            originalAmount = total;
+            originalVatAmount = vat;
+            originalCurrency = result.currency;
+            fxRate = null;
           }
         } else {
           amount = Math.max(0, total - vat);
@@ -178,6 +186,9 @@ export async function POST(req: Request) {
         if (askOrder && result.dateAmbiguous) cues.push(dateCue("Date", result.dateAsPrinted, result.date, result.dateAlternative));
         if (askOrder && result.dueDateAmbiguous) {
           cues.push(dateCue("Due date", result.dueDateAsPrinted, result.dueDate, result.dueDateAlternative));
+        }
+        if (originalCurrency && fxRate === null) {
+          cues.push(`This document is in ${originalCurrency}, and no exchange rate could be fetched. The figures below are the ${originalCurrency} ones, NOT pounds — convert them before approving.`);
         }
         const notes = [file.note, result.notes, ...cues].filter(Boolean).join("\n");
 

@@ -523,8 +523,13 @@ export default function InvoiceViewPage() {
         const setByFigures = statusFromPayments({ total: charge.due, credited: creditOffDue(charge, sum(creditNotes)), paid: sum(payments) }) === invoice.status;
         await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, invoiceVat(invoice, vatRegistered), setByFigures);
       }
-    } catch {
-      // best-effort local update above; a reload will resync if this failed
+    } catch (err) {
+      // The credit note is still in the database, and this same array feeds
+      // the printed invoice and the email: leaving it removed on screen
+      // means asking the customer for money that was credited. Put it back
+      // and say so, rather than waiting for a reload he has no reason to do.
+      setCreditNotes((prev) => (prev.some((c) => c.id === id) ? prev : [...prev, note].sort((a, b) => (a.date < b.date ? -1 : 1))));
+      setCnError(saveFailed(err, "Couldn't remove that credit note. It's still on the invoice."));
     }
   }
 
@@ -947,6 +952,9 @@ export default function InvoiceViewPage() {
             ))}
           </div>
         )}
+        {/* Also here, not only inside the add form: a removal that failed
+            has to be visible whether or not that form happens to be open. */}
+        {cnError && !showCnForm && <p className="mt-2 text-sm text-red-600">{cnError}</p>}
       </div>
     </div>
   );

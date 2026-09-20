@@ -153,9 +153,11 @@ export async function GET(req: Request) {
       const fromName = `${businessName.replace(/["<>\\\r\n]/g, "") || "Your supplier"} via Invoicer`;
 
       // Claim the slot before sending, so two overlapping runs can't both
-      // send it: only the run whose insert lands goes on. A failed send
-      // keeps its claim (it wasn't retried before either; the next slot
-      // for this invoice still goes out).
+      // send it: only the run whose insert lands goes on. A send that the
+      // server definitely refused gives the claim back below, so the
+      // three-day catch-up window can try again -- without that, a 429 or
+      // a 500 from Resend loses that reminder for good, and for the final
+      // notice there is no later slot to make up for it.
       const { data: claimed, error: claimErr } = await admin
         .from("invoice_reminders_sent")
         .upsert({ user_id: inv.user_id, invoice_id: inv.id, kind: inv.kind }, { onConflict: "invoice_id,kind", ignoreDuplicates: true })
@@ -179,12 +181,25 @@ export async function GET(req: Request) {
           }),
         });
         if (!res.ok) {
+          // A status code means the server answered and refused: nothing
+          // was sent, so the claim can go back and tomorrow's run can try
+          // again inside the catch-up window.
           failures.push(`${inv.id}: ${res.status}`);
+          const { error: releaseErr } = await admin
+            .from("invoice_reminders_sent")
+            .delete()
+            .eq("invoice_id", inv.id)
+            .eq("kind", inv.kind);
+          if (releaseErr) failures.push(`${inv.id}: could not release the claim after ${res.status}: ${releaseErr.message}`);
           continue;
         }
         sentCount += 1;
       } catch (err) {
-        failures.push(`${inv.id}: ${err instanceof Error ? err.message : "unknown error"}`);
+        // A thrown error is ambiguous -- the request may have reached
+        // Resend and been accepted before the connection broke. The claim
+        // stays, because sending a customer the same chaser twice is worse
+        // than sending it once late.
+        failures.push(`${inv.id}: ${err instanceof Error ? err.message : "unknown error"} (claim kept, may have been delivered)`);
       }
     }
 
