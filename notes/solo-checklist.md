@@ -249,6 +249,15 @@ what is sent to a customer waits for him.
   database. That page is where someone meets this app, and losing their work would be the
   last thing they ever did on it.
 
+- **28. A photo of nothing** — `test-bad-scan.mjs` 9/9, with the reader mocked so it tests
+  what the app does with the answer rather than the AI. A photo with nothing on it refuses
+  to save and says a total is missing; something that isn't a receipt isn't forced into
+  being one; a reader that fails says so and leaves a way on; and in none of the three
+  does a £0.00 receipt reach his books.
+- **35 (finished).** `/api/inbox/ingest` — the webhook the email-import Worker posts to,
+  which writes to his records with the service role — was missing from the route sweep.
+  Added: it refuses both a missing and a wrong secret. 37/37.
+
 ## Done overnight (2026-09-20)
 
 - **2. Sweeps at 320 and 430px** — done. Two real problems found and fixed: the three
