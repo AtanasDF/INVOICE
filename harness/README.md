@@ -55,6 +55,15 @@ const everything = async () =>
   (await page.evaluate(() => [...document.querySelectorAll("input, textarea, select")].map((i) => i.value).join(" ")));
 ```
 
+## A third trap: suites that run somebody else's copy of the app
+
+`test-check-company` starts its own Next server (it needs a Companies House key and a
+stand-in API), and its `WEB` pointed at `.claude/worktrees/check-company/web` — the
+branch the feature was written on. It had been testing a frozen copy ever since that
+branch merged: green whatever changed in `main`, and broken outright the day those
+worktrees are deleted. Fixed 2026-09-21; `test-quote-requests` imported from a worktree
+the same way. If a suite needs a path outside `harness/`, it should be `web/`.
+
 ## Running it
 
 ```

@@ -24,9 +24,16 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
 }) {
   const [kind, setKind] = useState<PriceKind>(() => priceKindOf(description, unit ?? ""));
   const [want, setWant] = useState("");
-  const [guide, setGuide] = useState<PriceGuide | null>(null);
+  // Kept with the line it was fetched for. The panel stays open while
+  // that line is edited, so a guide for "Plasterboard 12.5mm" would go on
+  // sitting above a line now reading something else, with a verdict
+  // ("above the usual range") about a price it was never asked about.
+  const [fetched, setFetched] = useState<{ for: string; guide: PriceGuide } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const askedFor = `${description}\u0000${priced ?? ""}`;
+  const guide = fetched?.for === askedFor ? fetched.guide : null;
 
   const places = searchPlaces(description, kind, want);
 
@@ -42,7 +49,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
       });
       const body = (await res.json().catch(() => ({}))) as { guide?: PriceGuide; error?: string };
       if (!res.ok || !body.guide) throw new Error(body.error || "Couldn't work out a price guide.");
-      setGuide(body.guide);
+      setFetched({ for: askedFor, guide: body.guide });
     } catch (err) {
       setError(errorText(err, "Couldn't work out a price guide."));
     } finally {
@@ -94,7 +101,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
             aria-checked={kind === k}
             onClick={() => {
               setKind(k);
-              setGuide(null);
+              setFetched(null);
             }}
             className={`rounded-md py-1.5 text-sm font-medium ${kind === k ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
           >

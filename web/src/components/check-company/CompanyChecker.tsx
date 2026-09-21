@@ -9,9 +9,12 @@ const PRIMARY = "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-wh
 const SECONDARY = "rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700";
 
 const BUSY = "Too many checks from this connection in the last hour. Try again later, or look the company up at Companies House.";
+// Said when the register itself can't be reached, rather than blaming the
+// person who has just arrived on a shared link and checked nothing.
+const UNAVAILABLE = "Companies House isn't answering just now. Try again in a minute, or look the company up at Companies House.";
 const OFF = "Couldn't reach the register just now. Try again in a minute, or look the company up at Companies House.";
 
-type Answer = { configured?: boolean; items?: CompanyHit[]; report?: CompanyReport; busy?: boolean; found?: boolean };
+type Answer = { configured?: boolean; items?: CompanyHit[]; report?: CompanyReport; busy?: boolean; unavailable?: boolean; found?: boolean };
 
 export default function CompanyChecker() {
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -37,6 +40,7 @@ export default function CompanyChecker() {
       const body = await ask(`?q=${encodeURIComponent(q)}`);
       setLoading(false);
       if (!body) return setError(OFF);
+      if (body.unavailable) return setError(UNAVAILABLE);
       if (body.busy) return setError(BUSY);
       if (!body.items) {
         if (body.configured !== false) setError(OFF);
@@ -56,6 +60,7 @@ export default function CompanyChecker() {
       const body = await ask(`?number=${encodeURIComponent(number)}`);
       setLoading(false);
       if (!body) return setError(OFF);
+      if (body.unavailable) return setError(UNAVAILABLE);
       if (body.busy) return setError(BUSY);
       if (body.report) {
         setHits(null);
@@ -83,6 +88,7 @@ export default function CompanyChecker() {
         if (!number) return;
         setQuery(number);
         if (body.report) setReport(body.report);
+        else if (body.unavailable) setError(UNAVAILABLE);
         else if (body.busy) setError(BUSY);
         else if (body.found === false) setError("No company on the register has that number.");
       })

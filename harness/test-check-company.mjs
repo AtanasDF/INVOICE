@@ -6,7 +6,13 @@ import { spawn } from "node:child_process";
 import { startFixtures } from "./ch-fixtures.mjs";
 
 const OUT = new URL(".", import.meta.url).pathname;
-const WEB = "/Users/nasko/Desktop/INVOICE/.claude/worktrees/check-company/web";
+// The app this suite starts. It used to point at
+// .claude/worktrees/check-company/web -- the branch this feature was
+// written on -- so it had been testing a frozen copy of the code ever
+// since that branch merged, and would have stayed green whatever changed
+// in main. (It also breaks outright the day those worktrees are deleted,
+// which is on the list.)
+const WEB = "/Users/nasko/Desktop/INVOICE/web";
 const PORT = 3307;
 const FIX = 3399;
 const KEY = "fixture-key-never-shown";
@@ -216,6 +222,18 @@ try {
   // ---- The way in ----
   await page.goto(`${base}/free-invoice`, { waitUntil: "networkidle0" });
   check("the free invoice page links to it", await page.evaluate(() => [...document.querySelectorAll('a[href="/check-company"]')].length >= 2));
+
+  // ---- Companies House down, which is not the visitor's fault ----
+  // An outage used to be reported as "Too many checks from this
+  // connection in the last hour" -- a statement about someone who has
+  // just arrived on a shared link and checked nothing, and the wrong
+  // advice, since trying again in a minute is exactly what works.
+  await page.goto(`${base}/check-company`, { waitUntil: "networkidle0" });
+  await ask("00000500");
+  await waitFor('[data-testid="error"]');
+  const outage = await text('[data-testid="error"]');
+  check("an unreachable register doesn't blame the visitor", !/Too many checks/.test(outage), outage);
+  check("...it says the register isn't answering, and to try shortly", /isn't answering/i.test(outage) && /minute/i.test(outage), outage);
 
   // ---- Rate limiting (last: it uses the hour's allowance up) ----
   let limited = null;

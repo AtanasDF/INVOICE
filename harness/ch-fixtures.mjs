@@ -186,6 +186,9 @@ export function startFixtures(port) {
     }
     const m = /^\/company\/([^/]+)(\/.*)?$/.exec(url.pathname);
     if (!m) return send(404, { errors: [{ error: "not-found" }] });
+    // Companies House having a bad day, on request: a reserved number that
+    // always 500s, so a suite can tell an outage apart from a rate limit.
+    if (m[1] === "00000500") return send(500, { errors: [{ error: "service-unavailable" }] });
     const company = COMPANIES[m[1]];
     if (!company) return send(404, { errors: [{ error: "company-profile-not-found" }] });
     const part = m[2] ?? "";

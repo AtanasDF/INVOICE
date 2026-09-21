@@ -63,6 +63,9 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   for the same hour. `mockdb.mjs` now exports `todayISO()` / `day(n)`.
 - [ ] `torch-bright.mjpeg` and `dark-nocv2.mjpeg` still have no generator (suites outside
   `run-all.sh`).
+- [x] **`test-check-company` was running a stale worktree copy of the app**, not `web/`, so
+  it was green whatever changed in main — and would break the day `.claude/worktrees/` is
+  deleted. `test-quote-requests` imported from a worktree the same way.
 
 ## Tests for fixes that have none yet
 
@@ -125,7 +128,7 @@ the consequence real), and anything either could refute was dropped. Their corre
 are worth reading before acting — one of them stopped a fix that would have made every
 legacy hand-marked-paid invoice reappear as owing on customers' statements.
 
-- [ ] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice, so the deposit is never billed at all
+- [~] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice. **Fixed** on `feature/deposit-delete-guard`; waiting on migration-034 being run.
   `web/supabase/migration-022-quote-deposits.sql:14`
 - [x] **[high] split-documents** — A PDF page no document claims is silently dropped from every part, so the page never reaches the saved receipt
   `web/src/lib/splitDocuments.ts:81`
@@ -151,13 +154,13 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/app/clients/page.tsx:327`
 - [x] **[medium] company-register** — tidyCompanyNumber does not zero-pad a 6- or 7-digit company number, so the lookup 404s and the app says the company is not on the register
   `web/src/lib/companyLookup.ts:131`
-- [ ] **[low] invoice-pdf-print** — The customer statement prints with its share buttons and app chrome on it
+- [x] **[low] invoice-pdf-print** — The customer statement prints with its share buttons and app chrome on it
   `web/src/app/clients/[id]/statement/page.tsx:73`
-- [ ] **[low] duplicate-contacts** — Editing a contact and picking a different company from the register keeps the old company number, which is what later register checks query
+- [x] **[low] duplicate-contacts** — Editing a contact and picking a different company from the register keeps the old company number (same fix as the company-register medium)
   `web/src/app/clients/page.tsx:327`
 - [x] **[low] statement** — Printing a statement puts the app's back-link and its Share/Download/Print buttons on the sheet handed to the customer
   `web/src/app/clients/[id]/statement/page.tsx:73`
-- [ ] **[low] price-guide** — The price guide is kept when the line under it changes, so the verdict is shown against a different item
+- [x] **[low] price-guide** — The price guide is kept when the line under it changes, so the verdict is shown against a different item
   `web/src/components/PriceFinder.tsx:27`
-- [ ] **[low] company-register** — /check-company blames the visitor for a rate limit when Companies House is simply unreachable
+- [x] **[low] company-register** — /check-company blames the visitor for a rate limit when Companies House is simply unreachable
   `web/src/app/api/company-check/route.ts:45`

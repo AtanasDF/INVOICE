@@ -42,7 +42,14 @@ async function ask<T>(path: string, key: string): Promise<Fetched<T>> {
   return body ? { ok: true, body } : { ok: false, status: 502 };
 }
 
-const busy = (status: number) => NextResponse.json({ configured: true, busy: true }, { status: status === 429 ? 429 : 503 });
+// A rate limit and an unreachable register are different things to be
+// told: "too many checks from this connection" is a statement about the
+// visitor, and when Companies House is simply down it is both false and
+// the wrong advice -- trying again in a minute is exactly what works.
+const busy = (status: number) =>
+  status === 429
+    ? NextResponse.json({ configured: true, busy: true }, { status: 429 })
+    : NextResponse.json({ configured: true, unavailable: true }, { status: 503 });
 
 async function search(q: string, req: Request, key: string) {
   const cacheKey = q.toLowerCase();
