@@ -74,6 +74,9 @@ not any row matches.
 
 ## 4. migration-033 and the branch — a quote re-prices itself if you register for VAT
 
+**DONE 2026-09-21.** Column `vat_registered boolean`, nullable, no default; 0 quotes
+either way; owner can read and write it. `feature/quote-vat-snapshot` merged.
+
 Not urgent, but it decides something: **a quote you have already sent re-prices itself if
 you switch VAT on.** An invoice remembers the setting it was issued under; a quote doesn't.
 So a quote sent at £4,800 while you're not registered shows the customer £5,760 the day
@@ -92,6 +95,12 @@ is no wrong price to show anyone.
 ---
 
 ## 4b. migration-034 — deleting a deposit invoice loses the deposit
+
+**DONE 2026-09-21.** Trigger present (before-row delete, enabled, security definer,
+search_path public). Exercised as the owner, rolled back: deleting the deposit invoice of
+a balanced quote is refused with 23503 and the message from the file; deleting the balance
+invoice first, then the deposit, succeeds. Nothing from the exercise remained.
+`feature/deposit-delete-guard` merged.
 
 Found in the fourth review. Invoice a £1,200 job as a £360 deposit plus an £840
 balance, then remove the deposit invoice (easy to do while it's unpaid — nothing stops

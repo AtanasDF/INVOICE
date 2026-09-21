@@ -61,8 +61,13 @@ it is his real accounting record. Read this file before doing anything.
    a signed-in user reading 0 rows. Check the live catalog before acting on a finding
    about it. Supabase grants anon/authenticated everything on a new table by default:
    revoke explicitly (see migration-020). 032 (owner may update
-   `quote_request_suppliers.supplier_id`, so a merge can move a request) was run and
-   verified the same day.
+   `quote_request_suppliers.supplier_id`, so a merge can move a request) and 033
+   (`quotes.vat_registered`, nullable; `feature/quote-vat-snapshot` merged) and 034
+   (`block_deposit_invoice_delete` trigger; `feature/deposit-delete-guard` merged) were
+   run and verified the same day. The SQL editor puts a "destructive operations" dialog
+   in front of any statement containing `drop` or `delete` — including an idempotent
+   `drop trigger if exists` and a rolled-back exercise — and its Run has to be confirmed
+   or the statement silently never runs.
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
    their ON DELETE, policies, function grants) and exercise new functions as the

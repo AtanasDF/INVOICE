@@ -24,6 +24,22 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   token`, no other privilege changed; as the owner (rolled back) the merge's update plans
   and an update of `prices` is still 42501. `test-rls-audit` taught to read 031's loop
   rather than a list of names, with a note on what its file-reading cost.
+- **migration-033** run and verified (`quotes.vat_registered boolean`, nullable, no
+  default, 0 rows either way, owner can read and write it); `feature/quote-vat-snapshot`
+  merged locally, pushed only once the full harness was green. From here Atanas said
+  "always do as recommended", so 034 went ahead on the recommended option without a
+  further question.
+- **migration-034** run and verified: `block_deposit_invoice_delete` before-row delete
+  trigger, enabled, security definer, search_path public. Exercised as the owner in a
+  rolled-back transaction: deposit invoice of a balanced quote refused with 23503 and the
+  file's message; balance deleted first, then the deposit, both succeed; afterwards no
+  HARNESS row remained. `feature/deposit-delete-guard` merged. Two things about the SQL
+  editor worth knowing: a statement containing `drop` or `delete` (even `drop trigger if
+  exists`, even a rolled-back exercise) sits behind a "destructive operations" dialog
+  until confirmed, and looks like it never ran; and a click by screen position on Run can
+  miss where a click by element reference doesn't.
+- The harness needed `npm install` in `harness/` first (`puppeteer-core` missing): every
+  browser suite crashed, and `run-all.sh` still exited 0 on the crashes.
 - iCloud had again put 89 `name 2.*` copies inside `web/.next`; moved to the scratchpad
   (`icloud-dupes/`, same paths), nothing deleted; build then "Compiled successfully".
 

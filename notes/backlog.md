@@ -181,7 +181,9 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## Blocked only by Atanas
 
-- [ ] 34. `feature/quote-vat-snapshot` — tested, needs migration-033 run, then merge
+- [x] 34. `feature/quote-vat-snapshot` — migration-033 run and verified 2026-09-21, merged.
+- [x] `feature/deposit-delete-guard` — migration-034 run, exercised as the owner (rolled
+  back) and verified 2026-09-21, merged.
 - [x] migrations 031 and 032 (see `notes/tonight.md`) — **both run 2026-09-21**. 031's
   premise was wrong (the six tables already had RLS on; the audit reads SQL files, not the
   database), so it now revokes the unused default grants on all 24 backup tables instead.
@@ -196,7 +198,7 @@ the consequence real), and anything either could refute was dropped. Their corre
 are worth reading before acting — one of them stopped a fix that would have made every
 legacy hand-marked-paid invoice reappear as owing on customers' statements.
 
-- [~] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice. **Fixed** on `feature/deposit-delete-guard`; waiting on migration-034 being run.
+- [x] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice. Fixed on `feature/deposit-delete-guard`; migration-034 run and verified 2026-09-21, merged.
   `web/supabase/migration-022-quote-deposits.sql:14`
 - [x] **[high] split-documents** — A PDF page no document claims is silently dropped from every part, so the page never reaches the saved receipt
   `web/src/lib/splitDocuments.ts:81`
@@ -208,7 +210,7 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/components/invoice/IssuedInvoice.tsx:59`
 - [x] **[medium] invoice-pdf-print** — Invoice notes lose every line break on the customer's invoice, PDF, print and /i/ link
   `web/src/components/invoice/IssuedInvoice.tsx:146`
-- [~] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link. **Already fixed** on `feature/quote-vat-snapshot` (commit 9d6515a); waiting on migration-033 being run.
+- [x] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link. Fixed on `feature/quote-vat-snapshot` (commit 9d6515a); migration-033 run and verified 2026-09-21, merged.
   `web/src/components/quote/QuoteDocument.tsx:14`
 - [x] **[medium] split-documents** — A rotated shared PDF page is counted as two pages it did not produce, which mis-marks `context` and lets another document's total merge into this one on a re-read
   `web/src/lib/splitDocuments.ts:99`
