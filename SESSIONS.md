@@ -4,6 +4,29 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-21 — Migrations 031–034 through the Supabase SQL editor, then the landscape scanner (Opus 5, then Fable 5.1 from the first commit)
+
+Atanas at the Mac, signed in to Supabase in Chrome; Remote Control on so he can steer
+from his phone. Each migration shown and approved before running; every check run in
+the editor, the as-role ones inside a transaction ending in `raise exception`.
+
+- **migration-031: the premise was wrong.** Before running it, the live catalog showed
+  all 24 `*_backup_*` tables with RLS **on**, no policy, and a signed-in user or anon
+  reading 0 rows from each. The "six tables with no RLS" came from
+  `harness/test-rls-audit.mjs`, which reads the SQL files, not the database; the 000/001
+  backup files have no `enable row level security` line, so it reported them open, and
+  nobody looked. Nothing was ever exposed. With Atanas's choice, 031 was rewritten to
+  revoke the unused default grants on every backup table by pattern (a second lock if RLS
+  is ever switched off on one), run, and verified: 24/24 `rls true, grants 0, policies 0`,
+  signed-in and anon now **denied** rather than empty, service role still reads, live
+  tables' grants untouched (58b7fd3).
+- **migration-032** run and verified: owner update columns now `sent_at, supplier_id,
+  token`, no other privilege changed; as the owner (rolled back) the merge's update plans
+  and an update of `prices` is still 42501. `test-rls-audit` taught to read 031's loop
+  rather than a list of names, with a note on what its file-reading cost.
+- iCloud had again put 89 `name 2.*` copies inside `web/.next`; moved to the scratchpad
+  (`icloud-dupes/`, same paths), nothing deleted; build then "Compiled successfully".
+
 ## 2026-09-20 evening → 21 September — Atanas away, steering from his phone (Opus 5, then Fable 5.1)
 
 39 commits, all on `main` except two feature branches. The working list is

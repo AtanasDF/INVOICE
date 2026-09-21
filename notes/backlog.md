@@ -182,7 +182,9 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 ## Blocked only by Atanas
 
 - [ ] 34. `feature/quote-vat-snapshot` — tested, needs migration-033 run, then merge
-- [ ] migrations 031 and 032 (see `notes/tonight.md`)
+- [x] migrations 031 and 032 (see `notes/tonight.md`) — **both run 2026-09-21**. 031's
+  premise was wrong (the six tables already had RLS on; the audit reads SQL files, not the
+  database), so it now revokes the unused default grants on all 24 backup tables instead.
 - [ ] The Currys receipt: £549.99 may be the till total, not the net figure — his call,
   his record. See the foot of `Claude outputs/invoicer-backlog-brief.md`.
 

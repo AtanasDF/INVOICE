@@ -26,6 +26,15 @@ stays blocked.
 
 ## 2. migration-031 — six backup tables anyone signed in can read (2 minutes)
 
+**DONE 2026-09-21, and the premise was wrong.** Checked against the live database
+before running: all 24 backup tables already had row level security on, and a signed-in
+user or anon read 0 rows from every one (tested as those roles, rolled back). The
+"no RLS" finding came from `test-rls-audit`, which reads the SQL files rather than the
+database. Nothing was ever exposed. The migration was rewritten to revoke the unused
+default grants on every backup table instead (a second lock, in case RLS is ever switched
+off on one), run, and verified: 24/24 locked, signed-in and anon now denied outright,
+service role still reads. The text below is what it said beforehand.
+
 **This is the one with a real consequence.** `clients_backup_20260914`,
 `receipts_backup_20260914`, `invoices_backup_20260914` and their `_2` twins are snapshots
 of your clients, receipts and invoices from 14 September, and they have row level security
@@ -44,6 +53,10 @@ safe to run twice.
 ---
 
 ## 3. migration-032 — merging two contacts can never move a quote request (1 minute)
+
+**DONE 2026-09-21.** Check query reads `sent_at, supplier_id, token`; as the owner, the
+merge's update now plans (0 rows today, the table is empty) and an update of `prices` is
+still refused with 42501, both rolled back.
 
 Merging "Travis Perkins" and "Travis Perkins Ltd" moves the invoices, receipts, quotes and
 repeating items fine, then reports *"Some rows stayed with the old record"* — every time,

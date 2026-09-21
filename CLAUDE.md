@@ -49,14 +49,20 @@ it is his real accounting record. Read this file before doing anything.
    `add column if not exists`, guarded `do $$ ... $$` blocks for constraints/policies,
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
-   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-20:
-   migration-031, backup 015. Applied and verified up to 030 (028 created two new tables,
-   so it needed no backup; 029 added the registered name, company number and account kind
-   to business_profile; 030 added clients.company_number). **031 is written and NOT
-   applied** — it switches row level security on for the six 14-September backup tables,
-   which were created before that was habit and are readable by any signed-in account
-   until it runs. It only takes access away, so it needs no backup of its own. Supabase grants anon/authenticated
-   everything on a new table by default: revoke explicitly (see migration-020).
+   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-21:
+   migration-034 (033 on `feature/quote-vat-snapshot`, 034 on
+   `feature/deposit-delete-guard` until applied), backup 015. Applied and verified up to
+   031 (028 created two new tables, so it needed no backup; 029 added the registered name,
+   company number and account kind to business_profile; 030 added clients.company_number;
+   031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
+   `*_backup_*` tables). 031 was written believing the six 14-September backups had RLS
+   off and were readable by any signed-in account: **they were not** — `test-rls-audit`
+   reads the SQL files, not the database, and the live tables had RLS on all along, with
+   a signed-in user reading 0 rows. Check the live catalog before acting on a finding
+   about it. Supabase grants anon/authenticated everything on a new table by default:
+   revoke explicitly (see migration-020). 032 (owner may update
+   `quote_request_suppliers.supplier_id`, so a merge can move a request) was run and
+   verified the same day.
 3. **Verify backups by content in both directions** (rows missing or different each way
    must be 0), not by row counts. Verify migrations afterwards (columns, constraints and
    their ON DELETE, policies, function grants) and exercise new functions as the
@@ -357,9 +363,9 @@ them against the original before deleting.
 
 ## Open items (2026-09-20)
 
-- **migration-031 is waiting for Atanas**: six backup tables from 14 September have no row
-  level security, so any signed-in account can read a snapshot of his clients, receipts and
-  invoices. The file only takes access away; the verification query is at its foot.
+- (Resolved 2026-09-21: migration-031 run and verified. The six 14-September backup tables
+  were never open — RLS was on in the live database, the audit had only read the SQL
+  files. 031 now revokes the unused default grants on every backup table instead.)
 - The scheduled task `invoicer-keep-working` cannot run unattended: it starts, then stops on
   its first command waiting for a tool approval that was never granted (it was created
   programmatically, so it has none). Atanas approves it once in the app, or sets its
