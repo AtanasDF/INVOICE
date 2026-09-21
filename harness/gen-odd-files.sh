@@ -25,6 +25,12 @@ ImageDraw.Draw(big).text((200, 200), "TOTAL 84.20", font=font, fill=(0,0,0))
 big.save("ten-mb.jpg", "JPEG", quality=97)
 receipt(1200, 1600).save("receipt-noext", "JPEG", quality=80)
 open("photo.heic", "wb").write(b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic" + bytes(4096))
+# A phone held sideways stores the pixels landscape and says "rotate 90" in
+# EXIF (orientation 6); upside down is orientation 3.
+upright = receipt(1200, 1600)
+for name, im, orient in [("exif-sideways.jpg", upright.rotate(90, expand=True), 6), ("exif-upsidedown.jpg", upright.rotate(180), 3)]:
+    exif = Image.Exif(); exif[0x0112] = orient
+    im.save(name, "JPEG", quality=85, exif=exif.tobytes())
 for f in ["scan-page.jpg", "twelve-mp.jpg", "ten-mb.jpg", "receipt-noext", "photo.heic"]: print(f, round(os.path.getsize(f)/1024/1024, 2), "MB")
 PY
 cd ../../web && node -e '

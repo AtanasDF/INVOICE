@@ -105,8 +105,14 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   extension has no browser type at all and `readUpload` tagged it `application/pdf` — the
   page-counter failed on it, the reader was sent a "PDF" of JPEG bytes, and the receipt was
   stored with an octet-stream data URL the list couldn't show. The first bytes now decide.
-- [ ] 23. Upside-down / 90° / 180° documents
-- [ ] 24. Batch of 10 timed through Gemini vs Claude
+- [x] 23. Upside-down / 90° / 180° documents — `harness/test-exif-rotation.mjs`: a phone held
+  sideways stores landscape pixels with "rotate 90" in EXIF, upside down stores "rotate
+  180"; Chrome honours both on decode, so the reader is handed an upright portrait photo
+  either way (checked by dimensions and by which side the left-aligned text lands on).
+  A document that is physically sideways on the page, with no EXIF, is the reader's job.
+- [ ] 24. Batch of 10 timed through Gemini vs Claude — **needs Atanas**: it spends real
+  Anthropic and Gemini credit on synthetic documents, and the harness never calls the live
+  APIs. Say the word and it runs against the local server with `.env.local`.
 - [x] 25. Second-user RLS simulation in the mock server — `db.rls = true` makes `mockdb.mjs`
   behave like the database (reads see only the signed-in user's rows; writes only reach
   them), off by default so no existing suite changes. `harness/test-two-users.mjs` seeds a
@@ -125,7 +131,10 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## Bigger pieces
 
-- [ ] 28. Offline scan queue (service worker) — the one "not built" item
+- [ ] 28. Offline scan queue (service worker) — the one "not built" item. Deferred on
+  purpose: CLAUDE.md says it is worth doing only with an iPhone to test on, and a caching
+  service worker shipped untested against real Safari is a way to lose captures, not keep
+  them.
 - [x] 29. Accessibility pass — run 2026-09-21; findings in their own section below.
 - [x] 30. 320px sweep re-run after the day's changes — `harness/test-fit-320.mjs` runs the
   same sweep as `test-fit-sweep` at 320px (iPhone SE) and is in `run-all.sh`, so both
