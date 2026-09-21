@@ -146,7 +146,12 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   answers a tap, scrolling 2,000 rows doesn't stall, and filtering to a fortnight is
   immediate. The lists draw every row by design (load everything, filter in the browser);
   at this size that holds.
-- [ ] 32. Dead-code and bundle re-audit
+- [~] 32. Dead-code and bundle re-audit — **dead code done** (`ts-prune` over the whole
+  app, 2026-09-21): three unused exports and nothing else. `isMileage` (`mileage.ts`) and
+  `mergeAddress` (`addressLookup.ts`) are the two CLAUDE.md already flags; the third is the
+  type `CurrencyCode` in `fx.ts`. Flagged, not removed, per the standing rule. Everything
+  else it reported was Next's own config export or the gitignored iCloud `* 2.*` strays.
+  Bundle half: see below once measured.
 - [ ] 33. `notes/` consolidation — three reviews' findings into one standing document
   (this file is the start of it)
 
