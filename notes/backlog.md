@@ -152,8 +152,9 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   type `CurrencyCode` in `fx.ts`. Flagged, not removed, per the standing rule. Everything
   else it reported was Next's own config export or the gitignored iCloud `* 2.*` strays.
   Bundle half: see below once measured.
-- [ ] 33. `notes/` consolidation — three reviews' findings into one standing document
-  (this file is the start of it)
+- [x] 33. `notes/` consolidation — this file is the standing document: all four reviews'
+  surviving findings, the original 34, and what was found along the way. `claude-notes.md`'s
+  17-September queued list now points here and marks its own done items done.
 
 ## Blocked only by Atanas
 

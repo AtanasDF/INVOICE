@@ -25,3 +25,8 @@ harness/*.log
 # .b64 at test time. The small ones are kept.
 harness/fixtures/ten-mb.jpg
 harness/fixtures/*.pdf
+
+# Screenshots and downloads the suites regenerate on every run. The
+# fixtures/ inputs are kept; these outputs are not.
+harness/*.png
+harness/downloads/

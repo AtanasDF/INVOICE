@@ -291,11 +291,17 @@ changes.
 
 ## Queued work (Atanas's list, 2026-09-17)
 
+**The live list is `notes/backlog.md`** (started 2026-09-20, ticked as things land). This
+section is kept for the items on it that are Atanas's to decide, with what has happened to
+the rest:
+
+
 1. Accuracy pass on both engines with real documents; decide whether Gemini can carry all.
-2. Shared rate limiter for `/api/invoice-template`.
-3. Research follow-ups: duplicate detection on save, line-total check, supplier memory,
-   camera coaching text.
-4. Receipt images to Supabase Storage before volume grows.
+2. (Done 2026-09-19: `hit_rate_limit`, migration-018.) Shared rate limiter for `/api/invoice-template`.
+3. (Done 2026-09-19.) Research follow-ups: duplicate detection on save, line-total check,
+   supplier memory, camera coaching text.
+4. (Done 2026-09-19: the private `receipts` bucket, migration-019.) Receipt images to
+   Supabase Storage before volume grows.
 5. Paywall: whole app paid except the Free invoice page; design conversation first.
 6. (Done 2026-09-19: `research-apps-2.md`, the second research pass on ten apps. Top ideas:
    Pay now links with Pay by Bank, auto-marking invoices paid, MTD Income Tax updates,
