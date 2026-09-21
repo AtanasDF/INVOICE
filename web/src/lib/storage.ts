@@ -763,8 +763,17 @@ export const invoicesStore = {
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("invoices").delete().eq("id", id);
     if (error) {
-      // invoice_payments.invoice_id is ON DELETE RESTRICT (migration-023).
-      if (error.code === "23503") throw new Error("This invoice has payments recorded against it, so it can't be removed.");
+      // invoice_payments.invoice_id is ON DELETE RESTRICT (migration-023),
+      // and migration-034's trigger raises the same code with its own
+      // message when a balance invoice is still deducting this deposit --
+      // which is worth saying, since the two are put right differently.
+      if (error.code === "23503") {
+        throw new Error(
+          /deposit/i.test(error.message ?? "")
+            ? "The balance invoice for this quote takes this deposit off, so the deposit invoice can't be removed. Remove the balance invoice first if you meant to start again."
+            : "This invoice has payments recorded against it, so it can't be removed."
+        );
+      }
       throw error;
     }
   },
