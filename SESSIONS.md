@@ -51,7 +51,7 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
 - **Item 13, email import**: `test-inbox-worker` runs the Cloudflare Worker's code in Node
   (Node 24 strips the types) with `fetch` stubbed — the inline-signature filter, the
   pasted-screenshot fallback, address and token checks; and found that an HTML-only email
-  posted an empty body, fixed with a text fallback (Worker needs redeploying).
+  posted an empty body, fixed with a text fallback (deployed the same evening).
   `test-inbox-ingest` runs the route on its own dev server against `mock-server.mjs`
   (which now accepts storage uploads, with `db.storageFails`) and a stand-in Claude API
   scripted per call: 20 checks over the unread-filing paths — reader refused or cut off,
@@ -114,10 +114,52 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   on; full permissions apart from deleting stuff without double checking" — kept as a
   memory, with the deletion exception.
 
-**Open, for Atanas** (`notes/tonight.md`): paste `ANTHROPIC_API_KEY` into
-`web/.env.local` for the Claude half of item 24; `npx wrangler deploy` from `worker/`
-for the HTML-only email fix; the placeholder business details in Settings; the
-`.claude/worktrees/` question. Everything else on his list is done or moot.
+- **Review of the day's own changes** (Atanas: "let's do some work"): a workflow of 97
+  agents — six reviewers by area, three skeptics per finding with different lenses
+  (reproduce it, is the consequence real, is the fix safe), a completeness critic —
+  raised 30 findings, refuted 2, and 28 stood, of which 22 were distinct. All fixed:
+  - **Quotes** (the day's merge): the **list** and its chase text still priced a sent
+    quote from today's VAT setting while the page and the customer's link used the
+    snapshot; `accountVat()` swallowed a failed profile read and would have stamped a
+    VAT-registered trader's quote "not registered" for good; a draft marked accepted or
+    declined directly was never stamped. The deposit invoice's lines were built under
+    the quote's snapshot but issued under today's setting — decision recorded in the
+    code: an invoice is priced under the setting it is *issued* under, and the quote
+    page now says when that differs from what the quote was sent under.
+  - **Email Worker**: an attachment over ~3.3 MB made a body over Vercel's 4.5 MB limit
+    and the whole email was lost (now left out and named in the row); a whitespace-only
+    text part beat the HTML fallback; Apple Mail's inline-disposition PDF was treated as
+    signature junk; an `application/octet-stream` PDF was discarded by the route; an
+    out-of-range numeric entity threw and lost the email; Outlook's named entities
+    reached the notes as text. Eight new checks in `test-inbox-worker`, one in
+    `test-inbox-ingest`.
+  - **Harness**: `run-all.sh` now judges by passed == total (ten suites end a thrown
+    error without a FAIL line); `test-rls-audit` exempts only the 000/001 snapshots from
+    031's loop, so a future backup file without the ALTER is flagged again; the bench
+    credited an errored read with the invoice-number field; `test-torch-nocv`'s second
+    launch still loaded OpenCV; `test-quote-vat-snapshot` built today off the UTC clock,
+    now runs in `run-all.sh` with the list, the direct-accept stamp and the failed-read
+    case added.
+  - **Accessibility**: the native-camera control bar wasn't inert behind the review
+    sheet; closing the sheet dropped focus on the body; Tab walked out of the file
+    preview into the page it covered; nine `role="status"` paragraphs mounted already
+    filled, which VoiceOver skips — each now has an always-present sr-only announcer.
+  - **Notes**: four stale sentences (the Worker deploy listed as open, the worktrees
+    item, the secret's history, the 24th backup table — `business_profile_backup_20260915_3`
+    has no SQL file; all 24 names now in claude-notes).
+  - **migration-035** (from the critic): the deposit-delete guard ignored a balance
+    invoice whose quote link was lost, the one case the app already relinks by tag.
+    Written, run, exercised as the owner (rolled back: refused with an unlinked tagged
+    balance invoice, allowed once it's gone), committed straight to main since no app code
+    depends on it. Full harness after the fixes: 74 suites, 71 green in the four-way run,
+    the other three (`first-week`, `what-surfaces`, `weight`) green alone; the runner's
+    new exit code is what flagged them. Worker redeployed (4c873fc5).
+
+**Open, for Atanas** (`notes/tonight.md`): a new `ANTHROPIC_API_KEY` pasted into
+`web/.env.local` for the Claude half of item 24 (Vercel's copy is sensitive and can't be
+read back); sign in to the app so the import address can be generated and one test email
+sent; the placeholder business details in Settings. The Worker is deployed and the
+worktrees are gone (see below).
 
 **Open, for the next session**: the Claude half of the bench (`node bench-engines.mjs`
 once the key is there); item 28 (offline scan queue) still waits for an iPhone; the

@@ -42,7 +42,13 @@ changes.
 - 2026-09-21 (evening, in the SQL editor): migrations 031–034 applied and verified;
   `feature/quote-vat-snapshot` and `feature/deposit-delete-guard` merged. All 24
   `*_backup_*` tables have RLS on, no policy and no anon/authenticated grant (signed-in
-  and anon are denied outright; service role reads). The six 14-September backups never
+  and anon are denied outright; service role reads). The 24, from the catalog:
+  business_profile_backup_20260914, _20260915, _20260915_2, _20260915_3 (no SQL file
+  makes this one — a hand-made snapshot), _20260919_m021, _20260920_m029;
+  clients_backup_20260914, _20260914_2, _20260915, _20260919, _20260920_m030;
+  invoice_reminders_sent_backup_20260919_m021; invoices_backup_20260914, _20260914_2,
+  _20260915, _20260915_2, _20260919_m024, _20260919_m027; quotes_backup_20260919_m022;
+  receipts_backup_20260914, _20260914_2, _20260914_3, _20260915, _20260917. The six 14-September backups never
   had RLS off — `test-rls-audit` reads the SQL files, not the database. Live tables that
   evening: `receipts` 5 rows (Rawlings ×2, Anthropic ×3), `clients` 2, `invoices` 0,
   `quotes` 0, `quote_requests` 0. The Currys PC World receipt (549.99/91.67, the "till

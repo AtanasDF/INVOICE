@@ -83,7 +83,7 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   short token posts nothing. **Found and fixed:** an HTML-only email (no text part, which
   some invoicing systems send) posted an empty body, so an email with no attachment was
   filed as a row holding nothing but its subject — the Worker now falls back to the HTML's
-  text. **Needs `npx wrangler deploy` from `worker/` to reach production.**
+  text (deployed that evening — the Worker's first deploy).
   `harness/test-inbox-ingest.mjs` (20 checks) runs `/api/inbox/ingest` for real on its own
   dev server against the mock PostgREST and a stand-in Claude API: wrong secret/token,
   the email-itself row, a read invoice (net, VAT, number, dates, lines, PDF in the owner's
@@ -232,7 +232,7 @@ the consequence real), and anything either could refute was dropped. Their corre
 are worth reading before acting — one of them stopped a fix that would have made every
 legacy hand-marked-paid invoice reappear as owing on customers' statements.
 
-- [x] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice. Fixed on `feature/deposit-delete-guard`; migration-034 run and verified 2026-09-21, merged.
+- [x] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice. Fixed on `feature/deposit-delete-guard`; migration-034 run and verified 2026-09-21, merged. The evening review found the guard ignored a balance invoice whose quote link was lost (the orphan the page relinks by tag): migration-035, run and verified the same night.
   `web/supabase/migration-022-quote-deposits.sql:14`
 - [x] **[high] split-documents** — A PDF page no document claims is silently dropped from every part, so the page never reaches the saved receipt
   `web/src/lib/splitDocuments.ts:81`

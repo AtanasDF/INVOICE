@@ -142,9 +142,8 @@ Nothing reads the file except the app and that script, and neither prints it.
 
 ## 5. Two things worth deciding, not doing
 
-- **`.claude/worktrees/` is 5.4GB** of old copies of the project from finished branches,
-  with 36GB free on the disk. Everything in them is in git history. I have not touched
-  them. Say the word and they go.
+- **(Done 2026-09-21 evening: `.claude/worktrees/` removed on your say-so — 24 worktrees,
+  all clean and on GitHub; 6 GB back.)**
 - **Your Settings still hold placeholder business details**, and the VAT-registered switch
   is off. Reminders and invoice emails use the business name and bank details from there,
   so until they're filled in, a customer gets an invoice with nowhere to pay it. Five

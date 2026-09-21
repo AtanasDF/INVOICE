@@ -54,7 +54,7 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-21:
-   migration-034, backup 015. Applied and verified up to 034 (028 created two new tables,
+   migration-035, backup 015. Applied and verified up to 035 (028 created two new tables,
    so it needed no backup; 029 added the registered name,
    company number and account kind to business_profile; 030 added clients.company_number;
    031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
@@ -66,8 +66,9 @@ it is his real accounting record. Read this file before doing anything.
    revoke explicitly (see migration-020). 032 (owner may update
    `quote_request_suppliers.supplier_id`, so a merge can move a request) and 033
    (`quotes.vat_registered`, nullable; `feature/quote-vat-snapshot` merged) and 034
-   (`block_deposit_invoice_delete` trigger; `feature/deposit-delete-guard` merged) were
-   run and verified the same day. The SQL editor puts a "destructive operations" dialog
+   (`block_deposit_invoice_delete` trigger; `feature/deposit-delete-guard` merged) and 035
+   (the same guard also counts an unlinked invoice tagged `from <quote number>` as the
+   balance invoice, the orphan the quote page relinks) were run and verified the same day. The SQL editor puts a "destructive operations" dialog
    in front of any statement containing `drop` or `delete` — including an idempotent
    `drop trigger if exists` and a rolled-back exercise — and its Run has to be confirmed
    or the statement silently never runs.
@@ -180,7 +181,13 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
 - `quote_links` (migration-026): the same for quotes, `/q/<token>`, plus Accept / Decline.
   `respond_to_quote_link` (service role only) moves a quote from sent to accepted or
   declined only while it's sent and within valid_until; the owner putting it back to sent
-  lets the customer answer again. Owner status changes pass the status the page showed
+  lets the customer answer again. `quotes.vat_registered` (migration-033) is stamped from
+  the account's setting whenever a quote leaves draft (sent, or accepted/declined straight
+  from a draft); a failed profile read fails the change rather than stamping false. The
+  quote page, list, chase text and `/q/` link all price by it (`q.vatRegistered ??
+  profile.vatRegistered`). An invoice raised from a quote — deposit or balance — is
+  priced under the setting it is *issued* under (migration-024), and the quote page says
+  so when that differs from the snapshot. Owner status changes pass the status the page showed
   (`quotesStore.setStatus(id, status, from)`, `claimForInvoice(id, from)`) so an online
   answer isn't overwritten unseen. Emailing a draft marks it sent only after the send
   works; copying its link, or adding it to a text/WhatsApp message, marks it sent first
@@ -338,8 +345,8 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
 
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CRON_SECRET`,
-`INBOX_WEBHOOK_SECRET` (added 2026-09-21 — it had been missing, so the Worker's calls
-were refused), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `vercel env ls
+`INBOX_WEBHOOK_SECRET` (added 2026-09-21 — it had never been set; the Worker was first
+deployed the same evening), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `vercel env ls
 production` from `web/` lists the names without values.
 `RESEND_API_KEY` set in Production on 2026-09-19 (Resend account atanaschoo, key "Invoicer
 app - Vercel", sending access). That also switched on the daily payment-reminder cron.
@@ -387,8 +394,8 @@ them against the original before deleting.
   its first command waiting for a tool approval that was never granted (it was created
   programmatically, so it has none). Atanas approves it once in the app, or sets its
   permission mode. Moved to :10 and :40 past the hour, clear of the email routines.
-- `.claude/worktrees/` is 5.4GB of copies of the repo from finished feature branches, with
-  36GB free on the disk. Everything in them is in git history. Flagged, not touched.
+- (Resolved 2026-09-21: `.claude/worktrees/` removed with Atanas at the Mac — 24 worktrees,
+  every one clean and on GitHub, `git worktree remove` each; 6 GB back, all branches kept.)
 - Two unused exported functions, flagged not removed: `isMileage` (`src/lib/mileage.ts`,
   duplicates `tripOf`) and `mergeAddress` (`src/lib/addressLookup.ts`, left from the old
   AddressFinder). Two `* 2.*` iCloud copies sit in `src/` and are gitignored.
