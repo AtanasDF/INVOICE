@@ -30,8 +30,9 @@ that nothing was keeping.
   suite needs before running it. `gen-large.py` makes `large.mjpeg`, the one nine suites
   use — it had no generator at all until 2026-09-20, having only ever been made by hand in
   a scratchpad that was later wiped, so four suites in `run-all.sh` simply crashed.
-  `torch-bright.mjpeg` and `dark-nocv2.mjpeg` (used by `test-torch`, `test-torch-nocv`,
-  neither in `run-all.sh`) are still missing a generator.
+  `gen-torch.py` makes `torch-bright.mjpeg` and `dark-nocv2.mjpeg` (`test-torch`,
+  `test-torch-nocv`, neither in `run-all.sh`); `gen-dark.py` and `gen-dim.py` the other two
+  torch clips.
 
 ## One trap worth knowing
 

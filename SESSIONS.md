@@ -65,6 +65,8 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   controls `inert` behind it; the file-library preview is a named dialog that Escape
   closes, focus in on open and back to the tile on close. `test-announced` grew five
   checks (Settings "Saved.", and the lightbox's four).
+- `harness/gen-torch.py` makes the two torch clips that had no generator, and
+  `test-torch-nocv` now actually keeps OpenCV from loading rather than assuming it.
 - **Page weight**: `test-weight` failed on the dashboard (1627 KB against 1.5 MB) and,
   after the 033 merge, on the Free page (1483 KB) and Check a company (1360 KB). Building
   the last green commit in a scratch worktree (Turbopack refuses a symlinked

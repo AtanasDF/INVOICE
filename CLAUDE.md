@@ -28,7 +28,7 @@ it is his real accounting record. Read this file before doing anything.
   recurrence code into `harness/gen/` every run, so those suites can never drift from the
   source. Only source is kept: Chrome profiles, `gen/` and the ~770MB of synthetic camera
   clips are gitignored, and `gen-*.py` regenerates the clips (`gen-large.py` makes
-  `large.mjpeg`, which nine suites need; two torch clips still have no generator). `harness/README.md` has the
+  `large.mjpeg`, which nine suites need; `gen-torch.py` the two torch clips). `harness/README.md` has the
   rest. Run it from a scratchpad copy if you don't want profile directories in the tree.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
@@ -50,9 +50,8 @@ it is his real accounting record. Read this file before doing anything.
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-21:
-   migration-034 (033 on `feature/quote-vat-snapshot`, 034 on
-   `feature/deposit-delete-guard` until applied), backup 015. Applied and verified up to
-   031 (028 created two new tables, so it needed no backup; 029 added the registered name,
+   migration-034, backup 015. Applied and verified up to 034 (028 created two new tables,
+   so it needed no backup; 029 added the registered name,
    company number and account kind to business_profile; 030 added clients.company_number;
    031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
    `*_backup_*` tables). 031 was written believing the six 14-September backups had RLS

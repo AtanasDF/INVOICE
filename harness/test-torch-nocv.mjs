@@ -4,6 +4,17 @@ const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL"
 try {
   {
     const { browser, page } = await launch("dark-nocv2.mjpeg");
+    // Nothing here used to stop OpenCV loading, so "no OpenCV" was only
+    // ever true on a server missing the vendor file. The scanner loads it
+    // as a <script>; pointing that at a path that isn't there is what a
+    // failed download looks like to the page.
+    await page.evaluateOnNewDocument(() => {
+      const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, "src");
+      Object.defineProperty(HTMLScriptElement.prototype, "src", {
+        get() { return src.get.call(this); },
+        set(v) { src.set.call(this, /opencv/.test(String(v)) ? "/vendor/opencv-not-here.js" : v); },
+      });
+    });
     await page.evaluateOnNewDocument(() => {
       window.__torch = [];
       const caps = MediaStreamTrack.prototype.getCapabilities;

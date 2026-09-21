@@ -61,8 +61,11 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   four-at-a-time and passed when run alone.
 - [x] **The harness built its own dates off the UTC clock**, so it disagreed with the app
   for the same hour. `mockdb.mjs` now exports `todayISO()` / `day(n)`.
-- [ ] `torch-bright.mjpeg` and `dark-nocv2.mjpeg` still have no generator (suites outside
-  `run-all.sh`).
+- [x] `torch-bright.mjpeg` and `dark-nocv2.mjpeg` still have no generator (suites outside
+  `run-all.sh`) — `harness/gen-torch.py`, 2026-09-21, on the dark/dim generators' pattern.
+  `test-torch-nocv` also never stopped OpenCV loading, so its "no OpenCV" check could only
+  pass on a server missing the vendor file; it now points the scanner's script tag at a
+  path that isn't there.
 - [x] **`test-check-company` was running a stale worktree copy of the app**, not `web/`, so
   it was green whatever changed in main — and would break the day `.claude/worktrees/` is
   deleted. `test-quote-requests` imported from a worktree the same way.
