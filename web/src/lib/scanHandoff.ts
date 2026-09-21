@@ -66,16 +66,40 @@ export function leftOutNote(failed: number, total: number): string | null {
   return failed ? `${failed} of ${total} file${total === 1 ? "" : "s"} couldn't be read and ${failed === 1 ? "was" : "were"} left out.` : null;
 }
 
+// What a file is, from its first bytes, when the browser has no type for
+// it. A photo saved out of a message, AirDropped, or renamed arrives with
+// no extension and File.type "", and used to be tagged as a PDF: the
+// page-counter then failed on it, the reader was sent a "PDF" of JPEG
+// bytes, and the receipt was stored with an octet-stream data URL the
+// list couldn't show. The base64 opening is enough to tell.
+const SNIFF: [RegExp, string][] = [
+  [/^\/9j\//, "image/jpeg"],
+  [/^iVBORw0KGgo/, "image/png"],
+  [/^UklGR/, "image/webp"],
+  [/^R0lGOD/, "image/gif"],
+  [/^JVBERi0/, "application/pdf"],
+];
+function typed(dataUrl: string, declared: string): { dataUrl: string; type: string } | null {
+  if (declared) return { dataUrl, type: declared };
+  const comma = dataUrl.indexOf(",");
+  const hit = SNIFF.find(([re]) => re.test(dataUrl.slice(comma + 1, comma + 16)));
+  return hit ? { dataUrl: `data:${hit[1]};base64,${dataUrl.slice(comma + 1)}`, type: hit[1] } : null;
+}
+
 // A picked file as a scan page takes it: photos downscaled like every
-// capture (see imageDownscale), PDFs as they are.
+// capture (see imageDownscale), PDFs as they are. A file that is neither,
+// and says nothing about itself, is refused here so it is counted as left
+// out and said so, rather than sent on as a PDF it isn't.
 export function readUpload(file: File): Promise<ScanHandoff> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
+        const known = typed(reader.result as string, file.type);
+        if (!known) throw new Error("Could not tell what kind of file this is.");
         const { downscaleImageDataUrl } = await import("@/lib/imageDownscale");
-        const dataUrl = await downscaleImageDataUrl(reader.result as string);
-        resolve({ dataUrl, mediaType: file.type.startsWith("image/") ? "image/jpeg" : file.type || "application/pdf" });
+        const dataUrl = await downscaleImageDataUrl(known.dataUrl);
+        resolve({ dataUrl, mediaType: known.type.startsWith("image/") ? "image/jpeg" : known.type });
       } catch (err) {
         reject(err);
       }

@@ -41,7 +41,7 @@ SUITES=(
   test-mileage test-statement test-vat-return test-merge-contacts test-quote-chase
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
-  test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow
+  test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow test-odd-files
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev
