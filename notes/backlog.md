@@ -43,9 +43,8 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   `test-one-handed` now hit-tests every button on that page, because `clickText` calls
   `el.click()` and never notices something sitting on top.
 - [x] **10. A failed dashboard load clears the home-screen badge — false all-clear** `[low]`
-- [ ] **11. Fourth review pass on what all three missed**: PDF/print rendering,
-  `quoteDeposit`, `splitDocuments`, `duplicateContacts`, `statement`, `priceGuide`,
-  `companyRegister`
+- [x] **11. Fourth review pass on what all three missed** — run 2026-09-21; the findings
+  are listed in their own section below.
 
 ## Found along the way (not on the original list)
 
@@ -117,3 +116,48 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 - [ ] migrations 031 and 032 (see `notes/tonight.md`)
 - [ ] The Currys receipt: £549.99 may be the till total, not the net figure — his call,
   his record. See the foot of `Claude outputs/invoicer-backlog-brief.md`.
+
+## Fourth review (item 11) — 29 findings, 18 survived two skeptics each, 11 refuted
+
+Run 2026-09-21 over the seven areas the first three reviews never touched. Each finding
+was handed to two skeptics with different lenses (can you reproduce it from source; is
+the consequence real), and anything either could refute was dropped. Their corrections
+are worth reading before acting — one of them stopped a fix that would have made every
+legacy hand-marked-paid invoice reappear as owing on customers' statements.
+
+- [ ] **[high] quote-deposit** — Deleting a deposit invoice leaves its deduction on the balance invoice, so the deposit is never billed at all
+  `web/supabase/migration-022-quote-deposits.sql:14`
+- [x] **[high] split-documents** — A PDF page no document claims is silently dropped from every part, so the page never reaches the saved receipt
+  `web/src/lib/splitDocuments.ts:81`
+- [x] **[high] statement** — Ageing grid files anything up to 30 days late under "Not yet late", contradicting the same page's own "of that is late" line
+  `web/src/lib/statement.ts:70`
+- [x] **[high] company-register** — A Companies House timeout or rate-limit is shown as "Companies House has no company under this name"
+  `web/src/lib/companyRegister.ts:15`
+- [ ] **[medium] invoice-pdf-print** — A long unbroken description pushes the money columns out of the PDF and the printed invoice
+  `web/src/components/invoice/IssuedInvoice.tsx:59`
+- [ ] **[medium] invoice-pdf-print** — Invoice notes lose every line break on the customer's invoice, PDF, print and /i/ link
+  `web/src/components/invoice/IssuedInvoice.tsx:146`
+- [ ] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link
+  `web/src/components/quote/QuoteDocument.tsx:14`
+- [ ] **[medium] split-documents** — A rotated shared PDF page is counted as two pages it did not produce, which mis-marks `context` and lets another document's total merge into this one on a re-read
+  `web/src/lib/splitDocuments.ts:99`
+- [ ] **[medium] statement** — A customer left in credit is shown £0.00 owing, and the statement row's own arithmetic silently breaks
+  `web/src/lib/statement.ts:52`
+- [ ] **[medium] price-guide** — A one-sided price range is reported as "in the usual range", whatever the quote says
+  `web/src/components/PriceFinder.tsx:53`
+- [ ] **[medium] company-register** — A company picked from the register, then typed over, puts its number on the other company's contact
+  `web/src/app/clients/new/page.tsx:151`
+- [ ] **[medium] company-register** — Editing a client onto a different company on /clients leaves the old company number in place
+  `web/src/app/clients/page.tsx:327`
+- [ ] **[medium] company-register** — tidyCompanyNumber does not zero-pad a 6- or 7-digit company number, so the lookup 404s and the app says the company is not on the register
+  `web/src/lib/companyLookup.ts:131`
+- [ ] **[low] invoice-pdf-print** — The customer statement prints with its share buttons and app chrome on it
+  `web/src/app/clients/[id]/statement/page.tsx:73`
+- [ ] **[low] duplicate-contacts** — Editing a contact and picking a different company from the register keeps the old company number, which is what later register checks query
+  `web/src/app/clients/page.tsx:327`
+- [x] **[low] statement** — Printing a statement puts the app's back-link and its Share/Download/Print buttons on the sheet handed to the customer
+  `web/src/app/clients/[id]/statement/page.tsx:73`
+- [ ] **[low] price-guide** — The price guide is kept when the line under it changes, so the verdict is shown against a different item
+  `web/src/components/PriceFinder.tsx:27`
+- [ ] **[low] company-register** — /check-company blames the visitor for a rate limit when Companies House is simply unreachable
+  `web/src/app/api/company-check/route.ts:45`
