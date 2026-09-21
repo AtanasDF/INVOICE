@@ -150,9 +150,16 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   180"; Chrome honours both on decode, so the reader is handed an upright portrait photo
   either way (checked by dimensions and by which side the left-aligned text lands on).
   A document that is physically sideways on the page, with no EXIF, is the reader's job.
-- [ ] 24. Batch of 10 timed through Gemini vs Claude — **needs Atanas**: it spends real
-  Anthropic and Gemini credit on synthetic documents, and the harness never calls the live
-  APIs. Say the word and it runs against the local server with `.env.local`.
+- [~] 24. Batch of 10 timed through Gemini vs Claude — approved 2026-09-21 ("always run as
+  many documents as you need"). `harness/gen-bench-docs.py` makes ten documents with known
+  figures (six invoices, three till receipts, one credit note; A4 JPEGs with tilt and
+  noise) and `harness/bench-engines.mjs` runs the app's own reader on them one at a time
+  with the keys from `web/.env.local`, scoring type, vendor, date, total, VAT, number and
+  line count. **Gemini (3.5 Flash-Lite): 10/10 documents with all seven fields right,
+  median 4.8 s, mean 4.9 s, slowest 6.7 s.** **Claude: not run — `ANTHROPIC_API_KEY` is
+  empty in the local `.env.local`** (the live site has it); once it's there, the same
+  command runs the Claude half and prints both rows of the table. Results in
+  `harness/bench-docs/results.json` (gitignored).
 - [x] 25. Second-user RLS simulation in the mock server — `db.rls = true` makes `mockdb.mjs`
   behave like the database (reads see only the signed-in user's rows; writes only reach
   them), off by default so no existing suite changes. `harness/test-two-users.mjs` seeds a

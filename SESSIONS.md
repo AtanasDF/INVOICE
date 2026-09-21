@@ -66,7 +66,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   closes, focus in on open and back to the tile on close. `test-announced` grew five
   checks (Settings "Saved.", and the lightbox's four).
 - `harness/gen-torch.py` makes the two torch clips that had no generator, and
-  `test-torch-nocv` now actually keeps OpenCV from loading rather than assuming it.
+  `test-torch-nocv` now actually keeps OpenCV from loading rather than assuming it:
+  `test-torch` 12/12, `test-torch-nocv` 3/3 on the generated clips.
+- **Item 24, half done**: Atanas approved spending credit ("always run as many documents
+  as you need", kept as a memory). `gen-bench-docs.py` + `bench-engines.mjs` run the app's
+  own reader on ten synthetic documents with known figures. Gemini read all ten with every
+  field right, median 4.8 s. Claude couldn't run: `ANTHROPIC_API_KEY` is empty in the
+  local `.env.local` (so is `SUPABASE_SERVICE_ROLE_KEY`); the bench skips an engine
+  whose key is missing and says so.
+- Scheduled tasks: the brief said all 19 were off; the machine has 15 local tasks, all
+  on, and one fired cloud one-shot. Atanas: they belong to another chat, leave them; only
+  timers this session made are mine to touch (kept as a memory). The Currys receipt
+  question is moot — the row is no longer in the live table (see claude-notes.md).
 - **Page weight**: `test-weight` failed on the dashboard (1627 KB against 1.5 MB) and,
   after the 033 merge, on the Free page (1483 KB) and Check a company (1360 KB). Building
   the last green commit in a scratch worktree (Turbopack refuses a symlinked
@@ -78,6 +89,20 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   knife-edge, which is exactly what the suite is there to catch.
 - iCloud had again put 89 `name 2.*` copies inside `web/.next`; moved to the scratchpad
   (`icloud-dupes/`, same paths), nothing deleted; build then "Compiled successfully".
+- Harness at the end: 73 suites in `run-all.sh` (the two inbox suites new), 73 green on
+  the final build, and `run-all.sh` now exits non-zero when any suite crashes or fails.
+  `test-two-users` and `test-prefix-wipe` stalled once each under load (a second dev
+  server compiling next to a four-way run) and pass alone; `test-address-fields` talks to
+  the live postcodes.io and photon and can time out under the same load.
+
+**Open, for Atanas** (`notes/tonight.md`): paste `ANTHROPIC_API_KEY` into
+`web/.env.local` for the Claude half of item 24; `npx wrangler deploy` from `worker/`
+for the HTML-only email fix; the placeholder business details in Settings; the
+`.claude/worktrees/` question. Everything else on his list is done or moot.
+
+**Open, for the next session**: the Claude half of the bench (`node bench-engines.mjs`
+once the key is there); item 28 (offline scan queue) still waits for an iPhone; the
+dashboard is 1,501 KB of JavaScript against a 1.5 MB budget — under, but only just.
 
 ## 2026-09-20 evening → 21 September — Atanas away, steering from his phone (Opus 5, then Fable 5.1)
 

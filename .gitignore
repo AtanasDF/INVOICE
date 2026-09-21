@@ -30,3 +30,5 @@ harness/fixtures/*.pdf
 # fixtures/ inputs are kept; these outputs are not.
 harness/*.png
 harness/downloads/
+harness/gen-bench/
+harness/bench-docs/

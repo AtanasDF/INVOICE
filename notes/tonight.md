@@ -126,6 +126,14 @@ attachment used to be filed with nothing but its subject (the Worker only passed
 plain-text part on). From `worker/`: `npx wrangler deploy`. Nothing else changes; if the
 Worker was never deployed in the first place, the steps in `worker/README.md` still apply.
 
+## 4d. The Anthropic key for the local bench (1 minute, when convenient)
+
+`web/.env.local` has an empty `ANTHROPIC_API_KEY=` line (and an empty
+`SUPABASE_SERVICE_ROLE_KEY=`), so the Gemini-vs-Claude timing (item 24) could only run
+its Gemini half here. Paste the key in after the `=` — it's the same one Vercel has —
+and the next session runs `node bench-engines.mjs` from `harness/` for the Claude half.
+Nothing reads the file except the app and that script, and neither prints it.
+
 ## 5. Two things worth deciding, not doing
 
 - **`.claude/worktrees/` is 5.4GB** of old copies of the project from finished branches,

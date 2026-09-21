@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "outDir": "gen-bench",
+    "rootDir": "/Users/nasko/Desktop/INVOICE/web/src",
+    "baseUrl": "/Users/nasko/Desktop/INVOICE/web/src",
+    "paths": {
+      "@/*": [
+        "*"
+      ]
+    },
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmitOnError": false
+  },
+  "files": [
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/scanExtraction.ts"
+  ]
+}
