@@ -39,6 +39,10 @@ changes.
 
 ## Verified facts
 
+- 2026-09-22 00:23: **the email import is live and verified with a real email** (Gmail →
+  Cloudflare Email Routing → `invoice-inbox-worker` → `/api/inbox/ingest` → Claude read →
+  a needs-review row on the test account, all figures right). Worker version 4c873fc5;
+  `INBOX_WEBHOOK_SECRET` the same on both sides.
 - 2026-09-21 (late, in the SQL editor): **three accounts** in auth.users. `fragov@hidefield.co.uk`
   → business_profile "Hidefield", 5 receipts, 2 clients — **Atanas's real record** (he
   confirmed). `atanaschoo@gmail.com` → "PLACEHOLDER — replace with your business name",

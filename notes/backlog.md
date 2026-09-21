@@ -91,6 +91,9 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   attached and no figures invented, one refused not taking the others, a database refusal
   filed unread with the reason, storage down → kept inline, two documents in one PDF cut
   into two rows, a spreadsheet skipped and five attachments at most.
+  **Live, 2026-09-22 00:23**: a real email from Gmail to the test account's address came
+  through Cloudflare, the Worker and the route and was filed for review with every figure
+  right — the first email the import ever received.
 - [x] 14. Customer matching on a scanned invoice (exact-only) —
   `harness/test-exact-customer.mjs`: "Riverside Building Services" must not pick
   "Hillside Building Services" (two shared words was enough for the old loose match, and

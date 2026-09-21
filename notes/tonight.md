@@ -129,8 +129,11 @@ deployed with the secret; the same secret in Vercel Production (verified: the li
 answers 404 "Unknown import address" to it and 401 to anything else); Cloudflare's MX,
 SPF and DKIM records added (root had none — Resend lives on `send.invoiceover.com`, so
 nothing clashed); catch-all → Send to a Worker → `invoice-inbox-worker`, Active. The
-`receipts@` forward to Gmail is untouched. Left to do: generate the import address in
-Settings (the account has none yet) and send one test email.
+`receipts@` forward to Gmail is untouched. **Tested end to end at 00:23 on 22 September**:
+an emailed invoice photo from the gmail account arrived as a needs-review supplier invoice
+with every figure right, on the test account (`atanaschoo@gmail.com`, import address
+`u-8c06f295592fba4c02ce635213fbfe4f@invoiceover.com`). Your own account has no import
+address yet — Settings → Email import → "Get my import address" when you want one.
 
 ## 4d. The Anthropic key for the local bench — DONE 2026-09-22 (new key `invoicer-local-bench`, Default workspace, no expiry, pasted by Atanas; the bench ran: both engines 10/10, Gemini 4.0 s vs Claude 8.1 s median)
 

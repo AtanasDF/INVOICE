@@ -165,10 +165,19 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   PLACEHOLDER account every note had been calling "his", and the import address I
   generated first landed there; a `schemaprobe.*` account is an old probe.
 
-**Open, for Atanas** (`notes/tonight.md`): sign in to the app as `fragov@hidefield.co.uk`
-so the import address can be generated on the real account and one test email sent; the
-business details in Settings (on that account). The Worker is deployed, the key is in,
-and the worktrees are gone.
+- **00:23: the email import works end to end**, proven with a real email. Atanas's rule
+  first: Hidefield is his alone, the gmail account is the test bench (now the opening
+  lines of CLAUDE.md). Then, with his "do it and report" standing, I composed in his
+  Gmail in Chrome as atanaschoo@gmail.com, attached `bench-docs/doc-01.jpg` and sent it
+  to the test account's import address. `wrangler tail`: `Email from atanaschoo@gmail.com
+  … size 137470 — Ok`. The database: one new receipt on the test account — Brightwork
+  Plastering Ltd, invoice INV-3991, 2026-07-23, due 2026-08-24, £508.68 net + £101.74 VAT
+  (the document says £610.42), unpaid, `needs_review`, tags `["via-email"]`, image
+  `storage:<uid>/…` in the receipts bucket. Cloudflare routing → Worker → Vercel route →
+  Claude read → row, first time ever.
+
+**Open, for Atanas** (`notes/tonight.md`): only the business details in Settings, on his
+own account, whenever he likes. Everything else on his list is done.
 
 **Open, for the next session**: the Claude half of the bench (`node bench-engines.mjs`
 once the key is there); item 28 (offline scan queue) still waits for an iPhone; the
