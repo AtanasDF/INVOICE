@@ -270,7 +270,7 @@ export default function ClientsPage() {
         for you.
       </Tip>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {merged && <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{merged}</p>}
       {duplicates.map((pair) => (
         <div key={pairKey(pair)} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">

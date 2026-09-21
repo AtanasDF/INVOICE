@@ -59,7 +59,7 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
           </button>
         </div>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
         <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf />
       </div>

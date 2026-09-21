@@ -80,7 +80,13 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+      {/* Accepting is the one thing this page exists for, and every
+          outcome is a paragraph swapped into this card. Pressing the button
+          disables it, which blurs it, so a customer using a screen reader
+          was left with no confirmation, no error, and focus on <body>.
+          The card is here from first paint, so the region is registered
+          before its contents change. */}
+      <div aria-live="polite" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         {answered === "accepted" ? (
           <p className="text-sm font-medium text-green-800">
             You accepted this quote{data.response?.at ? ` on ${longDate(data.response.at.slice(0, 10))}` : ""}. {from} has been told and will be in touch.
@@ -131,7 +137,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
             </div>
           </div>
         )}
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
 
       <div className="flex justify-end gap-2 print:hidden">

@@ -445,7 +445,7 @@ export default function ReceiptsPage() {
         check them and save them one after another.
       </Tip>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {linkable.length > 0 && (
         <div className="rounded-xl border bg-neutral-50 p-4 text-sm text-neutral-800">

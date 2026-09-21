@@ -236,7 +236,7 @@ export function EmailForm({
   }
   if (status.kind === "sent") {
     return (
-      <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+      <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
         <p className="font-medium">
           {status.number ? `${quote ? "Quote" : "Invoice"} ${status.number} sent` : "Sent"} to {status.to}.
         </p>
@@ -281,7 +281,7 @@ export function EmailForm({
         </label>
       )}
       <p className="text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}.</p>
-      {status.kind === "error" && <p className="text-sm text-red-600">{status.message}</p>}
+      {status.kind === "error" && <p role="alert" className="text-sm text-red-600">{status.message}</p>}
       <button type="submit" disabled={working} className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto">
         {working ? status.step : `Send ${word}`}
       </button>

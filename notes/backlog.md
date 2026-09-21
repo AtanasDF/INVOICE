@@ -118,7 +118,7 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 ## Bigger pieces
 
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item
-- [ ] 29. Accessibility pass: focus order, tab traps, screen-reader labels on every flow
+- [x] 29. Accessibility pass — run 2026-09-21; findings in their own section below.
 - [x] 30. 320px sweep re-run after the day's changes — `harness/test-fit-320.mjs` runs the
   same sweep as `test-fit-sweep` at 320px (iPhone SE) and is in `run-all.sh`, so both
   widths are covered every run rather than when someone remembers `WIDTH=320`. All 26
@@ -179,3 +179,25 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/components/PriceFinder.tsx:27`
 - [x] **[low] company-register** — /check-company blames the visitor for a rate limit when Companies House is simply unreachable
   `web/src/app/api/company-check/route.ts:45`
+
+## Accessibility review (item 29) — 20 findings, 11 survived, 9 refuted
+
+Run 2026-09-21, weighted to the pages a customer sees. Each finding went to a skeptic
+told to refute it, and anything only a lint rule would care about was dropped.
+
+**Not covered by a test:** the /q/, /i/ and /r/ pages are server-rendered with the
+service role, so the harness's mocked PostgREST can't stand in for them and
+`test-announced` covers only the app's own forms. The public-page fixes are verified
+by reading, not by running.
+
+- [x] **[high] public-invoice** — Accepting or declining a quote gives a blind customer no feedback at all
+- [x] **[high] public-invoice** — A supplier's price submission: neither the validation errors nor the successful send is announced
+- [x] **[high] free-invoice** — Sending the invoice by email announces nothing and throws focus to the top of the page
+- [x] **[high] app-forms** — Save does nothing, says nothing, when a required field is empty
+- [x] **[high] app-forms** — House-style labels sit next to their input instead of being tied to it, leaving nine controls with no name at all
+- [x] **[high] overlays** — A supplier pricing a quote request gets no feedback when the send is refused — the form just does nothing
+- [ ] **[medium] public-invoice** — Price boxes and "Can't supply" boxes are named by line number, not by what is on the line
+- [ ] **[medium] free-invoice** — The scan path gives no feedback: progress, failure and the jump to the editor are all silent
+- [ ] **[medium] app-forms** — Nothing these forms say back is ever announced — errors, "Saved.", and the warnings are silent paragraphs
+- [ ] **[medium] overlays** — The scan review sheet covers the live camera but leaves every camera control tabbable behind it, including Capture and a Back that discards the batch
+- [ ] **[low] overlays** — The receipt image lightbox cannot be closed from the keyboard except by finding its ✕, and loses your place in the list

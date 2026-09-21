@@ -414,8 +414,9 @@ export default function SettingsPage() {
           </fieldset>
 
           <div>
-            <label className="text-xs text-neutral-500">{personal ? "Your name" : "Business name"}</label>
+            <label className="text-xs text-neutral-500" htmlFor="business-name">{personal ? "Your name" : "Business name"}</label>
             <CompanyNameInput
+              id="business-name"
               className="w-full rounded-lg border px-3 py-2"
               lookupPlaceholder="Limited company? Type to find it on Companies House"
               value={businessName}
@@ -490,8 +491,9 @@ export default function SettingsPage() {
             VAT registered
           </label>
           <div>
-            <label className="text-xs text-neutral-500">VAT number</label>
+            <label className="text-xs text-neutral-500" htmlFor="vat-number">VAT number</label>
             <input
+              id="vat-number"
               className="w-full rounded-lg border px-3 py-2"
               value={vatNumber}
               onChange={(e) => setVatNumber(e.target.value)}
@@ -510,12 +512,13 @@ export default function SettingsPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-neutral-500">Prefix</label>
-              <input className="w-full rounded-lg border px-3 py-2" value={invoicePrefix} onChange={(e) => setInvoicePrefix(e.target.value)} />
+              <label className="text-xs text-neutral-500" htmlFor="invoice-prefix">Prefix</label>
+              <input id="invoice-prefix" className="w-full rounded-lg border px-3 py-2" value={invoicePrefix} onChange={(e) => setInvoicePrefix(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-neutral-500">Next number</label>
+              <label className="text-xs text-neutral-500" htmlFor="invoice-next-number">Next number</label>
               <input
+                id="invoice-next-number"
                 type="number"
                 className="w-full rounded-lg border px-3 py-2"
                 value={invoiceNextNumber}
@@ -654,7 +657,7 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         {saved && !migrationPending && <p className="text-sm text-green-700">Saved.</p>}
         {saved && migrationPending && (
           <p className="text-sm text-amber-700">

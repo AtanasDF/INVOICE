@@ -139,7 +139,7 @@ export default function NewClientPage() {
 
   async function addClient(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) return setError("Enter a name before saving.");
     setError(null);
     setSaving(true);
     try {
@@ -274,7 +274,7 @@ export default function NewClientPage() {
             Send automatic payment reminders to this client
           </label>
         )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {saving ? "Saving…" : `Save ${kind}`}

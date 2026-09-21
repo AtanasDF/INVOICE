@@ -205,7 +205,7 @@ export default function NewReceiptPage() {
 
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
-    if (!totalAmount) return;
+    if (!totalAmount) return setError("Enter the total paid before saving.");
     if (currency !== "GBP" && !fxRateInput) {
       setError("Enter an exchange rate before saving (or wait for it to load).");
       return;
@@ -432,7 +432,7 @@ export default function NewReceiptPage() {
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         {possibleDuplicate && (
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             This looks like it might already be saved — {possibleDuplicate.vendor || possibleDuplicate.category}, £

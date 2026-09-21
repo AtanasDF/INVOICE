@@ -125,7 +125,11 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
         )}
       </div>
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      {/* Same as the quote page: the supplier presses Send prices and
+          the answer -- a refused draft, or the thank-you that replaces the
+          whole form -- was never spoken, on a page that says prices can
+          only be sent once. */}
+      <div aria-live="polite" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         {own ? (
           own.status === "declined" ? (
             <p className="text-sm text-neutral-700">You said you can&apos;t quote for this. {data.from || "The sender"} has been told.</p>
@@ -180,7 +184,7 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
             <p className="text-xs text-neutral-500">Prices can be sent once. To change them afterwards, contact {from}.</p>
           </div>
         )}
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
       <p className="text-center text-xs text-neutral-400">Sent with Invoicer</p>
     </div>

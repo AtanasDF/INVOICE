@@ -769,12 +769,13 @@ export default function NewInvoicePage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-neutral-500">Invoice date</label>
-            <input type="date" className="w-full rounded-lg border px-3 py-2" value={date} onChange={(e) => onDateChange(e.target.value)} />
+            <label className="text-xs text-neutral-500" htmlFor="invoice-date">Invoice date</label>
+            <input id="invoice-date" type="date" className="w-full rounded-lg border px-3 py-2" value={date} onChange={(e) => onDateChange(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs text-neutral-500">Due date</label>
+            <label className="text-xs text-neutral-500" htmlFor="invoice-due-date">Due date</label>
             <input
+              id="invoice-due-date"
               type="date"
               className="w-full rounded-lg border px-3 py-2"
               value={dueDate}
@@ -851,7 +852,7 @@ export default function NewInvoicePage() {
           onChange={(e) => setTagsInput(e.target.value)}
         />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
         <div className="space-y-1 border-t pt-3 text-sm">
           {profile?.vatRegistered && (
