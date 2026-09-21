@@ -33,6 +33,11 @@ const reset = () => { js = 0; opencv = 0; requests = []; };
 const KB = (n) => `${Math.round(n / 1024)} KB`;
 
 const load = async (path) => {
+  // Off the previous page first, so a chunk still arriving from it (the
+  // sign-in page's, before the dashboard) isn't counted against this one:
+  // that put the dashboard at 1627 KB in one run and 1501 KB in the next.
+  await page.goto("about:blank");
+  await sleep(400);
   reset();
   await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
   await sleep(800);
@@ -40,7 +45,13 @@ const load = async (path) => {
 };
 
 try {
-  // Signed out first: the pages a stranger gets.
+  // Signed out first: the pages a stranger gets. The profile directory
+  // persists between runs and signIn() below leaves its session in this
+  // origin's localStorage, so without this the "stranger" loads were
+  // measured signed in -- 1484 KB for the Free page against 934 KB signed
+  // out, and a different figure again on a server at another port.
+  await page.goto(`${BASE}/login`, { waitUntil: "networkidle0" });
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
   const free = await load("/free-invoice");
   check("the Free invoice page is under 1.5MB of JavaScript for a stranger", free.js < 1.5 * 1024 * 1024, `${KB(free.js)} ${JSON.stringify(free.top)}`);
   check("...and does not fetch OpenCV just to show the page", free.opencv === 0, KB(free.opencv));
