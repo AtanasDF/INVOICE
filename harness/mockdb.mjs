@@ -252,6 +252,17 @@ export async function launchSignedIn(db, { width = 375, base = "http://localhost
         const r = handle(db, req.method(), u.pathname, u.search, req.headers(), body);
         return req.respond({ status: r.status, headers: { ...cors, "content-type": "application/json" }, body: r.json === null ? "" : JSON.stringify(r.json) });
       }
+      // Storage: signing a batch of stored receipt photos. db.storageFails
+      // makes it answer the way an outage does, so a suite can check the
+      // page still says a photo EXISTS rather than "no attachment".
+      if (u.pathname.startsWith("/storage/v1/object/sign/")) {
+        if (db.storageFails) return req.respond({ status: 500, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify({ message: "mock: storage unavailable" }) });
+        let paths = [];
+        try { paths = JSON.parse(req.postData() || "{}").paths ?? []; } catch { paths = []; }
+        const signed = paths.map((path) => ({ path, signedURL: `/storage/v1/object/sign/${path}?token=mock`, error: null }));
+        db.signed = (db.signed ?? 0) + paths.length;
+        return req.respond({ status: 200, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify(signed) });
+      }
       if (u.pathname.startsWith("/auth/v1/user")) return req.respond({ status: 200, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify(fakeUser()) });
       if (u.pathname.startsWith("/auth/v1/token")) return req.respond({ status: 200, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify(fakeSession()) });
       console.log("MOCK: blocked", req.method(), u.pathname);
