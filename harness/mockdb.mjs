@@ -12,6 +12,13 @@ export const newId = () => `10000000-0000-4000-8000-${String(++seq).padStart(12,
 export function makeDb() {
   return {
     tables: { clients: [], invoices: [], quotes: [], credit_notes: [], business_profile: [] },
+    // Off by default: the app leans on Postgres row level security, so its
+    // queries legitimately don't filter by user_id, and every suite seeds
+    // rows without meaning anything by the id they use. Turn it on
+    // (db.rls = true) to have the mock behave like the database does and
+    // hide every row belonging to somebody else -- which is the only way a
+    // suite can show that one account never sees another's records.
+    rls: false,
     log: [],
     fail: {}, // e.g. { "POST invoices": 1 } fails the next POST to invoices
     emails: [],
@@ -166,6 +173,7 @@ export function handle(db, method, path, search, headers, body) {
   };
   if (method === "GET") {
     let list = rows.filter((r) => matches(r, params));
+    if (db.rls) list = list.filter((r) => r.user_id === undefined || r.user_id === UID);
     return out(list);
   }
   if (method === "POST") {
@@ -195,14 +203,17 @@ export function handle(db, method, path, search, headers, body) {
     if (lost) return { status: 504, json: { message: "mock: reply lost after commit", code: "" } };
     return returnRep ? out(made) : { status: 201, json: null };
   }
+  // A write only ever reaches the signed-in user's own rows, as the
+  // database's policies enforce.
+  const mine = (r) => !db.rls || r.user_id === undefined || r.user_id === UID;
   if (method === "PATCH") {
-    const hit = rows.filter((r) => matches(r, params));
+    const hit = rows.filter((r) => matches(r, params) && mine(r));
     for (const r of hit) Object.assign(r, body);
     return returnRep ? out(hit) : { status: 204, json: null };
   }
   if (method === "DELETE") {
     if (!db.allowDelete?.includes(table)) return { status: 403, json: { message: "mock: no deletes", code: "42501" } };
-    const keep = rows.filter((r) => !matches(r, params));
+    const keep = rows.filter((r) => !(matches(r, params) && mine(r)));
     db.tables[table] = keep;
     return { status: 204, json: null };
   }

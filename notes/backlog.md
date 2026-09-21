@@ -99,7 +99,11 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 - [ ] 22. HEIC, 12MP, 10MB, no-extension uploads
 - [ ] 23. Upside-down / 90° / 180° documents
 - [ ] 24. Batch of 10 timed through Gemini vs Claude
-- [ ] 25. Second-user RLS simulation in the mock server
+- [x] 25. Second-user RLS simulation in the mock server — `db.rls = true` makes `mockdb.mjs`
+  behave like the database (reads see only the signed-in user's rows; writes only reach
+  them), off by default so no existing suite changes. `harness/test-two-users.mjs` seeds a
+  second account and checks nothing of theirs reaches any page, including by opening their
+  invoice's address directly. With `rls` off the suite fails, so it isn't testing nothing.
 - [ ] 26. Storage signed-URL expiry and re-signing
 - [ ] 27. Network killed mid-save on every remaining form
 
