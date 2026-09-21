@@ -107,7 +107,10 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item
 - [ ] 29. Accessibility pass: focus order, tab traps, screen-reader labels on every flow
-- [ ] 30. 320px sweep re-run after the day's changes
+- [x] 30. 320px sweep re-run after the day's changes — `harness/test-fit-320.mjs` runs the
+  same sweep as `test-fit-sweep` at 320px (iPhone SE) and is in `run-all.sh`, so both
+  widths are covered every run rather than when someone remembers `WIDTH=320`. All 26
+  pages fit.
 - [ ] 31. Performance: 2,000-receipt account on a throttled phone profile
 - [ ] 32. Dead-code and bundle re-audit
 - [ ] 33. `notes/` consolidation — three reviews' findings into one standing document
