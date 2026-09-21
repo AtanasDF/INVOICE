@@ -4,6 +4,58 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-20 evening → 21 September — Atanas away, steering from his phone (Opus 5, then Fable 5.1)
+
+39 commits, all on `main` except two feature branches. The working list is
+`notes/backlog.md` (the 34 items given to Atanas, plus everything found on the way);
+read that before this.
+
+- **Third review, findings 1–10, all fixed**: sign-out left push live (and on a dead
+  connection `signOut()` hangs, or returns no error with the session still stored —
+  now bounded at 4s and checked by looking, `src/lib/signOut.ts`); the Clients page
+  showed ex-VAT subtotals; `/expenses` counted drafts and ignored credit notes
+  (`src/lib/periodIncome.ts`); Settings rewound the invoice counter (issuing then
+  *jams* on 23505, it doesn't double-issue); recurring "Log it" reported failure after
+  saving; an undecodable photo said nothing; the Feedback pill covered the Free page's
+  More button; a failed dashboard load cleared the app badge.
+- **Every "today" was the UTC date.** For the hour after midnight BST a receipt was
+  dated yesterday and an invoice could vanish from the tax card. `src/lib/today.ts`,
+  Europe/London; see "What day it is" in CLAUDE.md. Verified live at 00:50.
+- **Fourth review** (the seven areas nobody had reviewed): 29 findings, two skeptics
+  each, 18 survived. 16 fixed on main — among them six pages of a multi-invoice PDF
+  silently dropped, the statement calling late debt "not yet late", a customer owed
+  money back shown as owing nothing (the review's own fix would have made legacy
+  hand-paid invoices reappear as owed; the skeptic caught it), the Amount column cut off
+  the customer's PDF by a long reference, an unreachable Companies House reported as
+  "no such company". Two need migrations and sit on branches.
+- **Accessibility**: 20 findings, 11 survived, 6 fixed — a blind customer accepting a
+  quote on `/q/` heard nothing at all; now a live region and role="alert". The public
+  pages can't be run in the harness (server-rendered with the service role), so those
+  fixes are verified by reading only.
+- **Uploads**: a photo with no extension was tagged `application/pdf` and sent to the
+  reader as one; `readUpload` now sniffs the first bytes.
+- **Harness**: 71 suites in `run-all.sh`, last full run green. Its own defects fixed: a
+  crashed suite reported "0 fails"; `large.mjpeg` had no generator; sixteen suites shared
+  a Chrome profile; suites built dates off the UTC clock; `test-check-company` ran a
+  frozen worktree copy of the app. The mock gained opt-in RLS (`db.rls`), storage
+  signing (`db.storageFails`) and `record_quote_request_response`. Traps written into
+  `harness/README.md`: seed rows with `UID`, innerText excludes input values,
+  `clickText` matches whole labels, never point a suite outside `web/`.
+- **Build trap**: iCloud `name 2.ts` copies inside `web/.next/types` make `next build`
+  fail its type check and `:3000` keeps serving the old bundle. Check for "Compiled
+  successfully", not just the exit.
+
+**Open, for Atanas** (`notes/tonight.md`): migrations **031** (six readable backup
+tables — the one with a real consequence), **032**, **033** then merge
+`feature/quote-vat-snapshot`, **034** then merge `feature/deposit-delete-guard`; and the
+Currys receipt (£549.99 may be the till total, not the net — his record, his call).
+Item 24 (timed Gemini vs Claude batch) spends real credit and waits for his word.
+
+**Open, for the next session**: a **landscape page is never detected** by the in-app
+scanner (`quads:0` throughout; a portrait receipt turned sideways fails too) — not traced,
+`quadOf`/`fitCorners` next; items 13 and 18; 28 deferred until there's an iPhone to test
+on; the two torch clips still have no generator.
+
 ## 2026-09-20 (morning) — Atanas awake and steering, Mac desktop app (Opus 5)
 
 **In flight:** the 50-item solo checklist, starting with the account Atanas is actually in:
