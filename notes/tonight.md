@@ -78,6 +78,25 @@ is no wrong price to show anyone.
 
 ---
 
+## 4b. migration-034 — deleting a deposit invoice loses the deposit
+
+Found in the fourth review. Invoice a £1,200 job as a £360 deposit plus an £840
+balance, then remove the deposit invoice (easy to do while it's unpaid — nothing stops
+you): the "Less deposit" line stays on the balance invoice, so your records now ask for
+£840 of a £1,200 job. The £360 is in no invoice, no turnover and no VAT return — while
+the customer may still be holding the emailed copy, so the money can arrive with no
+invoice behind it.
+
+1. Run `web/supabase/migration-034-deposit-delete-guard.sql` (creates one function and
+   one trigger, changes no row, safe to run twice).
+2. Tell me, and I'll merge **`feature/deposit-delete-guard`**.
+
+It blocks exactly one thing: deleting a deposit invoice that a balance invoice is still
+deducting. Deleting a draft deposit invoice, or one on a quote you haven't balanced yet,
+works as it does today.
+
+---
+
 ## 5. Two things worth deciding, not doing
 
 - **`.claude/worktrees/` is 5.4GB** of old copies of the project from finished branches,
