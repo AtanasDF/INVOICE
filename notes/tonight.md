@@ -135,6 +135,9 @@ Worker was never deployed in the first place, the steps in `worker/README.md` st
   is off. Reminders and invoice emails use the business name and bank details from there,
   so until they're filled in, a customer gets an invoice with nowhere to pay it. Five
   minutes on the Settings page, whenever suits.
+- **(Moot, 2026-09-21: the Currys receipt is no longer in the live table — it's only in
+  the 14/15 September snapshots, and the 17 September one is empty. Nothing to correct.
+  The paragraph below is what stood before.)**
 - **One receipt may be £91.67 too high — and only you can say.** The Currys PC World
   receipt from 14 September was saved about 75 minutes before the bug was fixed that had
   the app treat the till total as the net figure. It reads amount £549.99, VAT £91.67, so

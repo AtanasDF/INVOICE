@@ -211,8 +211,11 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 - [x] migrations 031 and 032 (see `notes/tonight.md`) — **both run 2026-09-21**. 031's
   premise was wrong (the six tables already had RLS on; the audit reads SQL files, not the
   database), so it now revokes the unused default grants on all 24 backup tables instead.
-- [ ] The Currys receipt: £549.99 may be the till total, not the net figure — his call,
-  his record. See the foot of `Claude outputs/invoicer-backlog-brief.md`.
+- [x] The Currys receipt: £549.99 may be the till total, not the net figure — his call,
+  his record. See the foot of `Claude outputs/invoicer-backlog-brief.md`. **Moot,
+  2026-09-21**: the live `receipts` table holds five rows (Rawlings ×2, Anthropic ×3) and
+  no Currys; the row is in the 14- and 15-September snapshots only, and the 17-September
+  snapshot is empty, so it left the live table between those dates. Nothing to correct.
 
 ## Fourth review (item 11) — 29 findings, 18 survived two skeptics each, 11 refuted
 

@@ -39,6 +39,18 @@ changes.
 
 ## Verified facts
 
+- 2026-09-21 (evening, in the SQL editor): migrations 031–034 applied and verified;
+  `feature/quote-vat-snapshot` and `feature/deposit-delete-guard` merged. All 24
+  `*_backup_*` tables have RLS on, no policy and no anon/authenticated grant (signed-in
+  and anon are denied outright; service role reads). The six 14-September backups never
+  had RLS off — `test-rls-audit` reads the SQL files, not the database. Live tables that
+  evening: `receipts` 5 rows (Rawlings ×2, Anthropic ×3), `clients` 2, `invoices` 0,
+  `quotes` 0, `quote_requests` 0. The Currys PC World receipt (549.99/91.67, the "till
+  total as net" question) is NOT in the live table — it's in `receipts_backup_20260914_3`
+  and `receipts_backup_20260915` only, and `receipts_backup_20260917` is empty; it left
+  between the 15th and the 17th. The Supabase SQL editor holds any statement containing
+  `drop` or `delete` behind a "destructive operations" dialog; unconfirmed, it never runs.
+
 - **A NULL invoice_prefix breaks invoice numbering, and looked like a missing profile.**
   `assign_invoice_number` builds the number as `invoice_prefix || (invoice_next_number-1)`,
   and `||` is strict in Postgres: a NULL prefix makes the whole expression NULL, so the
