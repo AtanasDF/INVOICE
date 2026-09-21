@@ -63,8 +63,21 @@ export async function splitDocuments(files: CapturedFile[], documents: ScanResul
     return own.length ? own : Array.from({ length: total }, (_, i) => i + 1);
   });
   const shared = (page: number) => pagesOf.filter((p) => p.includes(page)).length > 1;
-  if (counts.includes(null)) {
-    return documents.map((d, i) => ({ pages: files, result: noted(d, `On ${pageList(pagesOf[i])} of this file, which couldn't be split.`), context: [] }));
+  // A page no document claimed would be cut out of every part and written
+  // nowhere. On a supplier PDF holding three three-page invoices, a reader
+  // that lists only the page each one STARTS on (1, 4, 7) leaves pages
+  // 2-3, 5-6 and 8-9 -- the line items, and a total carried overleaf -- in
+  // no part at all, and three one-page receipts get saved as the whole
+  // record of those invoices. Losing the split is cheap; losing a page of
+  // a receipt is not, so the whole file goes to every document instead,
+  // with the note that already exists for a file that couldn't be cut.
+  const claimed = new Set(pagesOf.flat());
+  const unclaimed = Array.from({ length: total }, (_, i) => i + 1).filter((p) => !claimed.has(p));
+  if (counts.includes(null) || unclaimed.length) {
+    const why = counts.includes(null)
+      ? "which couldn't be split."
+      : `which wasn't split: ${pageList(unclaimed)} of it ${unclaimed.length === 1 ? "belongs" : "belong"} to no document, so nothing is left out.`;
+    return documents.map((d, i) => ({ pages: files, result: noted(d, `On ${pageList(pagesOf[i])} of this file, ${why}`), context: [] }));
   }
 
   return Promise.all(
