@@ -40,6 +40,32 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   miss where a click by element reference doesn't.
 - The harness needed `npm install` in `harness/` first (`puppeteer-core` missing): every
   browser suite crashed, and `run-all.sh` still exited 0 on the crashes.
+- **The landscape page (item 20) was never on screen.** A probe re-running the detector's
+  stages inside the scanner page found the wide page as a clean quad on the whole video
+  frame, but the live loop looks only at `visibleRegion` — the cover-fitted strip the
+  preview shows, 566 of 720 px on the harness's 375-wide viewport — and every failing
+  clip's page was wider than that. Nothing in the detector assumes portrait: a 460-px-wide
+  landscape page auto-captures in 2.5 s with a 462×328 crop. Clip and suite rewritten to
+  the till-roll pattern (overflowing for 6 s, then held back to fit); CLAUDE.md says why a
+  test clip must keep the page inside the strip, not just the frame.
+- **Item 13, email import**: `test-inbox-worker` runs the Cloudflare Worker's code in Node
+  (Node 24 strips the types) with `fetch` stubbed — the inline-signature filter, the
+  pasted-screenshot fallback, address and token checks; and found that an HTML-only email
+  posted an empty body, fixed with a text fallback (Worker needs redeploying).
+  `test-inbox-ingest` runs the route on its own dev server against `mock-server.mjs`
+  (which now accepts storage uploads, with `db.storageFails`) and a stand-in Claude API
+  scripted per call: 20 checks over the unread-filing paths — reader refused or cut off,
+  database refusing the row, storage down, two documents in one PDF — none touching the
+  live database or the real reader. 31/31.
+- **Page weight**: `test-weight` failed on the dashboard (1627 KB against 1.5 MB) and,
+  after the 033 merge, on the Free page (1483 KB) and Check a company (1360 KB). Building
+  the last green commit in a scratch worktree (Turbopack refuses a symlinked
+  `node_modules`; a hard-linked copy works) and measuring it the same way: the dashboard
+  was already 1626 KB there — the budget was never met — while the Free page and Check a
+  company were 934 / 807 KB, and are again on the 034 build (933 / 807, per-file
+  identical). Turbopack had grouped a 359 KB dashboard chunk into those pages' loads at
+  the 033 commit and moved it back after a 13-line change: chunk assignment on a
+  knife-edge, which is exactly what the suite is there to catch.
 - iCloud had again put 89 `name 2.*` copies inside `web/.next`; moved to the scratchpad
   (`icloud-dupes/`, same paths), nothing deleted; build then "Compiled successfully".
 

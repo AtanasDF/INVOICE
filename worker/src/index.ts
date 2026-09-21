@@ -14,6 +14,29 @@ export interface Env {
 // rule is more specific and evaluated first -- is just dropped here.
 const TOKEN_PATTERN = /^u-([a-f0-9]{32})@/i;
 
+// Some senders' systems put out HTML with no text part at all. The app
+// files an email with no usable attachment by its text, so without this
+// such an email arrived as a row with nothing in it but the subject.
+function textFromHtml(html: string): string {
+  return html
+    .replace(/<(style|script)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<br\s*\/?>|<\/?(p|div|tr|li|h[1-6])\b[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&pound;/g, "£")
+    .replace(/&euro;/g, "€")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
+    .trim();
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -63,7 +86,7 @@ export default {
           token,
           from: message.from,
           subject: parsed.subject || "",
-          textBody: parsed.text || "",
+          textBody: parsed.text || (parsed.html ? textFromHtml(parsed.html) : ""),
           attachments,
         }),
       });

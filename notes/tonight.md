@@ -119,6 +119,13 @@ works as it does today.
 
 ---
 
+## 4c. Redeploy the email Worker (1 minute, when convenient)
+
+`worker/src/index.ts` gained a fallback on 2026-09-21: an HTML-only email with no
+attachment used to be filed with nothing but its subject (the Worker only passed the
+plain-text part on). From `worker/`: `npx wrangler deploy`. Nothing else changes; if the
+Worker was never deployed in the first place, the steps in `worker/README.md` still apply.
+
 ## 5. Two things worth deciding, not doing
 
 - **`.claude/worktrees/` is 5.4GB** of old copies of the project from finished branches,

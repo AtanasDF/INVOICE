@@ -73,7 +73,21 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   `harness/test-credit-rollback.mjs` (11 checks). It found one more while being written:
   after a failed removal, a later successful one left the old error on screen saying the
   credit note was still on the invoice, when it had just gone.
-- [ ] 13. Email-import: inline signature images, unreadable-document filing
+- [x] 13. Email-import: inline signature images, unreadable-document filing — two suites,
+  2026-09-21. `harness/test-inbox-worker.mjs` (11 checks) runs the Cloudflare Worker's own
+  code in Node with `fetch` stubbed: five signature icons ahead of the invoice post only
+  the invoice; a pasted screenshot with nothing else still posts; the wrong address or a
+  short token posts nothing. **Found and fixed:** an HTML-only email (no text part, which
+  some invoicing systems send) posted an empty body, so an email with no attachment was
+  filed as a row holding nothing but its subject — the Worker now falls back to the HTML's
+  text. **Needs `npx wrangler deploy` from `worker/` to reach production.**
+  `harness/test-inbox-ingest.mjs` (20 checks) runs `/api/inbox/ingest` for real on its own
+  dev server against the mock PostgREST and a stand-in Claude API: wrong secret/token,
+  the email-itself row, a read invoice (net, VAT, number, dates, lines, PDF in the owner's
+  storage folder), the reader refusing (529) or cut off → filed unread with the document
+  attached and no figures invented, one refused not taking the others, a database refusal
+  filed unread with the reason, storage down → kept inline, two documents in one PDF cut
+  into two rows, a spreadsheet skipped and five attachments at most.
 - [x] 14. Customer matching on a scanned invoice (exact-only) —
   `harness/test-exact-customer.mjs`: "Riverside Building Services" must not pick
   "Hillside Building Services" (two shared words was enough for the old loose match, and
@@ -99,18 +113,24 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   captured, by design (the corner is recovered where the fitted sides meet), and the crop
   comes out page-shaped (0.40 against the receipt's 0.36), not cut at the finger. Camera
   suites stay outside `run-all.sh`, like the others.
-- [~] 20. Till-roll receipt (longer than frame) and landscape document — the till roll
+- [x] 20. Till-roll receipt (longer than frame) and landscape document — the till roll
   passes: not captured while it runs off both ends, captured once it's pulled back to fit.
-  **A landscape page is never detected at all — open, not fixed.** The detector's own
-  readout shows `quads:0 cov:0%` for the whole clip: a wide invoice filling the frame, the
-  same page blank and well clear of the edges, and the portrait receipt that works
-  everywhere else turned on its side all find nothing, while the same receipt upright is
-  found at once. So something in the candidate stage assumes a portrait page; the size,
-  edge-margin and aspect limits in `pageCandidates`/`looksLikePaper` don't explain it (a
-  28%-of-frame page is far above the 6% floor). Not yet traced: `quadOf` and `fitCorners`
-  are next. On a phone the work-around is to hold the phone sideways, or tap the shutter.
-  Test clips: `landscape.mjpeg`, and `landscape-clear` / `landscape-blank` /
-  `receipt-sideways` made by hand while narrowing it (not yet in a generator).
+  **The landscape page was never detected because it was never all on screen.** Traced
+  2026-09-21 by running the detector's own stages inside the scanner page: on the whole
+  720-px video frame the wide page is a clean four-corner contour (39% of the frame,
+  solidity 0.99), as good as the portrait one — but the live loop looks only at
+  `visibleRegion`, the cover-fitted strip the preview shows, which on a 375-px-wide
+  viewport is the middle 566 px of the 720. The clip's page was 640 px wide, so both its
+  sides were off the preview and all the detector had was its top and bottom edges as two
+  thin strips. The same for the hand-made `landscape-clear`/`landscape-blank`/
+  `receipt-sideways` clips (each page or receipt wider than 566 px). Nothing assumes a
+  portrait page: a 460-px-wide landscape page auto-captures in about 2.5 s, and the crop
+  comes out 462×328 — the page's own shape. Not taking a page that runs off the preview is
+  right (the till roll relies on it), and on an iPhone in portrait the preview shows only
+  about 62% of the 4:3 sensor's width, so a landscape page has to be held further back, or
+  the phone turned. `landscape.mjpeg` now follows the till-roll pattern (wide for 6 s, then
+  held back to fit) and `test-conditions` asserts no capture while it overflows, a capture
+  once it fits, and a page-shaped crop. The three hand-made clips are superseded.
 - [x] 21. PDFs: 20-page, scanned-image, password-protected — `harness/test-odd-files.mjs`: all
   twenty pages reach the reader whole, an image-only PDF is handed over as a PDF, and a
   password-protected one (which the page-counter can't open) doesn't take the reading page

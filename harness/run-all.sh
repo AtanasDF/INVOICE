@@ -42,6 +42,7 @@ SUITES=(
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
   test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow test-odd-files test-exif-rotation test-weight
+  test-inbox-worker test-inbox-ingest
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev
@@ -65,3 +66,9 @@ print -l -- $SUITES | xargs -P "$JOBS" -n 1 ./run-one.sh
 for t in $SUITES; do
   [ -f "$OUT/$t.txt" ] && cat "$OUT/$t.txt"
 done
+
+# The run itself used to exit 0 whatever the suites said, so a script or a
+# person checking only the status saw every run as green -- including the
+# one where every browser suite crashed on a missing puppeteer-core.
+bad=$(cat "$OUT"/*.txt 2>/dev/null | grep -c -E '^== .*(CRASHED| [1-9][0-9]* fails)')
+[ "$bad" -eq 0 ] || { echo "$bad suite(s) not green"; exit 1; }

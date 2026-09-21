@@ -12,6 +12,15 @@ export function startMockServer(port, db = makeDb()) {
     req.on("end", () => {
       const u = new URL(req.url, `http://localhost:${port}`);
       if (req.method === "OPTIONS") { res.writeHead(204, cors); return res.end(); }
+      // Storage uploads (the inbox import's storeImageForUser): the path is
+      // kept in the log, and db.storageFails makes it behave like an outage.
+      if (req.method === "POST" && u.pathname.startsWith("/storage/v1/object/")) {
+        const path = u.pathname.slice("/storage/v1/object/".length);
+        db.log.push({ key: `STORAGE ${path}`, bytes: raw.length, contentType: req.headers["content-type"] ?? "" });
+        if (db.storageFails) { res.writeHead(500, { ...cors, "content-type": "application/json" }); return res.end(JSON.stringify({ statusCode: "500", error: "outage", message: "storage is down" })); }
+        res.writeHead(200, { ...cors, "content-type": "application/json" });
+        return res.end(JSON.stringify({ Key: path }));
+      }
       if (u.pathname.startsWith("/rest/v1/")) {
         let body = null;
         try { body = raw ? JSON.parse(raw) : null; } catch { body = null; }
