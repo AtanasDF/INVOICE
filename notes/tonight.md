@@ -132,7 +132,7 @@ nothing clashed); catch-all → Send to a Worker → `invoice-inbox-worker`, Act
 `receipts@` forward to Gmail is untouched. Left to do: generate the import address in
 Settings (the account has none yet) and send one test email.
 
-## 4d. The Anthropic key for the local bench (1 minute, when convenient)
+## 4d. The Anthropic key for the local bench — DONE 2026-09-22 (new key `invoicer-local-bench`, Default workspace, no expiry, pasted by Atanas; the bench ran: both engines 10/10, Gemini 4.0 s vs Claude 8.1 s median)
 
 `web/.env.local` has an empty `ANTHROPIC_API_KEY=` line (and an empty
 `SUPABASE_SERVICE_ROLE_KEY=`), so the Gemini-vs-Claude timing (item 24) could only run

@@ -39,6 +39,13 @@ changes.
 
 ## Verified facts
 
+- 2026-09-21 (late, in the SQL editor): **three accounts** in auth.users. `fragov@hidefield.co.uk`
+  → business_profile "Hidefield", 5 receipts, 2 clients — **Atanas's real record** (he
+  confirmed). `atanaschoo@gmail.com` → "PLACEHOLDER — replace with your business name",
+  empty — the account every "still placeholder" note was looking at; he signed in as it
+  on 2026-09-21 and an import address was generated there (harmless, the account is
+  empty). `schemaprobe.1789327778@gmail.com` — an earlier session's probe, empty. Any
+  live check of "his" data means the Hidefield account.
 - 2026-09-21 (evening, in the SQL editor): migrations 031–034 applied and verified;
   `feature/quote-vat-snapshot` and `feature/deposit-delete-guard` merged. All 24
   `*_backup_*` tables have RLS on, no policy and no anon/authenticated grant (signed-in

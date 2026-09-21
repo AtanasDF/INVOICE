@@ -155,11 +155,20 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
     the other three (`first-week`, `what-surfaces`, `weight`) green alone; the runner's
     new exit code is what flagged them. Worker redeployed (4c873fc5).
 
-**Open, for Atanas** (`notes/tonight.md`): a new `ANTHROPIC_API_KEY` pasted into
-`web/.env.local` for the Claude half of item 24 (Vercel's copy is sensitive and can't be
-read back); sign in to the app so the import address can be generated and one test email
-sent; the placeholder business details in Settings. The Worker is deployed and the
-worktrees are gone (see below).
+- **After midnight**: Atanas made a new Anthropic key (`invoicer-local-bench`, Default
+  workspace, no expiry — created from the console in his Chrome, copied to the clipboard
+  with the Copy button, pasted by him into TextEdit; I checked the line by length and
+  prefix only) and the bench ran both halves: **both engines 10/10 on all seven fields,
+  Gemini median 4.0 s, Claude 8.1 s** — item 24 closed. Signing in to the app turned up
+  **three accounts** (see claude-notes): his real one is `fragov@hidefield.co.uk`
+  (Hidefield, the 5 receipts and 2 clients); `atanaschoo@gmail.com` is the empty
+  PLACEHOLDER account every note had been calling "his", and the import address I
+  generated first landed there; a `schemaprobe.*` account is an old probe.
+
+**Open, for Atanas** (`notes/tonight.md`): sign in to the app as `fragov@hidefield.co.uk`
+so the import address can be generated on the real account and one test email sent; the
+business details in Settings (on that account). The Worker is deployed, the key is in,
+and the worktrees are gone.
 
 **Open, for the next session**: the Claude half of the bench (`node bench-engines.mjs`
 once the key is there); item 28 (offline scan queue) still waits for an iPhone; the
