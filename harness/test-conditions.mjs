@@ -10,7 +10,7 @@
 // What is watched is the auto-capture itself: when the first photo is
 // posted to the reader, measured from the moment the camera came up.
 import fs from "fs";
-import { launch, openScanner, sleep, hint } from "./camera3.mjs";
+import { launch, openScanner, sleep, hint, measure } from "./camera3.mjs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const HERE = new URL(".", import.meta.url).pathname;
@@ -40,6 +40,21 @@ async function run(clip, waitMs) {
   }
 }
 
+// Like run(), and also measures the first captured image.
+async function runMeasured(clip, waitMs) {
+  if (!fs.existsSync(HERE + clip)) return { missing: true };
+  const { browser, page, posted } = await launch(clip);
+  try {
+    await openScanner(page, { auto: "on" });
+    const t0 = Date.now();
+    while (Date.now() - t0 < waitMs && !posted.length) await sleep(200);
+    const first = posted.length ? Date.now() - t0 : null;
+    const img = posted[0]?.[0];
+    const m = img ? await measure(page, img) : null;
+    return { first, w: m?.w ?? null, h: m?.h ?? null, aspect: m ? +(m.w / m.h).toFixed(3) : null };
+  } catch (e) { return { error: e.message }; } finally { await browser.close(); }
+}
+
 const SWITCH_MS = 6000;   // when each clip's awkward condition ends
 const SLACK_MS = 500;     // frames in flight
 
@@ -52,8 +67,23 @@ try {
     check(`${what} is still captured`, r.first !== null && !r.error, JSON.stringify(r));
   }
 
+  // A finger over one corner: the detector fits straight lines to the
+  // sides and puts the corner where they meet (the bent-paper work in
+  // CLAUDE.md), so it fires with the finger there rather than waiting --
+  // and what it must not do is cut the page at the finger. The receipt in
+  // the clip is 300 wide for 840 tall, so the crop has to be about that
+  // shape: cut at the finger it would be far wider or far shorter.
+  if (!only || only === "hand.mjpeg") {
+    const r = await runMeasured("hand.mjpeg", 12000);
+    if (r.missing) check("a finger over a corner: clip is present", false, "hand.mjpeg missing -- run gen-conditions.py");
+    else {
+      check("a finger over a corner is still captured, the corner recovered from the sides", r.first !== null, JSON.stringify(r));
+      check("...and the crop is page-shaped, not cut at the finger", r.aspect !== null && Math.abs(r.aspect - 300 / 840) < 0.07, JSON.stringify(r));
+    }
+  }
+
   // Must wait for the condition to stop.
-  for (const [clip, what] of [["hand.mjpeg", "a finger over a corner"], ["moving.mjpeg", "a phone waving about"], ["tillroll.mjpeg", "a till roll running off the frame"]]) {
+  for (const [clip, what] of [["moving.mjpeg", "a phone waving about"], ["tillroll.mjpeg", "a till roll running off the frame"]]) {
     if (only && only !== clip) continue;
     const r = await run(clip, 16000);
     if (r.missing) { check(`${what}: clip is present`, false, `${clip} missing -- run gen-conditions.py`); continue; }

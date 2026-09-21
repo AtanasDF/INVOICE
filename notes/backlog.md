@@ -92,9 +92,25 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## Checklist items still open
 
-- [ ] 19. Scanner suites against fresh synthetic clips: glare, shadow, hand on corner,
-  patterned surface, moving phone
-- [ ] 20. Till-roll receipt (longer than frame) and landscape document
+- [x] 19. Scanner suites against fresh synthetic clips: glare, shadow, hand on corner,
+  patterned surface, moving phone — `harness/test-conditions.mjs` with clips from
+  `harness/gen-conditions.py`. Glare, a shadow and a tiled floor are all still captured; a
+  phone waving about is not captured until it is held still. A finger over one corner IS
+  captured, by design (the corner is recovered where the fitted sides meet), and the crop
+  comes out page-shaped (0.40 against the receipt's 0.36), not cut at the finger. Camera
+  suites stay outside `run-all.sh`, like the others.
+- [~] 20. Till-roll receipt (longer than frame) and landscape document — the till roll
+  passes: not captured while it runs off both ends, captured once it's pulled back to fit.
+  **A landscape page is never detected at all — open, not fixed.** The detector's own
+  readout shows `quads:0 cov:0%` for the whole clip: a wide invoice filling the frame, the
+  same page blank and well clear of the edges, and the portrait receipt that works
+  everywhere else turned on its side all find nothing, while the same receipt upright is
+  found at once. So something in the candidate stage assumes a portrait page; the size,
+  edge-margin and aspect limits in `pageCandidates`/`looksLikePaper` don't explain it (a
+  28%-of-frame page is far above the 6% floor). Not yet traced: `quadOf` and `fitCorners`
+  are next. On a phone the work-around is to hold the phone sideways, or tap the shutter.
+  Test clips: `landscape.mjpeg`, and `landscape-clear` / `landscape-blank` /
+  `receipt-sideways` made by hand while narrowing it (not yet in a generator).
 - [x] 21. PDFs: 20-page, scanned-image, password-protected — `harness/test-odd-files.mjs`: all
   twenty pages reach the reader whole, an image-only PDF is handed over as a PDF, and a
   password-protected one (which the page-counter can't open) doesn't take the reading page
@@ -146,12 +162,19 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   answers a tap, scrolling 2,000 rows doesn't stall, and filtering to a fortnight is
   immediate. The lists draw every row by design (load everything, filter in the browser);
   at this size that holds.
-- [~] 32. Dead-code and bundle re-audit — **dead code done** (`ts-prune` over the whole
+- [x] 32. Dead-code and bundle re-audit — **dead code done** (`ts-prune` over the whole
   app, 2026-09-21): three unused exports and nothing else. `isMileage` (`mileage.ts`) and
   `mergeAddress` (`addressLookup.ts`) are the two CLAUDE.md already flags; the third is the
   type `CurrencyCode` in `fx.ts`. Flagged, not removed, per the standing rule. Everything
   else it reported was Next's own config export or the gitignored iCloud `* 2.*` strays.
-  Bundle half: see below once measured.
+  **Bundle half done** (`harness/test-weight.mjs`, in the browser, since Next 16 no longer
+  prints a size table): the Free invoice page is 934 KB of JavaScript for a stranger with
+  no OpenCV; Check a company 807 KB; the dashboard 1,500 KB of its own. The dashboard also
+  warms up OpenCV (13 MB) on idle, on purpose (`page.tsx`), so the scanner opens instantly
+  — that only holds if it is once per device, and it is: the vendor file carries
+  `max-age=31536000, immutable` and Chrome serves the second request from cache. (It can't
+  be shown on the app's own pages in the harness: request interception, which the mock
+  needs, makes Chrome skip its cache, so the proof is a plain tab.)
 - [x] 33. `notes/` consolidation — this file is the standing document: all four reviews'
   surviving findings, the original 34, and what was found along the way. `claude-notes.md`'s
   17-September queued list now points here and marks its own done items done.
