@@ -59,6 +59,38 @@ try {
   check("an invoice 5 days late is filed as 1-30 days late", under("1–30 days late") === "£1,080.00", `${under("1–30 days late")} | ` + ageingBox.replace(/\s+/g, " ").slice(0, 200));
   check("the 100-day-old one is over 60 days late", under("Over 60 days late") === "£1,000.00", `${under("Over 60 days late")} | ` + ageingBox.replace(/\s+/g, " ").slice(0, 200));
   check("the boxes add up to the total owing", ["Not yet late", "1–30 days late", "31–60 days late", "Over 60 days late"].reduce((sum, l) => sum + Number((under(l) ?? "£0.00").replace(/[£,]/g, "")), 0) === 3280, ageingBox.replace(/\s+/g, " ").slice(0, 220));
+  // A deposit paid, then the job cancelled and credited back in full: the
+  // customer is owed the money. The four cells used to read Charged
+  // £1,200 / Credited -£1,200 / Paid £1,200 / Owing £0.00 -- which do not
+  // subtract to the figure beside them -- and the £1,200 he owes back
+  // appeared nowhere on the statement, the total, or the text copied into
+  // a chasing message.
+  const REFUND = inv({ number: "INV-104", date: day(-20), due_date: day(-6), status: "paid" });
+  db.tables.invoices.push(REFUND);
+  db.tables.invoice_payments.push({ id: newId(), user_id: "x", invoice_id: REFUND.id, date: day(-18), amount: 1200, method: "bank", note: "" });
+  db.tables.credit_notes.push({ id: newId(), user_id: "x", invoice_id: REFUND.id, date: day(-3), amount: 1200, reason: "Job cancelled" });
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/clients/${C}/statement`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.body.innerText.includes("Statement of account"), { timeout: 15000 });
+  await sleep(900);
+  const withCredit = await bodyText(page);
+  check("a customer owed money back is told so on the row", /in credit/i.test(withCredit.slice(withCredit.indexOf("INV-104"), withCredit.indexOf("INV-104") + 200)), withCredit.slice(withCredit.indexOf("INV-104"), withCredit.indexOf("INV-104") + 200).replace(/\s+/g, " "));
+  check("...and in the totals, not only on the line", /In your credit/i.test(withCredit) && /£1,200\.00/.test(withCredit.slice(withCredit.indexOf("In your credit"))), withCredit.slice(withCredit.indexOf("Total owing"), withCredit.indexOf("Total owing") + 160).replace(/\s+/g, " "));
+  check("...and the amounts still owed are unchanged by it", /£3,280\.00/.test(withCredit), withCredit.slice(withCredit.indexOf("Total owing"), withCredit.indexOf("Total owing") + 120).replace(/\s+/g, " "));
+  // The legacy rule the clamp protects: an invoice marked paid by hand
+  // before payments existed has no payment rows, and must stay at zero
+  // rather than reappearing as owed -- most of his history is like that.
+  const LEGACY = inv({ number: "INV-105", date: day(-400), due_date: day(-370), status: "paid" });
+  db.tables.invoices.push(LEGACY);
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/clients/${C}/statement`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.body.innerText.includes("Statement of account"), { timeout: 15000 });
+  await sleep(900);
+  const legacy = await bodyText(page);
+  const row = legacy.slice(legacy.indexOf("INV-105"), legacy.indexOf("INV-105") + 160);
+  check("an invoice marked paid by hand, before payments existed, still owes nothing", /£0\.00/.test(row) && !/in credit/i.test(row), row.replace(/\s+/g, " "));
+  check("...and it is not added to what's owed", /£3,280\.00/.test(legacy), legacy.slice(legacy.indexOf("Total owing"), legacy.indexOf("Total owing") + 120).replace(/\s+/g, " "));
+
   check("who it's from and for, and how to pay", t.includes("Harness Plastering Ltd") && t.includes("Acme Kitchens Ltd") && t.includes("Sort 12-34-56"), t.slice(0, 200));
   check("share, PDF, print and copy are all offered", t.includes("Share (WhatsApp") && t.includes("Download PDF") && t.includes("Print") && t.includes("Copy the figures"));
   check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));

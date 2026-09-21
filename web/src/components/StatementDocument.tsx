@@ -13,7 +13,7 @@ export default function StatementDocument({ statement, client, profile, asAt }: 
   profile: BusinessProfile | null;
   asAt: string;
 }) {
-  const { lines, outstanding, ageing } = statement;
+  const { lines, outstanding, inCredit, ageing } = statement;
   return (
     <div className="text-neutral-900">
       <div className="flex items-start justify-between gap-6">
@@ -60,7 +60,9 @@ export default function StatementDocument({ statement, client, profile, asAt }: 
               <td className="py-2 text-right align-top">{money(l.charged)}</td>
               <td className="py-2 text-right align-top">{l.credited ? `−${money(l.credited)}` : "—"}</td>
               <td className="py-2 text-right align-top">{l.paid ? money(l.paid) : "—"}</td>
-              <td className="py-2 text-right align-top font-medium">{money(l.balance)}</td>
+              <td className="py-2 text-right align-top font-medium">
+                {l.credit > 0 ? <span className="text-neutral-600">{money(l.credit)} in credit</span> : money(l.balance)}
+              </td>
             </tr>
           ))}
           {!lines.length && (
@@ -77,6 +79,14 @@ export default function StatementDocument({ statement, client, profile, asAt }: 
             <span>Total owing</span>
             <span>{money(outstanding)}</span>
           </div>
+          {/* A refund owed back to the customer belongs on the document
+              that states the account, not nowhere. */}
+          {inCredit > 0 && (
+            <div className="flex justify-between py-1 text-neutral-600">
+              <span>In your credit</span>
+              <span>{money(inCredit)}</span>
+            </div>
+          )}
         </div>
       </div>
 

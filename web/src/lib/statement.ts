@@ -16,6 +16,14 @@ export type StatementLine = {
   credited: number;
   paid: number;
   balance: number;
+  // What the customer is owed BACK on this line, when credits and payments
+  // come to more than the invoice. `balance` is clamped at zero, which is
+  // right everywhere else in the app -- but a statement is the document
+  // that states the account, and it was printing Charged £1,200 /
+  // Credited −£1,200 / Paid £1,200 / Owing £0.00, four cells that do not
+  // subtract to the number beside them, with the £1,200 he owes back
+  // appearing nowhere on it.
+  credit: number;
   daysLate: number;
 };
 
@@ -24,6 +32,8 @@ export type Ageing = { current: number; d30: number; d60: number; d90: number };
 export type Statement = {
   lines: StatementLine[];
   outstanding: number;
+  // Money owed back to the customer across the account, if any.
+  inCredit: number;
   charged: number;
   paid: number;
   credited: number;
@@ -50,6 +60,13 @@ export function buildStatement(
       const credited = creditOffDue(charge, creditedFace);
       const paid = payments.filter((p) => p.invoiceId === inv.id).reduce((sum, p) => sum + p.amount, 0);
       const balance = invoiceBalance({ total: charge.due, credited, paid, status: inv.status });
+      // The same figure without the clamp, keeping invoiceBalance's own
+      // rule that an invoice marked paid by hand before payments existed
+      // (migration-023) owes nothing -- most of his history predates them,
+      // and dropping that would put "Owing £1,200.00" on statements for
+      // invoices settled years ago.
+      const credit =
+        inv.status === "paid" && paid === 0 ? 0 : Math.max(0, pence(credited) + pence(paid) - pence(charge.due)) / 100;
       return {
         id: inv.id,
         date: inv.date,
@@ -59,6 +76,7 @@ export function buildStatement(
         credited,
         paid,
         balance,
+        credit,
         daysLate: inv.dueDate && balance > 0 ? Math.max(0, days(inv.dueDate, today)) : 0,
       };
     })
@@ -84,6 +102,7 @@ export function buildStatement(
   return {
     lines,
     outstanding: sum((l) => l.balance),
+    inCredit: sum((l) => l.credit),
     charged: sum((l) => l.charged),
     paid: sum((l) => l.paid),
     credited: sum((l) => l.credited),
@@ -104,5 +123,8 @@ export function statementText(s: Statement, opts: { from: string; to: string; as
     ...(rows.length ? rows : ["Nothing outstanding — thank you."]),
     "",
     `Total owing: ${money(s.outstanding)}`,
+    // The text copied into a chasing message has to say it too, or a
+    // customer owed money back is asked for money instead.
+    ...(s.inCredit > 0 ? [`In your credit: ${money(s.inCredit)}`] : []),
   ].join("\n");
 }

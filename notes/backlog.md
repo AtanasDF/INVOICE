@@ -141,7 +141,7 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/components/quote/QuoteDocument.tsx:14`
 - [ ] **[medium] split-documents** — A rotated shared PDF page is counted as two pages it did not produce, which mis-marks `context` and lets another document's total merge into this one on a re-read
   `web/src/lib/splitDocuments.ts:99`
-- [ ] **[medium] statement** — A customer left in credit is shown £0.00 owing, and the statement row's own arithmetic silently breaks
+- [x] **[medium] statement** — A customer left in credit is shown £0.00 owing, and the statement row's own arithmetic silently breaks
   `web/src/lib/statement.ts:52`
 - [ ] **[medium] price-guide** — A one-sided price range is reported as "in the usual range", whatever the quote says
   `web/src/components/PriceFinder.tsx:53`
