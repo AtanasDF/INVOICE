@@ -35,5 +35,29 @@ try {
   check("the supplier was added from the register", !!saved, JSON.stringify(db.tables.clients.map((c) => c.name)));
   check("its company number is on the row, not just the device", saved?.company_number === "01234567", JSON.stringify(saved && { n: saved.name, num: saved.company_number }));
   check("the registered address came with it", (saved?.address ?? "").includes("Pipe Street"), saved?.address);
+
+  // Tap the wrong company on a phone, see the mistake, type the right name
+  // over it without re-picking, and save. The contact used to keep the
+  // WRONG company's number, so every later check reported on a business he
+  // has never dealt with, under the right name.
+  await page.goto(`${BASE}/clients/new`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.querySelectorAll('input[role="combobox"]').length > 0, { timeout: 20000 });
+  const box = await page.$('input[role="combobox"]');
+  await box.type("Patel Plumb", { delay: 20 });
+  await page.waitForFunction(() => document.body.innerText.includes("PATEL PLUMBING LTD"), { timeout: 20000 });
+  await page.evaluate(() => { const el = [...document.querySelectorAll('[role="option"], button, li')].find((x) => /PATEL PLUMBING LTD/.test(x.textContent)); el.click(); });
+  await sleep(600);
+  // Typed over, without picking again.
+  await page.evaluate(() => {
+    const el = document.querySelector('input[role="combobox"]');
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(el, "Patel Heating & Gas Ltd");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(900);
+  await clickWith("Save|Add client|Add contact");
+  await sleep(2200);
+  const typedOver = db.tables.clients.find((c) => /Heating/i.test(c.name));
+  check("a name typed over a pick is saved under its own name", !!typedOver, JSON.stringify(db.tables.clients.map((c) => c.name)));
+  check("...and does NOT carry the other company's number", !typedOver || !typedOver.company_number, JSON.stringify(typedOver && { n: typedOver.name, num: typedOver.company_number }));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

@@ -130,5 +130,11 @@ export const NOT_ON_REGISTER = "Companies House has no company under this name."
 // Companies House numbers are 8 characters: digits, or two letters then six.
 export function tidyCompanyNumber(value: string): string | null {
   const n = value.trim().toUpperCase().replace(/\s+/g, "");
-  return /^[A-Z]{0,2}\d{6,8}$/.test(n) ? n : null;
+  if (!/^[A-Z]{0,2}\d{6,8}$/.test(n)) return null;
+  // Printed invoices drop the leading zero: "Company Number: 1234567" is
+  // 01234567 on the register. Asking Companies House for the unpadded form
+  // 404s, the answer is cached, and the app reported a live company as not
+  // on the register -- the one thing the check exists to get right.
+  // asCompanyNumber (companyReport.ts) has always padded; this didn't.
+  return /^\d{6,8}$/.test(n) ? n.padStart(8, "0") : n;
 }

@@ -145,11 +145,11 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/lib/statement.ts:52`
 - [x] **[medium] price-guide** — A one-sided price range is reported as "in the usual range", whatever the quote says
   `web/src/components/PriceFinder.tsx:53`
-- [ ] **[medium] company-register** — A company picked from the register, then typed over, puts its number on the other company's contact
+- [x] **[medium] company-register** — A company picked from the register, then typed over, puts its number on the other company's contact
   `web/src/app/clients/new/page.tsx:151`
-- [ ] **[medium] company-register** — Editing a client onto a different company on /clients leaves the old company number in place
+- [x] **[medium] company-register** — Editing a client onto a different company on /clients leaves the old company number in place
   `web/src/app/clients/page.tsx:327`
-- [ ] **[medium] company-register** — tidyCompanyNumber does not zero-pad a 6- or 7-digit company number, so the lookup 404s and the app says the company is not on the register
+- [x] **[medium] company-register** — tidyCompanyNumber does not zero-pad a 6- or 7-digit company number, so the lookup 404s and the app says the company is not on the register
   `web/src/lib/companyLookup.ts:131`
 - [ ] **[low] invoice-pdf-print** — The customer statement prints with its share buttons and app chrome on it
   `web/src/app/clients/[id]/statement/page.tsx:73`

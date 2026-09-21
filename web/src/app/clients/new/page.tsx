@@ -61,6 +61,12 @@ export default function NewClientPage() {
   const [company, setCompany] = useState<CompanyMatch | null>(null);
   const lookupOn = useCompanyLookup();
   const check = useRegisterCheck(isCompany ? name : "", isCompany && company?.name === name ? company.number : null, lookupOn);
+  // The row tapped on the register only counts while the name still IS
+  // that company. Tap the wrong Acme on a phone, type the right name over
+  // it without re-picking, and the saved contact used to carry the wrong
+  // company's number -- so every later check reported on a company he has
+  // never dealt with. The same guard the lookup above already uses.
+  const pickedCompany = company?.name === name ? company : check.company;
 
   // What the last scan wrote into each field. A field still holding that
   // value belongs to the scan and follows the next pick (cleared when the
@@ -148,11 +154,10 @@ export default function NewClientPage() {
         defaultCurrency,
         contactPerson,
         phone,
-        companyNumber: (company ?? check.company)?.number ?? "",
+        companyNumber: pickedCompany?.number ?? "",
         remindersEnabled,
       });
-      const known = company ?? check.company;
-      if (known) rememberCompany(created.id, known);
+      if (pickedCompany) rememberCompany(created.id, pickedCompany);
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
       setError(saveFailed(err, "Could not save client."));

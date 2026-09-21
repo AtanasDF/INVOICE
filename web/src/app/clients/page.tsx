@@ -45,6 +45,13 @@ type ClientDraft = {
   defaultCurrency: string;
   contactPerson: string;
   phone: string;
+  // Editing a contact onto a different company is the natural way to fix a
+  // wrong one, and it used to change the name and address while leaving
+  // company_number pointing at the old company -- so the check kept
+  // reporting on a business he has nothing to do with, under the right
+  // name. The number follows the pick, and is cleared when the name stops
+  // being that company.
+  companyNumber: string;
   remindersEnabled: boolean;
 };
 
@@ -59,6 +66,7 @@ function draftFor(c: Client): ClientDraft {
     defaultCurrency: c.defaultCurrency,
     contactPerson: c.contactPerson,
     phone: c.phone,
+    companyNumber: c.companyNumber ?? "",
     remindersEnabled: c.remindersEnabled,
   };
 }
@@ -311,7 +319,7 @@ export default function ClientsPage() {
                         Company
                       </label>
                       <label className="flex items-center gap-2">
-                        <input type="radio" checked={!draft.isCompany} onChange={() => setDraft({ ...draft, isCompany: false })} />
+                        <input type="radio" checked={!draft.isCompany} onChange={() => setDraft({ ...draft, isCompany: false, companyNumber: "" })} />
                         Individual
                       </label>
                     </div>
@@ -321,10 +329,10 @@ export default function ClientsPage() {
                         placeholder="Company name"
                         lookupPlaceholder="Company name (type to search Companies House)"
                         value={draft.name}
-                        onChange={(name) => setDraft({ ...draft, name })}
+                        onChange={(name) => setDraft({ ...draft, name, companyNumber: name === draft.name ? draft.companyNumber : "" })}
                         address={draft.address}
                         onAddress={(address) => setDraft({ ...draft, address })}
-                        onPick={(c, fillAddress) => setDraft({ ...draft, name: c.name, address: fillAddress ?? draft.address })}
+                        onPick={(c, fillAddress) => setDraft({ ...draft, name: c.name, companyNumber: c.number, address: fillAddress ?? draft.address })}
                       />
                     ) : (
                       <input
