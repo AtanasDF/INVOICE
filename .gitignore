@@ -32,3 +32,4 @@ harness/*.png
 harness/downloads/
 harness/gen-bench/
 harness/bench-docs/
+web/.vercel/
