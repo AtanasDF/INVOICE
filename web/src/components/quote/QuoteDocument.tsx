@@ -52,7 +52,7 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
         <tbody>
           {quote.items.map((it, idx) => (
             <tr key={idx} className="border-b">
-              <td className="py-2">{it.description}</td>
+              <td className="wrap-anywhere py-2">{it.description}</td>
               <td className="py-2 pl-3 text-right">{it.quantity}</td>
               <td className="py-2 pl-3 text-right">{money(it.unitPrice)}</td>
               {vatRegistered && <td className="py-2 pl-3 text-right">{VAT_RATE_LABELS[it.vatRate]}</td>}

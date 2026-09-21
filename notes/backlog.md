@@ -133,9 +133,9 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/lib/statement.ts:70`
 - [x] **[high] company-register** — A Companies House timeout or rate-limit is shown as "Companies House has no company under this name"
   `web/src/lib/companyRegister.ts:15`
-- [ ] **[medium] invoice-pdf-print** — A long unbroken description pushes the money columns out of the PDF and the printed invoice
+- [x] **[medium] invoice-pdf-print** — A long unbroken description pushes the money columns out of the PDF and the printed invoice
   `web/src/components/invoice/IssuedInvoice.tsx:59`
-- [ ] **[medium] invoice-pdf-print** — Invoice notes lose every line break on the customer's invoice, PDF, print and /i/ link
+- [x] **[medium] invoice-pdf-print** — Invoice notes lose every line break on the customer's invoice, PDF, print and /i/ link
   `web/src/components/invoice/IssuedInvoice.tsx:146`
 - [ ] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link
   `web/src/components/quote/QuoteDocument.tsx:14`

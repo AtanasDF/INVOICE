@@ -85,7 +85,7 @@ function LinesTable({ d, t, dense, bold }: { d: FreeInvoiceDraft; t: DraftTotals
 
   const line = (l: FreeInvoiceLine, i: number) => (
     <tr key={i} className="border-b border-neutral-200 align-top">
-      <td className={`${cell} pr-3`}>{l.description}</td>
+      <td className={`${cell} wrap-anywhere pr-3`}>{l.description}</td>
       <td className={`${cell} text-right tabular-nums`}>{l.quantity}</td>
       <td className={`${cell} text-right tabular-nums`}>{formatMoney(sym, l.unitPrice)}</td>
       {d.vatRegistered && <td className={`${cell} text-right text-neutral-600`}>{VAT_RATE_LABELS[reverse ? "reverse_charge" : l.vatRate]}</td>}

@@ -70,7 +70,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         <tbody>
           {invoice.items.map((it, idx) => (
             <tr key={idx} className="border-b">
-              <td className="py-2">
+              <td className="wrap-anywhere py-2">
                 {it.description}
                 {cis && it.kind === "materials" && <span className="text-neutral-500"> (materials)</span>}
               </td>
@@ -143,7 +143,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
       </div>
 
       {invoice.notes && (
-        <div className="mt-6 border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
+        <div className="mt-6 whitespace-pre-line border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
       )}
 
       {profile?.bankDetails && (
