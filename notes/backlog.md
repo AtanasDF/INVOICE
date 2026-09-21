@@ -142,7 +142,7 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/components/invoice/IssuedInvoice.tsx:146`
 - [~] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link. **Already fixed** on `feature/quote-vat-snapshot` (commit 9d6515a); waiting on migration-033 being run.
   `web/src/components/quote/QuoteDocument.tsx:14`
-- [ ] **[medium] split-documents** — A rotated shared PDF page is counted as two pages it did not produce, which mis-marks `context` and lets another document's total merge into this one on a re-read
+- [x] **[medium] split-documents** — A rotated shared PDF page is counted as two pages it did not produce, which mis-marks `context` and lets another document's total merge into this one on a re-read
   `web/src/lib/splitDocuments.ts:99`
 - [x] **[medium] statement** — A customer left in credit is shown £0.00 owing, and the statement row's own arithmetic silently breaks
   `web/src/lib/statement.ts:52`

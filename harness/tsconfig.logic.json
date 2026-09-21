@@ -27,6 +27,8 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/invoicePdf.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/freeInvoiceDraft.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/periodIncome.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/today.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/today.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/documentBox.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/pdfPages.ts"
   ]
 }

@@ -108,11 +108,15 @@ export async function splitDocuments(files: CapturedFile[], documents: ScanResul
         }
         try {
           const { pdfWithPages } = await import("@/lib/pdfPages");
-          pages.push({ dataUrl: await pdfWithPages(file.dataUrl, cuts), mediaType: "application/pdf" });
-          for (const c of cuts) {
-            if (c.box) context.push(read + 2);
-            read += c.box ? 2 : 1;
-          }
+          const cut = await pdfWithPages(file.dataUrl, cuts);
+          pages.push({ dataUrl: cut.dataUrl, mediaType: "application/pdf" });
+          // Positions come back from the cutter rather than being guessed
+          // here: a rotated page is never cropped, so a boxed cut can be
+          // one page where this used to count two, and every index after
+          // it pointed at the wrong sheet. Each context entry is one extra
+          // cropped page, so the cut holds cuts.length + context.length.
+          context.push(...cut.context.map((n) => read + n));
+          read += cuts.length + cut.context.length;
         } catch {
           pages.push(file);
           unsplit.push(...cuts.map((c) => c.page));

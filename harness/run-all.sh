@@ -19,6 +19,9 @@ if [ -f "$APP/src/lib/taxEstimate.ts" ]; then
   # The compiled logic is ESM; without this Node reads it as CommonJS and
   # every logic suite dies on "does not provide an export named".
   printf '{"type":"module"}' > gen/package.json
+  # Some of the app's own logic imports real packages (pdf-lib). Node can't
+  # resolve a bare specifier from gen/, so it borrows the app's.
+  ln -sfn "$APP/node_modules" gen/node_modules
   "$APP/node_modules/.bin/tsc" -p tsconfig.logic.json >/dev/null 2>&1
   python3 - <<'REWRITE'
 import pathlib, re
@@ -38,6 +41,7 @@ SUITES=(
   test-mileage test-statement test-vat-return test-merge-contacts test-quote-chase
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
+  test-rotated-pages
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev

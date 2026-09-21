@@ -45,7 +45,7 @@ async function documentFile(attachment: IngestAttachment, documents: ScanResult[
   const shared = (page: number) => documents.some((d) => d !== result && (!d.pages.length || d.pages.includes(page)));
   if (attachment.mimeType === "application/pdf" && result.pages.length) {
     try {
-      const dataUrl = await pdfWithPages(attachment.base64, result.pages.map((page) => ({ page, box: shared(page) ? result.box : null })));
+      const { dataUrl } = await pdfWithPages(attachment.base64, result.pages.map((page) => ({ page, box: shared(page) ? result.box : null })));
       return { base64: dataUrl.slice(dataUrl.indexOf(",") + 1), note: `${where}.` };
     } catch {}
   }
