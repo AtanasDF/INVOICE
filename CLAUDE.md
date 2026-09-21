@@ -8,8 +8,12 @@ it is his real accounting record. Read this file before doing anything.
 - `web/` — Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind v4
   (CSS-first, no tailwind.config), Supabase (Postgres + Auth + RLS). Run every npm
   command from `web/`.
-- `worker/` — separate Cloudflare Worker for email inbox import (deploy steps were handed
-  to Atanas; unconfirmed whether done).
+- `worker/` — separate Cloudflare Worker for email inbox import. First deployed
+  2026-09-21 (`npx wrangler deploy` from `worker/`; wrangler is signed in on this Mac as
+  atanaschoo@gmail.com, Cloudflare account 5926bcf52e541589a3003ab4dee95e16). Email
+  Routing for invoiceover.com: MX/SPF/DKIM added that day, catch-all → the Worker,
+  `receipts@` still forwards to Gmail. The Vercel CLI is signed in too (`atanasdf`,
+  project `invoice`; `web/.vercel/` is ignored).
 - Live at https://invoice-omega-rust.vercel.app, auto-deployed from `main` by Vercel.
   Only `main` deploys (`web/vercel.json` `git.deploymentEnabled`): the Hobby plan allows
   100 deployments a day, and branch previews used them up on 2026-09-19.
@@ -334,7 +338,9 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
 
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CRON_SECRET`,
-`INBOX_WEBHOOK_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+`INBOX_WEBHOOK_SECRET` (added 2026-09-21 — it had been missing, so the Worker's calls
+were refused), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `vercel env ls
+production` from `web/` lists the names without values.
 `RESEND_API_KEY` set in Production on 2026-09-19 (Resend account atanaschoo, key "Invoicer
 app - Vercel", sending access). That also switched on the daily payment-reminder cron.
 Sending domain `invoiceover.com` is verified in Resend (Ireland, eu-west-1; DNS records

@@ -121,10 +121,16 @@ works as it does today.
 
 ## 4c. Redeploy the email Worker (1 minute, when convenient)
 
-`worker/src/index.ts` gained a fallback on 2026-09-21: an HTML-only email with no
-attachment used to be filed with nothing but its subject (the Worker only passed the
-plain-text part on). From `worker/`: `npx wrangler deploy`. Nothing else changes; if the
-Worker was never deployed in the first place, the steps in `worker/README.md` still apply.
+**DONE 2026-09-21 evening, and it turned out to be the first deploy.** The Worker had
+never been deployed, Email Routing for invoiceover.com was disabled with no DNS records,
+the catch-all rule was "Drop", and Vercel had no `INBOX_WEBHOOK_SECRET` at all — so no
+email to a `u-<token>@invoiceover.com` address had ever reached the app. Now: Worker
+deployed with the secret; the same secret in Vercel Production (verified: the live route
+answers 404 "Unknown import address" to it and 401 to anything else); Cloudflare's MX,
+SPF and DKIM records added (root had none — Resend lives on `send.invoiceover.com`, so
+nothing clashed); catch-all → Send to a Worker → `invoice-inbox-worker`, Active. The
+`receipts@` forward to Gmail is untouched. Left to do: generate the import address in
+Settings (the account has none yet) and send one test email.
 
 ## 4d. The Anthropic key for the local bench (1 minute, when convenient)
 

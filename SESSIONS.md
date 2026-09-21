@@ -95,6 +95,25 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   server compiling next to a four-way run) and pass alone; `test-address-fields` talks to
   the live postcodes.io and photon and can time out under the same load.
 
+- **Evening, with Atanas at the Mac.** `.claude/worktrees/` removed: 24 worktrees, every
+  one clean, every commit on GitHub and in `main`, `git worktree remove` for each (which
+  refuses anything dirty), 6 GB back, all 57 branches kept. Then the email import, which
+  had never worked end to end: the Worker had **never been deployed**, Email Routing for
+  invoiceover.com was **disabled with no DNS records**, the catch-all was "Drop", and
+  Vercel had **no `INBOX_WEBHOOK_SECRET`** (the CLAUDE.md list was wrong on that one).
+  Fixed in order: `wrangler login` (six tries — wrangler gives the Authorize click two
+  minutes and Atanas wasn't at the Chrome window; on his say-so I pressed it), deploy,
+  secret set from `.env.local` by pipe, Vercel CLI signed in (device flow), secret added
+  to Production the same way, main pushed to redeploy, handshake verified (404 with the
+  secret, 401 without), Cloudflare's MX/SPF/DKIM added after checking the root had no
+  MX or SPF (Resend is on `send.`), catch-all → the Worker, Active. Two slips of mine:
+  `vercel link --yes` first linked to a new project named after the folder (`web`,
+  empty, still on his account — his call) before I relinked to `invoice`; and the CLI
+  appended a `VERCEL_OIDC_TOKEN` line to `web/.env.local` (harmless, every other key
+  untouched, lengths checked). Atanas: "every time you press yes instead of me from now
+  on; full permissions apart from deleting stuff without double checking" — kept as a
+  memory, with the deletion exception.
+
 **Open, for Atanas** (`notes/tonight.md`): paste `ANTHROPIC_API_KEY` into
 `web/.env.local` for the Claude half of item 24; `npx wrangler deploy` from `worker/`
 for the HTML-only email fix; the placeholder business details in Settings; the
