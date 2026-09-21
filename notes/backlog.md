@@ -123,7 +123,12 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   same sweep as `test-fit-sweep` at 320px (iPhone SE) and is in `run-all.sh`, so both
   widths are covered every run rather than when someone remembers `WIDTH=320`. All 26
   pages fit.
-- [ ] 31. Performance: 2,000-receipt account on a throttled phone profile
+- [x] 31. Performance: 2,000-receipt account on a throttled phone profile —
+  `harness/test-big-slow.mjs`: 2,000 receipts and 400 invoices with the CPU throttled 4×.
+  Dashboard 0.5s, receipts 1.7s, expenses 0.2s, VAT 0.2s, invoices 0.3s; every page still
+  answers a tap, scrolling 2,000 rows doesn't stall, and filtering to a fortnight is
+  immediate. The lists draw every row by design (load everything, filter in the browser);
+  at this size that holds.
 - [ ] 32. Dead-code and bundle re-audit
 - [ ] 33. `notes/` consolidation — three reviews' findings into one standing document
   (this file is the start of it)
