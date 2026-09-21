@@ -145,6 +145,12 @@ export default function QuotePage() {
   // so the owner sees exactly what the customer sees on the link. A draft,
   // and every quote from before that column, follows the setting.
   const vatRegistered = q.vatRegistered ?? profile?.vatRegistered ?? false;
+  // An invoice is priced under the setting it is ISSUED under (migration-024
+  // stamps that at issue), whatever the quote was sent under; the page says
+  // below when the two differ, so a deposit or balance invoice never quietly
+  // disagrees with the quote.
+  const issuingVat = profile?.vatRegistered ?? false;
+  const vatChanged = q.vatRegistered !== null && q.vatRegistered !== issuingVat;
   // The document, the PDF and the summary must all say the same thing: the
   // page used to total the quote from the snapshot while the sheet below it
   // still used today's setting, so one said £4,000 and the other £4,800.
@@ -198,7 +204,7 @@ export default function QuotePage() {
         if (deposit) {
           credited = (await creditNotesStore.forInvoice(deposit.id)).reduce((sum, c) => sum + c.amount, 0);
           const depositTotal = computeInvoiceTotals(deposit.items, invoiceVat(deposit, vatRegistered)).total - credited;
-          if (depositTotal > computeInvoiceTotals(claimed.items, vatRegistered).total + 0.005)
+          if (depositTotal > computeInvoiceTotals(claimed.items, issuingVat).total + 0.005)
             throw new Error("The deposit invoice is for more than the whole quote, so the balance would be negative. Check the deposit invoice.");
         }
       } catch (err) {
@@ -249,7 +255,7 @@ export default function QuotePage() {
           clientId: claimed.clientId,
           date,
           number: draftPlaceholderNumber(),
-          items: depositLines(claimed, vatRegistered),
+          items: depositLines(claimed, issuingVat),
           notes: `Deposit to book the work quoted in ${claimed.number}. The balance will be invoiced when the work is done.`,
           dueDate: addDays(date, 7),
           paymentTerms: "7 days",
@@ -473,6 +479,12 @@ export default function QuotePage() {
                   ? `Declined. The deposit invoice ${openDeposit.number} is still open and will keep being chased: credit it on its page if it won't be paid.`
                   : "Declined. Reopen it if they change their mind.")}
             </p>
+            {vatChanged && (
+              <p className="text-sm text-amber-700">
+                This quote was sent while you were {q.vatRegistered ? "" : "not "}VAT registered. An invoice raised from it now is issued under
+                today&apos;s setting, so it will {issuingVat ? "add VAT to" : "leave VAT off"} the quoted figures — check the draft before sending it.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {depositDue && (
                 <button onClick={toDepositInvoice} disabled={busy} className={`${PRIMARY} w-full sm:w-auto`}>

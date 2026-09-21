@@ -254,7 +254,8 @@ export default function QuoteRequestPage() {
       </div>
 
       {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
-      {notice && <p className="text-sm text-neutral-700" role="status">{notice}</p>}
+      {notice && <p className="text-sm text-neutral-700">{notice}</p>}
+      <p role="status" className="sr-only">{notice ?? ""}</p>
 
       <section className={CARD} aria-labelledby="list-heading">
         <h2 id="list-heading" className="font-semibold">What you asked for</h2>

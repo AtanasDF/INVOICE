@@ -35,7 +35,9 @@ export default function QuotesPage() {
   }, []);
 
   const clientName = (id: string) => clients.find((c) => c.id === id)?.name || "No client";
-  const vatRegistered = profile?.vatRegistered ?? false;
+  // A sent quote keeps the VAT setting it went out under (migration-033);
+  // a draft, and anything from before the column, follows Settings.
+  const vatOf = (q: Quote) => q.vatRegistered ?? profile?.vatRegistered ?? false;
   const days = (iso: string) => Math.floor((Date.parse(today) - Date.parse(iso)) / 86_400_000);
   // Sent, still good, and quiet for long enough to be worth a nudge.
   const quiet = quotes.filter((q) => q.status === "sent" && days(q.date) >= QUIET_DAYS && (!q.validUntil || q.validUntil >= today));
@@ -69,7 +71,7 @@ export default function QuotesPage() {
           </div>
           {quiet.map((q) => {
             const client = clients.find((c) => c.id === q.clientId) ?? null;
-            const total = money(quoteTotal(q, vatRegistered));
+            const total = money(quoteTotal(q, vatOf(q)));
             return (
               <div key={q.id} className="rounded-lg border p-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -104,7 +106,7 @@ export default function QuotesPage() {
         <div className="space-y-3">
           {quotes.length === 0 && !error && <p className="text-sm text-neutral-500">No quotes yet.</p>}
           {quotes.map((q) => {
-            const deposit = depositGross(q, vatRegistered);
+            const deposit = depositGross(q, vatOf(q));
             const open = q.status === "draft" || q.status === "sent";
             return (
               <Link key={q.id} href={`/quotes/${q.id}`} className="flex items-start justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
@@ -118,7 +120,7 @@ export default function QuotesPage() {
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="font-semibold">{money(quoteTotal(q, vatRegistered))}</p>
+                  <p className="font-semibold">{money(quoteTotal(q, vatOf(q)))}</p>
                   {deposit ? <p className="text-xs text-neutral-500">{money(deposit)} deposit</p> : null}
                   {open && q.validUntil && <p className="text-xs text-neutral-500">until {shortDate(q.validUntil)}</p>}
                 </div>

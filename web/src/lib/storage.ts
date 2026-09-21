@@ -1317,7 +1317,10 @@ export function nextQuoteNumber(existing: Quote[]): string {
 // sent. Read straight from the row rather than through the store, so a
 // failure here can't be mistaken for the whole profile being missing.
 async function accountVat(): Promise<boolean> {
-  const { data } = await supabase.from("business_profile").select("vat_registered").maybeSingle();
+  const { data, error } = await supabase.from("business_profile").select("vat_registered").maybeSingle();
+  // A read that fails must fail the send: read as "not registered" it
+  // would stamp a VAT-registered trader's quote at the wrong price for good.
+  if (error) throw error;
   return !!data?.vat_registered;
 }
 
@@ -1377,10 +1380,11 @@ export const quotesStore = {
   // Only from the status the page showed: the customer may have answered
   // online meanwhile, and that answer mustn't be overwritten unseen.
   async setStatus(id: string, status: Exclude<QuoteStatus, "invoiced">, from: QuoteStatus): Promise<void> {
-    // Going to sent is the moment the customer is shown a price, so that is
-    // when the VAT setting is fixed to the quote -- otherwise switching VAT
-    // on later re-prices a quote someone is still holding.
-    const patch = status === "sent" && from === "draft" ? { status, vat_registered: await accountVat() } : { status };
+    // Leaving draft is the moment the customer has been shown a price --
+    // sent, or accepted/declined straight from a draft agreed on the phone
+    // -- so that is when the VAT setting is fixed to the quote; otherwise
+    // switching VAT on later re-prices a quote someone is still holding.
+    const patch = from === "draft" ? { status, vat_registered: await accountVat() } : { status };
     const { data, error } = await supabase.from("quotes").update(patch).eq("id", id).eq("status", from).neq("status", "invoiced").select("id");
     if (error) {
       if (error.code !== "PGRST204") throw error;

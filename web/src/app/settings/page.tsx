@@ -658,7 +658,8 @@ export default function SettingsPage() {
         </div>
 
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {saved && !migrationPending && <p role="status" className="text-sm text-green-700">Saved.</p>}
+        {saved && !migrationPending && <p className="text-sm text-green-700">Saved.</p>}
+        <p role="status" className="sr-only">{saved && !migrationPending ? "Saved." : ""}</p>
         {saved && migrationPending && (
           <p className="text-sm text-amber-700">
             Saved, apart from what you&apos;re using the app for and the registered company details: this database hasn&apos;t

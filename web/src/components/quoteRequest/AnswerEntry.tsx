@@ -158,7 +158,8 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
           )}
         </div>
         {file && <p className="mt-2 truncate text-xs text-neutral-500">{file.name}</p>}
-        {note && <p className="mt-2 text-sm text-neutral-700" role="status">{note}</p>}
+        {note && <p className="mt-2 text-sm text-neutral-700">{note}</p>}
+        <p role="status" className="sr-only">{note ?? ""}</p>
       </section>
 
       <section className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

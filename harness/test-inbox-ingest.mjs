@@ -169,6 +169,13 @@ try {
   const six = [...Array(6)].map((_, i) => ({ filename: `inv-${i}.pdf`, mimeType: "application/pdf", base64: one }));
   res = await post({ token: TOKEN, subject: "Bulk", attachments: [{ filename: "notes.csv", mimeType: "text/csv", base64: "YSxi" }, ...six] });
   check("a spreadsheet is skipped and only the first five documents are read", stub.calls.length === 5 && rows().length === 5, JSON.stringify({ calls: stub.calls.length, rows: rows().length }));
+
+  // A PDF a gateway labelled application/octet-stream is still a PDF.
+  reset();
+  stub.script.push(reply([INVOICE]));
+  res = await post({ token: TOKEN, subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/octet-stream", base64: one }] });
+  r = rows()[0];
+  check("an octet-stream PDF is read as a PDF, not filed as 'no usable attachment'", res.status === 200 && stub.calls.length === 1 && r?.document_type === "invoice" && r?.image_data_url?.endsWith(".pdf"), JSON.stringify({ calls: stub.calls.length, type: r?.document_type, image: r?.image_data_url }));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

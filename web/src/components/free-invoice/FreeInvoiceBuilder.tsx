@@ -349,7 +349,8 @@ export default function FreeInvoiceBuilder() {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            {reading && <p role="status" className="text-sm text-neutral-600">Reading your invoice…</p>}
+            {reading && <p className="text-sm text-neutral-600">Reading your invoice…</p>}
+            <p role="status" className="sr-only">{reading ? "Reading your invoice…" : ""}</p>
             <CaptureButton
               onOpen={() => setCapturing(true)}
               onCapture={addPage}

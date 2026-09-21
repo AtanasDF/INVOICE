@@ -96,7 +96,17 @@ export async function POST(req: Request) {
     }
     const userId = profile.user_id as string;
 
+    // A PDF or photo a mail gateway labelled application/octet-stream is
+    // still one; the Worker recovers the type the same way, this is for
+    // anything else that posts here.
+    const BY_EXTENSION: Record<string, string> = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif" };
+    const typed = (a: IngestAttachment): IngestAttachment => {
+      if (a.mimeType !== "application/octet-stream") return a;
+      const ext = /\.([a-z0-9]+)$/i.exec(a.filename ?? "")?.[1]?.toLowerCase();
+      return ext && BY_EXTENSION[ext] ? { ...a, mimeType: BY_EXTENSION[ext] } : a;
+    };
     const usableAttachments = (body.attachments ?? [])
+      .map(typed)
       .filter((a) => ALLOWED_TYPES.includes(a.mimeType as (typeof ALLOWED_TYPES)[number]))
       .filter((a) => (a.base64.length * 3) / 4 <= MAX_FILE_BYTES)
       .slice(0, MAX_ATTACHMENTS);

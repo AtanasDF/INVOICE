@@ -1,20 +1,22 @@
 import { launch, openScanner, sleep } from "./camera3.mjs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
+// Nothing here used to stop OpenCV loading, so "no OpenCV" was only ever
+// true on a server missing the vendor file -- and when that was fixed it
+// was fixed for one of the two launches. The scanner loads it as a
+// <script>; pointing that at a path that isn't there is what a failed
+// download looks like to the page.
+const blockOpenCV = (page) => page.evaluateOnNewDocument(() => {
+  const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, "src");
+  Object.defineProperty(HTMLScriptElement.prototype, "src", {
+    get() { return src.get.call(this); },
+    set(v) { src.set.call(this, /opencv/.test(String(v)) ? "/vendor/opencv-not-here.js" : v); },
+  });
+});
 try {
   {
     const { browser, page } = await launch("dark-nocv2.mjpeg");
-    // Nothing here used to stop OpenCV loading, so "no OpenCV" was only
-    // ever true on a server missing the vendor file. The scanner loads it
-    // as a <script>; pointing that at a path that isn't there is what a
-    // failed download looks like to the page.
-    await page.evaluateOnNewDocument(() => {
-      const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, "src");
-      Object.defineProperty(HTMLScriptElement.prototype, "src", {
-        get() { return src.get.call(this); },
-        set(v) { src.set.call(this, /opencv/.test(String(v)) ? "/vendor/opencv-not-here.js" : v); },
-      });
-    });
+    await blockOpenCV(page);
     await page.evaluateOnNewDocument(() => {
       window.__torch = [];
       const caps = MediaStreamTrack.prototype.getCapabilities;
@@ -31,9 +33,12 @@ try {
   }
   {
     const { browser, page } = await launch("dark-room.mjpeg");
+    await blockOpenCV(page);
     await openScanner(page, { auto: "off" });
     await sleep(2500);
-    check("no OpenCV, no torch: 'It's dark here' hint", (await page.evaluate(() => document.body.innerText)).includes("It's dark here"));
+    const text = await page.evaluate(() => document.body.innerText);
+    check("no OpenCV, no torch: edge detection says unavailable", text.includes("Edge detection unavailable"));
+    check("no OpenCV, no torch: 'It's dark here' hint", text.includes("It's dark here"));
     await browser.close();
   }
 } catch (e) { console.log("ERROR", e.message); }

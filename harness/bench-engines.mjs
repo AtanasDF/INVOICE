@@ -53,7 +53,7 @@ for (const engine of ENGINES) {
       date: r?.date === d.date,
       total: close(r?.totalAmount, d.totalAmount),
       vat: close(r?.vatAmount, d.vatAmount),
-      number: d.invoiceNumber === null ? r?.invoiceNumber == null || r?.invoiceNumber === "" : r?.invoiceNumber === d.invoiceNumber,
+      number: !!r && (d.invoiceNumber === null ? r.invoiceNumber == null || r.invoiceNumber === "" : r.invoiceNumber === d.invoiceNumber),
       lines: (r?.lineItems?.length ?? 0) === d.lines,
       got: r ? { type: r.documentType, vendor: r.vendor, date: r.date, total: r.totalAmount, vat: r.vatAmount, number: r.invoiceNumber, lines: r.lineItems?.length ?? 0 } : null,
       want: { type: d.documentType, vendor: d.vendor, date: d.date, total: d.totalAmount, vat: d.vatAmount, number: d.invoiceNumber, lines: d.lines },

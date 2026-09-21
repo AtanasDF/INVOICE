@@ -767,6 +767,24 @@ export default function DocumentCapture({
   const [cameraHint, setCameraHint] = useState(false);
   const [shots, setShots] = useState<Shot[]>([]);
   const [reviewing, setReviewing] = useState(false);
+  // The sheet takes focus when it opens; when it closes, focus goes back to
+  // what opened it (the stack or "Check and read"), not to the top of the
+  // page. After the re-render, not in the handler: until then the opener is
+  // under inert and refuses focus. If the shots were all removed the opener
+  // is gone, and the shutter is the next best place.
+  const reviewOpenerRef = useRef<HTMLElement | null>(null);
+  const openReview = () => {
+    reviewOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setReviewing(true);
+  };
+  useEffect(() => {
+    if (reviewing) return;
+    const opener = reviewOpenerRef.current;
+    reviewOpenerRef.current = null;
+    if (!opener) return;
+    (opener.isConnected ? opener : rootRef.current?.querySelector<HTMLElement>('button[aria-label="Capture"], button[aria-label="Take a photo"]'))?.focus();
+  }, [reviewing]);
+
   const [waitingNext, setWaitingNext] = useState(false);
   // processFrame lives inside a long-lived effect that only re-runs on
   // [stopStream, retryKey, useNative] -- it closes over state as it was
@@ -1729,7 +1747,7 @@ export default function DocumentCapture({
   const stack = multi && shots.length > 0 && (
     <button
       type="button"
-      onClick={() => setReviewing(true)}
+      onClick={openReview}
       aria-label={`Review ${shots.length} scan${shots.length === 1 ? "" : "s"}`}
       className="relative h-14 w-11 rounded-md border-2 border-white bg-neutral-800 shadow-lg"
     >
@@ -1822,7 +1840,7 @@ export default function DocumentCapture({
           </p>
           {shownFailure && <p role="alert" className="px-8 text-center text-sm text-red-400">{shownFailure}</p>}
         </div>
-        <div className="space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+        <div inert={reviewing} className="space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
           <button
             onClick={() => nativeInputRef.current?.click()}
             className="w-full rounded-lg bg-white px-5 py-3 text-center text-sm font-medium text-neutral-900"
@@ -1831,7 +1849,7 @@ export default function DocumentCapture({
           </button>
           {multi && shots.length > 0 && (
             <button
-              onClick={() => setReviewing(true)}
+              onClick={openReview}
               className="w-full rounded-lg bg-[#4ADE80] px-5 py-3 text-center text-sm font-medium text-neutral-900"
             >
               Check and read {shots.length} scan{shots.length === 1 ? "" : "s"}

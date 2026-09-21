@@ -6,11 +6,11 @@
 // Needs migration-033 (quotes.vat_registered). Against a database without
 // it the app falls back to the account's setting, which is what it always
 // did, so the last check here is the one that fails on an unmigrated one.
-import { UID, makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId } from "./mockdb.mjs";
+import { UID, makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const today = new Date().toISOString().slice(0, 10);
+const today = todayISO();
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [] });
@@ -50,6 +50,38 @@ try {
   await sleep(1600);
   t = await bodyText(page);
   check("a quote from before the column follows the setting, as it always did", t.includes("£4,800.00"), t.replace(/\s+/g, " ").slice(0, 400));
+
+  // The list is the page the owner looks at most, and it priced every
+  // quote from today's setting: £4,800 in the list against £4,000 on the
+  // quote's own page and the customer's link.
+  await page.goto(`${BASE}/quotes`, { waitUntil: "networkidle0" });
+  await sleep(1600);
+  t = await bodyText(page);
+  const rowOf = (n) => t.split("\n").slice(t.split("\n").findIndex((l) => l.includes(n))).slice(0, 8).join(" ");
+  check("the list prices a quote sent before he registered at its own price", /£4,000\.00/.test(rowOf("Q-0012")) && !/£4,800\.00/.test(rowOf("Q-0012")), rowOf("Q-0012"));
+  check("...and a draft at today's setting", /£4,800\.00/.test(rowOf("Q-0013")), rowOf("Q-0013"));
+
+  // A draft agreed on the phone and marked accepted straight away has shown
+  // the customer a price too, so it is stamped like a sent one.
+  const AGREED = quote({ number: "Q-0014", status: "draft" });
+  await page.goto(`${BASE}/quotes/${AGREED.id}`, { waitUntil: "networkidle0" });
+  await sleep(1400);
+  await clickText(page, "Accepted").catch(() => {});
+  await sleep(1800);
+  const agreed = db.tables.quotes.find((q) => q.id === AGREED.id);
+  check("a draft accepted directly is stamped with the VAT setting too", agreed.status === "accepted" && agreed.vat_registered === true, JSON.stringify({ status: agreed.status, vat: agreed.vat_registered }));
+
+  // A profile read that fails must fail the send, not stamp "not registered".
+  db.fail = { "GET business_profile": 1 };
+  const FLAKY = quote({ number: "Q-0015", status: "draft" });
+  await page.goto(`${BASE}/quotes/${FLAKY.id}`, { waitUntil: "networkidle0" });
+  await sleep(1400);
+  await clickText(page, "Sent").catch(async () => { await clickText(page, "Mark as sent").catch(() => {}); });
+  await sleep(1800);
+  const flaky = db.tables.quotes.find((q) => q.id === FLAKY.id);
+  check("a failed profile read leaves the quote a draft rather than stamping it not registered", flaky.status === "draft" && flaky.vat_registered === null, JSON.stringify({ status: flaky.status, vat: flaky.vat_registered }));
+  check("...and says so", /(couldn.t|failed|try again|not saved)/i.test(await bodyText(page)), (await bodyText(page)).replace(/\s+/g, " ").slice(0, 300));
+  db.fail = {};
 
   // Sending a draft fixes the setting to it.
   await page.goto(`${BASE}/quotes/${DRAFT.id}`, { waitUntil: "networkidle0" });

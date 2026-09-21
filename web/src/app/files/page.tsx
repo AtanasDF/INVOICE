@@ -59,11 +59,16 @@ export default function FilesPage() {
   function closePreview() {
     previewIdRef.current = null;
     setPreview(null);
-    openerRef.current?.focus();
   }
 
   useEffect(() => {
-    if (!preview) return;
+    if (!preview) {
+      // After the re-render, not in closePreview: until then the tile is
+      // under inert and refuses focus.
+      openerRef.current?.focus();
+      openerRef.current = null;
+      return;
+    }
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closePreview();
@@ -94,6 +99,10 @@ export default function FilesPage() {
 
   return (
     <div className="space-y-6">
+      {/* While the preview is up nothing behind it can take focus: it is a
+          dialog with no focus trap, and Tab used to walk out of it into the
+          filters and tiles it covered. */}
+      <div inert={!!preview} className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">File library</h1>
         <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place.</p>
@@ -155,6 +164,7 @@ export default function FilesPage() {
           })}
         </div>
       )}
+      </div>
 
       {preview && (
         <div
