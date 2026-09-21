@@ -192,7 +192,7 @@ export default function NewClientPage() {
         <p className="mt-2 text-xs text-neutral-500">
           A business card, letterhead, invoice, email or any photo with their details. Names, addresses, emails and VAT numbers are picked out for you.
         </p>
-        {readError && <p className="mt-2 text-sm text-red-600">{readError}</p>}
+        {readError && <p role="alert" className="mt-2 text-sm text-red-600">{readError}</p>}
         {found.length > 1 && (
           <div className="mt-3">
             <p className="text-xs text-neutral-500">Found on the page — tap the one you want</p>

@@ -1809,7 +1809,7 @@ export default function DocumentCapture({
   if (useNative) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black">
-        <div className={`relative flex flex-1 flex-col items-center justify-center gap-3 ${shownFailure ? "border-4 border-red-500" : ""}`}>
+        <div inert={reviewing} className={`relative flex flex-1 flex-col items-center justify-center gap-3 ${shownFailure ? "border-4 border-red-500" : ""}`}>
           <div className="absolute left-4 z-10" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
             <BackButton onClick={close} />
           </div>
@@ -1820,7 +1820,7 @@ export default function DocumentCapture({
               ? `${shots.length} scanned. Take the next one, or tap the stack to check them.`
               : "Take a clear, well-lit photo of the whole document."}
           </p>
-          {shownFailure && <p className="px-8 text-center text-sm text-red-400">{shownFailure}</p>}
+          {shownFailure && <p role="alert" className="px-8 text-center text-sm text-red-400">{shownFailure}</p>}
         </div>
         <div className="space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
           <button
@@ -1876,7 +1876,10 @@ export default function DocumentCapture({
 
   return (
     <div ref={rootRef} className="fixed inset-0 z-50 flex touch-none flex-col bg-black">
-      <div ref={liveAreaRef} className="relative flex-1 overflow-hidden">
+      {/* While the review sheet is up nothing behind it can take focus: it
+          covered the camera but left Capture, and a Back that discards the
+          batch, one Tab away. */}
+      <div ref={liveAreaRef} inert={reviewing} className="relative flex-1 overflow-hidden">
         <video
           ref={videoRef}
           playsInline
@@ -2041,7 +2044,7 @@ export default function DocumentCapture({
         )}
       </div>
 
-      <div className="relative flex items-center justify-center bg-black p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+      <div inert={reviewing} className="relative flex items-center justify-center bg-black p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         {status === "live" ? (
           <>
             <button

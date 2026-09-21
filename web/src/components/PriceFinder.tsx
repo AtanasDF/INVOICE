@@ -138,7 +138,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
         <span className="text-xs text-neutral-500">A guide from what things usually cost, not a live price.</span>
       </div>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
 
       {guide && (
         <div className="space-y-2 rounded-lg border bg-white p-3 text-sm">

@@ -539,7 +539,7 @@ export default function InvoiceViewPage() {
 
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
   // "Invoice not found" would be a lie when the database simply wasn't reachable.
-  if (loadError) return <p className="text-sm text-red-600">{loadError}</p>;
+  if (loadError) return <p role="alert" className="text-sm text-red-600">{loadError}</p>;
   if (!invoice) return <p className="text-sm text-neutral-500">Invoice not found.</p>;
 
   const vatRegistered = profile?.vatRegistered ?? false;
@@ -634,7 +634,7 @@ export default function InvoiceViewPage() {
             onChange={(e) => setDraftTagsInput(e.target.value)}
           />
 
-          {draftError && <p className="text-sm text-red-600">{draftError}</p>}
+          {draftError && <p role="alert" className="text-sm text-red-600">{draftError}</p>}
 
           <div className="space-y-1 border-t pt-3 text-sm">
             {vatRegistered && (
@@ -678,7 +678,7 @@ export default function InvoiceViewPage() {
                 here — it&apos;s assigned automatically to keep the sequence gap-free.
               </p>
             </div>
-            {sendError && <p className="text-sm text-red-600">{sendError}</p>}
+            {sendError && <p role="alert" className="text-sm text-red-600">{sendError}</p>}
             <div className="flex gap-2">
               <button onClick={confirmSend} disabled={sendBusy} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 {sendBusy ? "Sending…" : "Confirm & mark as sent"}
@@ -737,8 +737,8 @@ export default function InvoiceViewPage() {
           </button>
         </div>
       </div>
-      {statusError && <p className="text-sm text-red-600 print:hidden">{statusError}</p>}
-      {duplicateError && <p className="text-sm text-red-600 print:hidden">{duplicateError}</p>}
+      {statusError && <p role="alert" className="text-sm text-red-600 print:hidden">{statusError}</p>}
+      {duplicateError && <p role="alert" className="text-sm text-red-600 print:hidden">{duplicateError}</p>}
 
       {editingDetails && (
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
@@ -765,7 +765,7 @@ export default function InvoiceViewPage() {
             <label className="text-xs text-neutral-500">Tags, comma separated</label>
             <input className="w-full rounded-lg border px-3 py-2 text-sm" value={editTagsInput} onChange={(e) => setEditTagsInput(e.target.value)} />
           </div>
-          {editError && <p className="text-sm text-red-600">{editError}</p>}
+          {editError && <p role="alert" className="text-sm text-red-600">{editError}</p>}
           <button onClick={saveDetails} disabled={editSaving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {editSaving ? "Saving…" : "Save"}
           </button>
@@ -810,7 +810,7 @@ export default function InvoiceViewPage() {
             </button>
           </>
         )}
-        {linkError && <p className="mt-2 text-sm text-red-600">{linkError}</p>}
+        {linkError && <p role="alert" className="mt-2 text-sm text-red-600">{linkError}</p>}
       </div>
 
       <SendInvoicePanel
@@ -884,7 +884,7 @@ export default function InvoiceViewPage() {
                 <option value="">Not saying</option>
               </select>
             </div>
-            {payError && <p className="text-sm text-red-600">{payError}</p>}
+            {payError && <p role="alert" className="text-sm text-red-600">{payError}</p>}
             <button disabled={paySaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
               {paySaving ? "Saving…" : "Save payment"}
             </button>
@@ -909,7 +909,7 @@ export default function InvoiceViewPage() {
             <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: ${money(amountDue)}` : "Paid in full."}</p>
           </div>
         )}
-        {!showPayForm && payError && <p className="mt-2 text-sm text-red-600">{payError}</p>}
+        {!showPayForm && payError && <p role="alert" className="mt-2 text-sm text-red-600">{payError}</p>}
       </div>
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
@@ -938,7 +938,7 @@ export default function InvoiceViewPage() {
                 credit its total of {money(totals.total)}.
               </p>
             )}
-            {cnError && <p className="text-sm text-red-600">{cnError}</p>}
+            {cnError && <p role="alert" className="text-sm text-red-600">{cnError}</p>}
             <button disabled={cnSaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
               {cnSaving ? "Saving…" : "Save credit note"}
             </button>
@@ -958,7 +958,7 @@ export default function InvoiceViewPage() {
         )}
         {/* Also here, not only inside the add form: a removal that failed
             has to be visible whether or not that form happens to be open. */}
-        {cnError && !showCnForm && <p className="mt-2 text-sm text-red-600">{cnError}</p>}
+        {cnError && !showCnForm && <p role="alert" className="mt-2 text-sm text-red-600">{cnError}</p>}
       </div>
     </div>
   );

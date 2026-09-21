@@ -21,6 +21,11 @@ export default function FilesPage() {
   const [previewPages, setPreviewPages] = useState<{ receiptId: string; pages: ReceiptPage[] } | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
   const previewIdRef = useRef<string | null>(null);
+  // The tile that opened the preview gets focus back when it closes, so
+  // closing doesn't lose your place in the list; while it's open, Escape
+  // closes it and the close button is where focus starts.
+  const openerRef = useRef<HTMLElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     Promise.all([receiptsStore.all(), clientsStore.all(), receiptPagesStore.counts()])
@@ -34,6 +39,7 @@ export default function FilesPage() {
   }, []);
 
   function openPreview(r: Receipt) {
+    openerRef.current = document.activeElement as HTMLElement | null;
     previewIdRef.current = r.id;
     setPreview(r);
     setPreviewIndex(0);
@@ -53,7 +59,18 @@ export default function FilesPage() {
   function closePreview() {
     previewIdRef.current = null;
     setPreview(null);
+    openerRef.current?.focus();
   }
+
+  useEffect(() => {
+    if (!preview) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePreview();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   const suppliers = useMemo(() => clients.filter((c) => c.kind === "supplier"), [clients]);
 
@@ -105,7 +122,7 @@ export default function FilesPage() {
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : error ? (
-        <p className="text-sm text-red-600">{error}</p>
+        <p role="alert" className="text-sm text-red-600">{error}</p>
       ) : files.length === 0 ? (
         <p className="text-sm text-neutral-500">
           {hasActiveFilters ? (
@@ -141,6 +158,9 @@ export default function FilesPage() {
 
       {preview && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${preview.vendor || preview.category || "Document"} preview`}
           className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4"
           style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
           onClick={closePreview}
@@ -152,7 +172,7 @@ export default function FilesPage() {
                 {preview.date} · {money(preview.amount)} · {supplierName(preview.clientId)}
               </div>
             </div>
-            <button onClick={closePreview} className="text-2xl leading-none text-white/80">✕</button>
+            <button ref={closeRef} onClick={closePreview} aria-label="Close preview" className="text-2xl leading-none text-white/80">✕</button>
           </div>
           <div className="mt-4 flex flex-1 items-center justify-center overflow-auto" onClick={(e) => e.stopPropagation()}>
             {!previewSrc ? (
@@ -161,7 +181,7 @@ export default function FilesPage() {
               <iframe src={previewSrc} className="h-full w-full rounded-lg bg-white" title="Document preview" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewSrc} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+              <img src={previewSrc} alt={`${preview.vendor || preview.category || "Document"}, page ${previewIndex + 1}`} className="max-h-full max-w-full rounded-lg object-contain" />
             )}
           </div>
           {previewTotalPages > 1 && (

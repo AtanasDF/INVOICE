@@ -644,7 +644,7 @@ export default function ReceiptsPage() {
                     <span className="text-xs text-neutral-500">GBP {editFxLoading && "(fetching today's rate…)"}</span>
                   </div>
                 )}
-                {editFxError && <p className="text-xs text-amber-700">{editFxError}</p>}
+                {editFxError && <p role="status" className="text-xs text-amber-700">{editFxError}</p>}
                 {isInvoice && (
                   <label className="flex items-center gap-2 text-sm text-neutral-700">
                     <input type="checkbox" checked={editDraft.paid} onChange={(e) => setEditDraft({ ...editDraft, paid: e.target.checked })} />
@@ -657,7 +657,7 @@ export default function ReceiptsPage() {
                   value={editDraft.notes}
                   onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
                 />
-                {editError && <p className="text-sm text-red-600">{editError}</p>}
+                {editError && <p role="alert" className="text-sm text-red-600">{editError}</p>}
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveEditReceipt(r)}

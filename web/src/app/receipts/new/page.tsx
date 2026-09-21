@@ -369,7 +369,7 @@ export default function NewReceiptPage() {
             <span className="text-xs text-neutral-500">GBP {fxLoading && "(fetching today's rate…)"}</span>
           </div>
         )}
-        {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
+        {fxError && <p role="status" className="text-xs text-amber-700">{fxError}</p>}
         {totalAmount && (
           <p className="text-xs text-neutral-500">
             → {money(gbpAmounts().netGbp)} excl. VAT{currency !== "GBP" ? `, ${money(gbpAmounts().vatGbp)} VAT` : ""}, recorded automatically{currency !== "GBP" ? " in GBP" : ""}.

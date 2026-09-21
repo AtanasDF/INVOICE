@@ -113,6 +113,13 @@ export default function FreeInvoiceBuilder() {
     setStage("editor");
   }
 
+  // A read or "Next invoice" swaps the page under the reader: the note that
+  // says what happened takes focus, so it is heard rather than just drawn.
+  const noteRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (note === "filled" || note === "next") noteRef.current?.focus();
+  }, [note, invoiceGen]);
+
   async function readInvoice(toRead: CapturedFile[]) {
     const run = ++runRef.current;
     setReading(true);
@@ -335,14 +342,14 @@ export default function FreeInvoiceBuilder() {
           {user && <EnginePicker value={engine} onChange={setEngine} disabled={reading} />}
           {readError && (
             <div className="rounded-lg border p-3">
-              <p className="text-sm font-medium">{readError}</p>
+              <p role="alert" className="text-sm font-medium">{readError}</p>
               <button type="button" onClick={() => readInvoice(pages)} disabled={!pages.length} className="mt-2 rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50">
                 Read again
               </button>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            {reading && <p className="text-sm text-neutral-600">Reading your invoice…</p>}
+            {reading && <p role="status" className="text-sm text-neutral-600">Reading your invoice…</p>}
             <CaptureButton
               onOpen={() => setCapturing(true)}
               onCapture={addPage}
@@ -361,7 +368,7 @@ export default function FreeInvoiceBuilder() {
       {stage === "editor" && draft && (
         <>
           {note && (
-            <p className="text-sm text-neutral-600">
+            <p ref={noteRef} tabIndex={-1} role="status" className="text-sm text-neutral-600 outline-none">
               {note === "filled"
                 ? `Copied from your invoice as the next one${draft.number ? `: number ${draft.number}` : ""}, dated today. Check every field.`
                 : note === "next"

@@ -66,7 +66,7 @@ export default function StatementPage() {
         <p className="mt-1 wrap-anywhere text-neutral-600">{client ? `Everything ${client.name} has been invoiced, and what's still owed.` : "Loading…"}</p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {statement && client && (
         <>

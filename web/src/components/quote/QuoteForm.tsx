@@ -187,7 +187,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
         <div className="text-lg font-bold">Total {money(totals.total)}</div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-3">
         <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : saveLabel}

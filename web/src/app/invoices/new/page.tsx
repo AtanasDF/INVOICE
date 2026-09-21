@@ -674,7 +674,7 @@ export default function NewInvoicePage() {
           etc.) — the client is always your own choice below, never guessed.
         </p>
       )}
-      {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+      {scanError && <p role="alert" className="text-sm text-red-600">{scanError}</p>}
       {!copyMode && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <label className="text-xs text-neutral-500" htmlFor="describe-invoice">

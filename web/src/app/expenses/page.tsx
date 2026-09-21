@@ -149,7 +149,7 @@ export default function ExpensesPage() {
   // Zeroes would read as "you spent nothing", which is the opposite of
   // "we couldn't reach your records".
   if (error) {
-    return <p className="text-sm text-red-600">{error}</p>;
+    return <p role="alert" className="text-sm text-red-600">{error}</p>;
   }
 
   const periodLabel =

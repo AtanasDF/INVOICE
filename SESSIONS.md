@@ -57,6 +57,14 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   scripted per call: 20 checks over the unread-filing paths — reader refused or cut off,
   database refusing the row, storage down, two documents in one PDF — none touching the
   live database or the real reader. 31/31.
+- **The five open accessibility findings**, all fixed: the supplier price form names each
+  box by the line's description; the Free page's read is a status region, its failure an
+  alert, and the "filled in" note takes focus; every feedback paragraph in the app is a
+  live region (58 in 35 files, one mechanical sweep, reviewed line by line); the batch
+  review sheet is an `aria-modal` dialog that takes focus, with the camera's live area and
+  controls `inert` behind it; the file-library preview is a named dialog that Escape
+  closes, focus in on open and back to the tile on close. `test-announced` grew five
+  checks (Settings "Saved.", and the lightbox's four).
 - **Page weight**: `test-weight` failed on the dashboard (1627 KB against 1.5 MB) and,
   after the 033 merge, on the Free page (1483 KB) and Check a company (1360 KB). Building
   the last green commit in a scratch worktree (Turbopack refuses a symlinked

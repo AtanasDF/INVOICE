@@ -203,7 +203,7 @@ export default function AddressFields({ address, onAddress, label = "Address", s
         </div>
       )}
       {fetching && <p className="text-xs text-neutral-500">Fetching the address…</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }

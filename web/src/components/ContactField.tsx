@@ -290,7 +290,7 @@ export default function ContactField({
           <p className="text-xs text-neutral-500">Company {pending.number}</p>
           {pending.address && <p className="text-xs text-neutral-500">{oneLine(pending.address)}</p>}
           {registerNote(pending.status) && <p className="mt-1 text-xs text-neutral-700">{registerNote(pending.status)}</p>}
-          {addError && <p className="mt-1 text-sm text-red-600">{addError}</p>}
+          {addError && <p role="alert" className="mt-1 text-sm text-red-600">{addError}</p>}
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={add} disabled={adding} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {adding ? "Adding…" : `Add as ${word}`}

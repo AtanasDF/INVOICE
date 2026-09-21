@@ -71,7 +71,7 @@ export default function NewQuotePage() {
         <h1 className="mt-1 text-2xl font-bold">New quote</h1>
         <p className="mt-1 text-neutral-600">What the job will cost. It stays a draft until you send it.</p>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {imported && (
         <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">Brought over from the Free page: check the details, then save it.</p>
       )}

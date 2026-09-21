@@ -79,7 +79,7 @@ export default function PriceForm({ items, draft, onChange, disabled, lineExtra,
     <div className="space-y-4">
       <fieldset className="min-w-0 space-y-3" disabled={disabled}>
         <legend className="sr-only">Prices</legend>
-        {items.map((item, n) => {
+        {items.map((item) => {
           const l = draft.lines[item.id];
           const price = amountOf(l.text);
           return (
@@ -98,7 +98,7 @@ export default function PriceForm({ items, draft, onChange, disabled, lineExtra,
                   <input
                     inputMode="decimal"
                     className="w-full rounded-lg border py-2 pl-7 pr-3 text-right disabled:bg-neutral-100 disabled:text-neutral-400"
-                    aria-label={`Price per ${item.unit || "item"} for line ${n + 1}`}
+                    aria-label={`${item.description}: price per ${item.unit || "item"}`}
                     placeholder={`per ${item.unit || "item"}`}
                     value={l.unavailable ? "" : l.text}
                     disabled={l.unavailable}
@@ -110,12 +110,12 @@ export default function PriceForm({ items, draft, onChange, disabled, lineExtra,
                 </span>
               </div>
               <label className="flex items-center gap-2 text-sm text-neutral-700">
-                <input type="checkbox" checked={l.unavailable} onChange={(e) => setLine(item.id, { unavailable: e.target.checked })} />
+                <input type="checkbox" aria-label={`${item.description}: can't supply`} checked={l.unavailable} onChange={(e) => setLine(item.id, { unavailable: e.target.checked })} />
                 Can&apos;t supply
               </label>
               <input
                 className="w-full rounded-lg border px-3 py-2 text-sm"
-                aria-label={`Alternative or note for line ${n + 1}`}
+                aria-label={`${item.description}: alternative or note`}
                 placeholder="Alternative or note (optional)"
                 value={l.note}
                 onChange={(e) => setLine(item.id, { note: e.target.value })}

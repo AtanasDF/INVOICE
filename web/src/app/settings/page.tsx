@@ -295,7 +295,7 @@ export default function SettingsPage() {
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
   // Empty boxes here would look like settings that had been wiped, and
   // saving over them would wipe them for real.
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
 
   const nextNumberTooLow = (parseInt(invoiceNextNumber, 10) || 0) <= highestExistingNumber && highestExistingNumber > 0;
   // Registered details stay on screen once they're filled in, whatever the
@@ -355,7 +355,7 @@ export default function SettingsPage() {
             expenses and feedback — as one JSON file, with the scanned images and PDFs inside it. Invoices, receipts and
             clients also export as CSV from their own pages, for a spreadsheet or an accountant.
           </p>
-          {exportError && <p className="mt-2 text-sm text-red-600">{exportError}</p>}
+          {exportError && <p role="alert" className="mt-2 text-sm text-red-600">{exportError}</p>}
           <button
             type="button"
             onClick={exportData}
@@ -658,7 +658,7 @@ export default function SettingsPage() {
         </div>
 
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {saved && !migrationPending && <p className="text-sm text-green-700">Saved.</p>}
+        {saved && !migrationPending && <p role="status" className="text-sm text-green-700">Saved.</p>}
         {saved && migrationPending && (
           <p className="text-sm text-amber-700">
             Saved, apart from what you&apos;re using the app for and the registered company details: this database hasn&apos;t
@@ -688,7 +688,7 @@ export default function SettingsPage() {
           </p>
         ) : (
           <>
-            {pushError && <p className="text-sm text-red-600">{pushError}</p>}
+            {pushError && <p role="alert" className="text-sm text-red-600">{pushError}</p>}
             <button
               type="button"
               onClick={togglePush}
@@ -711,7 +711,7 @@ export default function SettingsPage() {
             straight in unchecked.
           </p>
         </div>
-        {inboxError && <p className="text-sm text-red-600">{inboxError}</p>}
+        {inboxError && <p role="alert" className="text-sm text-red-600">{inboxError}</p>}
         {inboxToken ? (
           <>
             <p className="text-xs font-medium text-amber-700">

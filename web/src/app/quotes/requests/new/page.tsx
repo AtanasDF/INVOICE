@@ -37,7 +37,7 @@ export default function NewQuoteRequestPage() {
         <h1 className="mt-1 text-2xl font-bold">New quote request</h1>
         <p className="mt-1 text-neutral-600">List what you need; each supplier gets their own email with a link to price it.</p>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {!suppliers ? (
         !error && <p className="text-sm text-neutral-500">Loading…</p>
       ) : (

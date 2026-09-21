@@ -281,7 +281,7 @@ export default function Dashboard() {
   // Zeroes across the dashboard would read as "nothing is owed to you",
   // which is a very different thing from "we couldn't reach your records".
   if (loadError) {
-    return <p className="text-sm text-red-600">{loadError}</p>;
+    return <p role="alert" className="text-sm text-red-600">{loadError}</p>;
   }
 
   return (
@@ -413,7 +413,7 @@ export default function Dashboard() {
       {bills.length > 0 && (
         <div id="bills-to-pay" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <h2 className="font-semibold">Bills to pay</h2>
-          {billsError && <p className="mt-2 text-sm text-red-600">{billsError}</p>}
+          {billsError && <p role="alert" className="mt-2 text-sm text-red-600">{billsError}</p>}
           <div className="mt-3 space-y-2">
             {sortedBills.map((b) => {
               const due = billDueLabel(b.dueDate, today);

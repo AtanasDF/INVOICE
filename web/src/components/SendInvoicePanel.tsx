@@ -126,7 +126,7 @@ export function ShareButtons({ pdf, children }: { pdf: DocumentPdf; children?: R
         </button>
         {children}
       </div>
-      {pdf.shareError && <p className="mt-2 text-sm text-red-600">{pdf.shareError}</p>}
+      {pdf.shareError && <p role="alert" className="mt-2 text-sm text-red-600">{pdf.shareError}</p>}
     </>
   );
 }

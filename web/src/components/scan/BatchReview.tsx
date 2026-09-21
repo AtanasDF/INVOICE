@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { CapturedFile } from "@/components/DocumentCapture";
 import { DocumentIcon } from "@/components/icons";
 
@@ -33,6 +34,12 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
   onAccept: () => void;
 }) {
   const docs = groupShots(shots).length;
+  // The sheet opens over the live camera; focus comes with it, so the
+  // heading is what's heard next rather than the shutter behind it.
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
   const labels: string[] = [];
   let doc = 0;
   let page = 1;
@@ -46,9 +53,9 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-neutral-50 text-neutral-900">
+    <div role="dialog" aria-modal="true" aria-labelledby="batch-review-title" className="fixed inset-0 z-[60] flex flex-col bg-neutral-50 text-neutral-900">
       <div className="border-b bg-white px-4 pb-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
-        <h2 className="text-lg font-bold">Check your scans</h2>
+        <h2 id="batch-review-title" ref={titleRef} tabIndex={-1} className="text-lg font-bold outline-none">Check your scans</h2>
         <p className="mt-0.5 text-sm text-neutral-600">
           {shots.length} scan{shots.length === 1 ? "" : "s"}, {docs} document{docs === 1 ? "" : "s"}. Tap “Page of previous” when a scan is the next page of the one before it.
         </p>

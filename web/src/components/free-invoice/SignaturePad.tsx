@@ -210,7 +210,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
             Remove from invoice
           </button>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         {photoInput}
       </div>
     );
@@ -247,7 +247,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
           </button>
         )}
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {photoInput}
     </div>
   );

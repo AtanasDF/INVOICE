@@ -135,7 +135,7 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
         </fieldset>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-3">
         <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : saveLabel}

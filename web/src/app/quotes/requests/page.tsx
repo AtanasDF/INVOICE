@@ -43,7 +43,7 @@ export default function QuoteRequestsPage() {
 
       <QuotesTabs current="suppliers" />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>

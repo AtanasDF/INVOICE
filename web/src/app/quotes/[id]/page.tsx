@@ -132,7 +132,7 @@ export default function QuotePage() {
   if (!quote) {
     return (
       <div className="space-y-2">
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <p className="text-sm text-neutral-600">Quote not found.</p>
         <Link href="/quotes" className="text-sm font-medium text-blue-600">Back to quotes</Link>
       </div>
@@ -403,7 +403,7 @@ export default function QuotePage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 print:hidden">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600 print:hidden">{error}</p>}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <p className="text-xs text-neutral-500">For</p>

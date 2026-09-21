@@ -60,7 +60,7 @@ export default function FeedbackPage() {
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Sending…" : "Send feedback"}
         </button>

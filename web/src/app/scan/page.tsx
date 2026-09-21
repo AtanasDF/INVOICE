@@ -1101,7 +1101,7 @@ export default function ScanPage() {
 
   const errorBanner = scanError && (
     <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-      <p className="text-sm text-red-600">{scanError}</p>
+      <p role="alert" className="text-sm text-red-600">{scanError}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {(pages.length > 0 || pendingUploads) && (
           <button
@@ -1158,7 +1158,7 @@ export default function ScanPage() {
         )}
         {doc?.splitNote && <p className="mb-1 text-xs text-neutral-500">{doc.splitNote}</p>}
         {doc?.look && <p className="mb-1 text-xs font-medium text-neutral-700">Needs a look: {doc.look}.</p>}
-        {uploadNote && <p className="mb-1 text-xs text-amber-700">{uploadNote}</p>}
+        {uploadNote && <p role="status" className="mb-1 text-xs text-amber-700">{uploadNote}</p>}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (
@@ -1252,7 +1252,7 @@ export default function ScanPage() {
               </p>
             )}
             {supplierSaved && <p className="text-sm text-green-700">Saved as a new supplier.</p>}
-            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={addAsSupplier}
@@ -1436,7 +1436,7 @@ export default function ScanPage() {
                 </div>
               )}
             </div>
-            {fxError && <p className="text-xs text-amber-700">{fxError}</p>}
+            {fxError && <p role="status" className="text-xs text-amber-700">{fxError}</p>}
             {mode === "archival" && (
               <p className="text-xs text-neutral-500">
                 {heading}s aren&apos;t usually a single expense — leave the total blank to just file this away.
@@ -1484,7 +1484,7 @@ export default function ScanPage() {
               />
             )}
 
-            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
             {duplicate && (
               <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
                 Looks like a duplicate of {duplicate.vendor || clients.find((c) => c.id === duplicate.clientId)?.name || "a saved document"}, £

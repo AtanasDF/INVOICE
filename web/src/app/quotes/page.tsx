@@ -59,7 +59,7 @@ export default function QuotesPage() {
         <strong>Turn into invoice</strong>: the lines are copied, nothing to type twice.
       </Tip>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {quiet.length > 0 && (
         <section className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

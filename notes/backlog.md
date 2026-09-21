@@ -102,7 +102,8 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   `harness/test-answer-clash.mjs` (7 checks): the refresh holds off while the prices form
   is open, a save against a moved-on answer is refused and says so, closing the form picks
   the answer up, and what a later save replaces is kept in `previous`.
-- [ ] 18. VAT snapshot branch — merge-readiness re-run
+- [x] 18. VAT snapshot branch — merge-readiness re-run: merged 2026-09-21 after migration-033,
+  full harness green on the merged build.
 
 ## Checklist items still open
 
@@ -271,8 +272,8 @@ by reading, not by running.
 - [x] **[high] app-forms** — Save does nothing, says nothing, when a required field is empty
 - [x] **[high] app-forms** — House-style labels sit next to their input instead of being tied to it, leaving nine controls with no name at all
 - [x] **[high] overlays** — A supplier pricing a quote request gets no feedback when the send is refused — the form just does nothing
-- [ ] **[medium] public-invoice** — Price boxes and "Can't supply" boxes are named by line number, not by what is on the line
-- [ ] **[medium] free-invoice** — The scan path gives no feedback: progress, failure and the jump to the editor are all silent
-- [ ] **[medium] app-forms** — Nothing these forms say back is ever announced — errors, "Saved.", and the warnings are silent paragraphs
-- [ ] **[medium] overlays** — The scan review sheet covers the live camera but leaves every camera control tabbable behind it, including Capture and a Back that discards the batch
-- [ ] **[low] overlays** — The receipt image lightbox cannot be closed from the keyboard except by finding its ✕, and loses your place in the list
+- [x] **[medium] public-invoice** — Price boxes and "Can't supply" boxes are named by line number, not by what is on the line. Fixed 2026-09-21: each is named by the line's own description ("Plasterboard 12.5mm: price per sheet", "…: can't supply", "…: alternative or note"), `PriceForm.tsx`. Public page, so verified by reading.
+- [x] **[medium] free-invoice** — The scan path gives no feedback: progress, failure and the jump to the editor are all silent. Fixed 2026-09-21: "Reading your invoice…" is a status region, the failure an alert, and the note that says what was filled in (or that the next invoice is ready) takes focus as a status region when the editor appears. Read-only path in the harness (it would call the live reader), so verified by reading.
+- [x] **[medium] app-forms** — Nothing these forms say back is ever announced — errors, "Saved.", and the warnings are silent paragraphs. Fixed 2026-09-21: every feedback paragraph in the app (58 in 35 files: red ones `role="alert"`, amber/green ones and "Saved." `role="status"`). `test-announced` checks Settings' "Saved.".
+- [x] **[medium] overlays** — The scan review sheet covers the live camera but leaves every camera control tabbable behind it, including Capture and a Back that discards the batch. Fixed 2026-09-21: the live area and the control bar are `inert` while the sheet is up (both scanner paths), and the sheet is a labelled `aria-modal` dialog whose heading takes focus on open. Camera path, so verified by reading and type-check.
+- [x] **[low] overlays** — The receipt image lightbox cannot be closed from the keyboard except by finding its ✕, and loses your place in the list. Fixed 2026-09-21 (`/files`): a named dialog, Escape closes it, focus starts on the close button and returns to the tile that opened it. `test-announced` checks all four.

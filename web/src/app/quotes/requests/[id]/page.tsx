@@ -150,7 +150,7 @@ export default function QuoteRequestPage() {
   if (!request) {
     return (
       <div className="space-y-2">
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <p className="text-sm text-neutral-600">Request not found.</p>
         <Link href="/quotes/requests" className="text-sm font-medium text-neutral-900 underline">Back to quotes from suppliers</Link>
       </div>

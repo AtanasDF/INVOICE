@@ -21,6 +21,10 @@ db.tables.business_profile.push({ user_id: UID, business_name: "Harness Ltd", va
 const C = newId();
 db.tables.clients.push({ id: C, user_id: UID, name: "Acme Kitchens Ltd", email: "acme@example.com", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
 
+// One document in the file library, for the preview lightbox.
+const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+db.tables.receipts.push({ id: newId(), user_id: UID, client_id: null, date: day(-2), vendor: "Jewson", category: "Materials", amount: 120, vat_amount: 24, image_data_url: PNG, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-announced" });
 
 // Every element that will be spoken when its contents change.
@@ -70,6 +74,11 @@ try {
   await sleep(2000);
   const untiedSettings = await untiedLabels();
   check("no label in Settings is left untied either", untiedSettings.length === 0, JSON.stringify(untiedSettings));
+  // "Saved." was a green paragraph and nothing more: every form's answer
+  // -- errors, warnings, this -- was a silent paragraph swapped in.
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Save")?.click());
+  await sleep(1500);
+  check("saving Settings says \"Saved.\" where it will be heard", (await liveRegions()).some((r) => r.how === "status" && /Saved\./.test(r.text)), JSON.stringify(await liveRegions()).slice(0, 240));
 
   // A Save refused because a field is empty has to SAY so.
   await page.goto(`${BASE}/clients/new`, { waitUntil: "networkidle0" });
@@ -92,5 +101,20 @@ try {
   await sleep(1200);
   check("saving a receipt with no total says why", /Enter the total paid before saving/i.test(await bodyText(page)), (await bodyText(page)).replace(/\s+/g, " ").slice(0, 240));
   check("...and it is announced too", (await liveRegions()).some((r) => /total paid/i.test(r.text)), JSON.stringify(await liveRegions()).slice(0, 240));
+  // The file library's preview: a full-screen overlay that could only be
+  // closed by finding its ✕, and closing it dropped focus on the body,
+  // so a keyboard user was back at the top of the list every time.
+  await page.goto(`${BASE}/files`, { waitUntil: "networkidle0" });
+  await sleep(800);
+  await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /Jewson/.test(x.textContent ?? "")); b?.focus(); b?.click(); });
+  await sleep(500);
+  const opened = await page.evaluate(() => ({ dialog: document.querySelector('[role="dialog"]')?.getAttribute("aria-label") ?? null, focused: document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.tagName }));
+  check("the document preview is a dialog, named for the document", opened.dialog === "Jewson preview", JSON.stringify(opened));
+  check("...and focus goes to its close button", opened.focused === "Close preview", JSON.stringify(opened));
+  await page.keyboard.press("Escape");
+  await sleep(400);
+  const closed = await page.evaluate(() => ({ dialog: !!document.querySelector('[role="dialog"]'), focused: (document.activeElement?.textContent ?? "").slice(0, 40) }));
+  check("Escape closes it", !closed.dialog, JSON.stringify(closed));
+  check("...and focus is back on the document's tile, not lost", /Jewson/.test(closed.focused), JSON.stringify(closed));
 } catch (e) { console.log("ERROR", e.message); results.push(false); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

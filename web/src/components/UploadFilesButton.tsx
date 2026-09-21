@@ -66,7 +66,7 @@ export default function UploadFilesButton({
         {busy ? "Reading files…" : label ?? (multiple ? "Upload from files" : "Upload a file")}
         <input type="file" accept="image/*,application/pdf" multiple={multiple} className="hidden" onChange={onChange} disabled={busy || disabled} />
       </label>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
