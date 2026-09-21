@@ -11,7 +11,7 @@ const CLIENT = newId();
 db.tables.clients.push({ id: CLIENT, user_id: "x", name: "Jane Customer", email: "jane@example.com", kind: "client", archived: false, is_company: false, reminders_enabled: true, address: "", phone: "", vat_number: "", payment_terms: "", default_currency: "", contact_person: "" });
 db.tables.business_profile.push({ business_name: "Harness Plastering Ltd", vat_registered: true });
 let asked = null;
-const GUIDE = { kind: "product", what: "Plasterboard 12.5mm 2400x1200", low: 7.5, high: 11, per: "sheet", vat: "ex", notes: "Trade packs of 50+ are cheaper per sheet.", cheaper: [{ what: "Own-brand square-edge board", why: "Same 12.5mm board without the brand" }], search: ["plasterboard 12.5mm trade pack price"] };
+let GUIDE = { kind: "product", what: "Plasterboard 12.5mm 2400x1200", low: 7.5, high: 11, per: "sheet", vat: "ex", notes: "Trade packs of 50+ are cheaper per sheet.", cheaper: [{ what: "Own-brand square-edge board", why: "Same 12.5mm board without the brand" }], search: ["plasterboard 12.5mm trade pack price"] };
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-price-finder", intercept: (req, u) => {
   if (u.pathname === "/api/price-guide") {
     asked = JSON.parse(req.postData() || "{}");
@@ -46,6 +46,30 @@ try {
   check("the guide asks with the line's own details", asked?.description === "Plasterboard 12.5mm 2400x1200" && asked?.priced === 14.5 && asked?.want === "Gyproc 50 sheets" && asked?.kind === "product", JSON.stringify(asked));
   check("range, what moves it, and the cheaper option are shown", t.includes("£7.50 – £11.00 per sheet") && t.includes("Trade packs") && t.includes("Own-brand square-edge board"));
   check("a price above the range is flagged", t.includes("above the usual range"), t.slice(t.indexOf("Usually"), t.indexOf("Usually") + 200));
+
+  // A model that knows the floor and won't guess a ceiling. The panel's
+  // one job is to flag an over-priced line, and with high = null a line at
+  // £480 was neither over (no high to be over) nor under (£480 > £45), so
+  // it printed "in the usual range" -- actively reassuring about the worst
+  // case it exists to catch.
+  const askAgain = async () => {
+    const hit = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => /Ask again|What should this cost/i.test(x.textContent ?? ""));
+      b?.click();
+      return !!b;
+    });
+    await sleep(2000);
+    return hit ? bodyText(page) : "NO ASK BUTTON";
+  };
+
+  GUIDE = { ...GUIDE, low: 7.5, high: null };
+  const oneSided = await askAgain();
+  check("a floor with no ceiling is never called 'in the usual range'", !/in the usual range/.test(oneSided), oneSided.slice(oneSided.indexOf("Usually"), oneSided.indexOf("Usually") + 220).replace(/\s+/g, " "));
+  check("...it says what is actually known instead", /top of the range isn't known/i.test(oneSided) && /above £7\.50/.test(oneSided), oneSided.slice(oneSided.indexOf("Usually"), oneSided.indexOf("Usually") + 220).replace(/\s+/g, " "));
+
+  GUIDE = { ...GUIDE, low: null, high: 20 };
+  const ceilingOnly = await askAgain();
+  check("a ceiling with no floor says so too", /under the usual top of £20\.00/i.test(ceilingOnly), ceilingOnly.slice(ceilingOnly.indexOf("Usually"), ceilingOnly.indexOf("Usually") + 220).replace(/\s+/g, " "));
   check("it says it isn't a live price", t.includes("not a live price"));
   check("work vs product can be switched", await page.evaluate(() => !!document.querySelector('[role="radiogroup"][aria-label="A product or work"]')));
   await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.includes("Work being done")).click());

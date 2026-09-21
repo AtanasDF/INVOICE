@@ -137,13 +137,13 @@ legacy hand-marked-paid invoice reappear as owing on customers' statements.
   `web/src/components/invoice/IssuedInvoice.tsx:59`
 - [x] **[medium] invoice-pdf-print** — Invoice notes lose every line break on the customer's invoice, PDF, print and /i/ link
   `web/src/components/invoice/IssuedInvoice.tsx:146`
-- [ ] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link
+- [~] **[medium] quote-deposit** — A quote's total and the deposit it asks for are recomputed from today's VAT registration, so an already-sent quote restates itself on the customer's live link. **Already fixed** on `feature/quote-vat-snapshot` (commit 9d6515a); waiting on migration-033 being run.
   `web/src/components/quote/QuoteDocument.tsx:14`
 - [ ] **[medium] split-documents** — A rotated shared PDF page is counted as two pages it did not produce, which mis-marks `context` and lets another document's total merge into this one on a re-read
   `web/src/lib/splitDocuments.ts:99`
 - [x] **[medium] statement** — A customer left in credit is shown £0.00 owing, and the statement row's own arithmetic silently breaks
   `web/src/lib/statement.ts:52`
-- [ ] **[medium] price-guide** — A one-sided price range is reported as "in the usual range", whatever the quote says
+- [x] **[medium] price-guide** — A one-sided price range is reported as "in the usual range", whatever the quote says
   `web/src/components/PriceFinder.tsx:53`
 - [ ] **[medium] company-register** — A company picked from the register, then typed over, puts its number on the other company's contact
   `web/src/app/clients/new/page.tsx:151`

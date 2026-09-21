@@ -52,6 +52,26 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
 
   const over = guide?.high != null && priced != null && priced > guide.high;
   const under = guide?.low != null && priced != null && priced < guide.low;
+  // "In the usual range" needs BOTH ends of the range to be known. With a
+  // floor of £45 and no ceiling, a line quoted at £480 was neither over
+  // (no high to be over) nor under (£480 > £45), so it printed "in the
+  // usual range" -- the one verdict this panel exists to avoid giving to
+  // an over-priced line. Say only what the numbers support.
+  const bounded = guide?.low != null && guide?.high != null;
+  const verdict =
+    priced == null
+      ? ""
+      : over
+        ? " — above the usual range."
+        : under
+          ? " — below the usual range."
+          : bounded
+            ? " — in the usual range."
+            : guide?.high == null && guide?.low != null && priced > guide.low
+              ? ` — above ${money(guide.low)}, but the top of the range isn't known.`
+              : guide?.low == null && guide?.high != null && priced < guide.high
+                ? ` — under the usual top of ${money(guide.high)}.`
+                : "";
 
   return (
     <div className="space-y-3 rounded-lg border bg-neutral-50 p-3">
@@ -124,7 +144,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
                 <span className={over ? " font-medium text-amber-700" : under ? " font-medium text-neutral-700" : " text-neutral-500"}>
                   {" "}
                   Quoted {money(priced)}
-                  {over ? " — above the usual range." : under ? " — below the usual range." : " — in the usual range."}
+                  {verdict}
                 </span>
               )}
             </p>
