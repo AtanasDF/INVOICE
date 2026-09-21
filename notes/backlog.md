@@ -105,7 +105,11 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   second account and checks nothing of theirs reaches any page, including by opening their
   invoice's address directly. With `rls` off the suite fails, so it isn't testing nothing.
 - [ ] 26. Storage signed-URL expiry and re-signing
-- [ ] 27. Network killed mid-save on every remaining form
+- [x] 27. Network killed mid-save on every remaining form — `test-half-saved` now covers the
+  new-contact form, Settings and a new invoice as well as payments, receipts and the
+  quote→invoice path: nothing half-written, and the failure said out loud rather than an
+  empty list standing in for it. Each one also asserts the write was *attempted*, since
+  "nothing was saved" is true for the wrong reason if the button was never pressed.
 
 ## Bigger pieces
 

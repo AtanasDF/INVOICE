@@ -115,5 +115,59 @@ try {
   signalGone = false;
   check("losing signal says to check the connection", /check your connection/i.test(t), flat(t).slice(0, 400));
   check("losing signal never shows \"Failed to fetch\"", !/failed to fetch/i.test(t), flat(t).slice(0, 300));
+
+  // 6. The remaining forms that write his records: a new contact, the
+  //    business profile, and a new invoice. Each one must leave nothing
+  //    behind when the write fails, and say so -- an empty list and a
+  //    failed save look identical otherwise.
+  const before = { clients: db.tables.clients.length, invoices: db.tables.invoices.length };
+
+  db.fail = { "POST clients": 20 };
+  await page.goto(`${BASE}/clients/new`, { waitUntil: "networkidle0" });
+  await sleep(1400);
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll("input")].find((i) => /name/i.test(`${i.placeholder ?? ""} ${i.previousElementSibling?.textContent ?? ""}`));
+    if (!el) return;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(el, "Half Saved Contact Ltd");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(400);
+  await clickText(page, "Save client");
+  await sleep(2200);
+  t = await bodyText(page);
+  // The write has to have been ATTEMPTED, or "nothing was saved" is true
+  // for the wrong reason -- which is exactly what a mistyped button label
+  // did to the first version of this check.
+  check("the save was actually attempted", db.log.some((e) => e.key === "POST clients"), JSON.stringify(db.log.slice(-3).map((e) => e.key)));
+  check("a contact that failed to save isn't in the list", db.tables.clients.length === before.clients, String(db.tables.clients.length - before.clients));
+  check("...and the failure is said out loud", /could not|couldn't|failed|mock failure/i.test(t), flat(t).slice(0, 300));
+  db.fail = {};
+
+  db.fail = { "POST business_profile": 20 };
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await sleep(1800);
+  await clickText(page, "Save").catch(() => {});
+  await sleep(2200);
+  t = await bodyText(page);
+  check("a failed Settings save says so rather than showing Saved", /could not|couldn't|failed|mock failure/i.test(t) && !/^.*\bSaved\b/.test(flat(t).slice(0, 0) || ""), flat(t).slice(0, 300));
+  db.fail = {};
+
+  db.fail = { "POST invoices": 20 };
+  await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
+  await sleep(1600);
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll("input, textarea")].find((i) => /description|what you did/i.test(`${i.placeholder ?? ""} ${i.previousElementSibling?.textContent ?? ""}`));
+    if (!el) return;
+    const proto = el.tagName === "TEXTAREA" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, "value").set.call(el, "Half saved work");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(400);
+  await clickText(page, "Save draft").catch(async () => { await clickText(page, "Save").catch(() => {}); });
+  await sleep(2400);
+  t = await bodyText(page);
+  check("an invoice that failed to save isn't in the books", db.tables.invoices.length === before.invoices, String(db.tables.invoices.length - before.invoices));
+  check("...and that failure is said out loud too", /could not|couldn't|failed|mock failure/i.test(t), flat(t).slice(0, 300));
+  db.fail = {};
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
