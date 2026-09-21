@@ -1,11 +1,12 @@
 // The conditions a receipt actually gets photographed in.
 //
 // Seven clips from gen-conditions.py, each fourteen seconds: the awkward
-// condition first, the good one from six seconds in. Four of them are
+// condition first, the good one from six seconds in. Three of them are
 // things the scanner should shrug off and take the photo anyway -- glare,
-// a shadow, a patterned floor, a landscape page. Three are things it must
-// NOT fire on until they stop: a finger over a corner, the phone waving
-// about, a till roll running off the top and bottom of the frame.
+// a shadow, a patterned floor. Four are things it must NOT fire on until
+// they stop: a finger over a corner, the phone waving about, a till roll
+// running off the top and bottom of the frame, and a landscape page
+// running off both sides of it.
 //
 // What is watched is the auto-capture itself: when the first photo is
 // posted to the reader, measured from the moment the camera came up.
@@ -60,7 +61,7 @@ const SLACK_MS = 500;     // frames in flight
 
 try {
   // Should fire anyway.
-  for (const [clip, what] of [["glare.mjpeg", "glare on the page"], ["shadow.mjpeg", "a shadow across the page"], ["pattern.mjpeg", "a page on a tiled floor"], ["landscape.mjpeg", "a landscape page"]]) {
+  for (const [clip, what] of [["glare.mjpeg", "glare on the page"], ["shadow.mjpeg", "a shadow across the page"], ["pattern.mjpeg", "a page on a tiled floor"]]) {
     if (only && only !== clip) continue;
     const r = await run(clip, 12000);
     if (r.missing) { check(`${what}: clip is present`, false, `${clip} missing -- run gen-conditions.py`); continue; }
@@ -89,6 +90,24 @@ try {
     if (r.missing) { check(`${what}: clip is present`, false, `${clip} missing -- run gen-conditions.py`); continue; }
     check(`${what} is NOT captured while it lasts`, r.first === null || r.first > SWITCH_MS - SLACK_MS, JSON.stringify(r));
     check(`...and IS captured once it stops`, r.first !== null && r.first > SWITCH_MS - SLACK_MS, JSON.stringify(r));
+  }
+
+  // A landscape page. The preview is cover-fitted, so on a phone-shaped
+  // viewport only a middle strip of the sensor's width is shown, and the
+  // detector looks at that strip: for the first six seconds the page runs
+  // off both sides of it and must not be taken (the reader would get a
+  // page with its ends missing), then it is held further back and fits.
+  // Item 20 of the backlog had this down as "a landscape page is never
+  // detected": the clip was the wide phase alone. The capture must come
+  // out page-shaped (460 wide for 326 tall), not as a strip.
+  if (!only || only === "landscape.mjpeg") {
+    const r = await runMeasured("landscape.mjpeg", 16000);
+    if (r.missing) check("a landscape page: clip is present", false, "landscape.mjpeg missing -- run gen-conditions.py");
+    else {
+      check("a landscape page is NOT captured while it runs off both sides of the preview", r.first === null || r.first > SWITCH_MS - SLACK_MS, JSON.stringify(r));
+      check("...and IS captured once it fits", r.first !== null && r.first > SWITCH_MS - SLACK_MS, JSON.stringify(r));
+      check("...as a landscape page, not a strip", r.aspect !== null && Math.abs(r.aspect - 460 / 326) < 0.1, JSON.stringify(r));
+    }
   }
 } catch (e) { console.log("ERROR", e.message); results.push(false); }
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

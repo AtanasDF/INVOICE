@@ -8,7 +8,7 @@
 #   glare.mjpeg      a bright specular patch on the page (fires: glare is not a reason to wait)
 #   shadow.mjpeg     a soft shadow across half the page (fires)
 #   pattern.mjpeg    the page on a strongly patterned floor (fires: the page, not the tiles)
-#   landscape.mjpeg  a page wider than tall (fires)
+#   landscape.mjpeg  a page wider than the preview for 6s, then held back to fit (must not fire until it fits)
 #   hand.mjpeg       a finger over one corner for 6s, then withdrawn (must not fire until it goes)
 #   moving.mjpeg     the phone waving about for 6s, then held still (must not fire until still)
 #   tillroll.mjpeg   a long receipt overflowing top and bottom for 6s, then pulled back to fit
@@ -99,8 +99,19 @@ write("shadow.mjpeg", [frame(TABLE, R, 360 + wobble(i / FPS)[0], 540 + wobble(i 
 # pattern: same receipt, tiled floor
 write("pattern.mjpeg", [frame(TILES, R, 360 + wobble(i / FPS)[0], 540 + wobble(i / FPS)[1], 300, 840, 3.0) for i in range(N)])
 
-# landscape: a page wider than tall, filling the width
-write("landscape.mjpeg", [frame(TABLE, PAGE, 360 + wobble(i / FPS)[0], 540 + wobble(i / FPS)[1], 640, 452, 1.0) for i in range(N)])
+# landscape: a page wider than tall. The preview is cover-fitted, so a
+# phone-shaped viewport shows only a middle strip of the sensor's width
+# (375x812 over this 720x1080 clip: 566 px of the 720; an iPhone's 4:3
+# sensor in portrait: about 62%). For 6s the page is 640 wide, running off
+# both sides of that strip -- the detector sees its top and bottom edges
+# and no page, rightly, as with the till roll below. Then it is held
+# further back, 460 wide, and fits.
+def landscape_frame(i):
+    t = i / FPS
+    w = wobble(t)
+    if t < 6.0: return frame(TABLE, PAGE, 360 + w[0], 540 + w[1], 640, 452, 1.0)   # sides off the preview
+    return frame(TABLE, PAGE, 360 + w[0], 540 + w[1], 460, 326, 1.0)                # whole page in view
+write("landscape.mjpeg", [landscape_frame(i) for i in range(N)])
 
 # hand: a skin-coloured blob with a finger over the top-left corner for 6s
 def hand_at(t):
