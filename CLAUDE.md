@@ -1,7 +1,10 @@
 # Invoicer — working notes for Claude Code
 
 Invoice and expense tracker for a UK freelancer (Atanas, GitHub AtanasDF). The data in
-it is his real accounting record. Read this file before doing anything.
+it is his real accounting record. Read this file before doing anything. Two accounts
+matter: **`fragov@hidefield.co.uk` (Hidefield) is his and is never signed into, written
+to or tested against; `atanaschoo@gmail.com` is the test account, free for any test or
+upload** (his rule, 2026-09-22; details in `notes/claude-notes.md`).
 
 ## Layout and stack
 

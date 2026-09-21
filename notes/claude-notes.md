@@ -44,8 +44,10 @@ changes.
   confirmed). `atanaschoo@gmail.com` → "PLACEHOLDER — replace with your business name",
   empty — the account every "still placeholder" note was looking at; he signed in as it
   on 2026-09-21 and an import address was generated there (harmless, the account is
-  empty). `schemaprobe.1789327778@gmail.com` — an earlier session's probe, empty. Any
-  live check of "his" data means the Hidefield account.
+  empty). `schemaprobe.1789327778@gmail.com` — an earlier session's probe, empty. **Rule
+  from Atanas (2026-09-22): the Hidefield account is his alone — never sign in as it or
+  write to it; the gmail account is the test bench, use it for anything.** Its import
+  address is `u-8c06f295592fba4c02ce635213fbfe4f@invoiceover.com`.
 - 2026-09-21 (evening, in the SQL editor): migrations 031–034 applied and verified;
   `feature/quote-vat-snapshot` and `feature/deposit-delete-guard` merged. All 24
   `*_backup_*` tables have RLS on, no policy and no anon/authenticated grant (signed-in
