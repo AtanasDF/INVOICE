@@ -17,6 +17,16 @@ check("two-digit years are this century", p("08/09/26").iso === "2026-09-08", JS
 check("dots and dashes work as separators", p("08.09.2026").iso === "2026-09-08" && p("08-09-2026").iso === "2026-09-08");
 check("a label in front doesn't hide it", p("Invoice date: 08/09/2026").iso === "2026-09-08", JSON.stringify(p("Invoice date: 08/09/2026")));
 check("a time after it doesn't either", p("08/09/2026 14:32").iso === "2026-09-08", JSON.stringify(p("08/09/2026 14:32")));
+// The first real receipt Atanas scanned (GO OUTDOORS, 22 September 2026)
+// was filed as 2012: the till prints the time between the day and the
+// year, and 12 of 12:57 is where a two-digit year sits.
+check("a till's 'FRI SEP 18 12:57:01 2026' is 2026, not 2012", p("FRI SEP 18 12:57:01 2026").iso === "2026-09-18" && p("FRI SEP 18 12:57:01 2026").ambiguous === false, JSON.stringify(p("FRI SEP 18 12:57:01 2026")));
+check("with the label the till prints in front of it", p("DATE : FRI SEP 18 12:57:01 2026").iso === "2026-09-18", JSON.stringify(p("DATE : FRI SEP 18 12:57:01 2026")));
+check("day first with the time in the middle", p("18 SEP 12:57 2026").iso === "2026-09-18", JSON.stringify(p("18 SEP 12:57 2026")));
+check("a time with am/pm between day and year", p("Sep 18 12:57 PM 2026").iso === "2026-09-18", JSON.stringify(p("Sep 18 12:57 PM 2026")));
+check("a two-digit year still works when there's no time", p("SEP 18 26").iso === "2026-09-18", JSON.stringify(p("SEP 18 26")));
+check("a numeric date with the time first", p("12:57 18/09/2026").iso === "2026-09-18", JSON.stringify(p("12:57 18/09/2026")));
+check("an ISO date with a time keeps working", p("2026-09-18 12:57:01").iso === "2026-09-18", JSON.stringify(p("2026-09-18 12:57:01")));
 
 // Written out, in either order.
 check("8 September 2026", p("8 September 2026").iso === "2026-09-08");

@@ -35,15 +35,21 @@ for (const f of walk(`${HERE}gen-bench/lib`)) {
 }
 const { extractDocuments } = await import(`${HERE}gen-bench/lib/scanExtraction.js`);
 
-const manifest = JSON.parse(fs.readFileSync(`${HERE}bench-docs/manifest.json`, "utf8")).filter((d) => !only || d.file === only);
+// BENCH_DIR points the bench at another folder of documents with its own
+// manifest.json -- the real ones copied out of the app on 2026-09-22 live
+// in the session scratchpad and never in the repo.
+const DIR = process.env.BENCH_DIR ? process.env.BENCH_DIR.replace(/\/?$/, "/") : `${HERE}bench-docs/`;
+const TYPES = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", pdf: "application/pdf" };
+const manifest = JSON.parse(fs.readFileSync(`${DIR}manifest.json`, "utf8")).filter((d) => !only || d.file === only);
 const close = (a, b) => a !== null && a !== undefined && Math.abs(Math.abs(Number(a)) - Math.abs(b)) < 0.011;
 const results = [];
 for (const engine of ENGINES) {
   for (const d of manifest) {
-    const base64 = fs.readFileSync(`${HERE}bench-docs/${d.file}`).toString("base64");
+    const base64 = fs.readFileSync(`${DIR}${d.file}`).toString("base64");
+    const mediaType = TYPES[d.file.split(".").pop().toLowerCase()] ?? "image/jpeg";
     const t0 = performance.now();
     let r = null, error = null;
-    try { r = (await extractDocuments([{ mediaType: "image/jpeg", base64 }], [], engine))[0]; } catch (e) { error = String(e.message).slice(0, 120); }
+    try { r = (await extractDocuments([{ mediaType, base64 }], [], engine))[0]; } catch (e) { error = String(e.message).slice(0, 120); }
     const ms = Math.round(performance.now() - t0);
     const first = d.vendor.toLowerCase().split(" ")[0];
     const row = {
@@ -54,7 +60,8 @@ for (const engine of ENGINES) {
       total: close(r?.totalAmount, d.totalAmount),
       vat: close(r?.vatAmount, d.vatAmount),
       number: !!r && (d.invoiceNumber === null ? r.invoiceNumber == null || r.invoiceNumber === "" : r.invoiceNumber === d.invoiceNumber),
-      lines: (r?.lineItems?.length ?? 0) === d.lines,
+      // A manifest without a line count (the real documents) doesn't score it.
+      lines: d.lines == null ? true : (r?.lineItems?.length ?? 0) === d.lines,
       got: r ? { type: r.documentType, vendor: r.vendor, date: r.date, total: r.totalAmount, vat: r.vatAmount, number: r.invoiceNumber, lines: r.lineItems?.length ?? 0 } : null,
       want: { type: d.documentType, vendor: d.vendor, date: d.date, total: d.totalAmount, vat: d.vatAmount, number: d.invoiceNumber, lines: d.lines },
     };
@@ -62,7 +69,7 @@ for (const engine of ENGINES) {
     console.log(JSON.stringify(row));
   }
 }
-fs.writeFileSync(`${HERE}bench-docs/results.json`, JSON.stringify(results, null, 1));
+fs.writeFileSync(`${DIR}results.json`, JSON.stringify(results, null, 1));
 
 const FIELDS = ["type", "vendor", "date", "total", "vat", "number", "lines"];
 const median = (v) => { const s = [...v].sort((a, b) => a - b); return s.length ? s[s.length >> 1] : 0; };

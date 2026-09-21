@@ -176,8 +176,33 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   `storage:<uid>/…` in the receipts bucket. Cloudflare routing → Worker → Vercel route →
   Claude read → row, first time ever.
 
-**Open, for Atanas** (`notes/tonight.md`): only the business details in Settings, on his
-own account, whenever he likes. Everything else on his list is done.
+- **00:40–01:20: real documents at last.** Atanas signed my Chrome tab into his Hidefield
+  account "so you can see some real scanned receipts" (read-only; his rule stands). The
+  five documents there are PDFs; copying them out took three tries (an in-page fetch to
+  a localhost receiver is blocked by Chrome's local-network rule; the extension refuses
+  to return a signed URL because of its token; a blob download works once per page
+  load, and the tool truncates a base64 result) — four made it, two Anthropic invoices
+  of the same template as the first were skipped. Then his **first real scan on the
+  phone**: GO OUTDOORS, 18 Sept 2026, £29.00 — read perfectly except the date, filed as
+  **18 Sept 2012**. The till prints `DATE : FRI SEP 18 12:57:01 2026` and the parser's
+  month-name pattern accepted `12` (of 12:57) as a two-digit year. `documentDate.ts` now
+  strips any time-of-day before matching and never takes a two-digit year followed by
+  a colon; seven cases added to `test-dates` (34/34). His saved row still says 2012 —
+  his account, so his edit: Receipts → GO OUTDOORS → Edit → date.
+- **Accuracy on real documents** (queued item 1, `bench-engines.mjs` with `BENCH_DIR`,
+  PDFs supported): Anthropic invoice, two Rawlings & Son invoices, the GO OUTDOORS photo.
+  Both engines right on vendor, date, total and invoice number on all four. Gemini left
+  VAT empty on the till receipt (no VAT figure is printed, only "20%"); Claude worked it
+  out as £4.83. Gemini median 4.7 s, Claude 9.7 s. Gemini stays the default; the one
+  thing worth adding some day is computing VAT from a printed rate when no figure is.
+  He also reported the phone scanner showing nothing on a first open: the clip suite
+  confirmed detection works on the current build, and his second open worked — the
+  first open downloads 13 MB of OpenCV before any green lines can show; a "getting
+  ready" indicator on a cold start is the follow-up, not started (his "don't change
+  anything for now").
+
+**Open, for Atanas** (`notes/tonight.md`): fix the GO OUTDOORS date on his own account
+(2012 → 2026); the business details in Settings, whenever he likes.
 
 **Open, for the next session**: the Claude half of the bench (`node bench-engines.mjs`
 once the key is there); item 28 (offline scan queue) still waits for an iPhone; the

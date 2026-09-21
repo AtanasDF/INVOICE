@@ -39,6 +39,10 @@ changes.
 
 ## Verified facts
 
+- 2026-09-22 01:15: accuracy on real documents (4: Anthropic, Rawlings ×2, GO OUTDOORS
+  photo): both engines right on vendor/date/total/number; Gemini blank VAT where none is
+  printed; Gemini 4.7 s vs Claude 9.7 s median. The GO OUTDOORS row on Hidefield carries
+  the date 2012 from the parser bug fixed that night — his row, his edit.
 - 2026-09-22 00:23: **the email import is live and verified with a real email** (Gmail →
   Cloudflare Email Routing → `invoice-inbox-worker` → `/api/inbox/ingest` → Claude read →
   a needs-review row on the test account, all figures right). Worker version 4c873fc5;

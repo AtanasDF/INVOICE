@@ -180,6 +180,18 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   empty list standing in for it. Each one also asserts the write was *attempted*, since
   "nothing was saved" is true for the wrong reason if the button was never pressed.
 
+## Found on 22 September, from the first real scan
+
+- [x] **A till's `FRI SEP 18 12:57:01 2026` was filed as 2012** — the month-name date
+  pattern took the 12 of the time as a two-digit year. Fixed in `documentDate.ts` (time
+  stripped first; a two-digit year followed by a colon is never a year), `test-dates`
+  34/34. Atanas's own row still needs its date edited by him.
+- [ ] Compute VAT from a printed rate when the receipt prints no VAT figure (GO OUTDOORS
+  prints "20%" per line and a total; Gemini leaves VAT empty, Claude infers £4.83).
+- [ ] A "getting ready" indicator on the scanner's cold start: the first open on a phone
+  downloads 13 MB of OpenCV before any green lines can appear, and it looks broken until
+  then. Not started — "don't change anything for now".
+
 ## Bigger pieces
 
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item. Deferred on

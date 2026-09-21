@@ -31,10 +31,17 @@ function monthFromName(name: string): number | null {
 const MONTH_NAME = `(?:${MONTHS.join("|")})[a-z]*`;
 const ISO_RE = /(?<!\d)(\d{4})\s*[-/]\s*(\d{1,2})\s*[-/]\s*(\d{1,2})(?!\d)/;
 const NUMERIC_RE = /(?<!\d)(\d{1,2})\s*[/.\-]\s*(\d{1,2})\s*[/.\-]\s*(\d{4}|\d{2})(?!\d)/;
-const DAY_MONTH_RE = new RegExp(`(?<!\\d)(\\d{1,2})(?:st|nd|rd|th)?[\\s\\-/.]*(${MONTH_NAME})\\.?,?[\\s\\-/.]*(\\d{4}|\\d{2})(?!\\d)`, "i");
-const MONTH_DAY_RE = new RegExp(`\\b(${MONTH_NAME})\\.?[\\s\\-]*(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4}|\\d{2})(?!\\d)`, "i");
+const DAY_MONTH_RE = new RegExp(`(?<!\\d)(\\d{1,2})(?:st|nd|rd|th)?[\\s\\-/.]*(${MONTH_NAME})\\.?,?[\\s\\-/.]*(\\d{4}|\\d{2})(?!\\d|:)`, "i");
+const MONTH_DAY_RE = new RegExp(`\\b(${MONTH_NAME})\\.?[\\s\\-]*(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4}|\\d{2})(?!\\d|:)`, "i");
+// A till prints the time between the day and the year ("FRI SEP 18
+// 12:57:01 2026"), and the 12 of 12:57 sat exactly where a two-digit year
+// goes: the first real receipt scanned was filed in 2012. The time goes
+// before anything is matched, and a two-digit year followed by a colon is
+// never a year.
+const TIME_RE = /(?<!\d)\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?(?![\d:])/gi;
 
 export function parsePrintedDate(printed: string): ParsedDate {
+  printed = printed.replace(TIME_RE, " ");
   let m = ISO_RE.exec(printed);
   if (m) return { iso: toIso(Number(m[1]), Number(m[2]), Number(m[3])), ambiguous: false, alternative: null };
 
