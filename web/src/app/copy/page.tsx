@@ -6,7 +6,7 @@ import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
-import { DocPage, pageCount, pagesToPdf, pdfName } from "@/lib/documentPdf";
+import type { DocPage } from "@/lib/documentPdf";
 import { shortDate } from "@/lib/dates";
 import { todayISO } from "@/lib/today";
 import { SITE_NAME } from "@/lib/siteName";
@@ -42,6 +42,11 @@ export default function CopyDocumentPage() {
   const fallbackName = `Document ${shortDate(todayISO())}`;
 
   function add(more: DocPage[]) {
+    // The PDF library is half a megabyte, and every page linking here
+    // (the front door, the Free page, the menu) had Next preload it for
+    // visitors who never copy anything. It's fetched once there are pages,
+    // so it's ready by the time Save or Share is pressed.
+    void import("@/lib/documentPdf");
     setPages((prev) => [...prev, ...more]);
     setMade(null);
     setNote(null);
@@ -69,6 +74,7 @@ export default function CopyDocumentPage() {
     setMaking(true);
     setError(null);
     try {
+      const { pageCount, pagesToPdf, pdfName } = await import("@/lib/documentPdf");
       const filename = pdfName(name, fallbackName);
       const bytes = await pagesToPdf(pages, filename.replace(/\.pdf$/, ""));
       const next = { blob: new Blob([bytes as BlobPart], { type: "application/pdf" }), name: filename, pages: await pageCount(pages) };

@@ -53,7 +53,10 @@ try {
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
   const free = await load("/free-invoice");
-  check("the Free invoice page is under 1.5MB of JavaScript for a stranger", free.js < 1.5 * 1024 * 1024, `${KB(free.js)} ${JSON.stringify(free.top)}`);
+  // 1469 KB until 2026-09-22, when half of it turned out to be the Copy
+  // page's PDF library, preloaded by Next because the page links there.
+  // 969 KB since; the budget keeps a sixth of headroom.
+  check("the Free invoice page is under 1.1MB of JavaScript for a stranger", free.js < 1.1 * 1024 * 1024, `${KB(free.js)} ${JSON.stringify(free.top)}`);
   check("...and does not fetch OpenCV just to show the page", free.opencv === 0, KB(free.opencv));
 
   const check_company = await load("/check-company");
@@ -66,7 +69,10 @@ try {
   // the decision only holds if it really is once -- so the bundle is
   // budgeted without it, and a second load must fetch none of it.
   const dash = await load("/");
-  check("the dashboard's own JavaScript is under 1.5MB", dash.js - dash.opencv < 1.5 * 1024 * 1024, `${KB(dash.js - dash.opencv)} ${JSON.stringify(dash.top)}`);
+  // 1526 KB until 2026-09-22, when 358 KB of it turned out to be the
+  // Expenses page's chart library, preloaded through the header's link.
+  // 1181 KB since; the budget keeps a sixth of headroom.
+  check("the dashboard's own JavaScript is under 1.35MB", dash.js - dash.opencv < 1.35 * 1024 * 1024, `${KB(dash.js - dash.opencv)} ${JSON.stringify(dash.top)}`);
   check("...and the OpenCV it warms up is the immutable vendor copy, not bundled", dash.opencv > 1024 * 1024 && requests.some((r) => /\/vendor\/opencv/.test(r.u)), KB(dash.opencv));
   // "Once" can't be shown on these pages: request interception -- which
   // the mock needs -- makes Chrome bypass its HTTP cache. So the property

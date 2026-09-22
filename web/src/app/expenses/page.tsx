@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { money } from "@/lib/money";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CreditNote, Invoice, Receipt, businessProfileStore, creditNotesStore, invoicesStore, receiptsStore } from "@/lib/storage";
 import { incomeOf } from "@/lib/periodIncome";
 import { loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+
+const SpendChart = dynamic(() => import("@/components/SpendChart"), { ssr: false });
 
 function monthKey(dateStr: string) {
   return dateStr.slice(0, 7);
@@ -284,18 +286,7 @@ export default function ExpensesPage() {
         {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this {periodMode}.</p>}
         {chartData.length > 0 && (
           <div className="mt-4 h-56 max-w-xl">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
-                <XAxis dataKey="category" tick={{ fontSize: 12, fill: "#737373" }} axisLine={{ stroke: "#e5e5e5" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#737373" }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `£${v}`} />
-                <Tooltip
-                  formatter={(value) => [`${money(Number(value))}`, "Spend incl. VAT"]}
-                  contentStyle={{ borderRadius: 8, borderColor: "#e5e5e5", fontSize: 13 }}
-                />
-                <Bar dataKey="spend" fill="#171717" radius={[4, 4, 0, 0]} maxBarSize={80} />
-              </BarChart>
-            </ResponsiveContainer>
+            <SpendChart data={chartData} />
           </div>
         )}
         <div className="mt-3 space-y-2">
