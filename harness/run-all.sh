@@ -42,7 +42,7 @@ SUITES=(
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
   test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow test-odd-files test-exif-rotation test-weight
-  test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save test-vat-rate-scan test-feedback test-feedback-page test-first-page test-sign-up test-plain-dates test-neutral test-plain-words
+  test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save test-vat-rate-scan test-feedback test-feedback-page test-first-page test-sign-up test-plain-dates test-neutral test-plain-words test-multi-docs test-company test-copy-document test-send-document
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev
@@ -60,8 +60,20 @@ if [ -d "$APP/.next" ]; then
   fi
 fi
 
+# The files the upload suites hand to the app are made, not kept in git.
+[ -d uploads ] || python3 gen-uploads.py >/dev/null
+[ -d multi ] || python3 gen-multi.py >/dev/null
+
+# Suites that start their own `next dev` in web/ can't run beside each
+# other: two dev servers in one folder trip over the same build cache, and
+# test-check-company stopped after 2 of its 54 checks when it ran next to
+# test-feedback (2026-09-22). They run one at a time, after the rest.
+DEV_SERVER=(test-check-company test-inbox-ingest test-feedback test-send-document)
+PARALLEL=(${SUITES:|DEV_SERVER})
+
 export OUT BASE
-print -l -- $SUITES | xargs -P "$JOBS" -n 1 ./run-one.sh
+print -l -- $PARALLEL | xargs -P "$JOBS" -n 1 ./run-one.sh
+print -l -- $DEV_SERVER | xargs -P 1 -n 1 ./run-one.sh
 
 for t in $SUITES; do
   [ -f "$OUT/$t.txt" ] && cat "$OUT/$t.txt"

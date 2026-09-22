@@ -57,10 +57,15 @@ try {
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await sleep(300);
-  const issuer = await page.evaluate(() => {
-    const byLabel = (t) => [...document.querySelectorAll("p,label,span")].find((x) => x.textContent.trim() === t)?.closest("div")?.querySelector("input,textarea");
-    return { name: document.querySelector('[data-t="issuer"]').value, address: byLabel("Address")?.value, company: byLabel("Company number")?.value };
-  });
+  // The address is four boxes since 2026-09-20 (house and street, area,
+  // town, postcode); read them back as the lines they make.
+  const addressIn = (card) => [...card.querySelectorAll('input[aria-label="House number and street"], input[aria-label="Flat, building or area"], input[aria-label="Town or city"], input[aria-label="Postcode"]')].map((i) => i.value).filter(Boolean).join("\n");
+  const issuer = await page.evaluate((addressInSrc) => {
+    const addressIn = eval(addressInSrc);
+    const card = [...document.querySelectorAll("section")].find((s) => s.querySelector("h2")?.textContent === "Your business");
+    const byLabel = (t) => [...card.querySelectorAll("p,label,span")].find((x) => x.textContent.trim() === t)?.closest("div")?.querySelector("input,textarea");
+    return { name: document.querySelector('[data-t="issuer"]').value, address: addressIn(card), company: byLabel("Company number")?.value };
+  }, addressIn.toString());
   check("picking fills name, address and company number", issuer.name === "Acme Plumbing & Heating Ltd" && issuer.address === "12 High Street\nLeeds\nLS1 2AB" && issuer.company === "01234567", JSON.stringify(issuer));
   check("list closes after picking", (await listShown()) === 0);
   const preview = await page.evaluate(() => document.body.innerText.includes("Acme Plumbing & Heating Ltd"));
@@ -70,10 +75,11 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length > 0, { timeout: 5000 });
   await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].find((o) => o.innerText.includes("Roofing")).click());
   await sleep(300);
-  const cust = await page.evaluate(() => {
+  const cust = await page.evaluate((addressInSrc) => {
+    const addressIn = eval(addressInSrc);
     const card = [...document.querySelectorAll("section")].find((s) => s.querySelector("h2")?.textContent === "Bill to");
-    return { name: card.querySelector("input").value, address: card.querySelector("textarea").value };
-  });
+    return { name: card.querySelector("input").value, address: addressIn(card) };
+  }, addressIn.toString());
   check("customer pick fills name and address", cust.name === "Acme Roofing Ltd" && cust.address.startsWith("Unit 4, Trade Park"), JSON.stringify(cust));
 
   await typeInto('[data-t="customer"]', "Acme");
@@ -102,7 +108,7 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length > 0, { timeout: 5000 });
   await page.evaluate(() => document.querySelector('[role="option"]').click());
   await sleep(300);
-  const client = await page.evaluate(() => ({ name: document.querySelector('input[role="combobox"]').value, address: document.querySelector('textarea[placeholder^="Billing address"]').value }));
+  const client = await page.evaluate((addressInSrc) => ({ name: document.querySelector('input[role="combobox"]').value, address: eval(addressInSrc)(document.querySelector("main")) }), addressIn.toString());
   check("new client pick fills name and address", client.name === "Acme Plumbing & Heating Ltd" && client.address === "12 High Street\nLeeds\nLS1 2AB", JSON.stringify(client));
   await page.evaluate(() => [...document.querySelectorAll("label")].find((l) => l.textContent.trim() === "Individual").querySelector("input").click());
   await sleep(200);
@@ -115,11 +121,11 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length > 0, { timeout: 5000 });
   await page.evaluate(() => document.querySelector('[role="option"]').click());
   await sleep(300);
-  const settings = await page.evaluate(() => ({ name: document.querySelector('input[role="combobox"]').value, address: [...document.querySelectorAll("textarea")][0].value, offer: document.body.innerText.includes("Registered office: 12 High Street, Leeds, LS1 2AB") }));
+  const settings = await page.evaluate((addressInSrc) => ({ name: document.querySelector('input[role="combobox"]').value, address: eval(addressInSrc)(document.querySelector("main")), offer: document.body.innerText.includes("Registered office: 12 High Street, Leeds, LS1 2AB") }), addressIn.toString());
   check("settings: name filled, existing address kept, registered office offered", settings.name === "Acme Plumbing & Heating Ltd" && settings.address === "Old address" && settings.offer, JSON.stringify(settings));
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Use this address").click());
   await sleep(200);
-  const used = await page.evaluate(() => [...document.querySelectorAll("textarea")][0].value);
+  const used = await page.evaluate((addressInSrc) => eval(addressInSrc)(document.querySelector("main")), addressIn.toString());
   check("Use this address fills it", used === "12 High Street\nLeeds\nLS1 2AB", used);
   check("settings: nothing saved by picking", db.log.filter((l) => l.key.startsWith("POST business_profile") || l.key.startsWith("PATCH business_profile")).length === 0);
 

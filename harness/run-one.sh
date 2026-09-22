@@ -13,10 +13,19 @@ t=$1
 out=$(node "$t.mjs" 2>&1)
 summary=$(print -r -- "$out" | grep -o '{"passed":[0-9]*,"total":[0-9]*}' | tail -1)
 fails=$(print -r -- "$out" | grep -c '^FAIL')
+# A suite that passes some checks and then throws prints an ERROR line and a
+# summary whose passed equals its total -- the checks after the throw never
+# ran, so they are not in the total. Four suites sat green like that on
+# 2026-09-22 (their upload fixtures had gone), one of them for 31 of its 48
+# checks. An ERROR line is a crash, whatever the summary says.
+errors=$(print -r -- "$out" | grep -c '^ERROR')
 {
   if [ -z "$summary" ]; then
     print -r -- "== $t CRASHED -- no summary line (suite did not finish)"
     print -r -- "$out" | grep -E "Error|error:|TimeoutError|ENOENT|Cannot find" | head -3
+  elif [ "$errors" -gt 0 ]; then
+    print -r -- "== $t $summary CRASHED after its last check"
+    print -r -- "$out" | grep '^ERROR' | head -2
   else
     print -r -- "== $t $summary $fails fails"
   fi

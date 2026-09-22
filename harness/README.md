@@ -33,6 +33,15 @@ that nothing was keeping.
   `gen-torch.py` makes `torch-bright.mjpeg` and `dark-nocv2.mjpeg` (`test-torch`,
   `test-torch-nocv`, neither in `run-all.sh`); `gen-dark.py` and `gen-dim.py` the other two
   torch clips.
+- `gen-uploads.py` and `gen-multi.py` — the files the upload suites hand to the app, into
+  `uploads/` and `multi/` (both gitignored; `run-all.sh` makes them when missing). They too
+  had lived only in a wiped scratchpad, and for a while four suites stopped part-way and
+  still counted as green. The PDFs in `uploads/` carry DOC1..DOC3 in UTF-16 in their Title,
+  which is how the stand-in readers tell them apart; the photos in `multi/` are told apart
+  by pixel size (1200x900, 800x1000, 900x1100, 1000x700), so those sizes are the contract.
+- `run-one.sh` counts a suite as crashed when it has no summary line, and also when it
+  prints an ERROR line after some passes: the checks after a throw never ran, so they are
+  not in its total, and passed == total would otherwise read as green.
 
 ## One trap worth knowing
 
