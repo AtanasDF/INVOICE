@@ -132,7 +132,7 @@ try {
 
   // ---- Something we can't change ----
   await reset();
-  fs.writeFileSync(DL + "notes.zip", "PKnothing");
+  fs.writeFileSync(DL + "notes.zip", "PK\u0003\u0004nothing");
   await choose(DL + "notes.zip");
   shown = await bodyText(page);
   check("a kind we can't change says so plainly", /We can change pictures, PDFs, and files of words or rows\. That one we can't\./.test(shown), shown.slice(0, 400));
