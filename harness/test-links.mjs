@@ -1,7 +1,12 @@
+import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./mock-server.mjs";
 import { makeDb, newId, sleep, bodyText } from "./mockdb.mjs";
-const BASE = process.env.BASE ?? "http://localhost:3900";
+// Its own dev server against the stand-in database (it used to need one
+// built by hand against it, on 3900, so it never ran with the rest).
+const PORT = 3315;
+const MOCK = 3565;
+const BASE = `http://localhost:${PORT}`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const db = makeDb();
@@ -12,7 +17,17 @@ db.tables.clients.push({ id: C, user_id: UID, name: "Jane Customer", email: "jan
 db.tables.invoices.push({ id: I, user_id: UID, client_id: C, date: "2026-09-10", number: "INV-1001", items: [{ description: "Skim coat", quantity: 1, unitPrice: 450, vatRate: "standard" }], notes: "Thanks", due_date: "2026-10-10", payment_terms: "30 days", status: "sent", tags: [], vat_registered: false });
 db.tables.invoices.push({ id: D, user_id: UID, client_id: C, date: "2026-09-10", number: "DRAFT-x", items: [], notes: null, due_date: null, payment_terms: null, status: "draft", tags: [], vat_registered: null });
 db.tables.invoice_links = []; db.tables.credit_notes = []; db.tables.invoice_payments = []; db.tables.invoice_reminders_sent = []; db.tables.push_subscriptions = []; db.tables.quotes = [];
-const { server } = startMockServer(5555, db);
+const { server } = startMockServer(MOCK, db);
+const app = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], {
+  cwd: "/Users/nasko/Desktop/INVOICE/web",
+  env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://localhost:${MOCK}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "fake-anon-key", SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-key", RESEND_API_KEY: "" },
+  stdio: ["ignore", "pipe", "pipe"],
+});
+for (let i = 0; i < 240; i++) {
+  const r = await fetch(`${BASE}/free-invoice`, { signal: AbortSignal.timeout(120000) }).catch(() => null);
+  if (r && r.status === 200) { await r.text(); break; }
+  await new Promise((res) => setTimeout(res, 1000));
+}
 
 const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true, args: ["--no-first-run"] });
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -86,23 +101,26 @@ try {
   await sleep(1500);
   check("stopping makes a new token", link.token !== oldToken && /^[A-Za-z0-9_-]{43}$/.test(link.token), link.token);
   await customer.goto(`${BASE}/i/${oldToken}`, { waitUntil: "networkidle0" });
-  check("the old link no longer shows the invoice", (await bodyText(customer)).includes("could not be found"));
+  check("the old link no longer shows the invoice", (await bodyText(customer)).includes("This link isn't working"));
   await customer.goto(`${BASE}/i/${link.token}`, { waitUntil: "networkidle0" });
   check("the new link works", (await bodyText(customer)).includes("Invoice INV-1001"));
   const long = await customer.goto(`${BASE}/i/${link.token}x`, { waitUntil: "networkidle0" });
-  check("a 44-character code is refused", (await bodyText(customer)).includes("could not be found"), long.status());
+  check("a 44-character code is refused", (await bodyText(customer)).includes("This link isn't working"), long.status());
 
   const bad = await customer.goto(`${BASE}/i/${"x".repeat(43)}`, { waitUntil: "networkidle0" });
   const badText = await bodyText(customer);
-  check("unknown link: not-found page, nothing shown", badText.includes("could not be found") && !badText.includes("INV-"), bad.status());
+  check("unknown link: not-found page, nothing shown", badText.includes("This link isn't working") && !badText.includes("INV-"), bad.status());
   db.tables.invoice_links.push({ invoice_id: D, user_id: UID, token: "d".repeat(43), created_at: "2026-09-19", first_viewed_at: null, last_viewed_at: null, view_count: 0 });
   const draft = await customer.goto(`${BASE}/i/${"d".repeat(43)}`, { waitUntil: "networkidle0" });
   const draftText = await bodyText(customer);
-  check("a draft's link shows nothing", draftText.includes("could not be found") && !draftText.includes("DRAFT") && !draftText.includes("Harness"), draft.status());
+  check("a draft's link shows nothing", draftText.includes("This link isn't working") && !draftText.includes("DRAFT") && !draftText.includes("Harness"), draft.status());
 } catch (e) {
   console.log("ERROR", e.message);
+  results.push(false);
 } finally {
   await browser.close();
   server.close();
+  app.kill();
   console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }), "unhandled:", db.log.filter((l) => l.key.startsWith("UNHANDLED")).map((l) => l.key).slice(0, 5));
 }
+process.exit(0);

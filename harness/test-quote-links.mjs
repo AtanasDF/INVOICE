@@ -1,7 +1,12 @@
+import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./mock-server.mjs";
 import { makeDb, newId, sleep, bodyText, todayISO } from "./mockdb.mjs";
-const BASE = process.env.BASE ?? "http://localhost:3950";
+// Its own dev server against the stand-in database (it used to need one
+// built by hand against it, on 3950, so it never ran with the rest).
+const PORT = 3316;
+const MOCK = 3566;
+const BASE = `http://localhost:${PORT}`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const db = makeDb();
@@ -12,7 +17,17 @@ db.tables.clients.push({ id: C, user_id: UID, name: "Jane Customer", email: "jan
 const quote = (id, number, status, valid) => ({ id, user_id: UID, client_id: C, number, date: todayISO(), valid_until: valid, items: [{ description: "Skim coat kitchen", quantity: 1, unitPrice: 900, vatRate: "standard" }], notes: "Two days", status, invoice_id: null, deposit_percent: null, deposit_amount: null, deposit_invoice_id: null, deposit_claimed: false });
 db.tables.quotes.push(quote(Q1, "Q-0001", "sent", "2099-01-01"), quote(Q2, "Q-0002", "draft", "2099-01-01"), quote(Q3, "Q-0003", "sent", "2020-01-01"));
 db.tables.quote_links = []; db.tables.invoices = []; db.tables.credit_notes = []; db.tables.push_subscriptions = []; db.tables.invoice_payments = [];
-const { server } = startMockServer(5555, db);
+const { server } = startMockServer(MOCK, db);
+const app = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], {
+  cwd: "/Users/nasko/Desktop/INVOICE/web",
+  env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://localhost:${MOCK}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "fake-anon-key", SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-key", RESEND_API_KEY: "" },
+  stdio: ["ignore", "pipe", "pipe"],
+});
+for (let i = 0; i < 240; i++) {
+  const r = await fetch(`${BASE}/free-invoice`, { signal: AbortSignal.timeout(120000) }).catch(() => null);
+  if (r && r.status === 200) { await r.text(); break; }
+  await new Promise((res) => setTimeout(res, 1000));
+}
 const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true, args: ["--no-first-run"] });
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const exp = Math.floor(Date.now() / 1000) + 86400;
@@ -112,11 +127,14 @@ try {
   check("a failed email doesn't mark the draft sent", db.tables.quotes.find((q) => q.id === Q4).status === "draft");
 
   const robots = await (await (await browser.createBrowserContext()).newPage()).goto(`${BASE}/q/${"z".repeat(43)}`).then((r) => r.text());
-  check("unknown link: not found, noindex", robots.includes("could not be found") && robots.includes("noindex"));
+  check("unknown link: not found, noindex", robots.includes("This link isn't working") && robots.includes("noindex"));
 } catch (e) {
   console.log("ERROR", e.message);
+  results.push(false);
 } finally {
   await browser.close();
   server.close();
+  app.kill();
   console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));
 }
+process.exit(0);

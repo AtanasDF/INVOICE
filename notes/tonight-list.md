@@ -214,7 +214,7 @@ What exists: a Feedback pill on every signed-in page, a /feedback page (category
 51. Dashboard JavaScript under 1.5 MB; agree budgets for the stranger pages (an evening). (22/09 afternoon: test-weight 8/8, the dashboard still under.)
    a. The stranger's home page is measured first, as part of 17b: no dashboard, tax-card or OpenCV code, the figure printed by test-weight (folded into 17b; test: test-weight).
 52. **✓ done (fixtures remade, crash-after-passes caught, dev-server suites serial).** Suites that fail only four-at-a-time made reliable; harness npm install noted (an hour).
-53. **Partly done: /r/ b995fa4 (test-public-request 28/28); /i/ and /q/ open and show the logo d949a4f (test-public-logo 27/27); their Accept/Decline and open counting still only in test-links and test-quote-links, which need a server built against the stand-in.** Tests for the /i/, /q/ and /r/ pages via the mock-server pattern (an evening).
+53. **✓ done: /r/ b995fa4 (test-public-request 28/28); /i/ and /q/ open and show the logo d949a4f (test-public-logo 27/27); test-links and test-quote-links (making, sending, counting opens, stopping a link, Accept/Decline) now start their own server and run nightly (18/18 each).** Tests for the /i/, /q/ and /r/ pages via the mock-server pattern (an evening).
 54. **✓ done 63e84ba.** Tidy stale notes: limiter, Anthropic key, Worker, placeholder, 1.1 s, Gemini default (minutes).
    a. Plus the lines that go false tonight: "the template route is unauthenticated", "anonymous callers always get Gemini" in CLAUDE.md, "Anonymous scanning is Gemini-only" in the notes (5c) (minutes; test: a search of the notes finds none of the three).
 55. Safari camera permission set once (minutes; Atanas).
