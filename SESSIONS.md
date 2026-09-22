@@ -212,9 +212,14 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   text block or table on the page makes a clean four-corner shape that passes for the
   page itself, so the scanner sat zoomed in on part of a receipt, never "lost" and never
   backing off. Fix in the tree, built and green (`test-autozoom-out` 5/5, `test-autozoom`
-  8/8, `test-far`, `test-conditions`), **not committed**: while zoomed, every candidate
-  must look like paper (lighter than round it, clear of the edge). Held because Atanas
-  asked for a pause to reset the app; it goes in when he says go.
+  8/8, `test-conditions` 12/12): while zoomed, every candidate must look like paper
+  (lighter than round it, clear of the edge). Held while Atanas reset the app, pushed
+  at 03:30 on his go. `test-far` had no clips in this checkout (regenerated with
+  `gen-far.py`, `gen-far2.py`, `gen-far4.py`) and then read 16/25 — the same 16/25, the
+  same nine, on a scratch build of the commit before the fix: the seven "still" checks
+  (the `ImageCapture` stand-in never gets called and nothing is captured in 15 s), the
+  dark phone-like object and the white box on a coloured bill. Pre-existing, not from
+  this change; on the list to look at.
 - **02:00, his other chat overloaded.** Diagnosed from here: the machine was fine (8 GB,
   31% free); that session's transcript is 11.5 MB with WhatsApp and a dozen connectors
   loaded. On his "copy all plus the long chat history": a full backup at

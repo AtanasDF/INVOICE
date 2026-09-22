@@ -471,7 +471,14 @@ function looksLikePaper(cv: CVModule, m: WorkMats, pts: Point[]): boolean {
 
 // Every page in m.gray, largest first: four-corner shapes big enough to be
 // a page outright, and smaller ones that look like paper.
-function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false): { pts: Point[]; area: number }[] {
+// requirePaper: zoomed in, the frame can be all page, and a text block or a
+// table on it makes a clean four-corner shape that would pass for the page
+// itself -- so the scanner sat zoomed in on the middle of a receipt, never
+// "lost", never backing off (Atanas, 2026-09-22). While zoomed, every
+// candidate has to look like paper on a table: lighter than what's round
+// it and clear of the edge. A page that has outgrown the frame fails that
+// too, which is what sends the zoom back out.
+function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePaper = false): { pts: Point[]; area: number }[] {
   cv.GaussianBlur(m.gray, m.blurred, new cv.Size(5, 5), 0);
   cv.Canny(m.blurred, m.edges, 50, 150);
   cv.dilate(m.edges, m.edges, m.kernel);
@@ -497,15 +504,15 @@ function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false): { pts: Po
     const pts = fitCorners(cv, c, f.approx, m.w, m.h);
     c.delete();
     const area = polygonArea(pts);
-    if (area < frame * MIN_CONTOUR_AREA && !looksLikePaper(cv, m, pts)) continue;
+    if ((area < frame * MIN_CONTOUR_AREA || requirePaper) && !looksLikePaper(cv, m, pts)) continue;
     pages.push({ pts, area });
     if (firstOnly) break;
   }
   return pages;
 }
 
-function findPage(cv: CVModule, m: WorkMats): { pts: Point[]; area: number } | null {
-  return pageCandidates(cv, m, true)[0] ?? null;
+function findPage(cv: CVModule, m: WorkMats, requirePaper = false): { pts: Point[]; area: number } | null {
+  return pageCandidates(cv, m, true, requirePaper)[0] ?? null;
 }
 
 // Variance of the Laplacian inside the quad's bounding box: how sharp it is.
@@ -1231,7 +1238,7 @@ export default function DocumentCapture({
         const { src, gray } = mats;
         src.data.set(pixels);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        const page = findPage(cv, mats);
+        const page = findPage(cv, mats, zoomLevel() > 1);
         const best = page?.pts ?? null;
         const bestArea = page?.area ?? 0;
 
