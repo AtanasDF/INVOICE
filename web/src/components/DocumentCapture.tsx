@@ -685,6 +685,7 @@ export default function DocumentCapture({
   onClose,
   pageNumber,
   failureMessage,
+  purpose = "read",
 }: {
   onCapture?: (file: CapturedFile) => void;
   // Batch mode: the camera stays open, each capture joins a stack, and the
@@ -693,6 +694,8 @@ export default function DocumentCapture({
   onClose: () => void;
   pageNumber?: number;
   failureMessage?: string;
+  // "copy": photos for one file (Copy a document); the review says so.
+  purpose?: "read" | "copy";
 }) {
   const multi = !!onBatch;
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1805,6 +1808,7 @@ export default function DocumentCapture({
         setReviewing(false);
       }}
       onAccept={acceptBatch}
+      purpose={purpose}
     />
   );
 

@@ -27,7 +27,15 @@ export default function Welcome() {
         </div>
       </div>
 
-      <p className="mt-10 text-base text-neutral-600">We do not keep anything you type unless you ask us to.</p>
+      <p className="mt-10 text-lg text-neutral-700">
+        Need a copy of a letter or a form?{" "}
+        <Link href="/copy" className="font-medium underline">
+          Copy a document
+        </Link>{" "}
+        with your phone&apos;s camera.
+      </p>
+
+      <p className="mt-6 text-base text-neutral-600">We do not keep anything you type unless you ask us to.</p>
     </div>
   );
 }

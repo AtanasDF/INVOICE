@@ -39,7 +39,8 @@ can show the same thing (details in `notes/claude-notes.md`).
   recurrence code into `harness/gen/` every run, so those suites can never drift from the
   source. Only source is kept: Chrome profiles, `gen/` and the ~770MB of synthetic camera
   clips are gitignored, and `gen-*.py` regenerates the clips (`gen-large.py` makes
-  `large.mjpeg`, which nine suites need; `gen-torch.py` the two torch clips). `harness/README.md` has the
+  `large.mjpeg`, which nine suites need; `gen-torch.py` the two torch clips; `gen-uploads.py` and
+  `gen-multi.py` the upload suites' files, made by `run-all.sh` when missing). `harness/README.md` has the
   rest. Run it from a scratchpad copy if you don't want profile directories in the tree.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
@@ -300,6 +301,16 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
 - The Claude / Gemini picker on `/scan` shows only on a device where `scan-engine` is set
   in localStorage; `/scan?engine=claude` (or `gemini`) sets it and shows the picker from then
   on (the sweep, 2026-09-22: the picker meant nothing to anyone but Atanas).
+- "Copy a document" (`/copy`, Atanas 2026-09-22: a second scanner on the free page for any
+  paper): photos through the batch camera (`DocumentCapture purpose="copy"`, whose review
+  says "Check your photos" / "Use N pages" and has no grouping) or files, in order, into
+  one PDF (`src/lib/documentPdf.ts`: an A4 page per photo turned to match it, a PDF's own
+  pages copied in), then Save, Share or email. Nothing is read by the AI and nothing is
+  stored. Signed-in only (his rule for scanning); a stranger is asked to sign in with
+  `next=/copy`. `POST /api/send-document` has the send-invoice fences: signed in and
+  confirmed, a real PDF under 4 MB of base64, fixed wording with the sender's note quoted
+  and escaped, Reply-to the sender, from `documents@invoiceover.com`, 10 an hour / 30 a
+  day each. No daily cap on copies themselves ("keep it open").
 - "Upload from files" (`UploadFilesButton`) hands files to the reading page in memory
   (`scanHandoff.ts`) with `upload=1` in the address; the page takes them only for its own
   path, and says they didn't come through (instead of opening the camera) if a full page

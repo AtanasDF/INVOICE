@@ -27,12 +27,17 @@ export function groupShots(shots: Shot[]): CapturedFile[][] {
   return docs;
 }
 
-export default function BatchReview({ shots, onChange, onKeepScanning, onAccept }: {
+// "read": documents for the reader, grouped into documents by "Page of
+// previous". "copy": photos for one file (Copy a document), in order, with
+// nothing read and nothing to group.
+export default function BatchReview({ shots, onChange, onKeepScanning, onAccept, purpose = "read" }: {
   shots: Shot[];
   onChange: (shots: Shot[]) => void;
   onKeepScanning: () => void;
   onAccept: () => void;
+  purpose?: "read" | "copy";
 }) {
+  const copy = purpose === "copy";
   const docs = groupShots(shots).length;
   // The sheet opens over the live camera; focus comes with it, so the
   // heading is what's heard next rather than the shutter behind it.
@@ -55,14 +60,16 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="batch-review-title" className="fixed inset-0 z-[60] flex flex-col bg-neutral-50 text-neutral-900">
       <div className="border-b bg-white px-4 pb-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
-        <h2 id="batch-review-title" ref={titleRef} tabIndex={-1} className="text-lg font-bold outline-none">Check your scans</h2>
+        <h2 id="batch-review-title" ref={titleRef} tabIndex={-1} className="text-lg font-bold outline-none">{copy ? "Check your photos" : "Check your scans"}</h2>
         <p className="mt-0.5 text-sm text-neutral-600">
-          {shots.length} scan{shots.length === 1 ? "" : "s"}, {docs} document{docs === 1 ? "" : "s"}. Tap “Page of previous” when a scan is the next page of the one before it.
+          {copy
+            ? `${shots.length} photo${shots.length === 1 ? "" : "s"}. They go into one file in this order.`
+            : `${shots.length} scan${shots.length === 1 ? "" : "s"}, ${docs} document${docs === 1 ? "" : "s"}. Tap “Page of previous” when a scan is the next page of the one before it.`}
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         {shots.length === 0 ? (
-          <p className="mt-8 text-center text-sm text-neutral-500">No scans yet.</p>
+          <p className="mt-8 text-center text-sm text-neutral-500">{copy ? "No photos yet." : "No scans yet."}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {shots.map((s, i) => {
@@ -80,11 +87,11 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
                       <img src={s.dataUrl} alt={`Scan ${i + 1}`} className="h-full w-full object-cover" />
                     )}
                     <span className="absolute bottom-1.5 left-1.5 rounded-full bg-neutral-900/75 px-2 py-0.5 text-[11px] font-medium text-white">
-                      {labels[i]}
+                      {copy ? `Page ${i + 1}` : labels[i]}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-1">
-                    {i > 0 ? (
+                    {i > 0 && !copy ? (
                       <label className="flex items-center gap-1.5 text-xs text-neutral-700">
                         <input
                           type="checkbox"
@@ -112,7 +119,7 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
       </div>
       <div className="flex gap-2 border-t bg-white p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         <button type="button" onClick={onKeepScanning} className="flex-1 rounded-lg border px-4 py-3 text-sm font-medium text-neutral-700">
-          Keep scanning
+          {copy ? "Take more" : "Keep scanning"}
         </button>
         <button
           type="button"
@@ -120,7 +127,7 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept 
           disabled={!shots.length}
           className="flex-1 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
         >
-          Read {docs || ""} document{docs === 1 ? "" : "s"}
+          {copy ? `Use ${shots.length} page${shots.length === 1 ? "" : "s"}` : `Read ${docs || ""} document${docs === 1 ? "" : "s"}`}
         </button>
       </div>
     </div>

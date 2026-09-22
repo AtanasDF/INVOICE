@@ -315,6 +315,9 @@ export default function FreeInvoiceBuilder() {
           <p className="mt-4 text-base text-neutral-700">
             New customer? <Link href="/check-company" className="font-medium underline">Check the company</Link> first. It is free, straight from the Companies House register.
           </p>
+          <p className="mt-2 text-base text-neutral-700">
+            Need a copy of any paper? <Link href="/copy" className="font-medium underline">Copy a document</Link> into one file to save or send.
+          </p>
         </div>
       )}
 
