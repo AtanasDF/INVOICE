@@ -28,7 +28,7 @@ import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components
 import { useCompanyLookup } from "@/lib/companyConfigured";
 import { saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
-import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
+import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -1399,7 +1399,14 @@ export default function ScanPage() {
                 <input
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.totalAmount}
-                  onChange={(e) => patch({ totalAmount: e.target.value })}
+                  // A VAT figure worked out from the printed rate follows a
+                  // corrected total, or the note under it would be a lie.
+                  onChange={(e) =>
+                    patch({
+                      totalAmount: e.target.value,
+                      ...(form.vatWorkedOut !== null ? { vatAmount: String(vatFromRate(parseFloat(e.target.value), form.vatWorkedOut) ?? "") } : {}),
+                    })
+                  }
                   inputMode="decimal"
                 />
                 <FieldFlag confidence={form.totalConf} />

@@ -181,7 +181,7 @@ try {
   check("Mark as paid still works from the compact card", db.tables.receipts.find((r) => r.id === R.r1).paid === true && /\nPaid\n/.test(await cardText(page, "SFX-4402119")));
   await clickInCard(page, "SFX-4402119", "Edit");
   await sleep(200);
-  check("Edit still opens the form", await page.evaluate(() => !!document.querySelector('main input[placeholder="Vendor / shop name"]')));
+  check("Edit still opens the form", await page.evaluate(() => !!document.querySelector('main input[placeholder="Shop or supplier"]')));
 
   const I = (n, status, due) => ({ id: newId(), user_id: "x", client_id: C1, date: day(-20), number: n, items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: null, due_date: due, payment_terms: "30 days", status, tags: [], vat_registered: status === "draft" ? null : true });
   db.tables.invoices.push(I("D-1", "draft", day(10)), I("S-1", "sent", day(10)), I("S-2", "sent", day(-3)), I("P-1", "partial", day(5)), I("PD-1", "paid", day(-1)));
@@ -254,12 +254,12 @@ try {
   check("…and just the supplier when the printed name is the same (normalised)", (await cardText(page, "ESO-1")).startsWith("Esso\n") && (await cardText(page, "SFX-4400001")).startsWith("Screwfix\n"), (await cardText(page, "ESO-1")) + " | " + (await cardText(page, "SFX-4400001")));
   check("page fits 375px with Supplier · Vendor titles", await fits(page));
 
-  const editSelect = async () => page.evaluateHandle(() => document.querySelector('main input[placeholder="Vendor / shop name"]').closest("div.rounded-xl").querySelector("select"));
+  const editSelect = async () => page.evaluateHandle(() => document.querySelector('main input[placeholder="Shop or supplier"]').closest("div.rounded-xl").querySelector("select"));
   await clickInCard(page, "AMM-1", "Edit");
   await sleep(200);
   await (await editSelect()).asElement().select("");
   await clickButton(page, "Save");
-  await page.waitForFunction(() => !document.querySelector('main input[placeholder="Vendor / shop name"]'), { timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('main input[placeholder="Shop or supplier"]'), { timeout: 8000 });
   await sleep(200);
   check("Edit → No supplier writes details.noSupplier (other details kept)", byId(R.e7).client_id === null && byId(R.e7).details?.noSupplier === true && byId(R.e7).details?.orderNumber === "ORD-AMM", JSON.stringify(byId(R.e7)));
   check("…and the link offer doesn't bring it back", !(await bannerText(page)), await bannerText(page));
@@ -269,14 +269,14 @@ try {
   await sleep(200);
   await (await editSelect()).asElement().select(S2);
   await clickButton(page, "Save");
-  await page.waitForFunction(() => !document.querySelector('main input[placeholder="Vendor / shop name"]'), { timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('main input[placeholder="Shop or supplier"]'), { timeout: 8000 });
   await sleep(200);
   check("picking a supplier again removes noSupplier", byId(R.e7).client_id === S2 && !("noSupplier" in (byId(R.e7).details ?? {})) && byId(R.e7).details?.orderNumber === "ORD-AMM", JSON.stringify(byId(R.e7).details));
   const detailPatches = db.log.filter((l) => l.key === "PATCH receipts" && l.body && "details" in l.body).length;
   await clickInCard(page, "ESO-1", "Edit");
   await sleep(200);
   await clickButton(page, "Save");
-  await page.waitForFunction(() => !document.querySelector('main input[placeholder="Vendor / shop name"]'), { timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('main input[placeholder="Shop or supplier"]'), { timeout: 8000 });
   check("an edit that keeps the supplier leaves details alone", db.log.filter((l) => l.key === "PATCH receipts" && l.body && "details" in l.body).length === detailPatches && byId(R.e4).client_id === S4);
 
   db.tables.receipts.push(add("e8", { document_type: "receipt", client_id: null, vendor: "Esso Express", invoice_number: "ESX-1", date: day(-18), amount: 30, vat_amount: 6 }));

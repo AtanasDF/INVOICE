@@ -176,7 +176,7 @@ try {
   check("Mark as paid still works from the compact card", db.tables.receipts.find((r) => r.id === R.r1).paid === true && /\nPaid\n/.test(await cardText(page, "SFX-4402119")));
   await clickInCard(page, "SFX-4402119", "Edit");
   await sleep(200);
-  check("Edit still opens the form", await page.evaluate(() => !!document.querySelector('main input[placeholder="Vendor / shop name"]')));
+  check("Edit still opens the form", await page.evaluate(() => !!document.querySelector('main input[placeholder="Shop or supplier"]')));
 
   const I = (n, status, due) => ({ id: newId(), user_id: "x", client_id: C1, date: day(-20), number: n, items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: null, due_date: due, payment_terms: "30 days", status, tags: [], vat_registered: status === "draft" ? null : true });
   db.tables.invoices.push(I("D-1", "draft", day(10)), I("S-1", "sent", day(10)), I("S-2", "sent", day(-3)), I("P-1", "partial", day(5)), I("PD-1", "paid", day(-1)));

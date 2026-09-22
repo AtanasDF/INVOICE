@@ -5,6 +5,7 @@ import {
   AddressSource,
   OsmProperties,
   PafAddress,
+  matchedWords,
   matchesTypedWords,
   normalisePostcode,
   osmMatch,
@@ -12,7 +13,7 @@ import {
   postcodeTown,
   pafLines,
   townCase,
-  typedWords,
+  typedParts,
 } from "@/lib/addressLookup";
 import { addressKey, allow, allowShared } from "@/lib/rateLimit";
 import { signedInUser } from "@/lib/serverAuth";
@@ -113,15 +114,19 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&countrycode=GB&layer=house&layer=street&limit=8&lang=en`;
     const { body } = await getJson<Photon>(url);
     const houseNumber = /^(\d+[a-z]?(?:-\d+[a-z]?)?)\s+\S/i.exec(q)?.[1];
-    const words = typedWords(q);
-    const features = (body?.features ?? []).map((f) => f.properties ?? {}).filter((p) => matchesTypedWords(p, words));
-    const towns = await townsFor(features.map((p) => (p.postcode ? normalisePostcode(p.postcode) : null)));
-    const items = unique(
-      features.map((p, i) => {
-        const pc = p.postcode ? normalisePostcode(p.postcode) : null;
-        return osmMatch(p, `osm:${i}`, { houseNumber, town: pc ? towns.get(pc) : undefined });
-      })
-    );
+    const typed = typedParts(q);
+    const words = [...typed.must, ...typed.may];
+    const all = (body?.features ?? []).map((f) => f.properties ?? {});
+    const towns = await townsFor(all.map((p) => (p.postcode ? normalisePostcode(p.postcode) : null)));
+    const withTown = all.map((p) => {
+      const pc = p.postcode ? normalisePostcode(p.postcode) : null;
+      return { ...p, town: pc ? towns.get(pc) : undefined };
+    });
+    const features = withTown
+      .map((p, i) => ({ p, i, n: matchedWords(p, words) }))
+      .filter(({ p }) => matchesTypedWords(p, typed))
+      .sort((a, b) => b.n - a.n || a.i - b.i);
+    const items = unique(features.map(({ p, i }) => osmMatch(p, `osm:${i}`, { houseNumber, town: p.town })));
     return { source: "osm", items: items.slice(0, 6) };
   }
   const where = await getJson<{ result?: { latitude?: number; longitude?: number; admin_district?: string; bua?: string | null } }>(

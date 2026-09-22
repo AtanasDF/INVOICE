@@ -160,16 +160,16 @@ export default function ExpensesPage() {
         : periodMode === "year"
           ? year
           : `${customFrom} to ${customTo}`;
-  const periodTitle = periodMode === "week" ? "Weekly" : periodMode === "month" ? "Monthly" : periodMode === "year" ? "Yearly" : "Custom-range";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
-          <h1 className="text-2xl font-bold">{periodTitle} expenses</h1>
-          <span className="flex flex-wrap gap-3 text-sm font-medium text-blue-600">
-            <Link href="/mileage">Mileage →</Link>
-            <Link href="/vat">VAT →</Link>
+          <h1 className="text-2xl font-bold">Expenses</h1>
+          <p className="mt-1 text-neutral-600">{periodLabel}</p>
+          <span className="flex flex-wrap gap-3 text-sm font-medium text-neutral-700">
+            <Link href="/mileage" className="underline">Mileage</Link>
+            <Link href="/vat" className="underline">VAT</Link>
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -250,7 +250,7 @@ export default function ExpensesPage() {
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-xl font-bold sm:text-2xl">{money(totals.vat)}</div>
-          <div className="text-sm text-neutral-600">VAT to keep for review</div>
+          <div className="text-sm text-neutral-600">VAT on those costs</div>
         </div>
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-xl font-bold sm:text-2xl">{money(expensesInclVat)}</div>

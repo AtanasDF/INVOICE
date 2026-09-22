@@ -49,9 +49,9 @@ try {
   check("numbering is one line", text.includes("The next invoice will be INV-124.") && !text.includes("no way to override"), text.slice(text.indexOf("Invoice numbering"), text.indexOf("Invoice numbering") + 160));
   check("the stale logo sentence is gone", !text.includes("logo can go here"));
   check("business address is not called optional for a company", /Business address\n/.test(text) && !text.includes("Business address (optional)"));
-  const vat = await page.evaluate(() => [...document.querySelectorAll('[role="radiogroup"][aria-label="VAT"] [role="radio"]')].map((b) => `${b.textContent.trim()}:${b.getAttribute("aria-checked")}`));
-  check("VAT is one switch, off", JSON.stringify(vat) === '["Without VAT:true","With VAT:false"]', JSON.stringify(vat));
-  check("no VAT number box while VAT is off", !(await page.$("#vat-number")));
+  const vat = await page.evaluate(() => [...document.querySelectorAll('input[name="vat"]')].map((r) => `${r.closest("label").textContent.trim()}:${r.checked}`));
+  check("VAT is one switch of two real radios, off", JSON.stringify(vat) === '["Without VAT:true","With VAT:false"]', JSON.stringify(vat));
+  check("the VAT number box is greyed out while VAT is off, its value kept", await page.$eval("#vat-number", (e) => e.disabled && e.value === "GB123456789"));
   check("no essay on the VAT card", !text.includes("deregistering"));
 
   // ── Colours and targets ──────────────────────────────────────────
@@ -119,9 +119,9 @@ try {
   await sleep(200);
   check("Stay puts the bar back", (await barText()).includes("Unsaved changes.") && !(await barText()).includes("Save and go"));
 
-  await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.trim() === "With VAT").click());
+  await page.evaluate(() => [...document.querySelectorAll('input[name="vat"]')][1].click());
   await sleep(200);
-  check("With VAT shows the number box, filled from what was stored", (await page.$eval("#vat-number", (e) => e.value)) === "GB123456789");
+  check("With VAT wakes the number box, filled from what was stored", await page.$eval("#vat-number", (e) => !e.disabled && e.value === "GB123456789"));
   await click("Save");
   await sleep(800);
   const saved = lastProfile();
@@ -146,6 +146,51 @@ try {
   await click("Save and go");
   await page.waitForFunction(() => location.pathname === "/invoices", { timeout: 10000 }).catch(() => {});
   check("Save and go saves, then goes", page.url().endsWith("/invoices") && lastProfile().invoice_prefix === "ZZ-", `${page.url()} ${lastProfile().invoice_prefix}`);
+
+  // The browser's Back, a link to this very page, Sign out, and an empty list.
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await sleep(600);
+  await setField("#invoice-prefix", "BK-");
+  await sleep(200);
+  await page.goBack({ waitUntil: "networkidle0" }).catch(() => {});
+  await sleep(500);
+  check("the browser's Back with unsaved changes is held on this page", page.url().includes("/settings") && /Save and go/.test(await barText()), `${page.url()} ${await barText()}`);
+  await click("Leave without saving");
+  await page.waitForFunction(() => location.pathname === "/invoices", { timeout: 10000 }).catch(() => {});
+  check("Leave without saving then goes back where Back was going", page.url().endsWith("/invoices"), page.url());
+  check("...and saved nothing", lastProfile().invoice_prefix === "ZZ-", lastProfile().invoice_prefix);
+
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await sleep(600);
+  await setField("#invoice-prefix", "SP-");
+  await sleep(200);
+  await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Settings")?.click());
+  await sleep(400);
+  check("a link to this same page is not held", !/Save and go/.test(await barText()) && (await page.$eval("#invoice-prefix", (e) => e.value)) === "SP-", await barText());
+  await click("Sign out");
+  await sleep(400);
+  check("Sign out with unsaved changes is held like a link", page.url().includes("/settings") && /Save and go/.test(await barText()), `${page.url()} ${await barText()}`);
+  await click("Stay");
+  await sleep(200);
+
+  for (let i = 0; i < 40; i++) {
+    const left = await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Remove"); b?.click(); return !!b; });
+    if (!left) break;
+    await sleep(30);
+  }
+  await sleep(300);
+  await click("Save");
+  await sleep(500);
+  check("an empty category list is refused in words, not saved as 'no list'", /Add at least one category before saving/.test(await barText()) && lastProfile().invoice_prefix === "ZZ-", await barText());
+
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(600);
+  await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Move "]')].find((b) => b.getAttribute("aria-label") === "Move Fuel up").click());
+  await sleep(200);
+  check("after moving a category, focus follows it", await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Move Fuel up"), await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.tagName));
+  await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Move "]')].find((b) => b.getAttribute("aria-label") === "Move Subcontractors up").click());
+  await sleep(200);
+  check("moved to the top, focus lands on its other arrow", await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Move Subcontractors down"), await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.tagName));
   check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 } catch (e) {
   console.log("ERROR", e.message);

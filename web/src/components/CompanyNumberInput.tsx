@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CompanyMatch, tidyCompanyNumber } from "@/lib/companyLookup";
 import { useCompanyLookup } from "@/lib/companyConfigured";
 import { companyByNumber } from "@/lib/companyRegister";
@@ -30,10 +30,23 @@ export default function CompanyNumberInput({
   id?: string;
 }) {
   const on = useCompanyLookup();
-  const [looked, setLooked] = useState<{ number: string; company: CompanyMatch | null } | null>(null);
+  // The number the box opened with is already the saved one: looking it up
+  // would fill the name on a page nobody touched and mark it unsaved.
+  const [looked, setLooked] = useState<{ number: string; company: CompanyMatch | null } | null>(() => {
+    const mounted = tidyCompanyNumber(value);
+    return mounted ? { number: mounted, company: null } : null;
+  });
   const [busy, setBusy] = useState(false);
   const [offer, setOffer] = useState<CompanyMatch | null>(null);
   const full = on ? tidyCompanyNumber(value) : null;
+  // Read when the answer lands, not when the lookup started.
+  const nameRef = useRef(name);
+  const onFoundRef = useRef(onFound);
+  useEffect(() => {
+    nameRef.current = name;
+    onFoundRef.current = onFound;
+  });
+  const [mounted] = useState(() => tidyCompanyNumber(value));
 
   useEffect(() => {
     if (!full || looked?.number === full) return;
@@ -46,8 +59,9 @@ export default function CompanyNumberInput({
         setLooked({ number: full, company });
         setOffer(null);
         if (!company) return;
-        if (!name.trim()) onFound(company);
-        else if (!sameCompanyName(name, company)) setOffer(company);
+        const typed = nameRef.current;
+        if (!typed.trim()) onFoundRef.current(company);
+        else if (!sameCompanyName(typed, company)) setOffer(company);
       } catch {
         if (!controller.signal.aborted) setLooked(null);
       } finally {
@@ -58,12 +72,9 @@ export default function CompanyNumberInput({
       clearTimeout(timer);
       controller.abort();
     };
-    // The name is read when the answer lands, not watched: typing it must
-    // not start the lookup again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [full, looked?.number]);
 
-  const notFound = full !== null && looked?.number === full && looked.company === null;
+  const notFound = full !== null && looked?.number === full && looked.company === null && full !== mounted;
   return (
     <div>
       <input

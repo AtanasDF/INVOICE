@@ -124,7 +124,7 @@ export default function ReviewQueuePage() {
       <div>
         <h1 className="text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">
-          Receipts that came in by email — check what the AI read off them before they count toward your records.
+          Receipts that came in by email — check what was read off them before they count toward your records.
         </p>
       </div>
 

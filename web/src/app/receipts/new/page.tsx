@@ -326,12 +326,13 @@ export default function NewReceiptPage() {
             }}
           />
           <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {/* The usual category may have left the list when the kind of account changed; it stays choosable. */}
+            {(category && !categories.includes(category) ? [category, ...categories] : categories).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <input
           className="w-full rounded-lg border px-3 py-2"
-          placeholder="Vendor / shop name"
+          placeholder="Shop or supplier"
           value={vendor}
           onChange={(e) => {
             setVendor(e.target.value);

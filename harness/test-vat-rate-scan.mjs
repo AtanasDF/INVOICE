@@ -58,7 +58,15 @@ try {
   let text = await scan();
   check("no figure printed, 20% printed: the VAT box holds £4.83", (await vatBox()) === "4.83", await vatBox());
   check("...and says it was worked out from the printed rate", text.includes("VAT worked out from the 20% rate printed"), text.slice(text.indexOf("Of which VAT"), text.indexOf("Of which VAT") + 200));
-  check("...and the figure is flagged for a look", /VAT unclear|check|worked out/i.test(text));
+  check("...and the figure is flagged for a look", text.includes("double-check this"), text.slice(text.indexOf("Of which VAT"), text.indexOf("Of which VAT") + 160));
+  await page.evaluate(() => {
+    const label = [...document.querySelectorAll("label")].find((l) => /^Total/.test(l.textContent.trim()));
+    const el = label.parentElement.querySelector("input");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "39");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(200);
+  check("correcting the total re-works the VAT from the rate", (await vatBox()) === "6.5" && (await bodyText(page)).includes("worked out from the 20% rate"), await vatBox());
   await page.evaluate(() => {
     const label = [...document.querySelectorAll("label")].find((l) => /Of which VAT/.test(l.textContent));
     const el = label.parentElement.querySelector("input");

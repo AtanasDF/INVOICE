@@ -361,6 +361,37 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   The one left is real and open: with the camera's own still handed over sideways, the
   scanner falls back to the video frame instead of turning the still upright
   (`stillOfRegion`, the match score for a 90° turn); on the list.
+- **05:30, the review of the first three fixes** (85 agents: four reviewers, three
+  skeptics per finding; 23 findings stood, 4 refuted), all fixed: the company-number box
+  no longer looks up the number it opened with (which had filled the name on an untouched
+  page and marked it unsaved) and reads the typed name when the answer lands; the
+  browser's Back and the phone's swipe-back are held like a link (a copy of the entry is
+  pushed while dirty, Next's own state kept in it); a link to the same page is let
+  through; shift- and alt-clicks too; Sign out, header or page, is held; the bar's error
+  and note lines stay clear of the Feedback pill; the VAT switch is two real radios
+  (keyboard arrows work) and the number box stays, greyed, while VAT is off; focus
+  follows a moved category (to its other arrow at the top or bottom); an empty
+  category list is refused with words instead of saved as "no list"; a usual category
+  that left the list when the kind changed stays choosable on the receipt form;
+  "Other" is kept last whatever its spelling; a VAT figure worked out from a printed
+  rate follows a corrected total; a rate written as 0.2 means 20%; the free address
+  search folds apostrophes ("Kings Road" finds King's Road), ignores flat and unit
+  prefixes, bare numbers and postcodes typed in the street box, resolves the post town
+  before matching, and only insists on the street's words (the town may be filed
+  elsewhere, a match on it ranks first); the address suite now proves the road itself
+  is offered. `test-settings-save` 39/39, `test-address-words` 24/24,
+  `test-address-fields` 24/24 (live), `test-vat-from-rate` 13/13, `test-vat-rate-scan`
+  7/7, `test-company-number` 7/7.
+- **Second dozen, 13: plain words on the signed-in pages** — "How late is what you're
+  owed", "VAT on those costs", "Expenses" with the period under it, "Shop or supplier",
+  "Download for a spreadsheet", "add one by hand", "Send a text", "check what was read
+  off them"; the expenses page's blue links grey. Six suites swept for the old words;
+  clear, no-silent-contacts, receipts-list, texts, empty-account, first-week, delight,
+  what-surfaces, vat-return green. (`test-receipts-list` ends in an error after its 31
+  checks — the runner counts it green because 31 = 31; it did so before tonight too.)
+- **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
+  timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
+  rest of `notes/tonight-list.md`.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

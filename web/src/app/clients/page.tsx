@@ -241,7 +241,7 @@ export default function ClientsPage() {
         <div className="flex items-start gap-2">
           {visibleClients.length > 0 && (
             <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
-              Export CSV
+              Download for a spreadsheet
             </button>
           )}
           <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab}`} addHref={`/clients/new?kind=${tab}`} />
@@ -299,7 +299,7 @@ export default function ClientsPage() {
         <div className="space-y-3">
           {visibleClients.length === 0 && archivedCount === 0 && !error && (
             <p className="text-sm text-neutral-500">
-              No {tab}s yet. Scan a business card, letter or invoice to add one, or add one manually.
+              No {tab}s yet. Scan a business card, letter or invoice to add one, or add one by hand.
             </p>
           )}
           {visibleClients.map((c) => {
@@ -398,7 +398,7 @@ export default function ClientsPage() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       {phoneLinks(c.phone) && (
                         <button onClick={() => setTextingId(textingId === c.id ? null : c.id)} className="text-sm font-medium text-blue-600">
-                          {textingId === c.id ? "Close" : "Text"}
+                          {textingId === c.id ? "Close" : "Send a text"}
                         </button>
                       )}
                       {clientInvoices.length > 0 && (

@@ -64,7 +64,7 @@ try {
   // name written on the receipt itself. Typing a new name into the picker
   // and not tapping "Add as new supplier" must add nobody.
   check("the supplier picker is there", await fill("Supplier — type a name", "Toolstation Bristol"));
-  check("the vendor box is there", await fill("Vendor / shop name", "Toolstation Bristol"));
+  check("the vendor box is there", await fill("Shop or supplier", "Toolstation Bristol"));
   await fill("Total paid", "31.40");
   await sleep(300);
   await clickText(page, "Save receipt");

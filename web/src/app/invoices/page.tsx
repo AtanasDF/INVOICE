@@ -201,7 +201,7 @@ export default function InvoicesPage() {
         <div className="flex items-start gap-2">
           {invoices.length > 0 && (
             <button onClick={exportInvoices} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
-              Export CSV
+              Download for a spreadsheet
             </button>
           )}
           <ScanOrAdd scanHref="/invoices/new?scan=1" scanLabel="Scan an invoice" addHref="/invoices/new" />
@@ -269,7 +269,7 @@ export default function InvoicesPage() {
               {hasActiveFilters ? (
                 "No invoices match these filters."
               ) : (
-                "No invoices yet. Scan one you've sent before to copy it, or add one manually."
+                "No invoices yet. Scan one you've sent before to copy it, or add one by hand."
               )}
             </p>
           )}

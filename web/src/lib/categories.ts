@@ -102,9 +102,11 @@ export function missingFor(list: string[], kind: AccountKind | null | undefined)
 
 /** The list with the kind's missing categories added, "Other" kept last, nothing removed. */
 export function withKindCategories(list: string[], kind: AccountKind): string[] {
+  const isOther = (c: string) => c.trim().toLowerCase() === "other";
   const missing = missingFor(list, kind);
-  const other = list.includes("Other") || missing.includes("Other");
-  return [...list.filter((c) => c !== "Other"), ...missing.filter((c) => c !== "Other"), ...(other ? ["Other"] : [])];
+  // The person's own spelling of Other, kept, and kept last.
+  const other = list.find(isOther) ?? missing.find(isOther);
+  return [...list.filter((c) => !isOther(c)), ...missing.filter((c) => !isOther(c)), ...(other ? [other] : [])];
 }
 
 /** Most frequent category across a set of past receipts, for defaulting new entries. */

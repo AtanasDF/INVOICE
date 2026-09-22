@@ -198,18 +198,43 @@ const STREET_KINDS = new Set(["road", "rd", "street", "st", "lane", "ln", "avenu
 // the word Road (Atanas, 2026-09-22: "you find something else, it gives you
 // nothing"). A match must carry every real word typed -- the street's name,
 // a town if one was typed -- somewhere in its own name, street or town.
+const fold = (s: string) => s.toLowerCase().replace(/[’'`.]/g, "");
+// The outward part, the inward part, or both together.
+const POSTCODE_SHAPED = /^([a-z]{1,2}\d[a-z\d]?(\d[a-z]{2})?|\d[a-z]{2})$/i;
 export function typedWords(q: string): string[] {
-  return q
+  return fold(q)
+    .replace(/^(flat|unit|apartment|suite|floor|units)\s*[\w-]+,?\s+/i, "")
     .replace(/^\d+[a-z]?(?:-\d+[a-z]?)?\s+/i, "")
-    .toLowerCase()
     .split(/[\s,]+/)
-    .filter((w) => w.length >= 3 && !STREET_KINDS.has(w));
+    .filter((w) => w.length >= 3 && !STREET_KINDS.has(w) && !/^\d+$/.test(w) && !POSTCODE_SHAPED.test(w));
 }
 
-export function matchesTypedWords(p: OsmProperties, words: string[]): boolean {
-  if (!words.length) return true;
-  const hay = [p.name, p.street, p.city, p.locality, p.district, p.county].filter(Boolean).join(" ").toLowerCase();
-  return words.every((w) => hay.includes(w));
+// How many of the typed words the place carries, in its name, street,
+// number, postcode or any of its towns (the post town resolved from the
+// postcode counts too, since OpenStreetMap often names the council).
+export function matchedWords(p: OsmProperties & { town?: string }, words: string[]): number {
+  const hay = fold([p.name, p.street, p.housenumber, p.postcode, p.city, p.locality, p.district, p.county, p.town].filter(Boolean).join(" "));
+  return words.filter((w) => hay.includes(w)).length;
+}
+
+// What was typed before the first comma is the street (a house number and
+// street, in the form's first box); what follows is the town. The street's
+// words must all be there; the town's may not be, since the town
+// OpenStreetMap files a street under is not always the one people say,
+// though a match on it ranks first. With no street words, the town is all
+// there is to go on.
+export type TypedParts = { must: string[]; may: string[] };
+export function typedParts(q: string): TypedParts {
+  const [first, ...rest] = q.split(",");
+  return { must: typedWords(first), may: typedWords(rest.join(",")) };
+}
+
+export function matchesTypedWords(p: OsmProperties & { town?: string }, typed: string[] | TypedParts): boolean {
+  const t = Array.isArray(typed) ? { must: typed, may: [] } : typed;
+  if (!t.must.length && !t.may.length) return true;
+  const hay = fold([p.name, p.street, p.housenumber, p.postcode, p.city, p.locality, p.district, p.county, p.town].filter(Boolean).join(" "));
+  const has = (w: string) => hay.includes(w);
+  return t.must.every(has) && (t.must.length > 0 || t.may.every(has));
 }
 
 // A street is offered as the house number typed (if any) and the street

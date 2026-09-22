@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AccountKind,
@@ -118,7 +118,12 @@ export default function SettingsPage() {
   // unsaved, which the bar at the bottom says, and a tap on a link is held
   // until the person says whether to save first.
   const [snapshot, setSnapshot] = useState<string | null>(null);
+  // Where a held departure was going: a path, "back" (the browser's Back)
+  // or "signout".
   const [leaving, setLeaving] = useState<string | null>(null);
+  const arrowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  // The arrow to put focus on once a moved category has re-rendered.
+  const focusArrowRef = useRef<string | null>(null);
 
   useEffect(() => {
     Promise.all([businessProfileStore.get(), invoicesStore.all()]).then(([p, invoices]) => {
@@ -197,21 +202,55 @@ export default function SettingsPage() {
     // Caught before React sees the click, so neither a plain link nor a
     // Next.js one gets to navigate; the bar then asks what to do.
     const onClick = (e: MouseEvent) => {
-      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || a.target === "_blank") return;
+      const target = e.target as Element | null;
+      // The header's Sign out is a button, not a link, and leaves just the same.
+      const signOutButton = target?.closest?.("button");
+      if (signOutButton && signOutButton.textContent?.trim() === "Sign out") {
+        e.preventDefault();
+        e.stopPropagation();
+        setLeaving("signout");
+        return;
+      }
+      const a = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
       const href = a.getAttribute("href") ?? "";
       if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      // A link to this very page goes nowhere; let it be.
+      if (new URL(a.href, window.location.href).pathname === window.location.pathname) return;
       e.preventDefault();
       e.stopPropagation();
       setLeaving(href);
     };
+    // The browser's Back (or a swipe on the phone) is a route change with
+    // no click and no unload. A copy of this entry is pushed on top, so
+    // Back lands here again and can be asked about; Next's own state is
+    // kept in the copy, or it would reload the page.
+    const onPop = () => {
+      window.history.pushState({ ...(window.history.state ?? {}), unsaved: true }, "", window.location.href);
+      setLeaving("back");
+    };
+    window.history.pushState({ ...(window.history.state ?? {}), unsaved: true }, "", window.location.href);
+    window.addEventListener("popstate", onPop);
     window.addEventListener("beforeunload", beforeUnload);
     document.addEventListener("click", onClick, true);
     return () => {
+      window.removeEventListener("popstate", onPop);
       window.removeEventListener("beforeunload", beforeUnload);
       document.removeEventListener("click", onClick, true);
     };
   }, [dirty]);
+
+  useEffect(() => {
+    const key = focusArrowRef.current;
+    if (!key) return;
+    focusArrowRef.current = null;
+    // At the top or the bottom that arrow is disabled; the other one is
+    // still the moved item's.
+    const [row, dir] = key.split(":");
+    const same = arrowRefs.current[key];
+    const other = arrowRefs.current[`${row}:${dir === "-1" ? "1" : "-1"}`];
+    (same && !same.disabled ? same : other)?.focus();
+  }, [categories]);
 
   async function regenerateInboxToken() {
     setInboxError(null);
@@ -265,13 +304,14 @@ export default function SettingsPage() {
   }
 
   function moveCategory(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= categories.length) return;
     setCategories((prev) => {
       const next = [...prev];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+    focusArrowRef.current = `${target}:${direction}`;
   }
 
   function renameCategory(index: number, name: string) {
@@ -294,6 +334,10 @@ export default function SettingsPage() {
     e?.preventDefault();
     setError(null);
     setSaved(false);
+    if (categories.filter((c) => c.trim()).length === 0) {
+      setError("Add at least one category before saving.");
+      return false;
+    }
     setSaving(true);
     try {
       // An untouched field writes back today's value, not this page's. A
@@ -336,17 +380,25 @@ export default function SettingsPage() {
     }
   }
 
+  // The copy of this entry pushed while dirty sits on top of the original,
+  // so going back is two steps.
+  function go(to: string) {
+    if (to === "back") window.history.go(-2);
+    else if (to === "signout") void signOut();
+    else router.push(to);
+  }
+
   async function saveAndGo() {
     const to = leaving;
     setLeaving(null);
-    if ((await save()) && to) router.push(to);
+    if ((await save()) && to) go(to);
   }
 
   function leaveWithoutSaving() {
     const to = leaving;
     setLeaving(null);
     setSnapshot(current);
-    if (to) router.push(to);
+    if (to) go(to);
   }
 
   // The same email Supabase sends for "forgot my password": opening it
@@ -516,32 +568,30 @@ export default function SettingsPage() {
 
         <div className={CARD}>
           <h2 className="font-semibold">VAT</h2>
-          <div role="radiogroup" aria-label="VAT" className="inline-flex rounded-lg border p-0.5">
-            {VAT_CHOICES.map((c) => (
-              <button
-                key={c.label}
-                type="button"
-                role="radio"
-                aria-checked={vatRegistered === c.on}
-                onClick={() => setVatRegistered(c.on)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${vatRegistered === c.on ? "bg-neutral-900 text-white" : "text-neutral-700"}`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          {vatRegistered && (
-            <div>
-              <label className="text-xs text-neutral-500" htmlFor="vat-number">VAT number</label>
-              <input
-                id="vat-number"
-                className="w-full rounded-lg border px-3 py-2"
-                placeholder="GB123456789"
-                value={vatNumber}
-                onChange={(e) => setVatNumber(e.target.value)}
-              />
+          <fieldset>
+            <legend className="sr-only">VAT</legend>
+            <div className="inline-flex rounded-lg border p-0.5">
+              {VAT_CHOICES.map((c) => (
+                <label key={c.label} className="cursor-pointer">
+                  <input type="radio" name="vat" className="peer sr-only accent-neutral-900" checked={vatRegistered === c.on} onChange={() => setVatRegistered(c.on)} />
+                  <span className={`block rounded-md px-3 py-1.5 text-sm font-medium peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-500 ${vatRegistered === c.on ? "bg-neutral-900 text-white" : "text-neutral-700"}`}>
+                    {c.label}
+                  </span>
+                </label>
+              ))}
             </div>
-          )}
+          </fieldset>
+          <div>
+            <label className="text-xs text-neutral-500" htmlFor="vat-number">VAT number</label>
+            <input
+              id="vat-number"
+              className="w-full rounded-lg border px-3 py-2 disabled:bg-neutral-50 disabled:text-neutral-400"
+              placeholder="GB123456789"
+              value={vatNumber}
+              disabled={!vatRegistered}
+              onChange={(e) => setVatNumber(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className={CARD}>
@@ -605,6 +655,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-1">
                   <button
                     type="button"
+                    ref={(el) => { arrowRefs.current[`${i}:-1`] = el; }}
                     onClick={() => moveCategory(i, -1)}
                     disabled={i === 0}
                     className="h-8 w-8 rounded-md border text-sm text-neutral-600 disabled:opacity-30"
@@ -614,6 +665,7 @@ export default function SettingsPage() {
                   </button>
                   <button
                     type="button"
+                    ref={(el) => { arrowRefs.current[`${i}:1`] = el; }}
                     onClick={() => moveCategory(i, 1)}
                     disabled={i === categories.length - 1}
                     className="h-8 w-8 rounded-md border text-sm text-neutral-600 disabled:opacity-30"
@@ -723,11 +775,11 @@ export default function SettingsPage() {
         </div>
 
         <div
-          className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t bg-white/95 px-4 pt-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:shadow-sm"
+          className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t bg-white/95 px-4 pt-3 pr-28 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:shadow-sm"
           style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         >
           {leaving ? (
-            <div className="flex flex-wrap items-center gap-2 pr-24 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="font-medium">You have unsaved changes.</span>
               <button type="button" onClick={saveAndGo} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 {saving ? "Saving…" : "Save and go"}
@@ -740,7 +792,7 @@ export default function SettingsPage() {
               </button>
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-3 pr-24">
+            <div className="flex flex-wrap items-center gap-3">
               <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 {saving ? "Saving…" : "Save"}
               </button>

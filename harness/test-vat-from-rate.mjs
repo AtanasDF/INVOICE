@@ -12,6 +12,7 @@ check("£0.01 at 20% rounds to £0.00", vatFromRate(0.01, 20) === 0, vatFromRate
 check("no total: nothing", vatFromRate(null, 20) === null && vatFromRate(0, 20) === null);
 check("no rate, or a zero rate: nothing", vatFromRate(29, null) === null && vatFromRate(29, 0) === null);
 check("a nonsense rate: nothing", vatFromRate(29, 100) === null && vatFromRate(29, -5) === null);
+check("a rate written as a fraction is read as the percentage it meant", vatFromRate(29, 0.2) === 4.83 && vatForReading({ totalAmount: 29, vatAmount: null, vatAmountConfidence: "high", vatRate: 0.2 }).workedOutFromRate === 20, `${vatFromRate(29, 0.2)}`);
 
 const printed = vatForReading({ totalAmount: 29, vatAmount: 4.83, vatAmountConfidence: "high", vatRate: 20 });
 check("a printed figure is used as read, whatever the rate says", printed.vatAmount === 4.83 && printed.vatAmountConfidence === "high" && printed.workedOutFromRate === null, JSON.stringify(printed));

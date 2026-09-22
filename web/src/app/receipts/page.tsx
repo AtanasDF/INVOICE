@@ -433,7 +433,7 @@ export default function ReceiptsPage() {
         <div className="flex items-start gap-2">
           {receipts.length > 0 && (
             <button onClick={exportReceipts} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
-              Export CSV
+              Download for a spreadsheet
             </button>
           )}
           <ScanOrAdd scanHref="/scan" scanLabel="Scan receipts" addHref="/receipts/new" />
@@ -552,7 +552,7 @@ export default function ReceiptsPage() {
               {hasActiveFilters ? (
                 "Nothing matches these filters."
               ) : (
-                "No receipts or bills yet. Scan a few at once, or add one manually."
+                "No receipts or bills yet. Scan a few at once, or add one by hand."
               )}
             </p>
           )}
@@ -608,7 +608,7 @@ export default function ReceiptsPage() {
                 </div>
                 <input
                   className="w-full rounded-lg border px-3 py-2 text-sm"
-                  placeholder="Vendor / shop name"
+                  placeholder="Shop or supplier"
                   value={editDraft.vendor}
                   onChange={(e) => setEditDraft({ ...editDraft, vendor: e.target.value })}
                 />

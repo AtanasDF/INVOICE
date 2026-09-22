@@ -51,7 +51,7 @@ try {
   await page.goto(`${BASE}/receipts/new`, { waitUntil: "networkidle0" });
   await sleep(500);
   check("receipt: Clear form off while empty", (await clearState()) === "disabled");
-  await typeInto('input[placeholder="Vendor / shop name"]', "Screwfix");
+  await typeInto('input[placeholder="Shop or supplier"]', "Screwfix");
   await typeInto('input[placeholder^="Total paid"]', "12.00");
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Split into multiple items")).click());
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Split into multiple items")).click());
@@ -62,7 +62,7 @@ try {
   const rows = await page.evaluate(() => document.querySelectorAll('button[aria-label^="Remove item"]').length);
   check("receipt: one item left after removing one", rows === 1, String(rows));
   await clickClear();
-  const rv = await page.evaluate(() => ({ vendor: document.querySelector('input[placeholder="Vendor / shop name"]').value, total: document.querySelector('input[placeholder^="Total paid"]').value, items: document.querySelectorAll('button[aria-label^="Remove item"]').length, date: document.querySelector('input[type=date]').value }));
+  const rv = await page.evaluate(() => ({ vendor: document.querySelector('input[placeholder="Shop or supplier"]').value, total: document.querySelector('input[placeholder^="Total paid"]').value, items: document.querySelectorAll('button[aria-label^="Remove item"]').length, date: document.querySelector('input[type=date]').value }));
   check("receipt: cleared (vendor, total, items; date todayISO())", rv.vendor === "" && rv.total === "" && rv.items === 0 && rv.date === new Date().toISOString().slice(0, 10), JSON.stringify(rv));
   check("receipt: nothing saved", db.tables.receipts.length === 0);
   await shot(page, "clear-receipt");

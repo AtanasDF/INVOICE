@@ -8,7 +8,10 @@
 /** The VAT inside a gross total at a printed rate, to the penny; null when there is nothing to work out. */
 export function vatFromRate(total: number | null | undefined, rate: number | null | undefined): number | null {
   if (total == null || rate == null || !(total > 0) || !(rate > 0) || rate >= 100) return null;
-  return Math.round((total - total / (1 + rate / 100)) * 100) / 100;
+  // The schema asks for a percentage; a reader that writes 0.2 for "20%"
+  // meant the same thing, and no UK rate lies between 0 and 1.
+  const percent = rate < 1 ? rate * 100 : rate;
+  return Math.round((total - total / (1 + percent / 100)) * 100) / 100;
 }
 
 /** The VAT to use for a reading: what was printed, else what the printed rate gives, with a note of which. */
@@ -20,7 +23,7 @@ export function vatForReading(r: { totalAmount: number | null; vatAmount: number
   if (r.vatAmount !== null) return { vatAmount: r.vatAmount, vatAmountConfidence: r.vatAmountConfidence, workedOutFromRate: null };
   const worked = vatFromRate(r.totalAmount, r.vatRate);
   if (worked === null) return { vatAmount: null, vatAmountConfidence: r.vatAmountConfidence, workedOutFromRate: null };
-  return { vatAmount: worked, vatAmountConfidence: "low", workedOutFromRate: r.vatRate! };
+  return { vatAmount: worked, vatAmountConfidence: "low", workedOutFromRate: r.vatRate! < 1 ? r.vatRate! * 100 : r.vatRate! };
 }
 
 export const workedOutNote = (rate: number) => `VAT worked out from the ${rate}% rate printed; the document shows no VAT figure.`;

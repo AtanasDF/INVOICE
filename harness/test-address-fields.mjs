@@ -80,7 +80,8 @@ try {
   await type(1, "House number and street", "149 Benares Road");
   await type(1, "Town or city", "London");
   r = await findIn(1);
-  check("a street typed lists only places carrying its name", r.options.every((o) => /Benares/i.test(o)), JSON.stringify(r.options).slice(0, 300));
+  check("the road itself is offered", r.options.some((o) => /Benares Road/i.test(o)), JSON.stringify(r.options).slice(0, 300));
+  check("a street typed lists only places carrying its name", r.options.length >= 1 && r.options.every((o) => /Benares/i.test(o)), JSON.stringify(r.options).slice(0, 300));
   check("...nothing from Devon or Hampshire", !r.options.some((o) => /Teignmouth|Steep|Bedales/i.test(o)), JSON.stringify(r.options).slice(0, 300));
 
   // A postcode the free directory has no houses for says so plainly
@@ -95,7 +96,7 @@ try {
   } else {
     check("SE18 1HU now has houses in the free directory (the wording case can't be shown here)", true);
   }
-  check("picked the postcode itself", await pickOption("SE18 1HU"));
+  check("picked the postcode itself", await pickOption("Use just the postcode|^SE18 1HU"));
   await sleep(300);
   f = await fields(1);
   check("it fills the town and postcode and leaves the street for typing", f.town === "London" && f.postcode === "SE18 1HU" && f.line1 === "", JSON.stringify(f));

@@ -196,7 +196,7 @@ try {
   check("receipt: suppliers A–Z with no history to go on", JSON.stringify(supplierOrder) === JSON.stringify([["", "Screwfix"], ["", "Toolstation Ltd"]]), JSON.stringify(supplierOrder));
   await page.select("select", TOOL);
   await sleep(300);
-  const vendorFilled = await page.$eval('input[placeholder="Vendor / shop name"]', (e) => e.value);
+  const vendorFilled = await page.$eval('input[placeholder="Shop or supplier"]', (e) => e.value);
   check("receipt: picking a supplier fills the empty vendor name", vendorFilled === "Toolstation Ltd", vendorFilled);
   check("receipt fits 375px", await noHScroll(page));
   const clientsAfterAdd = db.tables.clients.length;

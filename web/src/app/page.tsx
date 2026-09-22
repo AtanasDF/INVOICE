@@ -468,7 +468,7 @@ function Dashboard() {
       </div>
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <h2 className="font-semibold">Aged receivables</h2>
+        <h2 className="font-semibold">How late is what you&apos;re owed</h2>
         <div className="mt-3 space-y-2">
           {buckets.map((b) => (
             <div key={b.label} className="flex items-center justify-between text-sm">

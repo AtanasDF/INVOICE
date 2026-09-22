@@ -56,9 +56,9 @@ try {
 
   await page.goto(`${BASE}/clients`, { waitUntil: "networkidle0" });
   await waitText(page, "Acme Ltd");
-  const texts = await page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Text").length);
+  const texts = await page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Send a text").length);
   check("clients: Text only for clients with a phone", texts === 1, String(texts));
-  await clickText(page, "Text");
+  await clickText(page, "Send a text");
   await sleep(300);
   const panel = await page.evaluate(() => document.getElementById("text-customer-message")?.value);
   check("clients: Text opens the messages", panel?.startsWith("Hi Jane, it's Harness Plumbing. I'm on my way"), panel);

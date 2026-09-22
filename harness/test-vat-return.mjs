@@ -36,7 +36,7 @@ try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/expenses`, { waitUntil: "networkidle0" });
   await sleep(600);
-  check("Expenses links to VAT", (await bodyText(page)).includes("VAT →"));
+  check("Expenses links to VAT", await page.evaluate(() => [...document.querySelectorAll("a")].some((a) => a.textContent.trim() === "VAT" && a.getAttribute("href") === "/vat")));
   await page.goto(`${BASE}/vat`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.body.innerText.includes("Box 1"), { timeout: 15000 });
   let t = await bodyText(page);
