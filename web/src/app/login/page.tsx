@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { saveFailed } from "@/lib/errorText";
 
@@ -51,12 +51,50 @@ function PasswordField({
 
 // After sign-in the Gate in AppShell owns the redirect (it reads ?next).
 export default function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot" | "check-email">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The address a confirmation email went to, and whether a sign-in was
+  // refused for want of that click, so "Send it again" knows where.
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [unconfirmed, setUnconfirmed] = useState(false);
+
+  // A confirmation or reset link that has expired lands back here with the
+  // reason in the address; say it in plain words rather than show nothing.
+  useEffect(() => {
+    // After the first paint, so the server-rendered page and the first
+    // client render agree; the message arrives a tick later.
+    const timer = setTimeout(() => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const reason = hash.get("error_description") ?? "";
+      if (!reason) return;
+      setError(/expired|invalid/i.test(reason) ? "That link has expired or was already used. Sign in and, if it asks, send yourself a new one." : reason.replace(/\+/g, " "));
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const confirmTo = () => ({ emailRedirectTo: `${window.location.origin}/login?next=%2F` });
+
+  async function resend() {
+    const to = pendingEmail || email;
+    if (!to) return;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: to, options: confirmTo() });
+      if (error) throw error;
+      setInfo(`Sent again to ${to}. Give it a minute, and check the junk folder too.`);
+    } catch (err) {
+      setError(saveFailed(err, "Couldn't send it again just now."));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -78,14 +116,22 @@ export default function LoginPage() {
         if (error) throw error;
         setInfo("If that email has an account, a password reset link is on its way. Check your inbox.");
       } else if (mode === "signin") {
+        setUnconfirmed(false);
         const { error } = await supabase.auth.signInWithPassword({ email: formEmail, password: formPassword });
-        if (error) throw error;
+        if (error) {
+          if (/not confirmed/i.test(error.message)) {
+            setPendingEmail(formEmail);
+            setUnconfirmed(true);
+            throw new Error("That email hasn't been confirmed yet. Look for our email and tap the link in it, or send it again below.");
+          }
+          throw error;
+        }
       } else {
-        const { data, error } = await supabase.auth.signUp({ email: formEmail, password: formPassword });
+        const { data, error } = await supabase.auth.signUp({ email: formEmail, password: formPassword, options: confirmTo() });
         if (error) throw error;
         if (!data.session) {
-          setInfo("Account created. Check your email to confirm it, then sign in.");
-          setMode("signin");
+          setPendingEmail(formEmail);
+          setMode("check-email");
         }
       }
     } catch (err) {
@@ -97,10 +143,54 @@ export default function LoginPage() {
 
   const titles = {
     signin: ["Sign in", "Welcome back."],
-    signup: ["Create your account", "Track invoices, receipts and expenses in one place."],
+    signup: ["Make your sign-in", "Invoices, receipts and expenses in one place."],
     forgot: ["Reset your password", "We'll email you a link to set a new one."],
+    "check-email": ["Check your email", `We've sent a link to ${pendingEmail}. Tap it to finish, then come back here.`],
   } as const;
   const [title, subtitle] = titles[mode];
+
+  if (mode === "check-email") {
+    return (
+      <div className="mx-auto max-w-sm space-y-6">
+        <div>
+          <p className="text-sm font-medium text-neutral-500">Invoicer — invoices, receipts, and expenses in one place.</p>
+          <h1 className="mt-3 text-2xl font-bold">{title}</h1>
+          <p className="mt-1 text-neutral-600">{subtitle}</p>
+        </div>
+        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <p className="text-sm text-neutral-600">Nothing there after a minute? Check the junk folder, or send it again.</p>
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          {info && <p className="text-sm text-neutral-700">{info}</p>}
+          <p role="status" className="sr-only">{info ?? ""}</p>
+          <button type="button" onClick={resend} disabled={busy} className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {busy ? "Please wait…" : "Send it again"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("signin");
+              setError(null);
+              setInfo(null);
+            }}
+            className="w-full rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
+          >
+            I&apos;ve tapped the link, sign me in
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("signup");
+            setError(null);
+            setInfo(null);
+          }}
+          className="text-sm font-medium text-neutral-700 underline"
+        >
+          Wrong address? Start again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-sm space-y-6">
@@ -137,19 +227,24 @@ export default function LoginPage() {
               setError(null);
               setInfo(null);
             }}
-            className="text-sm font-medium text-blue-600"
+            className="text-sm font-medium text-neutral-700 underline"
           >
             Forgot password?
           </button>
         )}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {info && <p className="text-sm text-green-700">{info}</p>}
+        {unconfirmed && (
+          <button type="button" onClick={resend} disabled={busy} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+            Send the email again
+          </button>
+        )}
+        {info && <p className="text-sm text-neutral-700">{info}</p>}
         <p role="status" className="sr-only">{info ?? ""}</p>
         <button
           disabled={busy}
           className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Sign up" : "Send reset link"}
+          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Make my sign-in" : "Send reset link"}
         </button>
       </form>
 
@@ -159,9 +254,9 @@ export default function LoginPage() {
           setError(null);
           setInfo(null);
         }}
-        className="text-sm font-medium text-blue-600"
+        className="text-sm font-medium text-neutral-700 underline"
       >
-        {mode === "signup" ? "Already have an account? Sign in" : "Need an account? Sign up"}
+        {mode === "signup" ? "Already have a sign-in? Sign in" : "New here? Make a sign-in"}
       </button>
     </div>
   );
