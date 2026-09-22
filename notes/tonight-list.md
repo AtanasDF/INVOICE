@@ -45,8 +45,22 @@ What exists: a Feedback pill on every signed-in page, a /feedback page (category
 28. The picture: photo or drawing, then make it; page ships without it if not ready (decision + an evening).
 29. Try the page on three people, two questions (Atanas).
 
-## 4. Settings page (his voice notes still to come; screenshots only)
-30. Copy fixes: stale logo sentence, garbled VAT sentence, numbering text, "no delete button", Notifications lists all four pushes, address not "(optional)" for VAT/limited (minutes).
+## 4. Settings page
+
+**His voice notes, typed out at 04:00:**
+- Expense categories should follow the kind of account (personal, sole trader, limited company) and change with it. Proposal below.
+- Invoice numbering: one line. No essay.
+- VAT: one switch, with or without VAT, then the VAT number. No explanation.
+- Address finder "doesn't work at all". Reproduced on the live site: SE18 1HU lists nothing but the postcode; tapping it fills only the town and postcode. "149 Benares Road" lists the street, then schools in Devon and Hampshire. Cause: OpenStreetMap, the free source, holds no houses for most UK postcodes; Royal Mail's file (paid) holds every address. Decision below.
+- Company name: type three letters and a list appears, narrowing as you type; picking one fills the company number; a full company number fills the name. The first two are built and work behind the Companies House key, which is not set on the live site, so today the boxes are plain. Number-to-name to check and add.
+- Check a company: names, numbers and the facts appear in the app, with a link to the government page; today, without the key, the page can only send people to the government's own search.
+
+**Categories by account kind, proposal.** The kind picked at the top of Settings chooses the starting list. A list someone has already changed is kept as it is; changing the kind offers "Switch to the sole-trader list", which adds what is missing and never removes anything (receipts keep whatever category they have). Mileage stays its own thing.
+- Personal: Groceries, Household, Rent or mortgage, Bills, Gas & Electric, Transport & Taxis, Fuel, Travel, Meals & eating out, Clothes, Health, Childcare, Subscriptions, Gifts, Other.
+- Sole trader, matching the boxes on the self-assessment form: Materials & stock, Subcontractors, Staff wages, Fuel & mileage, Travel & hotels, Meals when away, Rent, rates & utilities, Repairs, Phone & internet, Office & stationery, Software & subscriptions, Advertising, Bank charges & interest, Accountant & legal, Insurance, Tools & equipment, Training, Other.
+- Limited company: the sole-trader list plus Salaries & PAYE, Pension contributions, Director's expenses, Client entertaining (not allowable, kept apart so the accountant sees it).
+
+30. Copy fixes: stale logo sentence, "no delete button", Notifications lists all four pushes, address not "(optional)" for VAT/limited (minutes). VAT card becomes one switch and the number box; numbering becomes one line (an hour).
 31. Neutral colours: radios and checkboxes, eleven red Remove links, red Regenerate button (minutes).
 32. Cards in a new user's order, account and Sign out last; dashboard reminder switch moved to Notifications (minutes).
 33. Feedback pill stops covering text and Save (an hour).
@@ -58,6 +72,9 @@ What exists: a Feedback pill on every signed-in page, a /feedback page (category
 39. Small: shortened import address with Reveal/Copy on their own row; yellow autofill boxes; VAT number shape note (an hour).
 40. Logo upload now storage exists (decision; an evening).
 41. Personal use adapts the cards (decision; an evening).
+42a. Categories follow the account kind, as proposed above (an evening; Atanas: agree the three lists).
+42b. Address finder: pick the address data (decision below), then the paid lookup goes live behind the key with the free one as fallback; the free fallback stops listing places hundreds of miles away and says plainly when it has no houses for a postcode (an evening; Atanas: account and key).
+42c. Companies House key, so the name list, the number fill and Check a company work live; then number-to-name; then Check a company keeps the facts in the app with a link out to the register (minutes for the key, an evening for the rest; Atanas: registers at the Companies House Developer Hub, Claude guides on screen).
 42. Fill in business details on Hidefield: company number, bank, VAT switch, and the invoice prefix and next number (the notes say 357358) (minutes; Atanas only).
 
 ## 5. Scanner
