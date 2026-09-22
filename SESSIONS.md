@@ -517,6 +517,46 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   not the dashboard. `test-plain-words` also walks 20 signed-in pages for developer and
   talking-down words (7/7); settings-add, no-accidents, sign-up (the link back to the
   Free page), settings-save, labels, clear, what-surfaces, empty-account green.
+- **52, the harness's own blind spots**: four suites had been "green" while stopping
+  part-way — `test-uploads` after 2 of 15 checks, `test-review-fixes` before its first,
+  `test-company-picker` after 18 of 39, `test-receipts-list` after 31 of 48 — because
+  their upload files (`harness/uploads/`, `harness/multi/`) lived only in a wiped
+  scratchpad, and because `run-one.sh` judged by passed == total, which a throw after
+  some passes satisfies. `gen-uploads.py` and `gen-multi.py` make the files again (PDFs
+  carrying DOC1..3 in UTF-16, photos told apart by pixel size, as the stand-in readers
+  expect); `run-all.sh` makes them when missing; `run-one.sh` counts any ERROR line as a
+  crash. `test-company` read the address as the one text box it was before 2026-09-20
+  (now four boxes) and `test-receipts-list` pressed "which?" and "link them" (now shown
+  straight away for three or fewer, and "Link 3"). All four repaired: uploads 15/15,
+  review-fixes 21/21, company-picker 39/39, receipts-list 48/48, company 22/22; and
+  `test-multi-docs` (33/33) — the only test of several documents in one scan and Save
+  all ready, which had never run in this checkout — is in the runner with `test-company`.
+- **29b, Copy a document** (his "another scanner button ... to scan files, no matter
+  what files ... export them or send them to someone directly for free"): `/copy` —
+  "Take photos" (the batch camera, its review now saying "Check your photos" / "Use N
+  pages" with no grouping) or "Choose files", pages in order that can be moved and
+  removed, a name for the file, then "Save the file", "Share", or "Or email it to
+  someone" through `POST /api/send-document` (fenced like invoice sending: signed in and
+  confirmed, a real PDF under 4 MB, fixed wording with the note quoted, Reply-to the
+  sender, 10 an hour / 30 a day). One PDF, an A4 page per photo turned to match it, a
+  PDF's own pages copied in (`src/lib/documentPdf.ts`). Nothing read, nothing kept;
+  signed-in only per his rule, a stranger asked to sign in and brought back. Ways in: the
+  front door (a third line), the free page, the Add sheet, More pages. No daily cap, as
+  he said. `test-copy-document` 20/20 (stranger, camera opens and closes, three files to
+  three pages, remove, move, save with the page count and orientation checked, share,
+  email, a refused send), `test-send-document` 12/12 (its own dev server and a Resend
+  stand-in).
+- **8, 11**: the four sign-in emails in plain words in `web/supabase/email-templates/`
+  with a README saying where to paste each; the sign-up email carries a six-digit code
+  and the check-email screen a box for it (`verifyOtp`), for someone who opens the email
+  on another device. `test-sign-up` 18/18 (a wrong code, a short one, the right one
+  signing in and going on to the Free page).
+- **38**: a record's own category stays choosable in every drop-down, and the receipts
+  filter offers every category receipts carry (`withCurrent`, `withUsed`);
+  `test-receipts-list` 50/50.
+- **Full run with the stricter judge** (before the last three): 89 suites, 87 green; the
+  two others were `test-check-company` beside the other dev-server suites (now run one at
+  a time — 54/54 alone) and `test-sign-up` mid-edit (18/18 on the new build).
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.
