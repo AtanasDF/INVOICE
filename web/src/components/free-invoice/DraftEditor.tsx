@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useId, useState } from "react";
-import { addDays, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, readSavedSignature, saveSignature, termsDays } from "@/lib/freeInvoiceDraft";
+import { addDays, draftHasMore, emptyLine, FreeInvoiceDraft, FreeInvoiceLine, PAYMENT_TERMS, readSavedSignature, saveSignature, termsDays } from "@/lib/freeInvoiceDraft";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS } from "@/lib/vat";
 import { Field, INPUT, NumberInput, Segmented, Toggle } from "@/components/free-invoice/fields";
 import LayoutPicker from "@/components/free-invoice/LayoutPicker";
@@ -111,22 +111,15 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
     setHasSaved(false);
   }
 
+  // Four boxes make an invoice; the rest waits behind one button, and comes
+  // out on its own when the draft already has something there.
+  const [moreOpen, setMoreOpen] = useState(() => draftHasMore(draft));
+  const more = moreOpen || draftHasMore(draft);
+
   return (
     <div className="space-y-4">
-      <Card title="Making">
-        <Segmented
-          label="Document"
-          value={draft.docType}
-          options={[{ value: "invoice", label: "Invoice" }, { value: "quote", label: "Quote" }]}
-          onChange={(docType) => setDocType(docType)}
-        />
-        {quote && <p className="text-xs text-neutral-500">A quote shows what the job will cost, valid until a date. No payment terms or bank details.</p>}
-      </Card>
-
-      <Card title="Layout">
-        <LayoutPicker value={draft.layout} onChange={(layout) => set({ layout })} />
-      </Card>
-
+      {more ? (
+        <>
       <Card title="Your business">
         <TextFields
           value={draft.issuer}
@@ -150,37 +143,6 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           ]}
         />
       </Card>
-
-      <Card title={quote ? "Quote" : "Invoice"}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={quote ? "Quote number" : "Invoice number"}>
-            <input className={INPUT} placeholder={quote ? "Q-001" : "INV-001"} value={draft.number} onChange={(e) => set({ number: e.target.value })} />
-          </Field>
-          <Field label="Currency symbol">
-            <input className={INPUT} value={draft.currencySymbol} onChange={(e) => set({ currencySymbol: e.target.value })} />
-          </Field>
-          <Field label="Date">
-            <input type="date" className={INPUT} value={draft.date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <Field label={quote ? "Valid until" : "Due date"}>
-            <input type="date" className={INPUT} value={draft.dueDate} onChange={(e) => set({ dueDate: e.target.value })} />
-          </Field>
-          {!quote && (
-            <Field label="Payment terms">
-              <select className={INPUT} value={termsValue} onChange={(e) => setTerms(e.target.value)}>
-                {PAYMENT_TERMS.map((t) => <option key={t} value={t}>{t}</option>)}
-                <option value="custom">Custom…</option>
-              </select>
-            </Field>
-          )}
-          {!quote && termsValue === "custom" && (
-            <Field label="Custom terms">
-              <input className={INPUT} placeholder="e.g. 50% on completion" value={draft.paymentTerms} onChange={(e) => set({ paymentTerms: e.target.value })} />
-            </Field>
-          )}
-        </div>
-      </Card>
-
       <Card title={quote ? "Quote for" : "Bill to"}>
         <TextFields
           value={draft.customer}
@@ -193,29 +155,37 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           ]}
         />
       </Card>
-
-      <Card title="Options">
-        <Toggle label="VAT registered" description="Adds your VAT number, a VAT column and the VAT total." checked={draft.vatRegistered} onChange={(vatRegistered) => set({ vatRegistered })} />
-        {draft.vatRegistered && (
-          <Toggle label="Reverse charge" description={`Charges no VAT on every line and prints "Reverse charge: VAT Act 1994 Section 55A applies".`} checked={draft.reverseCharge} onChange={(reverseCharge) => set({ reverseCharge })} />
-        )}
-        {!quote && (
-          <Toggle label="CIS subcontractor" description="Splits labour from materials and shows the CIS deduction." checked={draft.cis.enabled} onChange={(enabled) => set({ cis: { ...draft.cis, enabled } })} />
-        )}
-        {!quote && draft.cis.enabled && (
-          <div>
-            <p className="text-xs text-neutral-500">CIS rate</p>
-            <Segmented
-              className="mt-1"
-              label="CIS rate"
-              value={String(draft.cis.rate)}
-              options={[{ value: "20", label: "20%" }, { value: "30", label: "30%" }]}
-              onChange={(v) => set({ cis: { ...draft.cis, rate: v === "30" ? 30 : 20 } })}
-            />
-          </div>
-        )}
+        </>
+      ) : (
+        <>
+      <Card title="Your business">
+        <TextFields
+          value={draft.issuer}
+          onChange={(issuer) => set({ issuer })}
+          addressKey="address"
+          fields={[
+            {
+              key: "name",
+              label: "Business name",
+              span: true,
+              hint: draft.issuer.name ? undefined : `Add your name so the customer knows who to pay.${lookupOn ? " A limited company? Type its name and pick it to fill in the address and company number." : ""}`,
+              lookup: (c) => ({ name: c.name, companyNumber: c.number }),
+            },
+          ]}
+        />
       </Card>
-
+      <Card title={quote ? "Quote for" : "Bill to"}>
+        <TextFields
+          value={draft.customer}
+          onChange={(customer) => set({ customer })}
+          addressKey="address"
+          fields={[
+            { key: "name", label: "Customer name", span: true, lookup: (c) => ({ name: c.name }) },
+          ]}
+        />
+      </Card>
+        </>
+      )}
       <Card title="Lines">
         <div className="space-y-3">
           {draft.lines.map((l, i) => (
@@ -272,6 +242,83 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         </button>
       </Card>
 
+      {!more && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className="flex min-h-14 w-full items-center justify-center rounded-xl border-2 border-neutral-900 bg-white px-4 py-3 text-center text-lg font-bold text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            Add more details
+          </button>
+          <p className="text-base text-neutral-600">Dates, addresses, VAT, how to pay, a note, a signature, a quote instead.</p>
+        </div>
+      )}
+
+      {more && (
+        <>
+      <Card title="Making">
+        <Segmented
+          label="Document"
+          value={draft.docType}
+          options={[{ value: "invoice", label: "Invoice" }, { value: "quote", label: "Quote" }]}
+          onChange={(docType) => setDocType(docType)}
+        />
+        {quote && <p className="text-xs text-neutral-500">A quote shows what the job will cost, valid until a date. No payment terms or bank details.</p>}
+      </Card>
+      <Card title="Layout">
+        <LayoutPicker value={draft.layout} onChange={(layout) => set({ layout })} />
+      </Card>
+      <Card title={quote ? "Quote" : "Invoice"}>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={quote ? "Quote number" : "Invoice number"}>
+            <input className={INPUT} placeholder={quote ? "Q-001" : "INV-001"} value={draft.number} onChange={(e) => set({ number: e.target.value })} />
+          </Field>
+          <Field label="Currency symbol">
+            <input className={INPUT} value={draft.currencySymbol} onChange={(e) => set({ currencySymbol: e.target.value })} />
+          </Field>
+          <Field label="Date">
+            <input type="date" className={INPUT} value={draft.date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label={quote ? "Valid until" : "Due date"}>
+            <input type="date" className={INPUT} value={draft.dueDate} onChange={(e) => set({ dueDate: e.target.value })} />
+          </Field>
+          {!quote && (
+            <Field label="Payment terms">
+              <select className={INPUT} value={termsValue} onChange={(e) => setTerms(e.target.value)}>
+                {PAYMENT_TERMS.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value="custom">Custom…</option>
+              </select>
+            </Field>
+          )}
+          {!quote && termsValue === "custom" && (
+            <Field label="Custom terms">
+              <input className={INPUT} placeholder="e.g. 50% on completion" value={draft.paymentTerms} onChange={(e) => set({ paymentTerms: e.target.value })} />
+            </Field>
+          )}
+        </div>
+      </Card>
+      <Card title="Options">
+        <Toggle label="VAT registered" description="Adds your VAT number, a VAT column and the VAT total." checked={draft.vatRegistered} onChange={(vatRegistered) => set({ vatRegistered })} />
+        {draft.vatRegistered && (
+          <Toggle label="Reverse charge" description={`Charges no VAT on every line and prints "Reverse charge: VAT Act 1994 Section 55A applies".`} checked={draft.reverseCharge} onChange={(reverseCharge) => set({ reverseCharge })} />
+        )}
+        {!quote && (
+          <Toggle label="CIS subcontractor" description="Splits labour from materials and shows the CIS deduction." checked={draft.cis.enabled} onChange={(enabled) => set({ cis: { ...draft.cis, enabled } })} />
+        )}
+        {!quote && draft.cis.enabled && (
+          <div>
+            <p className="text-xs text-neutral-500">CIS rate</p>
+            <Segmented
+              className="mt-1"
+              label="CIS rate"
+              value={String(draft.cis.rate)}
+              options={[{ value: "20", label: "20%" }, { value: "30", label: "30%" }]}
+              onChange={(v) => set({ cis: { ...draft.cis, rate: v === "30" ? 30 : 20 } })}
+            />
+          </div>
+        )}
+      </Card>
       {!quote && (
         <Card title="Payment details">
           <TextFields
@@ -287,13 +334,11 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           />
         </Card>
       )}
-
       <Card title="Notes">
         <Field label="Notes" hint="Shown above the payment details.">
           <textarea rows={3} className={INPUT} placeholder="Thank you for your business." value={draft.notes} onChange={(e) => set({ notes: e.target.value })} />
         </Field>
       </Card>
-
       <Card title="Signature">
         <Tip id="free-invoice-signature">Sign once and it&apos;s remembered on this device for every invoice you make here.</Tip>
         <SignaturePad
@@ -326,12 +371,13 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
           </Field>
         )}
       </Card>
-
       <Card title="Footer">
         <Field label="Footer" hint="Small print at the very bottom, after your UTR, company and VAT numbers.">
           <textarea rows={2} className={INPUT} value={draft.footer} onChange={(e) => set({ footer: e.target.value })} />
         </Field>
       </Card>
+        </>
+      )}
     </div>
   );
 }

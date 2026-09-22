@@ -18,14 +18,21 @@ const type = (i, label, text) => page.evaluate((i, label, text) => {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("blur", { bubbles: true }));
 }, i, label, text);
+// The note under the list is the block's own 12px paragraph (it was 11px
+// before the contrast floor of 2026-09-22).
+const noteIn = (i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("p.text-xs");
 const findIn = async (i) => {
   await page.evaluate((i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("button").click(), i);
-  await page.waitForFunction(() => { const n = [...document.querySelectorAll("p")].find((p) => p.className.includes("text-[11px]")); return n && !/Searching/.test(n.textContent); }, { timeout: 20000 });
+  await page.waitForFunction((i) => { const n = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("p.text-xs"); return n && !/Searching/.test(n.textContent) && !/Fill in a postcode|Lists the addresses/.test(n.textContent); }, { timeout: 20000 }, i);
   await sleep(200);
-  return page.evaluate(() => ({
-    options: [...document.querySelectorAll('[role="option"]')].map((o) => o.textContent),
-    note: [...document.querySelectorAll("p")].find((p) => p.className.includes("text-[11px]"))?.textContent,
-  }));
+  return page.evaluate((i) => {
+    const block = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2");
+    const notes = [...block.querySelectorAll("p.text-xs")];
+    return {
+      options: [...block.querySelectorAll('[role="option"]')].map((o) => o.textContent),
+      note: notes.map((n) => n.textContent).find((t) => !/Fill in a postcode|Lists the addresses/.test(t)) ?? notes.at(-1)?.textContent,
+    };
+  }, i);
 };
 const pickOption = (re) => page.evaluate((src) => { const o = [...document.querySelectorAll('[role="option"] button')].find((x) => new RegExp(src).test(x.textContent)); o?.click(); return !!o; }, re);
 try {
@@ -34,6 +41,10 @@ try {
   await page.reload({ waitUntil: "networkidle0" });
   await clickText(page, "Start a quote");
   await sleep(500);
+  // The addresses sit behind "Add more details" until something is in them.
+  check("a fresh editor shows no address boxes yet", (await blocks()).length === 0, String((await blocks()).length));
+  await clickText(page, "Add more details");
+  await sleep(400);
   check("address fields on both addresses", (await blocks()).length === 2, String((await blocks()).length));
   check("no separate find box or address textarea any more", !(await page.$('input[placeholder="Find address: postcode, or number and street"]')) && (await page.$$('textarea[aria-label]')).length === 0);
 

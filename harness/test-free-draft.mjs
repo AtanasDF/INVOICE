@@ -40,6 +40,18 @@ try {
   // It opens on a chooser: blank, a quote, or scan one you've sent before.
   await clickText(page, "Type it in");
   await sleep(1200);
+  // Four boxes make an invoice; the rest waits behind one button.
+  const fresh = await page.evaluate(() => ({
+    boxes: [...document.querySelectorAll("main input, main textarea, main select")].filter((e) => e.offsetParent !== null).length,
+    text: document.querySelector("main")?.innerText ?? "",
+  }));
+  check("a fresh editor shows only the boxes that make an invoice, and one way to add more", fresh.boxes <= 6 && fresh.text.includes("Add more details") && !fresh.text.includes("Payment details") && !fresh.text.includes("Footer"), JSON.stringify({ boxes: fresh.boxes }));
+  await clickText(page, "Add more details");
+  await sleep(400);
+  const opened = await page.evaluate(() => document.querySelector("main")?.innerText ?? "");
+  check("Add more details brings out the dates, addresses, VAT, bank details, notes and signature", /Payment details/.test(opened) && /Signature/.test(opened) && /Due date/.test(opened) && /VAT registered/.test(opened), opened.slice(0, 200));
+  await page.evaluate(() => [...document.querySelectorAll("main button")].find((b) => b.textContent.trim() === "Print")?.getBoundingClientRect());
+  check("Print is a visible button in the phone bar", await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Print"); return !!b && b.offsetParent !== null; }));
   const typedBusiness = await type("your business|business name|from", "Dave's Plastering");
   const typedCustomer = await type("customer|bill to|client name", "Mrs Henderson");
   const typedItem = await type("description|what you did|item", "Skim two ceilings");

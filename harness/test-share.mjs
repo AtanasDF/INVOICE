@@ -20,6 +20,9 @@ try {
   await page.reload({ waitUntil: "networkidle0" });
   await clickText(page, "Type it in");
   await sleep(500);
+  // The invoice number sits behind "Add more details".
+  await clickText(page, "Add more details");
+  await sleep(300);
   await page.evaluate(() => {
     const setVal = (el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); };
     const byLabel = (t) => [...document.querySelectorAll("p,label,span")].find((x) => x.textContent.trim() === t)?.closest("div")?.querySelector("input");

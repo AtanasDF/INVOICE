@@ -476,6 +476,15 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   Focus rings on the front door's two buttons, the free page's chooser and the Check
   button, for a keyboard. check-company 54/54, plain-words, first-page, fit-320,
   free-draft, company-number green.
+- **First page, 19**: the free editor opens with the four boxes that make an invoice —
+  your business name, who it is for, what you did, how much — and one big "Add more
+  details" (dates, addresses, VAT, how to pay, a note, a signature, a quote instead);
+  a draft that already carries any of that (typed, read from a photo, imported) opens
+  with everything showing (`draftHasMore` in `freeInvoiceDraft.ts`; a remembered
+  signature doesn't count). "Print" is its own button in the phone bar. free-draft
+  12/12 (three new checks), address-fields 25/25 (its note finder follows the 12px
+  note), share, keyboards, labels, one-handed, fit-320, plain-words, first-page, tips,
+  what-surfaces, weight green; `test-company` fails exactly as before tonight.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

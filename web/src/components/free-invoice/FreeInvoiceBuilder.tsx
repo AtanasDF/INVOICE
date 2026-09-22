@@ -238,8 +238,7 @@ export default function FreeInvoiceBuilder() {
     <>
       {moreOpen && (
         <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border bg-white shadow-lg">
-          <button type="button" onClick={() => { setMoreOpen(false); print(); }} className={menuItem}>Print or save</button>
-          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>{quote ? "Next quote" : "Next invoice"}</button>
+          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={menuItem}>{quote ? "Next quote" : "Next invoice"}</button>
           <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Keep a copy in the app</button>
           <button type="button" onClick={() => { setMoreOpen(false); startOver(); }} className={`${menuItem} border-t text-neutral-600`}>Start over</button>
         </div>
@@ -247,8 +246,11 @@ export default function FreeInvoiceBuilder() {
       <button type="button" onClick={goToSend} className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white">
         Send or share
       </button>
-      <button type="button" onClick={() => setTab(tab === "edit" ? "preview" : "edit")} className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-neutral-700">
+      <button type="button" onClick={() => setTab(tab === "edit" ? "preview" : "edit")} className="flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium text-neutral-700">
         {tab === "edit" ? "Preview" : "Edit"}
+      </button>
+      <button type="button" onClick={print} className="rounded-lg border px-3 py-2.5 text-sm font-medium text-neutral-700">
+        Print
       </button>
       <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} className="rounded-lg border px-3 py-2.5 text-sm font-medium text-neutral-700">
         More

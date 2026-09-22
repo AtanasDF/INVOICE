@@ -325,3 +325,25 @@ export function computeDraftTotals(d: FreeInvoiceDraft): DraftTotals {
     reverseChargeVat: reverse ? round(subtotal * VAT_RATES.standard) : 0,
   };
 }
+
+// Whether the draft carries anything beyond the four boxes that make an
+// invoice (your name, who it is for, what you did, how much). The editor
+// opens with just those and folds the rest under "Add more details"
+// (notes/first-page-research.md); a draft that already has an address, a
+// VAT setting, bank details or a signature -- typed, scanned or imported --
+// shows everything, so nothing filled in is ever out of sight.
+export function draftHasMore(d: FreeInvoiceDraft): boolean {
+  const filled = (v: unknown) => typeof v === "string" && v.trim().length > 0;
+  const i = d.issuer ?? ({} as FreeInvoiceDraft["issuer"]);
+  const c = d.customer ?? ({} as FreeInvoiceDraft["customer"]);
+  const b = d.bank ?? ({} as FreeInvoiceDraft["bank"]);
+  return (
+    // The signature is left out: a saved one comes back on its own and is
+    // not something the person put on this draft.
+    [i.address, i.email, i.phone, i.website, i.utr, i.vatNumber, i.companyNumber, c.address, c.email, b.accountName, b.sortCode, b.accountNumber, b.iban, b.reference, d.notes, d.footer].some(filled) ||
+    (d.layout ?? "modern") !== "modern" ||
+    !!d.vatRegistered ||
+    !!d.reverseCharge ||
+    !!d.cis?.enabled
+  );
+}
