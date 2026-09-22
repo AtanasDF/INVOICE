@@ -200,6 +200,16 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   downloads 13 MB of OpenCV before any green lines can appear, and it looks broken until
   then. Not started — "don't change anything for now".
 
+## The first page (Atanas, 22 September, 02:20)
+
+- [ ] **One first page for strangers: Free invoice and Check a company together.** His
+  brief, verbatim in spirit: a nice picture of the scan/camera; everything done with one
+  or two buttons; every word "precise, delicate, posh, polite, understandable"; not
+  overloaded, not confusing — "three old kids should be able to do that": older people,
+  children, people who don't understand technology. Research first (`notes/first-page-
+  research.md`), then a design he reacts to, then the build. Today's page opens with "How
+  do you want to start?" and four choices with a paragraph each.
+
 ## Bigger pieces
 
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item. Deferred on
