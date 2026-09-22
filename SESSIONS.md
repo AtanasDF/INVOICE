@@ -554,6 +554,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
 - **38**: a record's own category stays choosable in every drop-down, and the receipts
   filter offers every category receipts carry (`withCurrent`, `withUsed`);
   `test-receipts-list` 50/50.
+- **40, a logo** (d949a4f): Your business in Settings takes a PNG or JPEG ("Add a
+  logo", "Change logo", "Remove logo", which asks first), shrinks it to 600 pixels on the
+  device and keeps it in the account's own folder of the photo bucket (`<uid>/logo/`).
+  It heads the invoice and the quote on screen, printed, in the PDF and on the
+  customer's /i/ and /q/ pages. Settings had been saving `logo_url: null` every time,
+  so a logo would have gone with the next save of anything. The customer pages read the
+  file with the service role, so only a path inside the link owner's own logo folder is
+  read, never one with "..". `test-logo` 13/13; `test-public-logo` 27/27 (its own dev
+  server; someone else's folder, a climb out, a missing file and no logo all show none,
+  and storage is only ever read for the owner's folder); twenty neighbouring suites
+  green. The customer pages turn out to be drawn in the browser, not in the server's
+  HTML, so a check on the raw page proves nothing either way.
 - **Full run with the stricter judge** (before the last three): 89 suites, 87 green; the
   two others were `test-check-company` beside the other dev-server suites (now run one at
   a time — 54/54 alone) and `test-sign-up` mid-edit (18/18 on the new build).
