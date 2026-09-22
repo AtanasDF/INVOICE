@@ -1842,8 +1842,11 @@ export default function DocumentCapture({
                 ? "Ready — tap to capture"
                 : "Hold still…";
   const pill = [pageLabel, hint].filter(Boolean).join(" · ");
+  // The first open downloads the page-finder (13 MB): until it is here the
+  // camera shows and nothing is found, which read as "the scanner shows
+  // nothing" (Atanas, 2026-09-22). Say so, in words, at a readable size.
   const cvLine =
-    cvStatus === "loading" ? "Edge detection: loading…" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
+    cvStatus === "loading" ? "Getting ready… the first time takes a moment" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
 
   // iOS: the in-page live-detection camera fundamentally can't win here.
   // getUserMedia on iOS Safari returns a low-resolution, fixed-focus
@@ -2016,7 +2019,7 @@ export default function DocumentCapture({
             )}
           </div>
           {status === "live" && !shownFailure && cvLine && (
-            <div className="rounded-lg bg-black/50 px-2 py-1 text-center text-[11px] text-neutral-300">{cvLine}</div>
+            <div className="rounded-lg bg-black/60 px-3 py-1.5 text-center text-sm text-white">{cvLine}</div>
           )}
           {status === "live" && debug && (
             <div className="rounded-lg bg-black/70 px-2 py-1 text-center font-mono text-[11px] text-neutral-200">

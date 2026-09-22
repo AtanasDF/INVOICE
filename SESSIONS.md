@@ -330,6 +330,21 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   an existing invoice"` → `"Take a photo of an old invoice"`); free-draft 9/9, tips 7/7,
   share, autozoom, camera-tip, pinch, what-surfaces, labels, first-page green;
   `test-company` fails exactly as it did before tonight.
+- **Surprise 9 of 12, the sign-up that waits for the click** (his 04:05 ask: "they need to
+  click the email and approve the registration"). The app side is built for the day he
+  switches "Confirm email" on in Supabase: sign-up asks for the link to come back to the
+  app; with no session yet the page becomes "Check your email — We've sent a link to
+  <address>. Tap it to finish, then come back here." with "Send it again" (Supabase's
+  resend), "I've tapped the link, sign me in" and "Wrong address? Start again"; a sign-in
+  refused for want of the click says so in plain words with "Send the email again"; an
+  expired or used link coming back is explained, and the reason cleared from the address.
+  "Need an account? Sign up" is now "New here? Make a sign-in", the blue links grey. New
+  suite `test-sign-up` (15/15, Supabase mocked); sign-out green. Still his: the Supabase
+  switch, Site URL and redirect list, and SMTP through Resend (items 6–9).
+- **Surprise 10 of 12, "Getting ready…"**: the scanner's first open downloads 13 MB
+  before anything can be found and looked like nothing (his report last night). The
+  11-pixel "Edge detection: loading…" is now "Getting ready… the first time takes a
+  moment", white on dark, readable. camera-tip and torch-nocv green.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on
