@@ -326,7 +326,10 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
   is the camera's own still where `ImageCapture` exists (Safari 18.4+, Chrome), asked for
   ~3200x1800 because Safari otherwise returns its smallest size; it's used only if it
   matches the screen, the page is re-found near the video's corners and it's as sharp,
-  else the video frame. WebKit facts behind this are in `notes/claude-notes.md`.
+  else the video frame. WebKit facts behind this are in `notes/claude-notes.md`. Zoomed in with the page then filling the view (the phone came closer), the zoom
+  steps back out to where the page fits; a page lost altogether goes back to 1×.
+  Auto-capture waits 1.1 s of stillness (`STABLE_MS`) so the lens has focused —
+  Atanas's first real receipt was shot before it had (2026-09-22).
 - The detector looks only at what the preview shows (`visibleRegion`): the video is
   cover-fitted to the screen, so a portrait phone shows a middle strip of the sensor's
   width (about 62% of a 4:3 sensor; 566 of 720 px in the harness's 375-wide viewport). A
