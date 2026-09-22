@@ -20,6 +20,9 @@ import { SITE_NAME } from "@/lib/siteName";
 import { signedInUser } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
+// A map search can take a few seconds on its own (below), plus the postcode
+// lookups after it; a cold start on top must not be cut off.
+export const maxDuration = 30;
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
@@ -63,8 +66,13 @@ const json = (source: AddressSource, items: AddressMatch[], extra: Partial<Addre
 // A failed answer (rate limited, down) throws, so it reaches the route's
 // "not answering" reply instead of being cached as "no matches". A 404 is
 // an answer: the postcode doesn't exist.
-async function getJson<T>(url: string): Promise<{ status: number; body: T | null }> {
-  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(5000), cache: "no-store" });
+// OpenStreetMap's search (Photon, a free public server) takes about two
+// seconds a query from the UK, measured 2026-09-22, and more at busy times:
+// five seconds cut off the first live street search after a deploy.
+const MAP_MS = 8000;
+
+async function getJson<T>(url: string, ms = 5000): Promise<{ status: number; body: T | null }> {
+  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(ms), cache: "no-store" });
   if (!res.ok && res.status !== 404) throw Object.assign(new Error(`${new URL(url).host} answered ${res.status}`), { status: res.status });
   return { status: res.status, body: (await res.json().catch(() => null)) as T | null };
 }
@@ -143,7 +151,7 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
   const postcode = normalisePostcode(q);
   if (!postcode) {
     const url = `${PHOTON}/api/?q=${encodeURIComponent(q)}&countrycode=GB&layer=house&layer=street&limit=8&lang=en`;
-    const { body } = await getJson<Photon>(url);
+    const { body } = await getJson<Photon>(url, MAP_MS);
     const houseNumber = /^(\d+[a-z]?(?:-\d+[a-z]?)?)\s+\S/i.exec(q)?.[1];
     const typed = typedParts(q);
     const words = [...typed.must, ...typed.may];
@@ -183,7 +191,8 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
   const at = where.body?.result;
   if (!at?.latitude || !at.longitude) return { source: "osm", items: [] };
   const { body } = await getJson<Photon>(
-    `${PHOTON}/reverse?lat=${at.latitude}&lon=${at.longitude}&radius=${REVERSE_RADIUS_KM}&limit=50&lang=en`
+    `${PHOTON}/reverse?lat=${at.latitude}&lon=${at.longitude}&radius=${REVERSE_RADIUS_KM}&limit=50&lang=en`,
+    MAP_MS
   );
   const props = (body?.features ?? []).map((f) => f.properties ?? {});
   const town = townCase(postcodeTown(postcode, at.bua, props.map((p) => p.city ?? ""), at.admin_district));
@@ -324,7 +333,7 @@ export async function POST(req: Request) {
     const result = paf ? await searchPaf(q, key!).catch((err) => {
       // Out of credit or down: the free lookup is better than nothing.
       if (!restIfRefused(err)) console.error("address-search: Royal Mail lookup failed,", err instanceof Error ? err.message : err);
-      return searchOsm(q);
+      return cached("osm") ?? searchOsm(q);
     }) : await searchOsm(q);
     if (cache.size > 500) cache.clear();
     cache.set(`${result.source}:${q.toLowerCase()}`, { at: Date.now(), result });

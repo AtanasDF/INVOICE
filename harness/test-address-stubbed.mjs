@@ -72,7 +72,7 @@ const PAF_LIST = {
     { line_1: "Flat 1", line_2: "151 Benares Road", line_3: "", post_town: "LONDON", postcode: "SE18 1HU", udprn: 11111151 },
   ],
 };
-const stub = { paf: "ok", log: [] };
+const stub = { paf: "ok", log: [], photonFails: 0 };
 const send = (res, status, body) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
 const stubServer = http.createServer((req, res) => {
   let raw = "";
@@ -98,6 +98,12 @@ const stubServer = http.createServer((req, res) => {
         });
       }
       return send(res, 400, { status: 400, error: "bad bulk" });
+    }
+    // The free map failing, as it did on the first live search after a
+    // deploy: a bad gateway for the next photonFails calls.
+    if (u.pathname.startsWith("/photon/") && stub.photonFails > 0) {
+      stub.photonFails--;
+      return send(res, 502, { message: "bad gateway" });
     }
     if (u.pathname === "/photon/reverse") {
       const lat = Number(u.searchParams.get("lat")), lon = Number(u.searchParams.get("lon"));
@@ -293,6 +299,19 @@ try {
   f = await block(1);
   check("picking the street keeps the number typed and the postcode", f.line1 === "149 Benares Road" && f.town === "London" && f.postcode === "SE18 1HU", JSON.stringify(f));
   check("the Free page never asked for Royal Mail's list", idealCalls() === 4, String(idealCalls()));
+
+  // The map fails once: the box asks again by itself and the list comes.
+  stub.photonFails = 1;
+  asked.length = 0;
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll('input[aria-label="Postcode"]')][1];
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await (await input(1, "Postcode")).type("SE18 1HS", { delay: 60 });
+  const retried = await waitOptions(1, 12000);
+  f = await block(1);
+  check("a search the map fails once is asked again by itself, and answers", retried && f.options[0] === "SE18 1HS, London" && asked.filter((a) => a.q === "SE18 1HS").length === 2 && !/isn't answering/.test(f.note), JSON.stringify({ f, asked }));
   check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
   // ---- Signed in: Royal Mail's list, then the key refused -----------------

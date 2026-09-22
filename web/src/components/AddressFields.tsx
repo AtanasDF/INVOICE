@@ -124,7 +124,16 @@ export default function AddressFields({ address, onAddress, label = "Address", s
     setSearching(true);
     setError(null);
     try {
-      const res = await fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ q }) });
+      const ask = async () => fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ q }) });
+      let res = await ask();
+      // The first search after a quiet spell can outlast the free map's
+      // time on a cold server (seen live, 2026-09-22); asked again a moment
+      // later it answers, so it's asked once more before giving up.
+      if (res.status === 503) {
+        await new Promise((r) => setTimeout(r, 1200));
+        if (!mounted.current || asked.current !== q) return;
+        res = await ask();
+      }
       const body = (await res.json()) as AddressSearchResult;
       if (!mounted.current || asked.current !== q) return;
       setResult({ ...body, q });
