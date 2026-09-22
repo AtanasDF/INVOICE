@@ -84,6 +84,31 @@ export default function LoginPage() {
     return { emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent(next.startsWith("/") && !next.startsWith("//") ? next : "/")}` };
   };
 
+  // The six-digit code in the sign-up email, for someone who opened it on
+  // another device (the link would sign in that one, not this). A session
+  // arriving here sends them on to where they were going, through the Gate.
+  const [code, setCode] = useState("");
+  async function confirmWithCode(e: React.FormEvent) {
+    e.preventDefault();
+    const token = code.replace(/\D/g, "");
+    if (token.length !== 6) {
+      setError("The code is the six digits in the email.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: pendingEmail, token, type: "signup" });
+      if (error) throw error;
+      setInfo("Confirmed. Signing you in…");
+    } catch (err) {
+      setError(/expired|invalid/i.test(err instanceof Error ? err.message : "") ? "That code has expired or isn't right. Check it, or send the email again." : saveFailed(err, "Couldn't check the code just now."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function resend() {
     const to = pendingEmail || email;
     if (!to) return;
@@ -163,6 +188,23 @@ export default function LoginPage() {
           <p className="mt-1 text-neutral-600">{subtitle}</p>
         </div>
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <form onSubmit={confirmWithCode} className="space-y-2">
+            <label htmlFor="signup-code" className="text-sm text-neutral-700">Or type the six-digit code from the email</label>
+            <div className="flex gap-2">
+              <input
+                id="signup-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={8}
+                className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-lg tracking-widest"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <button disabled={busy} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
+                Confirm
+              </button>
+            </div>
+          </form>
           <p className="text-sm text-neutral-600">Nothing there after a minute? Check the junk folder, or send it again.</p>
           {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
           {info && <p className="text-sm text-neutral-700">{info}</p>}

@@ -3,7 +3,7 @@
 // the registration"). Supabase's answers are mocked: sign-up with no
 // session, a refused sign-in for want of the click, the resend, an
 // expired link coming back.
-import { makeDb, launchSignedIn, sleep, bodyText, SUPA } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, sleep, bodyText, SUPA, fakeSession } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -22,6 +22,7 @@ const { browser, page } = await launchSignedIn(db, {
     let body = null;
     try { body = req.postData() ? JSON.parse(req.postData()) : null; } catch { body = null; }
     if (u.pathname === "/auth/v1/signup") { calls.push({ what: "signup", email: body?.email, redirect: u.searchParams.get("redirect_to"), raw: body }); json(req, 200, { id: "u-new", aud: "authenticated", role: "", email: body?.email, email_confirmed_at: null, identities: [], created_at: "2026-09-22T05:00:00Z" }); return true; }
+    if (u.pathname === "/auth/v1/verify") { calls.push({ what: "verify", email: body?.email, token: body?.token, type: body?.type }); if (body?.token === "123456") json(req, 200, fakeSession()); else json(req, 403, { error: "access_denied", error_code: "otp_expired", msg: "Token has expired or is invalid" }); return true; }
     if (u.pathname === "/auth/v1/resend") { calls.push({ what: "resend", email: body?.email, type: body?.type, raw: body }); json(req, 200, {}); return true; }
     if (u.pathname === "/auth/v1/token" && u.searchParams.get("grant_type") === "password") { calls.push({ what: "signin", email: body?.email }); json(req, signInAnswer.status, signInAnswer.body); return true; }
     return false;
@@ -67,6 +68,23 @@ try {
   check("...and says so", text.includes("Sent again to newcomer@example.com"), text.slice(0, 400));
   check("a status line announces it", await page.evaluate(() => [...document.querySelectorAll('[role="status"]')].some((s) => /Sent again/.test(s.textContent))));
 
+  // The code from the email, typed in: a wrong one is explained; the right one signs in.
+  const typeCode = (v) => page.evaluate((val) => {
+    const el = document.querySelector("#signup-code");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, v);
+  await typeCode("999 999");
+  await press("Confirm");
+  await sleep(500);
+  text = await bodyText(page);
+  const wrong = calls.find((c) => c.what === "verify");
+  check("a wrong or old code is explained in plain words", text.includes("That code has expired or isn't right") && wrong?.token === "999999" && wrong?.type === "signup" && wrong?.email === "newcomer@example.com", JSON.stringify(wrong));
+  await typeCode("12345");
+  await press("Confirm");
+  await sleep(300);
+  check("a code that isn't six digits is caught before asking", (await bodyText(page)).includes("The code is the six digits in the email.") && calls.filter((c) => c.what === "verify").length === 1);
+
   await press("I've tapped the link, sign me in");
   await sleep(200);
   text = await bodyText(page);
@@ -81,6 +99,21 @@ try {
   await press("Send the email again");
   await sleep(400);
   check("that button resends to the address typed", calls.filter((c) => c.what === "resend").length === before + 1 && calls.at(-1).email === "newcomer@example.com", JSON.stringify(calls.at(-1)));
+
+  // The right code signs in and goes on to where they were going.
+  await page.goto(`${BASE}/login?next=%2Ffree-invoice`, { waitUntil: "networkidle0" });
+  await sleep(400);
+  await press("New here? Make a sign-in");
+  await sleep(200);
+  await setField("email", "second@example.com");
+  await setField("password", "correct horse battery");
+  await press("Make my sign-in");
+  await page.waitForFunction(() => document.body.innerText.includes("Check your email"), { timeout: 10000 });
+  await typeCode("123456");
+  await press("Confirm");
+  await page.waitForFunction(() => location.pathname === "/free-invoice", { timeout: 10000 }).catch(() => {});
+  check("the right code signs in and goes on to the Free page", page.url().endsWith("/free-invoice"), page.url());
+  await page.evaluate(() => localStorage.clear());
 
   // From another page, so this is a fresh load and not a same-page hash change.
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "domcontentloaded" });
