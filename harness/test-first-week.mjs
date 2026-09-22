@@ -106,7 +106,7 @@ try {
   // Every signed-in page can be reached from the header, and the one you
   // are on is marked. On a phone that is one Menu button; on a wide screen
   // three groups (Atanas, 2026-09-22: one organised app).
-  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Menu")?.click());
+  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Menu"))?.click());
   await sleep(200);
   const reach = await page.evaluate(() => {
     const hrefs = [...document.querySelectorAll("header a")].map((a) => a.getAttribute("href"));
@@ -119,14 +119,22 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("header a")].find((a) => a.getAttribute("href") === "/mileage")?.click());
   await page.waitForFunction(() => location.pathname === "/mileage", { timeout: 10000 }).catch(() => {});
   await sleep(300);
-  check("picking a page from the menu goes there and closes it", page.url().endsWith("/mileage") && !(await page.evaluate(() => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === "/vat"))), page.url());
-  check("...and the Menu button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Menu")?.className.includes("font-semibold")));
+  check("picking a page from the menu goes there and closes it", page.url().endsWith("/mileage") && (await page.evaluate(() => [...document.querySelectorAll("header details")].every((d) => !d.open))), page.url());
+  check(
+    "the menu opens without the app's own code, and its pages are real links",
+    await page.evaluate(() => {
+      const menus = [...document.querySelectorAll("header details")];
+      const links = [...document.querySelectorAll("header details a")];
+      return menus.length >= 1 && menus.every((m) => !!m.querySelector("summary")) && links.length > 5 && links.every((a) => (a.getAttribute("href") ?? "").startsWith("/"));
+    })
+  );
+  check("...and the Menu button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Menu"))?.className.includes("font-semibold")));
   // Wide enough for the groups themselves: the one holding this page is marked.
   await page.setViewport({ width: 900, height: 900 });
   await sleep(300);
-  const groups = await page.evaluate(() => [...document.querySelectorAll("header button")].map((b) => ({ label: b.textContent.trim(), here: b.className.includes("font-semibold") })));
-  check("on a wide screen the three groups sit in the header, Money out marked for Mileage", JSON.stringify(groups.filter((g) => g.label !== "Sign out")) === JSON.stringify([{ label: "Money in", here: false }, { label: "Money out", here: true }, { label: "Tools", here: false }, { label: "Menu", here: true }]), JSON.stringify(groups));
-  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Money in")?.click());
+  const groups = await page.evaluate(() => [...document.querySelectorAll("header summary")].map((b) => ({ label: b.textContent.trim(), here: b.className.includes("font-semibold") })));
+  check("on a wide screen the three groups sit in the header, Money out marked for Mileage", JSON.stringify(groups) === JSON.stringify([{ label: "Money in", here: false }, { label: "Money out", here: true }, { label: "Tools", here: false }, { label: "Menu", here: true }]), JSON.stringify(groups));
+  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Money in"))?.click());
   await sleep(200);
   check("a group opens its pages", await page.evaluate(() => ["/invoices", "/quotes", "/clients", "/recurring/invoices"].every((h) => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === h))));
   await page.setViewport({ width: 375, height: 812 });

@@ -136,6 +136,10 @@ function Dashboard() {
   // screen then resolves instantly. Failures are its problem to report.
   useEffect(() => {
     if (!user || readScannerMode() === "native") return;
+    // Not on a slow connection or with data saving on: the script is 13MB,
+    // and nobody asked for it yet (Atanas, 2026-09-22: the app felt slow).
+    const link = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (link?.saveData || /2g$/.test(link?.effectiveType ?? "")) return;
     const warm = () => {
       loadOpenCV().catch(() => {});
     };

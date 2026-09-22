@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { safeNext } from "@/lib/safeNext";
 import { signOut } from "@/lib/signOut";
@@ -71,24 +71,29 @@ function NavLink({ href, children, className = "" }: { href: string; children: R
   );
 }
 
-// Open only on the page it was opened on, so any move closes it without an
-// effect; Escape or a tap elsewhere too.
+// A plain <details>, so the menu opens on the first tap even before the
+// page's own code has started (Atanas, 2026-09-22: "whenever I click, it
+// takes ages and three, four clicks for it to send me there" — a button
+// does nothing until then, and the links inside are real links either
+// way). Script only closes it: when the page changes, on Escape, or on a
+// tap elsewhere.
 function Menu({ label, here, width, children }: { label: string; here: boolean; width: string; children: React.ReactNode }) {
   const path = usePathname();
-  const [openOn, setOpenOn] = useState<string | null>(null);
-  const open = openOn === path;
-  const box = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  const listId = useId();
+  const box = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
-    if (!open) return;
+    if (box.current) box.current.open = false;
+  }, [path]);
+  useEffect(() => {
+    const shut = () => {
+      if (box.current?.open) box.current.open = false;
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      setOpenOn(null);
-      button.current?.focus();
+      shut();
+      box.current?.querySelector("summary")?.focus();
     };
     const onPointer = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpenOn(null);
+      if (!box.current?.contains(e.target as Node)) shut();
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onPointer);
@@ -96,28 +101,17 @@ function Menu({ label, here, width, children }: { label: string; here: boolean; 
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onPointer);
     };
-  }, [open]);
+  }, []);
   return (
-    <div ref={box} className="relative">
-      <button
-        ref={button}
-        type="button"
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        onClick={() => setOpenOn(open ? null : path)}
-        className={`flex items-center gap-1 ${here ? "font-semibold text-neutral-900" : ""}`.trim()}
-      >
+    <details ref={box} className="relative">
+      <summary className={`flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden ${here ? "font-semibold text-neutral-900" : ""}`.trim()}>
         {label}
         <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5">
           <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
-      {open && (
-        <div id={listId} onClick={() => setOpenOn(null)} className={`absolute right-0 z-30 mt-2 ${width} max-h-[80vh] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>
-          {children}
-        </div>
-      )}
-    </div>
+      </summary>
+      <div className={`absolute right-0 z-30 mt-2 ${width} max-h-[80vh] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>{children}</div>
+    </details>
   );
 }
 

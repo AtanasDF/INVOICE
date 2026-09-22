@@ -37,7 +37,7 @@ const saveVisible = () => page.evaluate(() => {
 });
 
 const menuLink = async (label) => {
-  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Menu")?.click());
+  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Menu"))?.click());
   await sleep(250);
   const ok = await page.evaluate((l) => {
     const a = [...document.querySelectorAll("header a")].find((x) => x.textContent.trim() === l);
