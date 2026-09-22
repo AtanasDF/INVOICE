@@ -78,6 +78,9 @@ export default function ContactField({
   const listId = useId();
   const on = useCompanyLookup();
   const word = kind === "client" ? "client" : "supplier";
+  // A label given without an id still has to point at the box.
+  const fallbackId = useId();
+  const inputId = id ?? fallbackId;
   const selected = contacts.find((c) => c.id === selectedId) ?? null;
   const shown = selected ? selected.name : text;
 
@@ -198,10 +201,10 @@ export default function ContactField({
 
   return (
     <div>
-      {label && <label className="text-xs text-neutral-500" htmlFor={id}>{label}</label>}
+      {label && <label className="text-xs text-neutral-500" htmlFor={inputId}>{label}</label>}
       <div className="relative">
         <input
-          id={id}
+          id={inputId}
           className={inputClassName}
           placeholder={placeholder}
           aria-label={label ? undefined : word === "client" ? "Customer" : "Supplier"}

@@ -501,7 +501,7 @@ function Dashboard() {
       {hasAnything && (
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
-        <div className="mt-3 grid grid-cols-2 gap-4">
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <div className="wrap-anywhere text-2xl font-bold">{money(monthTotal)}</div>
             <div className="text-sm text-neutral-600">Spent excl. VAT</div>

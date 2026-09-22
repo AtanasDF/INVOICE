@@ -426,7 +426,7 @@ export default function ClientsPage() {
                       <button onClick={() => toggleArchived(c)} className="text-sm font-medium text-neutral-600">
                         {c.archived ? "Unarchive" : "Archive"}
                       </button>
-                      <button onClick={() => removeClient(c)} className="text-sm text-neutral-600">
+                      <button onClick={() => removeClient(c)} className="text-sm text-neutral-600 underline">
                         Remove
                       </button>
                     </div>

@@ -23,7 +23,7 @@ db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: day(
 db.tables.recurring_expenses.push({ id: newId(), user_id: "x", description: "Van insurance", category: "Insurance", amount: 40, vat_amount: 8, supplier_id: SUPPLIER, day_of_month: 1, next_due_date: day(9), active: true });
 db.tables.recurring_invoices.push({ id: newId(), user_id: "x", client_id: CLIENT, items: [{ description: "Monthly maintenance", quantity: 1, unitPrice: 200, vatRate: "standard" }], payment_terms: "14 days", notes: "", day_of_month: 1, next_due_date: day(9), active: true });
 
-const PAGES = ["/", "/invoices", `/invoices/${INV}`, `/invoices/${DRAFT}`, "/invoices/new", "/receipts", "/receipts/new", "/receipts/review", "/quotes", "/quotes/new", "/clients", "/clients/new", "/expenses", "/vat", "/mileage", "/files", "/recurring", "/recurring/invoices", "/settings", "/feedback"];
+const PAGES = ["/", "/invoices", `/invoices/${INV}`, `/invoices/${DRAFT}`, "/invoices/new", "/receipts", "/receipts/new", "/receipts/review", "/quotes", "/quotes/new", "/quotes/requests", "/quotes/requests/new", "/clients", "/clients/new", `/clients/${CLIENT}/statement`, "/expenses", "/vat", "/mileage", "/files", "/recurring", "/recurring/invoices", "/settings", "/feedback", "/check-company"];
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-neutral" });
 try {
   await signIn(page, BASE);
@@ -46,12 +46,16 @@ try {
         const [r, g, b] = rgb(cs.color);
         const text = el.textContent.replace(/\s+/g, " ").trim().slice(0, 40);
         // Red stays where it means something: money owed or overdue, a due date gone by.
-        const redMoney = /£|Overdue|overdue|late|Late|owed|due /.test(text) || /£/.test(el.parentElement?.textContent ?? "");
+        // A button or link beside an amount gets no such pass.
+        const interactive = el.tagName === "BUTTON" || el.tagName === "A";
+        const redMoney = /£|\b(overdue|late|owed|due)\b/i.test(text) || (!interactive && /£/.test(el.parentElement?.textContent ?? ""));
         const blueish = b > r + 60 && b > g + 30;
         // Amber (the banners' text) has more green in it than red does.
         const reddish = r > g + 60 && r > b + 60 && g < 60;
+        const greenish = g > r + 40 && g > b + 40;
         if (blueish) out.push(`blue ${el.tagName} "${text}"`);
         else if (reddish && !redMoney) out.push(`red ${el.tagName} "${text}"`);
+        else if (greenish) out.push(`green ${el.tagName} "${text}"`);
       }
       return out;
     });

@@ -179,8 +179,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
       </div>
 
       <div>
-        <label className="text-xs text-neutral-500">Notes (printed on the quote)</label>
-        <textarea rows={3} aria-label="Details" className={INPUT} placeholder="What's included, what isn't, start date…" value={v.notes} onChange={(e) => set({ notes: e.target.value })} />
+        <label className="text-xs text-neutral-500" htmlFor="quote-notes">Notes (printed on the quote)</label>
+        <textarea id="quote-notes" rows={3} className={INPUT} placeholder="What's included, what isn't, start date…" value={v.notes} onChange={(e) => set({ notes: e.target.value })} />
       </div>
 
       <div className="text-right text-sm text-neutral-700">

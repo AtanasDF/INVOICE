@@ -297,6 +297,9 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
   run count); the rest stay with the reason. Unseen documents link only a supplier of
   exactly the same name. `paidOnDocument` presets Already paid / To be paid. The inbox
   import makes one needs-review row per document.
+- The Claude / Gemini picker on `/scan` shows only on a device where `scan-engine` is set
+  in localStorage; `/scan?engine=claude` (or `gemini`) sets it and shows the picker from then
+  on (the sweep, 2026-09-22: the picker meant nothing to anyone but Atanas).
 - "Upload from files" (`UploadFilesButton`) hands files to the reading page in memory
   (`scanHandoff.ts`) with `upload=1` in the address; the page takes them only for its own
   path, and says they didn't come through (instead of opening the camera) if a full page

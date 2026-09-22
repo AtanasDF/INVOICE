@@ -50,6 +50,13 @@ try {
       await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit")?.click());
       await sleep(400);
     }
+    // The sent invoice's forms sit behind toggles too.
+    if (path === `/invoices/${INV.id}`) {
+      for (const t of ["+ New credit note", "+ Record a payment", "Edit details"]) {
+        await page.evaluate((x) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === x)?.click(), t);
+        await sleep(250);
+      }
+    }
     // Every box, select and text area needs a name too: a label pointing at
     // it, a label around it, or an aria-label. A placeholder is not a name;
     // it vanishes as soon as something is typed.
@@ -59,7 +66,8 @@ try {
         .filter((el) => {
           const byFor = el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
           const wrapped = el.closest("label");
-          const aria = el.getAttribute("aria-label") || el.getAttribute("aria-labelledby") || el.getAttribute("title");
+          // A title is a hover tooltip a phone never shows: not a name here.
+          const aria = el.getAttribute("aria-label") || el.getAttribute("aria-labelledby");
           return !byFor && !wrapped && !aria;
         })
         .map((el) => `${el.tagName}${el.type ? "[" + el.type + "]" : ""} placeholder="${el.getAttribute("placeholder") ?? ""}"`)

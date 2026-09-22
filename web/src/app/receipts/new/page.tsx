@@ -282,7 +282,7 @@ export default function NewReceiptPage() {
                   setImageDataUrl(null);
                   if (fileRef.current) fileRef.current.value = "";
                 }}
-                className="text-xs font-medium text-red-600"
+                className="text-xs font-medium text-neutral-600 underline"
               >
                 Remove photo
               </button>

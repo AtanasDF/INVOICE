@@ -126,8 +126,12 @@ const ENGINE_KEY = "scan-engine";
 // Gemini unless Claude was picked: on the live site it read a receipt in
 // 3.7s to Claude's 9.6s, with the same result, and longer PDFs widen that
 // gap. Claude stays a tap away under "Read with".
+// /scan?engine=claude (or gemini) sets the choice on this device and shows
+// the picker from then on; nothing else writes the key.
 function readEngine(): ScanEngine {
   try {
+    const asked = new URLSearchParams(window.location.search).get("engine");
+    if (asked === "claude" || asked === "gemini") localStorage.setItem(ENGINE_KEY, asked);
     return localStorage.getItem(ENGINE_KEY) === "claude" ? "claude" : "gemini";
   } catch {
     return "gemini";

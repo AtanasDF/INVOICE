@@ -569,12 +569,12 @@ export default function InvoiceViewPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-neutral-500">Invoice date</label>
-              <input type="date" aria-label="Date" className="w-full rounded-lg border px-3 py-2" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
+              <label className="text-xs text-neutral-500" htmlFor="draft-invoice-date">Invoice date</label>
+              <input id="draft-invoice-date" type="date" className="w-full rounded-lg border px-3 py-2" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-neutral-500">Due date</label>
-              <input type="date" aria-label="Due date" className="w-full rounded-lg border px-3 py-2" value={draftDueDate} onChange={(e) => setDraftDueDate(e.target.value)} />
+              <label className="text-xs text-neutral-500" htmlFor="draft-due-date">Due date</label>
+              <input id="draft-due-date" type="date" className="w-full rounded-lg border px-3 py-2" value={draftDueDate} onChange={(e) => setDraftDueDate(e.target.value)} />
             </div>
           </div>
           <input aria-label="Payment terms" className="w-full rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
@@ -620,7 +620,7 @@ export default function InvoiceViewPage() {
                     {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                   </select>
                 )}
-                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600">✕</button>
+                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600 underline">✕</button>
                 {draftCisRate !== null && <LineKind item={it} onChange={(kind) => updateDraftItem(idx, { kind })} />}
               </div>
             ))}
@@ -754,17 +754,17 @@ export default function InvoiceViewPage() {
               <input type="date" aria-label="Due date" className="w-full rounded-lg border px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-neutral-500">Payment terms</label>
-              <input className="w-full rounded-lg border px-3 py-2 text-sm" value={editPaymentTerms} onChange={(e) => setEditPaymentTerms(e.target.value)} />
+              <label className="text-xs text-neutral-500" htmlFor="edit-payment-terms">Payment terms</label>
+              <input id="edit-payment-terms" className="w-full rounded-lg border px-3 py-2 text-sm" value={editPaymentTerms} onChange={(e) => setEditPaymentTerms(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="text-xs text-neutral-500">Notes</label>
-            <textarea className="w-full rounded-lg border px-3 py-2 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+            <label className="text-xs text-neutral-500" htmlFor="edit-notes">Notes</label>
+            <textarea id="edit-notes" className="w-full rounded-lg border px-3 py-2 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs text-neutral-500">Tags, comma separated</label>
-            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={editTagsInput} onChange={(e) => setEditTagsInput(e.target.value)} />
+            <label className="text-xs text-neutral-500" htmlFor="edit-tags">Tags, comma separated</label>
+            <input id="edit-tags" className="w-full rounded-lg border px-3 py-2 text-sm" value={editTagsInput} onChange={(e) => setEditTagsInput(e.target.value)} />
           </div>
           {editError && <p role="alert" className="text-sm text-red-600">{editError}</p>}
           <button onClick={saveDetails} disabled={editSaving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
@@ -904,7 +904,7 @@ export default function InvoiceViewPage() {
                   {p.method ? ` · ${PAYMENT_METHOD_LABELS[p.method]}` : ""}
                   {p.note ? ` · ${p.note}` : ""}
                 </span>
-                <button onClick={() => removePayment(p)} className="shrink-0 text-neutral-600">Remove</button>
+                <button onClick={() => removePayment(p)} className="shrink-0 text-neutral-600 underline">Remove</button>
               </div>
             ))}
             <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: ${money(amountDue)}` : "Paid in full."}</p>
@@ -923,7 +923,7 @@ export default function InvoiceViewPage() {
         {showCnForm && (
           <form onSubmit={addCreditNote} className="mt-3 space-y-2">
             <div className="grid grid-cols-2 gap-3">
-              <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={cnDate} onChange={(e) => setCnDate(e.target.value)} />
+              <input type="date" aria-label="Credit note date" className="rounded-lg border px-3 py-2 text-sm" value={cnDate} onChange={(e) => setCnDate(e.target.value)} />
               <input aria-label="Amount to credit (£)"
                 className="rounded-lg border px-3 py-2 text-sm"
                 placeholder="Amount to credit (£)"
@@ -952,7 +952,7 @@ export default function InvoiceViewPage() {
             {creditNotes.map((c) => (
               <div key={c.id} className="flex items-center justify-between border-b pb-2 text-sm">
                 <span>{shortDate(c.date)} — {money(c.amount)}{c.reason ? ` · ${c.reason}` : ""}</span>
-                <button onClick={() => removeCreditNote(c)} className="text-neutral-600">Remove</button>
+                <button onClick={() => removeCreditNote(c)} className="text-neutral-600 underline">Remove</button>
               </div>
             ))}
           </div>

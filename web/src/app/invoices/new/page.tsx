@@ -703,7 +703,7 @@ export default function NewInvoicePage() {
         </div>
       )}
       {imported && draft && (
-        <p className="text-sm text-neutral-700 underline">
+        <p className="text-sm text-neutral-700">
           Imported from your free invoice.
           {draft.currencySymbol !== "£" &&
             ` Amounts were entered in ${draft.currencySymbol}; this account invoices in £, so check them before saving.`}
@@ -837,7 +837,7 @@ export default function NewInvoicePage() {
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600">✕</button>
+              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600 underline">✕</button>
               {cisRate !== null && <LineKind item={it} onChange={(kind) => updateItem(idx, { kind })} />}
             </div>
           ))}

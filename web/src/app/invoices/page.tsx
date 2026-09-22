@@ -14,7 +14,7 @@ import { celebratePaid } from "@/components/PaidCelebration";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
 
@@ -34,6 +34,7 @@ function InvoicesPage() {
   // Read through the router, not window.location: on a tap the page renders
   // before the address bar changes.
   const params = useSearchParams();
+  const router = useRouter();
   const [filterClientId, setFilterClientId] = useState(() => params.get("client") ?? "");
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
@@ -227,7 +228,7 @@ function InvoicesPage() {
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <div className="mt-3 grid grid-cols-2 items-end gap-3 sm:grid-cols-6">
           <input aria-label="Search invoice #"
             className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
             placeholder="Search invoice #"
@@ -262,7 +263,7 @@ function InvoicesPage() {
         </div>
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterStatus(""); setFilterTag(""); }}
+            onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterStatus(""); setFilterTag(""); if (window.location.search) router.replace("/invoices"); }}
             className="mt-2 text-sm text-neutral-700 underline"
           >
             Clear filters
@@ -297,7 +298,7 @@ function InvoicesPage() {
                     </span>
                     {notes.length > 0 && (
                       <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800">
-                        CN
+                        Credit note
                       </span>
                     )}
                     {(inv.status === "sent" || inv.status === "partial") && (
@@ -333,7 +334,7 @@ function InvoicesPage() {
                   <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-neutral-700 underline">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
                   </Link>
-                  <button onClick={() => removeInvoice(inv)} className="text-sm text-neutral-600">Remove</button>
+                  <button onClick={() => removeInvoice(inv)} className="text-sm text-neutral-600 underline">Remove</button>
                 </div>
               </div>
             );
@@ -344,10 +345,18 @@ function InvoicesPage() {
   );
 }
 
+// Keyed on the search string: a tap on the Overdue tile while already on
+// this page changes only ?status=, and the page instance would otherwise
+// keep its old filters.
+function Keyed() {
+  const params = useSearchParams();
+  return <InvoicesPage key={params.toString()} />;
+}
+
 export default function Page() {
   return (
     <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
-      <InvoicesPage />
+      <Keyed />
     </Suspense>
   );
 }

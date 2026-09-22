@@ -111,7 +111,7 @@ export default function FilesPage() {
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 items-end gap-3 sm:grid-cols-3">
           <label className="flex flex-col gap-0.5 text-xs text-neutral-500">From<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></label>
           <label className="flex flex-col gap-0.5 text-xs text-neutral-500">To<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></label>
           <select aria-label="Supplier" className="rounded-lg border px-3 py-2 text-sm" value={filterSupplierId} onChange={(e) => setFilterSupplierId(e.target.value)}>
@@ -180,7 +180,7 @@ export default function FilesPage() {
             <div>
               <div className="font-medium">{preview.vendor || preview.category}</div>
               <div className="text-sm text-neutral-500">
-                {preview.date} · {money(preview.amount)} · {supplierName(preview.clientId)}
+                {shortDate(preview.date)} · {money(preview.amount)} · {supplierName(preview.clientId)}
               </div>
             </div>
             <button ref={closeRef} onClick={closePreview} aria-label="Close preview" className="text-2xl leading-none text-white/80">✕</button>

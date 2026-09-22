@@ -202,8 +202,8 @@ export default function RecurringExpensesPage() {
           <input aria-label="Of which VAT (£, optional)" className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
         <div>
-          <label className="text-xs text-neutral-500">Day of month it&apos;s due (1-28)</label>
-          <input aria-label="Day of the month"
+          <label className="text-xs text-neutral-500" htmlFor="recurring-day">Day of month it&apos;s due (1-28)</label>
+          <input id="recurring-day"
             type="number"
             min={1}
             max={28}
@@ -250,10 +250,10 @@ export default function RecurringExpensesPage() {
                       {loggingId === item.id ? "Logging…" : "Log it"}
                     </button>
                   )}
-                  <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600">
+                  <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600 underline">
                     {item.active ? "Pause" : "Resume"}
                   </button>
-                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-neutral-600">
+                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-neutral-600 underline">
                     Remove
                   </button>
                 </div>

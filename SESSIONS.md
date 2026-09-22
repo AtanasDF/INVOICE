@@ -438,6 +438,24 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   one green except `test-review-fixes`, which dies before its first check (0/0) exactly
   as it did before tonight and is now counted honestly.** The list carries a tick and the
   commit on each of the 32 items landed since 03:45.
+- **11:20, the review of the second dozen** (64 agents; 19 findings stood, 1 refuted),
+  all fixed: the file preview's raw date; the month card one column on a phone (a
+  five-figure month split mid-number at 320px); a draft's "Invoice date" and the quote's
+  "Notes" announced as something else (labels now paired by id, not overridden); the
+  scan page's Supplier box nameless when given a label without an id (ContactField
+  makes its own); the filter rows misaligned by the new From / To labels (`items-end`);
+  the sent invoice's credit-note date and three edit boxes nameless behind their
+  toggles (the labels suite opens them now, and no longer counts a `title` as a name);
+  the recurring day box named short of its label; an imported-draft note underlined by
+  the sweep; the invoices list's "CN" pill now says "Credit note"; Remove buttons
+  underlined so they read as taps; "Remove photo" and the sent-invoice box swept too;
+  the invoices page keyed on its search string so a second tap on the Overdue tile
+  changes the filter and "Clear filters" clears the address; `/scan?engine=claude`
+  gives a fresh device a way to the picker (CLAUDE.md). `test-neutral` now visits 24
+  pages, refuses the money pass to buttons and links, and catches green; labels 22/22,
+  neutral 24/24, dark-mode, first-week, plain-dates, announced, fit-320, fit-sweep,
+  settings-save, quote-chase, credit-rollback, no-accidents, empty-account, mileage
+  green.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

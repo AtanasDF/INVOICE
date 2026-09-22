@@ -236,7 +236,7 @@ export function EmailForm({
   }
   if (status.kind === "sent") {
     return (
-      <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+      <div role="status" className="mt-4 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-800">
         <p className="font-medium">
           {status.number ? `${quote ? "Quote" : "Invoice"} ${status.number} sent` : "Sent"} to {status.to}.
         </p>

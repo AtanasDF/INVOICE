@@ -495,7 +495,7 @@ export default function ReceiptsPage() {
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 items-end gap-3 sm:grid-cols-3">
           <select aria-label="Payment status" className="rounded-lg border px-3 py-2 text-sm" value={filterBill} onChange={(e) => setFilterBill(e.target.value as BillFilter)}>
             <option value="">All statuses</option>
             <option value="to_pay">To pay</option>
@@ -731,7 +731,7 @@ export default function ReceiptsPage() {
                     ★
                   </button>
                   <button onClick={() => startEditReceipt(r)} className="font-medium text-neutral-700 underline">Edit</button>
-                  <button onClick={() => removeReceipt(r)} className="text-neutral-600">Remove</button>
+                  <button onClick={() => removeReceipt(r)} className="text-neutral-600 underline">Remove</button>
                 </div>
               </div>
               {detailsOpen && (
