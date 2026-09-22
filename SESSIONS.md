@@ -235,6 +235,14 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   the page to build instead (headline, line, two full-width buttons with one line each,
   the picture described, the foot line), the screen after each button, the type and
   contrast rules with sources, and the words never to use. Nothing built; his to react to.
+- **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
+  research, his Settings screenshots and three new asks — feedback reaches him by email
+  and me at the start of a session; sign-in before scanning; a confirmation email on
+  sign-up. His Notes app is readable through AppleScript (text, and the pictures come
+  inline in the note's HTML body), but the files behind it — the voice recordings — are
+  locked to anything I run, even a recording he drags into the chat. A small on-device
+  transcriber (Speech framework, wrapped as an app so macOS can ask for permission) is
+  built in the scratchpad and waits for recordings copied to a plain folder.
 
 **Open, for Atanas** (`notes/tonight.md`): fix the GO OUTDOORS date on his own account
 (2012 → 2026); the business details in Settings, whenever he likes.
