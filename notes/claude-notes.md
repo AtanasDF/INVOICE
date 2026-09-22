@@ -354,3 +354,13 @@ the rest:
    Before building: pick the provider (compare current UK AIS providers, cost, consent
    renewal, whether we act as their agent), a schema for accounts/transactions/matches,
    and how tokens are held (server side only).
+
+## Hidefield may be used for tests (Atanas, 2026-09-22 04:10)
+
+"You can use my account, the Hidefield one, it doesn't matter. Just don't delete what you
+have. Add new things, delete, play around, look how it does things and test it." So: sign
+in there when a test needs real data; add test rows and remove those same rows after; never
+delete or edit a pre-existing row (his GO OUTDOORS date is the one edit he asked for);
+never issue an invoice there (sequential numbers, never reused); put Settings back exactly
+as found; prefer the gmail account when it shows the same thing. "Triple test everything":
+the harness suite, a live check in the browser, and an independent review pass.

@@ -2,9 +2,13 @@
 
 Invoice and expense tracker for a UK freelancer (Atanas, GitHub AtanasDF). The data in
 it is his real accounting record. Read this file before doing anything. Two accounts
-matter: **`fragov@hidefield.co.uk` (Hidefield) is his and is never signed into, written
-to or tested against; `atanaschoo@gmail.com` is the test account, free for any test or
-upload** (his rule, 2026-09-22; details in `notes/claude-notes.md`).
+matter: **`fragov@hidefield.co.uk` (Hidefield) is his real record; `atanaschoo@gmail.com`
+is the test account, free for any test or upload.** From 2026-09-22 04:10 he allows
+testing on Hidefield too ("use my account, it doesn't matter, just don't delete what you
+have"), within these limits: never delete or change a row that was already there; what a
+test adds is removed afterwards; never issue an invoice there (numbers are sequential and
+never reused); Settings values are put back exactly; use the gmail account whenever it
+can show the same thing (details in `notes/claude-notes.md`).
 
 ## Layout and stack
 
