@@ -36,7 +36,7 @@ try {
   const opening = await bodyText(page);
   check("a stranger's photo button leads to a sign-in, not the camera, and says why", gate.href === "/login?next=/free-invoice" && !gate.camera && /needs a free sign-in first/.test(opening), JSON.stringify({ href: gate.href, camera: gate.camera, said: /needs a free sign-in first/.test(opening) }));
   check("the chooser asks in plain words", /How would you like to start\?/.test(opening) && /Type it in/.test(opening) && /Fill in a few boxes/.test(opening), opening.slice(0, 300));
-  check("the page says so at the top", /no sign-in needed\. Scanning one in takes a free sign-in first/.test(opening), opening.slice(0, 300));
+  check("the page says so at the top", /no sign-in needed\. Copying an old one in from a photo takes a free sign-in first/.test(opening), opening.slice(0, 300));
   // It opens on a chooser: blank, a quote, or scan one you've sent before.
   await clickText(page, "Type it in");
   await sleep(1200);

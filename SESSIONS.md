@@ -456,6 +456,19 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   neutral 24/24, dark-mode, first-week, plain-dates, announced, fit-320, fit-sweep,
   settings-save, quote-chase, credit-rollback, no-accidents, empty-account, mileage
   green.
+- **First page, 22 and 23**: the research's banned words off what a stranger sees —
+  "Print or save" (not "as PDF"), "Keep a copy in the app" (not "Save to your account"),
+  "Sign in to send (it's free)" (not "sign up"), "a free sign-in" (not "a free account"),
+  "Copying an old one in from a photo" (not "Scanning"), "every read" (not "every scan"),
+  "Free, nothing to join" and "No company with that name is listed" on the company
+  check. New suite `test-plain-words` (6/6): the front door, the sign-in page, the
+  company check, the free page's chooser and the editor (where VAT, CIS and UTR are the
+  person's own words; the Companies House register and a bank account's name are domain
+  words, not the banned sense), and it prints every sentence over 15 words for the
+  reading-age pass — three today. free-draft, first-page, share, one-handed, statement,
+  settings-add, check-company 54/54, sign-up green. Three suites not in the runner
+  (`test-free-quote`, `test-links`, `test-quotes`) press labels from before tonight and
+  fail; they were failing before and stay off the list.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

@@ -211,7 +211,7 @@ try {
   await page.goto(`${base}/check-company`, { waitUntil: "networkidle0" });
   await ask("99999999");
   await waitFor('[data-testid="error"]');
-  check("an unknown number falls back to a name search and says so", /Nothing on the register matches that/.test(await text('[data-testid="error"]')), await text('[data-testid="error"]'));
+  check("an unknown number falls back to a name search and says so", /No company with that name is listed/.test(await text('[data-testid="error"]')), await text('[data-testid="error"]'));
 
   // ---- Fits a phone ----
   await page.goto(`${base}/check-company?number=33334444`, { waitUntil: "networkidle0" });

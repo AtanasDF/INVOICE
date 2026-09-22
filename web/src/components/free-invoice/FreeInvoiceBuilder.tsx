@@ -218,13 +218,13 @@ export default function FreeInvoiceBuilder() {
         Send or share
       </button>
       <button type="button" onClick={print} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-        Print or save as PDF
+        Print or save
       </button>
       <button type="button" onClick={startNext} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         {quote ? "Next quote" : "Next invoice"}
       </button>
       <button type="button" onClick={saveToAccount} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-        Save to your account
+        Keep a copy in the app
       </button>
       <button type="button" onClick={startOver} className="px-2 py-2 text-sm font-medium text-neutral-600">
         Start over
@@ -238,9 +238,9 @@ export default function FreeInvoiceBuilder() {
     <>
       {moreOpen && (
         <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border bg-white shadow-lg">
-          <button type="button" onClick={() => { setMoreOpen(false); print(); }} className={menuItem}>Print or save as PDF</button>
+          <button type="button" onClick={() => { setMoreOpen(false); print(); }} className={menuItem}>Print or save</button>
           <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>{quote ? "Next quote" : "Next invoice"}</button>
-          <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Save to your account</button>
+          <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Keep a copy in the app</button>
           <button type="button" onClick={() => { setMoreOpen(false); startOver(); }} className={`${menuItem} border-t text-neutral-600`}>Start over</button>
         </div>
       )}
@@ -261,7 +261,7 @@ export default function FreeInvoiceBuilder() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{quote ? "Free quote" : "Free invoice"}</h1>
-          <p className="mt-1 text-neutral-600">Build an invoice or a quote and print it or save it as a PDF, no sign-in needed. Scanning one in takes a free sign-in first.</p>
+          <p className="mt-1 text-neutral-600">Build an invoice or a quote and print it or save it, no sign-in needed. Copying an old one in from a photo takes a free sign-in first.</p>
         </div>
         {stage === "editor" && <div className="hidden items-center gap-2 sm:flex">{actions}</div>}
       </div>
@@ -292,7 +292,7 @@ export default function FreeInvoiceBuilder() {
               <p className="mt-3 flex-1 text-base text-neutral-700">
                 {user
                   ? "We copy your details in. You check them. Your phone will ask to use the camera."
-                  : "We copy your details in. You check them. It needs a free sign-in first, so every scan comes from a real person; anything you've typed here stays."}
+                  : "We copy your details in. You check them. It needs a free sign-in first, so every read comes from a real person; anything you've typed here stays."}
               </p>
               {user && (
                 <div className="mt-3">

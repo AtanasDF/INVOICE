@@ -48,7 +48,7 @@ export default function CompanyChecker() {
       }
       setReport(null);
       setHits(body.items);
-      if (body.items.length === 0) setError("Nothing on the register matches that. Check the spelling, or try the company number.");
+      if (body.items.length === 0) setError("No company with that name is listed. Check the spelling, or type the company number.");
     },
     [ask]
   );
@@ -69,7 +69,7 @@ export default function CompanyChecker() {
         top.current?.scrollIntoView({ block: "start" });
         return;
       }
-      if (body.found === false) return orSearch ? void searchFor(orSearch) : setError("No company on the register has that number.");
+      if (body.found === false) return orSearch ? void searchFor(orSearch) : setError("No company has that number. Check it against the paperwork.");
       if (body.configured !== false) setError(OFF);
     },
     [ask, searchFor]
@@ -90,7 +90,7 @@ export default function CompanyChecker() {
         if (body.report) setReport(body.report);
         else if (body.unavailable) setError(UNAVAILABLE);
         else if (body.busy) setError(BUSY);
-        else if (body.found === false) setError("No company on the register has that number.");
+        else if (body.found === false) setError("No company has that number. Check it against the paperwork.");
       })
       .catch(() => {});
     return () => {
@@ -122,7 +122,7 @@ export default function CompanyChecker() {
         <h1 className="text-2xl font-bold">Check a company</h1>
         <p className="mt-1 text-neutral-600">
           Look up a UK company on the Companies House register before you work for them: whether it exists, whether it is still
-          trading, who runs it and whether it files on time. Free, no account needed.
+          trading, who runs it and whether it files on time. Free, nothing to join.
         </p>
       </div>
 

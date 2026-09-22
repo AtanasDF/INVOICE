@@ -227,9 +227,9 @@ export function EmailForm({
   if (!user) {
     return (
       <div className="mt-4 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-        <p>Sending by email needs a free account, so everything sent from here comes from a real person. This {word} stays as it is.</p>
+        <p>Sending by email needs a free sign-in, so everything sent from here comes from a real person. This {word} stays as it is.</p>
         <Link href={`/login?next=${encodeURIComponent(signInNext)}`} className="mt-3 inline-block rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-          Sign in or sign up to send
+          Sign in to send (it&apos;s free)
         </Link>
       </div>
     );
