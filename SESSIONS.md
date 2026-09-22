@@ -595,6 +595,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   so it is left alone. /i/ and /q/ open and show the logo in `test-public-logo`; their
   Accept/Decline and open counting are still only in `test-links`/`test-quote-links`,
   which need a server built against the stand-in.
+- **Tried live** (30cdb7d): on the deployed Free page, typing SE18 1HU listed its
+  streets by itself, and "149 Benares Road" with London came back as "London SE18 1HS,
+  check it's your postcode" and filled the box on a pick. The first street search after
+  the deploy had answered "isn't answering": Photon, the free map server, takes about two
+  seconds a search, the functions run in Washington (iad1) and start cold, and five
+  seconds wasn't enough. Map lookups now get eight, the box asks once more after a 503,
+  and on a cold server the same search took 4.8 s and answered. The free data gives a
+  street's postcode, not a house's: his own house is SE18 1HU, Benares Road's is SE18 1HS.
+  Exact house postcodes need the Royal Mail key (item 58, his decision).
+- **The runner** (see the commit after 30cdb7d): each suite has ten minutes in a process
+  group of its own, so a suite that prints its results and never exits (three did today
+  under load) no longer holds the run up, and any dev server it started goes with it.
 - **Full run after these** (95 suites): 92 green; `test-share` (Chrome took over 30 s to
   start) and `test-camera-tip` (the camera took over 700 ms, which is what shows the tip)
   failed on load, not code, and passed on a rerun, as did everything touching addresses.
