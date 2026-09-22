@@ -289,7 +289,7 @@ export async function launchSignedIn(db, { width = 375, base = "http://localhost
 export function fakeUser() {
   return { id: UID, aud: "authenticated", role: "authenticated", email: "harness@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", app_metadata: { provider: "email" }, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
 }
-function fakeSession() {
+export function fakeSession() {
   const exp = Math.floor(Date.now() / 1000) + 86400;
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
   return { access_token: `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, exp, role: "authenticated", aud: "authenticated" })}.fake`, refresh_token: "fake-refresh", token_type: "bearer", expires_in: 86400, expires_at: exp, user: fakeUser() };

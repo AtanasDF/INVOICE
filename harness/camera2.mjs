@@ -1,5 +1,6 @@
 // Headless Chrome, fresh profile, Chrome's own fake camera playing an MJPEG clip.
 import puppeteer from "puppeteer-core";
+import { installFakeSession } from "./fake-session.mjs";
 const OUT = new URL(".", import.meta.url).pathname;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const url = (p) => (process.env.BASE ?? "http://localhost:3000") + p;
@@ -20,6 +21,7 @@ export async function launch(clip) {
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
   });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+  await installFakeSession(page);
   return { browser, page };
 }
 export async function clickText(page, text) {

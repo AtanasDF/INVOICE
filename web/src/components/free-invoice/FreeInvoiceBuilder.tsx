@@ -261,7 +261,7 @@ export default function FreeInvoiceBuilder() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{quote ? "Free quote" : "Free invoice"}</h1>
-          <p className="mt-1 text-neutral-600">Build an invoice or a quote and print it or save it as a PDF. No account needed.</p>
+          <p className="mt-1 text-neutral-600">Build an invoice or a quote and print it or save it as a PDF, no sign-in needed. Scanning one in takes a free sign-in first.</p>
         </div>
         {stage === "editor" && <div className="hidden items-center gap-2 sm:flex">{actions}</div>}
       </div>
@@ -292,12 +292,23 @@ export default function FreeInvoiceBuilder() {
             <div className="flex flex-col rounded-lg border p-4">
               <p className="font-medium">Scan an existing invoice</p>
               <p className="mt-1 flex-1 text-sm text-neutral-600">Photograph one you have sent before, even a rough or handwritten one. Your details, customer and lines are copied in, the number moves on by one and the date is today.</p>
-              <div className="mt-3 flex flex-wrap items-end gap-3">
-                <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                  Scan an existing invoice
-                </CaptureButton>
-                {user && <EnginePicker value={engine} onChange={setEngine} />}
-              </div>
+              {user ? (
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                    Scan an existing invoice
+                  </CaptureButton>
+                  <EnginePicker value={engine} onChange={setEngine} />
+                </div>
+              ) : (
+                // Scanning costs a read each time, so it is for people who
+                // have signed in (free); typing one in stays open to all.
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm text-neutral-600">Scanning needs a free sign-in, so every scan comes from a real person. Anything you&apos;ve typed here stays.</p>
+                  <Link href="/login?next=%2Ffree-invoice" className="inline-block rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+                    Sign in to scan
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
           <p className="mt-4 text-sm text-neutral-600">

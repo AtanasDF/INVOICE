@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { extractInvoiceTemplate } from "@/lib/invoiceTemplate";
-import { addressKey, allowShared } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 import { ALLOWED_TYPES, parseDataUrl } from "@/lib/scanExtraction";
 
 export const runtime = "nodejs";
@@ -13,18 +13,19 @@ const MAX_PAGE_CHARS = 3_500_000;
 // Vercel rejects bodies over 4.5MB before the handler runs.
 const MAX_TOTAL_CHARS = 3_500_000;
 const HOUR = 60 * 60 * 1000;
-const ANON_PER_HOUR = 10;
 const USER_PER_HOUR = 60;
 const GLOBAL_PER_HOUR = 200;
 const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 
-// Public: anyone on the free invoice page can scan one of their own
-// invoices without an account. Anonymous callers always run on Gemini;
-// the Claude/Gemini switch is only honoured behind a Supabase session.
+// Signed-in only since 2026-09-22 (Atanas: "everyone should have to sign
+// in in order to be able to scan"): every read costs him money and comes
+// from a real person. The Free page still lets a stranger type an invoice;
+// scanning one in asks for a free sign-in first.
 export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-  const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
+  const { data: { user } } = token ? await auth.auth.getUser(token).catch(() => ({ data: { user: null } })) : { data: { user: null } };
+  if (!user) return NextResponse.json({ error: "Sign in to scan. It's free, and it keeps every scan tied to a real person.", code: "sign_in" }, { status: 401 });
 
   let body: { images?: unknown; engine?: unknown };
   try {
@@ -77,30 +78,14 @@ export async function POST(req: Request) {
     );
   }
 
-  let engine: ScanEngine = user ? ((body.engine as ScanEngine | undefined) ?? "gemini") : "gemini";
-  if (engine === "gemini" && !process.env.GEMINI_API_KEY) {
-    if (!user) {
-      return NextResponse.json(
-        { error: "Free scanning isn't available right now. Sign in to scan, or try again later." },
-        { status: 503 }
-      );
-    }
-    engine = "claude";
-  }
+  let engine: ScanEngine = (body.engine as ScanEngine | undefined) ?? "gemini";
+  if (engine === "gemini" && !process.env.GEMINI_API_KEY) engine = "claude";
   if (engine === "claude" && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Scanning isn't configured yet on the server." }, { status: 500 });
   }
 
-  const key = user ? `template:user:${user.id}` : `template:ip:${addressKey(req.headers.get("x-forwarded-for"))}`;
-  if (!(await allowShared(key, user ? USER_PER_HOUR : ANON_PER_HOUR, HOUR))) {
-    return NextResponse.json(
-      {
-        error: user
-          ? "Too many scans this hour. Try again later."
-          : "Too many scans from this connection. Try again in an hour or sign up.",
-      },
-      { status: 429 }
-    );
+  if (!(await allowShared(`template:user:${user.id}`, USER_PER_HOUR, HOUR))) {
+    return NextResponse.json({ error: "Too many scans this hour. Try again later." }, { status: 429 });
   }
   if (!(await allowShared("template:global", GLOBAL_PER_HOUR, HOUR))) {
     return NextResponse.json({ error: "Scanning is busy right now. Try again in a little while." }, { status: 429 });

@@ -24,6 +24,7 @@ const SIGNED_IN_ONLY = [
   ["/api/price-guide", { description: "plasterboard" }, "asks the AI what something costs"],
   ["/api/invoice-from-text", { text: "hello" }, "writes an invoice from a description"],
   ["/api/send-invoice", { to: "nobody@example.com" }, "sends an invoice by email"],
+  ["/api/invoice-template", { images: [] }, "reads an invoice with the AI (signed-in only since 2026-09-22)"],
   ["/api/quote-requests/send", { requestId: "x" }, "emails suppliers"],
 ];
 
@@ -49,7 +50,6 @@ const OPEN_BY_DESIGN = [
   ["/api/quote-links/seen", "POST", ""],
   ["/api/quote-links/respond", "POST", ""],
   ["/api/quote-requests/respond", "POST", ""],
-  ["/api/invoice-template", "POST", ""],
 ];
 
 try {

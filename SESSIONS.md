@@ -297,6 +297,19 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   10/10, `test-feedback` 10/10 (its own dev server, a Resend stand-in, the mock now
   answering `/auth/v1/user`), `test-feedback-page` 11/11. A live send needs a signed-in
   browser, which mine isn't tonight.
+- **Surprise 6 of 12, sign in before scanning** (his 04:00 ask: "everyone should have to
+  sign in in order to be able to scan"). `/api/invoice-template` now turns a stranger
+  away with 401 and "Sign in to scan" (the anonymous Gemini path and its per-address
+  limits are gone; the per-account limit stays); the Free page's scan card offers "Sign
+  in to scan" (to `/login?next=/free-invoice`, the typed draft kept on the phone) and
+  says why; the intro reads "no sign-in needed. Scanning one in takes a free sign-in
+  first". Typing an invoice stays open. The camera suites open the scanner from that
+  page as a stranger, so `harness/fake-session.mjs` gives them a signed-in browser
+  without a database (session in localStorage, Supabase calls answered in the page,
+  `localStorage.clear()` putting the session back); `test-route-guards` moves the route
+  to the signed-in list (37/37); `test-free-draft` checks the stranger's card (8/8);
+  autozoom, camera-tip, tips, pinch, share and what-surfaces green.
+  (Surprise 5, the company-number box filling the name, went in with Settings.)
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

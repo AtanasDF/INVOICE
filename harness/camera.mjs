@@ -1,5 +1,6 @@
 // Headless Chrome, fresh profile, fake camera drawn from a canvas the test controls.
 import puppeteer from "puppeteer-core";
+import { installFakeSession } from "./fake-session.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const OUT = new URL(".", import.meta.url).pathname;
@@ -18,6 +19,7 @@ export async function launch() {
       "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
   });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+  await installFakeSession(page);
   page.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text().slice(0, 200)); });
   await page.evaluateOnNewDocument(() => {
     const c = document.createElement("canvas");

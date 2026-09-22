@@ -27,6 +27,15 @@ try {
   await sleep(1200);
 
   check("the page opens with no account", (await bodyText(page)).length > 100);
+  // Typing one in is open to all; scanning one in asks for a free sign-in
+  // first (Atanas, 2026-09-22), with the draft kept.
+  const gate = await page.evaluate(() => {
+    const link = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Sign in to scan");
+    return { href: link ? decodeURIComponent(new URL(link.href).pathname + new URL(link.href).search) : null, camera: !![...document.querySelectorAll("button,label")].find((b) => b.textContent.trim() === "Scan an existing invoice") };
+  });
+  const opening = await bodyText(page);
+  check("a stranger is offered a sign-in to scan, not the camera", gate.href === "/login?next=/free-invoice" && !gate.camera && /Scanning needs a free sign-in/.test(opening), JSON.stringify({ href: gate.href, camera: gate.camera, said: /Scanning needs a free sign-in/.test(opening) }));
+  check("the page says so at the top", /no sign-in needed\. Scanning one in takes a free sign-in first/.test(opening), opening.slice(0, 300));
   // It opens on a chooser: blank, a quote, or scan one you've sent before.
   await clickText(page, "Start blank");
   await sleep(1200);
