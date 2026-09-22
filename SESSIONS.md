@@ -469,6 +469,13 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   settings-add, check-company 54/54, sign-up green. Three suites not in the runner
   (`test-free-quote`, `test-links`, `test-quotes`) press labels from before tonight and
   fail; they were failing before and stay off the list.
+- **First page, 20 and part of 21**: the company check now asks "What is the company
+  called?" with one big box ("Company name, or its number", "Smith Building Ltd, or
+  01234567"), a 56px "Check" button, "Not sure of the spelling? Type what you have. We
+  show the close matches.", and the intro cut to one line; nothing on it under 16px.
+  Focus rings on the front door's two buttons, the free page's chooser and the Check
+  button, for a keyboard. check-company 54/54, plain-words, first-page, fit-320,
+  free-draft, company-number green.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

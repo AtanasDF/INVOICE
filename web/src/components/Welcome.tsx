@@ -13,13 +13,13 @@ export default function Welcome() {
 
       <div className="mt-8 space-y-8">
         <div>
-          <Link href="/free-invoice" className="flex min-h-16 w-full items-center justify-center rounded-xl bg-neutral-900 px-5 py-4 text-center text-xl font-bold text-white">
+          <Link href="/free-invoice" className="flex min-h-16 w-full items-center justify-center rounded-xl bg-neutral-900 px-5 py-4 text-center text-xl font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
             Make an invoice
           </Link>
           <p className="mt-2 text-lg text-neutral-700">Say what you did and what it costs. Then print it or email it.</p>
         </div>
         <div>
-          <Link href="/check-company" className="flex min-h-16 w-full items-center justify-center rounded-xl border-2 border-neutral-900 bg-white px-5 py-4 text-center text-xl font-bold text-neutral-900">
+          <Link href="/check-company" className="flex min-h-16 w-full items-center justify-center rounded-xl border-2 border-neutral-900 bg-white px-5 py-4 text-center text-xl font-bold text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
             Check a company
           </Link>
           <p className="mt-2 text-lg text-neutral-700">See if a company is real, still trading, and who runs it.</p>

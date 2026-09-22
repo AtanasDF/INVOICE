@@ -279,13 +279,13 @@ export default function FreeInvoiceBuilder() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col rounded-lg border p-4">
               {user ? (
-                <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-bold text-white">
+                <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
                   Take a photo of an old invoice
                 </CaptureButton>
               ) : (
                 // Scanning costs a read each time, so it is for people who
                 // have signed in (free); typing one in stays open to all.
-                <Link href="/login?next=%2Ffree-invoice" className="flex min-h-14 w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-bold text-white">
+                <Link href="/login?next=%2Ffree-invoice" className="flex min-h-14 w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
                   Take a photo of an old invoice
                 </Link>
               )}
@@ -301,7 +301,7 @@ export default function FreeInvoiceBuilder() {
               )}
             </div>
             <div className="flex flex-col rounded-lg border p-4">
-              <button type="button" onClick={() => startBlank()} className="flex min-h-14 w-full items-center justify-center rounded-lg border-2 border-neutral-900 bg-white px-4 py-3 text-center text-lg font-bold text-neutral-900">
+              <button type="button" onClick={() => startBlank()} className="flex min-h-14 w-full items-center justify-center rounded-lg border-2 border-neutral-900 bg-white px-4 py-3 text-center text-lg font-bold text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
                 Type it in
               </button>
               <p className="mt-3 flex-1 text-base text-neutral-700">Fill in a few boxes. We build the invoice as you go.</p>

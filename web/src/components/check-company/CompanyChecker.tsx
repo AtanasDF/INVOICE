@@ -5,7 +5,7 @@ import CompanyReportView from "@/components/check-company/CompanyReportView";
 import { asCompanyNumber, CH_SEARCH_URL, type CompanyHit, type CompanyReport, longDate } from "@/lib/companyReport";
 
 const CARD = "rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
-const PRIMARY = "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50";
+const PRIMARY = "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 min-h-14 text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
 const SECONDARY = "rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700";
 
 const BUSY = "Too many checks from this connection in the last hour. Try again later, or look the company up at Companies House.";
@@ -119,25 +119,22 @@ export default function CompanyChecker() {
   return (
     <div className="space-y-4" ref={top}>
       <div>
-        <h1 className="text-2xl font-bold">Check a company</h1>
-        <p className="mt-1 text-neutral-600">
-          Look up a UK company on the Companies House register before you work for them: whether it exists, whether it is still
-          trading, who runs it and whether it files on time. Free, nothing to join.
-        </p>
+        <h1 className="text-[2rem] font-bold leading-tight sm:text-4xl">What is the company called?</h1>
+        <p className="mt-2 text-lg text-neutral-700">See if it is real, still trading, and who runs it. Free, nothing to join.</p>
       </div>
 
       <form onSubmit={submit} className={CARD}>
-        <label htmlFor="company-query" className="text-xs text-neutral-500">
-          Company name or number
+        <label htmlFor="company-query" className="text-base text-neutral-700">
+          Company name, or its number
         </label>
         <div className="mt-1 flex flex-wrap gap-2">
           <input
             id="company-query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Acme Building Ltd, or 01234567"
+            placeholder="Smith Building Ltd, or 01234567"
             autoComplete="off"
-            className="min-w-[10rem] flex-1 rounded-lg border px-3 py-2 text-sm"
+            className="min-h-14 min-w-[10rem] flex-1 rounded-lg border px-4 py-3 text-lg"
           />
           {configured === false ? (
             <a href={chSearch} target="_blank" rel="noopener noreferrer" className={PRIMARY}>
@@ -149,9 +146,8 @@ export default function CompanyChecker() {
             </button>
           )}
         </div>
-        <p className="mt-2 text-xs text-neutral-500">
-          Only limited companies are on the register. A sole trader won&apos;t be found here.
-        </p>
+        <p className="mt-3 text-base text-neutral-700">Not sure of the spelling? Type what you have. We show the close matches.</p>
+        <p className="mt-1 text-base text-neutral-600">Only limited companies are on the register. A sole trader won&apos;t be found here.</p>
       </form>
 
       {configured === false && (
