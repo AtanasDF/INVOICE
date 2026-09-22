@@ -282,6 +282,21 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   `test-address-words` (13/13); `test-address-fields` (live postcodes.io and photon)
   grew five checks, 23/23. He added a list item at 04:50: a free "scan anything" button on
   the free page, 23 files a day per user, export or send on (item 29b).
+- **Surprise 4 of 12, feedback reaches him** ("I want people to be able to give me
+  feedback, and I want to be able to receive them on emails, so you can see them"). New
+  `POST /api/feedback` (signed-in only, 20 an hour each, 5,000 characters): saves the row
+  as the sender, then emails `FEEDBACK_TO` through Resend from
+  `feedback@invoiceover.com` with Reply-to the sender — message, page, sender, London
+  time, browser, build — and still saves when the email can't go (answer says "not
+  emailed"). The Feedback page posts to it and says "Sent. Thank you."; a refused send
+  keeps the text. `harness/feedback-inbox.mjs` appends every new row to
+  `notes/feedback-inbox.md` (gitignored: the repo is public and the file holds testers'
+  addresses) as an unticked line, never rewriting one, so a tick and a note survive; CLAUDE.md
+  rule 9 now runs it at the start of a session. `FEEDBACK_TO` set to his account address
+  on Vercel (production). Four suites: `test-feedback-email` 9/9, `test-feedback-inbox`
+  10/10, `test-feedback` 10/10 (its own dev server, a Resend stand-in, the mock now
+  answering `/auth/v1/user`), `test-feedback-page` 11/11. A live send needs a signed-in
+  browser, which mine isn't tonight.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

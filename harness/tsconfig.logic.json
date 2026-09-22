@@ -13,7 +13,12 @@
     },
     "skipLibCheck": true,
     "strict": false,
-    "noEmitOnError": false
+    "noEmitOnError": false,
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable"
+    ]
   },
   "files": [
     "/Users/nasko/Desktop/INVOICE/web/src/lib/taxEstimate.ts",
@@ -31,6 +36,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/documentBox.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/pdfPages.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/vatFromRate.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/addressLookup.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/addressLookup.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/feedbackEmail.ts"
   ]
 }

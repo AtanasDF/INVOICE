@@ -33,7 +33,7 @@ REWRITE
 fi
 
 SUITES=(
-  test-tax-rules test-reminder-clock test-money-edges test-vat-cash-basis test-pdf-pages test-next-number test-dates test-vat-pennies test-vat-from-rate test-address-words
+  test-tax-rules test-reminder-clock test-money-edges test-vat-cash-basis test-pdf-pages test-next-number test-dates test-vat-pennies test-vat-from-rate test-address-words test-feedback-email test-feedback-inbox
   test-first-week test-prefix-wipe test-what-surfaces test-empty-account test-numbering test-half-saved test-keyboards test-long-values
   test-no-accidents test-public-links test-labels test-one-total test-round-trip
   test-currency test-dark-mode test-route-guards test-rls-audit test-one-handed test-free-draft test-bad-scan test-print test-no-silent-contacts test-fit-sweep test-company-picker test-company-number
@@ -42,7 +42,7 @@ SUITES=(
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
   test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow test-odd-files test-exif-rotation test-weight
-  test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save test-vat-rate-scan
+  test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save test-vat-rate-scan test-feedback test-feedback-page
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev

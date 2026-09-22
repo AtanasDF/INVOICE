@@ -2,7 +2,7 @@
 // NEXT_PUBLIC_SUPABASE_URL pointing here: server-side code (service role)
 // and the browser both talk to this, never to the real database.
 import http from "http";
-import { handle, makeDb } from "./mockdb.mjs";
+import { fakeUser, handle, makeDb } from "./mockdb.mjs";
 
 export function startMockServer(port, db = makeDb()) {
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*", "Access-Control-Expose-Headers": "*" };
@@ -20,6 +20,13 @@ export function startMockServer(port, db = makeDb()) {
         if (db.storageFails) { res.writeHead(500, { ...cors, "content-type": "application/json" }); return res.end(JSON.stringify({ statusCode: "500", error: "outage", message: "storage is down" })); }
         res.writeHead(200, { ...cors, "content-type": "application/json" });
         return res.end(JSON.stringify({ Key: path }));
+      }
+      // A server-side route checking who is asking (auth.getUser with the
+      // bearer token): any token is the harness user, no token is nobody.
+      if (u.pathname === "/auth/v1/user") {
+        const bearer = /^Bearer\s+\S+/.test(req.headers.authorization ?? "");
+        res.writeHead(bearer ? 200 : 401, { ...cors, "content-type": "application/json" });
+        return res.end(JSON.stringify(bearer ? fakeUser() : { message: "no token" }));
       }
       if (u.pathname.startsWith("/rest/v1/")) {
         let body = null;

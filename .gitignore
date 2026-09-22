@@ -33,3 +33,5 @@ harness/downloads/
 harness/gen-bench/
 harness/bench-docs/
 web/.vercel/
+# Testers' words and email addresses; the repo is public, so this stays on the Mac.
+notes/feedback-inbox.md

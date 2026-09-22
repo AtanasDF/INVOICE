@@ -286,7 +286,7 @@ export async function launchSignedIn(db, { width = 375, base = "http://localhost
   return { browser, page };
 }
 
-function fakeUser() {
+export function fakeUser() {
   return { id: UID, aud: "authenticated", role: "authenticated", email: "harness@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", app_metadata: { provider: "email" }, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
 }
 function fakeSession() {

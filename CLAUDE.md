@@ -95,7 +95,9 @@ can show the same thing (details in `notes/claude-notes.md`).
 8. **Every session ends with everything committed and pushed** to GitHub (`main` or the
    feature branch), so the repo is always current for the next session, wherever it runs.
 9. **Keep the session log as you go, not only at the end.** Start every session with
-   `git pull` and by reading the top of `SESSIONS.md`. Add your entry when the first
+   `git pull`, by reading the top of `SESSIONS.md`, and by running `node feedback-inbox.mjs`
+   from `harness/` (new feedback from the app lands in `notes/feedback-inbox.md`, which is
+   gitignored because the repo is public; the script needs the service key, see its header). Add your entry when the first
    real step completes and update it after each further step, so a session that is cut
    off mid-way still leaves a current log. Push after each completed step, not just at
    the end. Half-finished work that must leave the machine goes to a `wip/<topic>`
@@ -356,7 +358,10 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CRON_SECRET`,
 `INBOX_WEBHOOK_SECRET` (added 2026-09-21 — it had never been set; the Worker was first
-deployed the same evening), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `vercel env ls
+deployed the same evening), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `FEEDBACK_TO` (added
+2026-09-22: where `/api/feedback` emails every piece of feedback, from
+`feedback@invoiceover.com`, Reply-to the sender; an address, not a secret). `RESEND_API_BASE`
+is only for the harness's stand-in. `vercel env ls
 production` from `web/` lists the names without values.
 `RESEND_API_KEY` set in Production on 2026-09-19 (Resend account atanaschoo, key "Invoicer
 app - Vercel", sending access). That also switched on the daily payment-reminder cron.
