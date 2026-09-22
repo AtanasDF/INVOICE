@@ -655,6 +655,22 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   test-address-fields, test-check-company and test-address-stubbed sign in first, and
   test-one-handed now skips what the browser does not paint (a closed <details> still lays
   its pages out). Full run: 100 suites, all green.
+- **Seven ways to save a document** (f98ebd2), his "the more options the better even in
+  the free version": PDF, picture, smaller picture, Word, web page, plain text and
+  spreadsheet, beside the PDF button everywhere a document is shown, and in the free
+  page's phone menu. All but the PDF and the pictures are read off the printed sheet
+  itself, so nothing keeps a second copy of the totals. `test-save-as` 20/20.
+- **The header menus opened on the first tap** (492e5b3) after his "it takes ages and
+  three, four clicks": they were buttons, which do nothing until the page's code has
+  started, where the old header was plain links. Each menu is a `<details>` now, opened by
+  the browser itself, with real links inside. The dashboard also stopped fetching the 13MB
+  scanner engine on a connection that says it is slow or saving data.
+- **Emailing any document** (b42d178): the form Copy a document had is now shared, and the
+  file library can save any scanned, uploaded or emailed-in document as one PDF or send it
+  to anyone. `test-send-document` 18/18 end to end.
+- **Change a file** (347478c): `/convert` turns pictures, PDFs and spreadsheets into each
+  other on the device, nothing uploaded, pdf.js's worker copied beside OpenCV so no other
+  page carries it. `test-convert` 15/15 on real files.
 - **Final full run** (99 suites): 97 green. The two misses were the newly converted link
   suites meeting a freshly compiling dev server under load (a page still "Loading…", a
   first press past 15 s, a mid-test reload); fixed by compiling their routes first and
