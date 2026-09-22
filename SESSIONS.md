@@ -616,6 +616,10 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   server and run nightly (18/18 each); they had gone stale unseen on the dead-link wording.
 - **28, a candidate picture** (notes/front-page-picture/): the phone over the invoice with
   the green outline, 2.7 KB of SVG, not on the site until Atanas says yes.
+- **Final full run** (99 suites): 97 green. The two misses were the newly converted link
+  suites meeting a freshly compiling dev server under load (a page still "Loading…", a
+  first press past 15 s, a mid-test reload); fixed by compiling their routes first and
+  waiting properly, then 18/18 each twice in a row in the nightly order.
 - **Full run after these** (95 suites): 92 green; `test-share` (Chrome took over 30 s to
   start) and `test-camera-tip` (the camera took over 700 ms, which is what shows the tip)
   failed on load, not code, and passed on a rerun, as did everything touching addresses.
@@ -639,7 +643,10 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   built in the scratchpad and waits for recordings copied to a plain folder.
 
 **Open, for Atanas** (`notes/tonight.md`): fix the GO OUTDOORS date on his own account
-(2012 → 2026); the business details in Settings, whenever he likes.
+(2012 → 2026); the business details in Settings, whenever he likes; yes or no to the
+front-page picture (notes/front-page-picture/); the Supabase steps for sign-up emails
+(items 6–9); the Companies House key (24); a Royal Mail key only if he wants exact house
+postcodes (58: the free data gives a street's, e.g. SE18 1HS for his SE18 1HU).
 
 **Open, for the next session**: the Claude half of the bench (`node bench-engines.mjs`
 once the key is there); item 28 (offline scan queue) still waits for an iPhone; the
