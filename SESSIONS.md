@@ -636,7 +636,7 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   Start from an old invoice); `test-first-week` for the grouped header (24/24, including
   the group marked for the page you are on); `test-settings-save` taps its links through
   the Menu, which the unsaved guard holds as before. Full run 99 suites, the two it caught
-  fixed and green.
+  fixed and green; the whole run again after them, 99 suites, all green (3e6f6ad).
 - **Final full run** (99 suites): 97 green. The two misses were the newly converted link
   suites meeting a freshly compiling dev server under load (a page still "Loading…", a
   first press past 15 s, a mid-test reload); fixed by compiling their routes first and
