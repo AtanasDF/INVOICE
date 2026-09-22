@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
+import { CATEGORIES, Category, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
@@ -327,7 +327,7 @@ export default function NewReceiptPage() {
           />
           <select aria-label="Category" className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {/* The usual category may have left the list when the kind of account changed; it stays choosable. */}
-            {(category && !categories.includes(category) ? [category, ...categories] : categories).map((c) => <option key={c} value={c}>{c}</option>)}
+            {withCurrent(categories, category).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <input aria-label="Shop or supplier"

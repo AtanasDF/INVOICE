@@ -124,3 +124,16 @@ export function mostUsedCategory(categories: string[]): Category | null {
   }
   return best;
 }
+
+/** The list to offer in a drop-down: the account's own, plus whatever this record already has,
+ *  so a category that left the list (or Mileage, which the mileage page files under) is never
+ *  shown as a different one. */
+export function withCurrent(list: string[], current: string | null | undefined): string[] {
+  return current && !list.includes(current) ? [current, ...list] : list;
+}
+
+/** The filter's choices: the list, plus every category the records carry. */
+export function withUsed(list: string[], used: (string | null | undefined)[]): string[] {
+  const extra = [...new Set(used.filter((c): c is string => !!c && !list.includes(c)))].sort();
+  return [...list, ...extra];
+}

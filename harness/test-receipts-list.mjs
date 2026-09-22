@@ -145,16 +145,18 @@ try {
 
   const banner = await page.evaluate(() => [...document.querySelectorAll("main div.rounded-xl")].find((d) => d.innerText.includes("match your suppliers"))?.innerText ?? "");
   check("link banner counts only matches to active suppliers", banner.startsWith("3 documents match your suppliers"), banner);
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "which?").click());
+  // Three or fewer are listed straight away; "which?" opens a longer list.
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "which?")?.click());
   await sleep(100);
   const which = await page.evaluate(() => [...document.querySelectorAll("main div.rounded-xl")].find((d) => d.innerText.includes("match your suppliers")).innerText);
   check("which? lists vendor → supplier", which.includes("Amazon EU S.a r.l. · INV-GB-2026-1234 → Amazon") && which.includes("AMAZON · INV-GB-2026-0999 → Amazon") && which.includes("Screwfix Direct Ltd · SFX-4399000 → Screwfix") && !which.includes("Travis") && !which.includes("Tesco"), which);
   await page.screenshot({ path: new URL("receipts-link-banner.png", import.meta.url).pathname });
   db.fail["PATCH receipts"] = 1;
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "link them").click());
+  // The button says how many it will link: "Link 3", then "Link 1".
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^Link \d+$/.test(b.textContent.trim())).click());
   await page.waitForFunction(() => document.body.innerText.includes("Couldn't link 1 of them"), { timeout: 8000 });
   check("a failed link is reported and stays on offer", await page.evaluate(() => document.body.innerText.includes("1 document matches your suppliers")));
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "link it").click());
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Link 1").click());
   await page.waitForFunction(() => !document.body.innerText.includes("match your suppliers"), { timeout: 8000 });
   const byId = (id) => db.tables.receipts.find((r) => r.id === id);
   check("linking set client_id on the three matches", byId(R.r2).client_id === S2 && byId(R.r3).client_id === S2 && byId(R.r10).client_id === S1, JSON.stringify([byId(R.r2).client_id, byId(R.r3).client_id, byId(R.r10).client_id]));
@@ -201,5 +203,19 @@ try {
   await sleep(200);
   check("Paid still works", JSON.stringify(await invTitles()) === JSON.stringify(["#PD-1"]), JSON.stringify(await invTitles()));
   check("invoices page fits 375px", await fits(page));
+
+  // A category that isn't on the list any more (Tesco's "Subsistence") still
+  // shows as itself when the receipt is edited, and the filter offers it.
+  await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  const filterOptions = await page.evaluate(() => [...document.querySelectorAll('select[aria-label="Category"] option')].map((o) => o.value));
+  check("the filter offers a category the receipts carry but the list doesn't", filterOptions.includes("Subsistence"), JSON.stringify(filterOptions));
+  await page.evaluate(() => {
+    const card = [...document.querySelectorAll("main div.rounded-xl")].find((d) => d.innerText.startsWith("Tesco Express"));
+    [...card.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit").click();
+  });
+  await sleep(400);
+  const editCategory = await page.evaluate(() => [...document.querySelectorAll('select[aria-label="Category"]')].pop()?.value);
+  check("editing it shows its own category, not the first on the list", editCategory === "Subsistence", String(editCategory));
 } catch (e) { console.log("ERROR", e.message); await shot(page, "receipts-list-error"); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

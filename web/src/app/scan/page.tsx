@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { amount, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
+import { CATEGORIES, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
 import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
 import type { ScanEngine } from "@/lib/extractors";
@@ -1387,7 +1387,7 @@ export default function ScanPage() {
                   onChange={(e) => patch({ category: e.target.value, categoryUsual: false })}
                 >
                   <option value="">Category…</option>
-                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {withCurrent(categories, form.category).map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>

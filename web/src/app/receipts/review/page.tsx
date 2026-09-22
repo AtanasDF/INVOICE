@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
-import { effectiveCategories } from "@/lib/categories";
+import { effectiveCategories, withCurrent } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -209,7 +209,7 @@ export default function ReviewQueuePage() {
                       onChange={(e) => updateDraft(r.id, { category: e.target.value })}
                     >
                       <option value="">No category</option>
-                      {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {withCurrent(categories, draft.category).map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
 
                     <div className="grid grid-cols-2 gap-3">

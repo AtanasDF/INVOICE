@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileStore, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, effectiveCategories } from "@/lib/categories";
+import { CATEGORIES, effectiveCategories, withCurrent, withUsed } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate } from "@/lib/fx";
@@ -514,7 +514,7 @@ export default function ReceiptsPage() {
           <label className="flex flex-col gap-0.5 text-xs text-neutral-500">To<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></label>
           <select aria-label="Category" className="rounded-lg border px-3 py-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
             <option value="">All categories</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {withUsed(categories, receipts.map((r) => r.category)).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select aria-label="Supplier" className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
             <option value="">All suppliers</option>
@@ -604,7 +604,7 @@ export default function ReceiptsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <input aria-label="Date" type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
                   <select aria-label="Category" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.category} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
-                    {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {withCurrent(categories, editDraft.category).map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <input aria-label="Shop or supplier"
