@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" role="img" aria-label="A phone held over a paper invoice. The screen shows the page found with a green outline.">
+  <defs>
+    <filter id="lift" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="12"/></filter>
+    <filter id="rest" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="3"/></filter>
+    <g id="sheet">
+      <rect width="220" height="290" rx="4" fill="#fff"/>
+      <rect x="20" y="22" width="70" height="10" rx="3" fill="#a3a3a3"/>
+      <rect x="20" y="40" width="46" height="6" rx="3" fill="#d4d4d4"/>
+      <rect x="20" y="52" width="56" height="6" rx="3" fill="#d4d4d4"/>
+      <rect x="140" y="22" width="60" height="8" rx="3" fill="#d4d4d4"/>
+      <rect x="152" y="36" width="48" height="6" rx="3" fill="#e5e5e5"/>
+      <rect x="20" y="88" width="180" height="1.5" fill="#e5e5e5"/>
+      <rect x="20" y="100" width="110" height="6" rx="3" fill="#d4d4d4"/><rect x="170" y="100" width="30" height="6" rx="3" fill="#d4d4d4"/>
+      <rect x="20" y="120" width="92" height="6" rx="3" fill="#d4d4d4"/><rect x="170" y="120" width="30" height="6" rx="3" fill="#d4d4d4"/>
+      <rect x="20" y="140" width="124" height="6" rx="3" fill="#d4d4d4"/><rect x="170" y="140" width="30" height="6" rx="3" fill="#d4d4d4"/>
+      <rect x="20" y="160" width="80" height="6" rx="3" fill="#d4d4d4"/><rect x="170" y="160" width="30" height="6" rx="3" fill="#d4d4d4"/>
+      <rect x="20" y="182" width="180" height="1.5" fill="#e5e5e5"/>
+      <rect x="130" y="196" width="70" height="10" rx="3" fill="#737373"/>
+      <rect x="20" y="236" width="100" height="6" rx="3" fill="#e5e5e5"/>
+      <rect x="20" y="250" width="76" height="6" rx="3" fill="#e5e5e5"/>
+    </g>
+  </defs>
+  <rect width="600" height="360" rx="28" fill="#ececec"/>
+  <!-- the invoice, flat on the table -->
+  <g transform="translate(170 40) rotate(-5) scale(1 0.9)">
+    <rect x="-2" y="5" width="224" height="292" rx="6" fill="#000" opacity=".10" filter="url(#rest)"/>
+    <use href="#sheet"/>
+  </g>
+  <!-- the phone, held above it: its shadow falls well away from it -->
+  <g transform="translate(268 66) rotate(6)">
+    <rect x="-26" y="30" width="136" height="226" rx="26" fill="#000" opacity=".14" filter="url(#lift)"/>
+    <rect width="132" height="236" rx="22" fill="#171717"/>
+    <rect x="7" y="8" width="118" height="220" rx="16" fill="#c4c4c4"/>
+    <g transform="translate(66 118) rotate(-11) scale(0.36) translate(-110 -145)">
+      <use href="#sheet"/>
+      <rect x="-5" y="-5" width="230" height="300" rx="7" fill="none" stroke="#4ADE80" stroke-width="9" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

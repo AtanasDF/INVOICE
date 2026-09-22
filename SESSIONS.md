@@ -607,6 +607,15 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
 - **The runner** (see the commit after 30cdb7d): each suite has ten minutes in a process
   group of its own, so a suite that prints its results and never exits (three did today
   under load) no longer holds the run up, and any dev server it started goes with it.
+- **51, lighter pages** (771b844): Next preloads the code of any page a visible link
+  opens, so the Copy page's PDF library (about 500 KB) went to every visitor of the front
+  door and the Free page, and the Expenses chart library (358 KB) to every signed-in page.
+  Both now load where they're used. Free page for a stranger 1469 -> 969 KB, dashboard
+  1526 -> 1181 KB; `test-weight`'s budgets come down to 1.1 MB and 1.35 MB.
+- **53, finished** (43e433d): `test-links` and `test-quote-links` start their own dev
+  server and run nightly (18/18 each); they had gone stale unseen on the dead-link wording.
+- **28, a candidate picture** (notes/front-page-picture/): the phone over the invoice with
+  the green outline, 2.7 KB of SVG, not on the site until Atanas says yes.
 - **Full run after these** (95 suites): 92 green; `test-share` (Chrome took over 30 s to
   start) and `test-camera-tip` (the camera took over 700 ms, which is what shows the tip)
   failed on load, not code, and passed on a rerun, as did everything touching addresses.
