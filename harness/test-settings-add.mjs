@@ -10,7 +10,7 @@ const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
 const db = makeDb();
-Object.assign(db.tables, { receipts: [], recurring_expenses: [], recurring_invoices: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], invoice_reminders_sent: [], receipt_pages: [] });
+Object.assign(db.tables, { receipts: [], recurring_expenses: [], recurring_invoices: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], invoice_reminders_sent: [], receipt_pages: [], quote_requests: [], quote_request_suppliers: [] });
 const CLIENT = newId();
 db.tables.clients.push({ id: CLIENT, user_id: "x", name: "Big Co Ltd", email: "pay@bigco.example", address: "2 Client Road\nLeeds\nLS1 2AB", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "14 days", phone: "" });
 const INV = newId();
@@ -108,6 +108,9 @@ try {
   check("export downloads everything as one JSON file",
     !!dumped && dumped.businessProfile.registeredName === "NP Trading Ltd" && Array.isArray(dumped.invoices) && dumped.invoices.length === 1,
     dump ?? "no file");
+  check("...including recurring invoices, price requests and the reminders sent",
+    !!dumped && Array.isArray(dumped.recurringInvoices) && Array.isArray(dumped.quoteRequests) && Array.isArray(dumped.remindersSent),
+    dumped ? Object.keys(dumped).join(",") : "no file");
 
   // ── Names kept apart ──────────────────────────────────────────────
   const names = await page.evaluate(() => {
@@ -171,16 +174,17 @@ try {
     return { text: d?.innerText ?? "", links: [...(d?.querySelectorAll("a") ?? [])].map((a) => `${a.innerText.split("\n")[0]}|${new URL(a.href).pathname}${new URL(a.href).search}`) };
   });
   check("the sheet says the scanner works the type out", /receipt, a supplier invoice or a credit note/.test(sheet.text), sheet.text.slice(0, 200));
-  check("the sheet offers scan, upload, receipt, invoice and quote",
+  check("the sheet offers scan, upload, receipt, invoice, quote and a new contact",
     sheet.links.some((l) => l.startsWith("Scan it|/scan")) &&
     sheet.text.includes("Upload a photo or PDF") &&
     sheet.links.some((l) => l === "Add a receipt by hand|/receipts/new") &&
-    sheet.links.some((l) => l === "Write an invoice|/invoices/new") &&
-    sheet.links.some((l) => l === "Write a quote|/quotes/new"),
+    sheet.links.some((l) => l === "Make an invoice|/invoices/new") &&
+    sheet.links.some((l) => l === "Make a quote|/quotes/new") &&
+    sheet.links.some((l) => l === "Add a client or supplier|/clients/new"),
     JSON.stringify(sheet.links));
   check("the sheet fits 375px", await fits(page));
   await shot(page, "settings-add-sheet");
-  await pick(page, "Write an invoice");
+  await pick(page, "Make an invoice");
   await page.waitForFunction(() => location.pathname === "/invoices/new", { timeout: 20000 }).catch(() => {});
   check("picking one goes straight there", page.url().endsWith("/invoices/new"), page.url());
 

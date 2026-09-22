@@ -15,7 +15,10 @@ import {
   receiptPagesStore,
   receiptsStore,
   recurringExpensesStore,
+  recurringInvoicesStore,
+  remindersSentStore,
 } from "@/lib/storage";
+import { quoteRequestsStore } from "@/lib/quoteRequests";
 import { KIND_WORD, defaultCategoriesFor, effectiveCategories, isDefaultSet, missingFor, withKindCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
@@ -420,7 +423,7 @@ export default function SettingsPage() {
     setExportError(null);
     setExporting(true);
     try {
-      const [clients, receipts, receiptPages, invoices, creditNotes, quotes, payments, feedback, recurringExpenses, profile] = await Promise.all([
+      const [clients, receipts, receiptPages, invoices, creditNotes, quotes, payments, feedback, recurringExpenses, profile, recurringInvoices, quoteRequests, remindersSent] = await Promise.all([
         clientsStore.all(),
         receiptsStore.all(),
         receiptPagesStore.all(),
@@ -431,6 +434,9 @@ export default function SettingsPage() {
         feedbackStore.all(),
         recurringExpensesStore.all(),
         businessProfileStore.get(),
+        recurringInvoicesStore.all(),
+        quoteRequestsStore.all(),
+        remindersSentStore.all(),
       ]);
       // Stored photos are fetched and inlined, so the export holds the
       // images themselves rather than links that expire.
@@ -447,6 +453,9 @@ export default function SettingsPage() {
         quotes,
         payments,
         recurringExpenses,
+        recurringInvoices,
+        quoteRequests,
+        remindersSent,
         feedback,
       });
     } catch (err) {
@@ -473,14 +482,16 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-neutral-600">
-          Your business details go on every invoice, quote and reminder. Your account and your data are at the bottom.
+          {personal
+            ? "Your details and how you sort your spending. Your account and your data are at the bottom."
+            : "Your business details go on every invoice, quote and reminder. Your account and your data are at the bottom."}
         </p>
       </div>
 
       <form onSubmit={save} className="space-y-6">
         <div className={CARD}>
           <div>
-            <h2 className="font-semibold">Your business</h2>
+            <h2 className="font-semibold">{personal ? "About you" : "Your business"}</h2>
             <p className="mt-1 text-sm text-neutral-600">Fill this in once.</p>
           </div>
 
@@ -569,6 +580,7 @@ export default function SettingsPage() {
           <AddressFields address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address"} />
         </div>
 
+        {!personal && (
         <div className={CARD}>
           <h2 className="font-semibold">VAT</h2>
           <fieldset>
@@ -596,7 +608,9 @@ export default function SettingsPage() {
             />
           </div>
         </div>
+        )}
 
+        {!personal && (
         <div className={CARD}>
           <div>
             <h2 className="font-semibold">Invoice numbering</h2>
@@ -628,7 +642,9 @@ export default function SettingsPage() {
             </p>
           )}
         </div>
+        )}
 
+        {!personal && (
         <div className={CARD}>
           <div>
             <h2 className="font-semibold">Bank details</h2>
@@ -643,6 +659,7 @@ export default function SettingsPage() {
             rows={3}
           />
         </div>
+        )}
 
         <div className={CARD}>
           <div>
@@ -725,6 +742,7 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        {!personal && (
         <div className={CARD}>
           <div>
             <h2 className="font-semibold">Payment reminders</h2>
@@ -776,6 +794,7 @@ export default function SettingsPage() {
             Gently remind me on the dashboard about overdue invoices
           </label>
         </div>
+        )}
 
         <div
           className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t bg-white/95 px-4 pt-3 pr-28 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:shadow-sm"
@@ -918,8 +937,9 @@ export default function SettingsPage() {
         <div className="border-t pt-3">
           <p className="text-xs text-neutral-500">Take it all with you</p>
           <p className="mt-1 text-sm text-neutral-600">
-            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, recurring
-            expenses and feedback — as one JSON file, with the scanned images and PDFs inside it. Invoices, receipts and
+            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, price
+            requests to suppliers, recurring expenses and invoices, the reminders sent and feedback — as one JSON file, with
+            the scanned images and PDFs inside it. Invoices, receipts and
             clients also export as CSV from their own pages, for a spreadsheet or an accountant.
           </p>
           {exportError && <p role="alert" className="mt-2 text-sm text-red-600">{exportError}</p>}

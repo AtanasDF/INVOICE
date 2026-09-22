@@ -2,12 +2,89 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { safeNext } from "@/lib/safeNext";
 import { signOut } from "@/lib/signOut";
 import { useWakeLock } from "@/lib/wakeLock";
 import PaidCelebration from "@/components/PaidCelebration";
+
+const MORE: [string, string][] = [
+  ["/receipts/review", "Needs review"],
+  ["/mileage", "Mileage"],
+  ["/vat", "VAT"],
+  ["/recurring", "Recurring expenses"],
+  ["/recurring/invoices", "Recurring invoices"],
+  ["/files", "Files"],
+  ["/feedback", "Feedback"],
+  ["/free-invoice", "Free invoice"],
+  ["/check-company", "Check a company"],
+];
+
+// The page you are on is marked, darker and announced as current.
+function NavLink({ href, children, className = "" }: { href: string; children: React.ReactNode; className?: string }) {
+  const path = usePathname();
+  const current = href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
+  return (
+    <Link href={href} aria-current={current ? "page" : undefined} className={`${className} ${current ? "font-semibold text-neutral-900" : ""}`.trim()}>
+      {children}
+    </Link>
+  );
+}
+
+// The pages that had no way in from the header, and the two for strangers.
+// Not "More": the Free page has its own More on a phone, and two of them
+// on one screen is one too many. Open only on the page it was opened on,
+// so any move closes it without an effect; Escape or a tap elsewhere too.
+function MorePages() {
+  const path = usePathname();
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === path;
+  const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const listId = useId();
+  const here = MORE.some(([href]) => path === href || path.startsWith(href + "/"));
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpenOn(null);
+      button.current?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpenOn(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
+  return (
+    <div ref={box} className="relative">
+      <button
+        ref={button}
+        type="button"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        onClick={() => setOpenOn(open ? null : path)}
+        className={here ? "font-semibold text-neutral-900" : ""}
+      >
+        More pages
+      </button>
+      {open && (
+        <div id={listId} onClick={() => setOpenOn(null)} className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border bg-white py-1 text-neutral-800 shadow-lg">
+          {MORE.map(([href, label]) => (
+            <NavLink key={href} href={href} className="block px-4 py-2.5">
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Header() {
   const { user } = useAuth();
@@ -22,15 +99,14 @@ function Header() {
         </Link>
         {user ? (
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
-            <Link href="/free-invoice">Free invoice</Link>
-            <Link href="/check-company">Check a company</Link>
-            <Link href="/">Home</Link>
-            <Link href="/clients">Clients & suppliers</Link>
-            <Link href="/receipts">Receipts &amp; bills</Link>
-            <Link href="/invoices">Invoices</Link>
-            <Link href="/quotes">Quotes</Link>
-            <Link href="/expenses">Expenses</Link>
-            <Link href="/settings">Settings</Link>
+            <NavLink href="/">Home</NavLink>
+            <NavLink href="/clients">Clients & suppliers</NavLink>
+            <NavLink href="/receipts">Receipts &amp; bills</NavLink>
+            <NavLink href="/invoices">Invoices</NavLink>
+            <NavLink href="/quotes">Quotes</NavLink>
+            <NavLink href="/expenses">Expenses</NavLink>
+            <NavLink href="/settings">Settings</NavLink>
+            <MorePages />
             <button
               onClick={() => void signOut()}
               className="text-neutral-500 hover:text-neutral-900"
@@ -107,7 +183,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <Header />
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">
+      {/* Room at the foot on a phone, so the Feedback pill never sits on a last card's buttons. */}
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
       <FeedbackButton />

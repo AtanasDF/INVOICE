@@ -103,6 +103,25 @@ try {
   check("nothing is shown as owed, because it's paid", /£0\.00[\s\S]{0,40}Owed/.test(dash) || /Owed[\s\S]{0,40}£0\.00/.test(dash), flat(dash).slice(0, 400));
   check("the month's spending shows the £120", /£120\.00|£100\.00/.test(dash), flat(dash).slice(flat(dash).indexOf("Spent"), flat(dash).indexOf("Spent") + 80));
 
+  // Every signed-in page can be reached from the header, and the one you are on is marked.
+  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "More pages")?.click());
+  await sleep(200);
+  const reach = await page.evaluate(() => {
+    const hrefs = [...document.querySelectorAll("header a")].map((a) => a.getAttribute("href"));
+    const current = [...document.querySelectorAll('header a[aria-current="page"]')].map((a) => a.getAttribute("href"));
+    return { hrefs, current };
+  });
+  const wanted = ["/", "/clients", "/receipts", "/invoices", "/quotes", "/expenses", "/settings", "/receipts/review", "/mileage", "/vat", "/recurring", "/recurring/invoices", "/files", "/feedback"];
+  check("the header reaches every signed-in page", wanted.every((h) => reach.hrefs.includes(h)), JSON.stringify(wanted.filter((h) => !reach.hrefs.includes(h))));
+  check("...and marks the page you are on", JSON.stringify(reach.current) === '["/"]', JSON.stringify(reach.current));
+  await page.evaluate(() => [...document.querySelectorAll("header a")].find((a) => a.getAttribute("href") === "/mileage")?.click());
+  await page.waitForFunction(() => location.pathname === "/mileage", { timeout: 10000 }).catch(() => {});
+  await sleep(300);
+  check("picking a page from More pages goes there and closes the menu", page.url().endsWith("/mileage") && !(await page.evaluate(() => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === "/vat"))), page.url());
+  check("...and the button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "More pages")?.className.includes("font-semibold")));
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(500);
+
   // The Overdue tile opens the invoices list already filtered to overdue.
   await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Overdue/.test(a.textContent) && a.getAttribute("href")?.includes("status=overdue"))?.click());
   await page.waitForFunction(() => location.pathname === "/invoices" && location.search.includes("status=overdue"), { timeout: 10000 }).catch(() => {});

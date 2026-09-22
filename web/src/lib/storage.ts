@@ -1477,6 +1477,12 @@ export const remindersSentStore = {
     if (error) throw error;
     return (data ?? []).map((r) => ({ kind: r.kind as string, sentAt: r.sent_at as string }));
   },
+  // Every one, for the data export.
+  async all(): Promise<{ invoiceId: string; kind: string; sentAt: string }[]> {
+    const { data, error } = await supabase.from("invoice_reminders_sent").select("invoice_id, kind, sent_at").order("sent_at");
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ invoiceId: r.invoice_id as string, kind: r.kind as string, sentAt: r.sent_at as string }));
+  },
 };
 
 export type PaymentMethod = "bank" | "card" | "cash" | "cheque" | "other";

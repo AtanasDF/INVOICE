@@ -90,8 +90,9 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
                   <Choice key={c.href} choice={c} onPick={() => setOpen(false)} />
                 ))}
               <Choice choice={{ href: "/receipts/new", label: "Add a receipt by hand", hint: "Nothing to photograph — type the total in" }} onPick={() => setOpen(false)} />
-              <Choice choice={{ href: "/invoices/new", label: "Write an invoice", hint: "Bill a customer for work you've done" }} onPick={() => setOpen(false)} />
-              <Choice choice={{ href: "/quotes/new", label: "Write a quote", hint: "Price a job before you do it" }} onPick={() => setOpen(false)} />
+              <Choice choice={{ href: "/invoices/new", label: "Make an invoice", hint: "Bill a customer for work you've done" }} onPick={() => setOpen(false)} />
+              <Choice choice={{ href: "/quotes/new", label: "Make a quote", hint: "Price a job before you do it" }} onPick={() => setOpen(false)} />
+              <Choice choice={{ href: "/clients/new", label: "Add a client or supplier", hint: "Someone you work for, or buy from" }} onPick={() => setOpen(false)} />
             </div>
             <button type="button" onClick={() => setOpen(false)} className="mt-3 w-full rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
               Cancel

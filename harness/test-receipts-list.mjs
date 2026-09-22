@@ -103,7 +103,7 @@ try {
   check("bill without due date: To pay", /\nTo pay\n/.test(r7), r7);
   const r8 = await cardText(page, "EMAILED-1");
   check("needs-review bill: badge, no Mark as paid", r8.includes("Needs review") && !r8.includes("Mark as paid"), r8);
-  check("star/edit/remove on every card", (await cards(page)).every((c) => c.text.includes("★") && c.text.includes("Edit") && c.text.includes("Remove")));
+  check("keep-handy/edit/remove on every card", (await cards(page)).every((c) => /Keep handy|Kept handy/.test(c.text) && c.text.includes("Edit") && c.text.includes("Remove")));
 
   await clickInCard(page, "SFX-4402119", "Details");
   await sleep(200);

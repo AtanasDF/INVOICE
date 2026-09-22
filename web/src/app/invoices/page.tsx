@@ -207,7 +207,7 @@ function InvoicesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>
-          <p className="mt-1 text-neutral-600">Create and revisit the invoices you have sent.</p>
+          <p className="mt-1 text-neutral-600">Make invoices, and look back at the ones you have sent.</p>
         </div>
         <div className="flex items-start gap-2">
           {invoices.length > 0 && (

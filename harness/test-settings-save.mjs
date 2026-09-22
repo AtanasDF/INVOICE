@@ -83,6 +83,8 @@ try {
   await sleep(200);
   cats = await categoryList();
   check("switching to personal use swaps an untouched list for the personal one", cats.includes("Groceries") && cats.includes("Childcare") && !cats.includes("Subcontractors"), JSON.stringify(cats));
+  const personalText = await bodyText(page);
+  check("personal use: no VAT, numbering, bank or reminders cards, and 'About you'", !/\nInvoice numbering\n/.test(personalText) && !/\nBank details\n/.test(personalText) && !/\nPayment reminders\n/.test(personalText) && !/\nVAT\n/.test(personalText) && personalText.includes("About you"), personalText.slice(0, 400));
   await page.evaluate(() => [...document.querySelectorAll('input[name="account-kind"]')][1].click());
   await sleep(200);
   cats = await categoryList();

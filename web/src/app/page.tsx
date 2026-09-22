@@ -291,13 +291,13 @@ function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="mt-1 text-neutral-600">
-          Scan receipts, create invoices and see what&apos;s owed to you at a glance.
+          Scan receipts, make invoices and see what&apos;s owed to you at a glance.
         </p>
       </div>
 
       <Tip id="dashboard-welcome">
         New here? Tap <strong>Scan</strong> to photograph receipts and supplier invoices (several in a row is fine), or
-        create an invoice. Clients, suppliers and expenses fill in as you go.
+        make an invoice. Clients, suppliers and expenses fill in as you go.
       </Tip>
 
       {showOverdueBanner && !bannerDismissed && (
@@ -379,9 +379,6 @@ function Dashboard() {
             label="Upload photos or PDFs"
             buttonClassName="flex w-full items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md"
           />
-          <Link href="/clients" className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md">
-            + Add a client or company
-          </Link>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import Tip from "@/components/Tip";
 import { loadFailed } from "@/lib/errorText";
 import TextCustomer from "@/components/TextCustomer";
 import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
+import AddAnything from "@/components/AddAnything";
 
 // Quiet for this long after sending is worth a nudge.
 const QUIET_DAYS = 5;
@@ -49,9 +50,7 @@ export default function QuotesPage() {
           <h1 className="text-2xl font-bold">Quotes</h1>
           <p className="mt-1 text-neutral-600">Price a job before you start. Once it&apos;s accepted, turn it into an invoice in one tap.</p>
         </div>
-        <Link href="/quotes/new" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-          New quote
-        </Link>
+        <AddAnything />
       </div>
 
       <QuotesTabs current="mine" />

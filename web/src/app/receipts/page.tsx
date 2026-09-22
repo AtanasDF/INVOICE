@@ -524,7 +524,7 @@ export default function ReceiptsPage() {
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={filterStarredOnly} onChange={(e) => setFilterStarredOnly(e.target.checked)} />
-            Starred only
+            Kept handy only
           </label>
           {allTags.length > 0 && (
             <select aria-label="Tag" className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
@@ -725,10 +725,11 @@ export default function ReceiptsPage() {
                   )}
                   <button
                     onClick={() => toggleStar(r)}
-                    aria-label={r.starred ? "Unstar" : "Star"}
-                    className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-500"}`}
+                    aria-pressed={r.starred}
+                    className="flex items-center gap-1 text-sm text-neutral-700"
                   >
-                    ★
+                    <span aria-hidden="true" className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-500"}`}>★</span>
+                    {r.starred ? "Kept handy" : "Keep handy"}
                   </button>
                   <button onClick={() => startEditReceipt(r)} className="font-medium text-neutral-700 underline">Edit</button>
                   <button onClick={() => removeReceipt(r)} className="text-neutral-600 underline">Remove</button>

@@ -485,6 +485,26 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   12/12 (three new checks), address-fields 25/25 (its note finder follows the 12px
   note), share, keyboards, labels, one-handed, fit-320, plain-words, first-page, tips,
   what-surfaces, weight green; `test-company` fails exactly as before tonight.
+- **Noon batch** (items 37, 41, 73, 75, 79, 80, 81, 85): Settings for personal use shows
+  "About you" and hides the VAT, numbering, bank details and reminders cards; the data
+  export now carries recurring invoices, supplier price requests and the reminders sent
+  (`remindersSentStore.all`); "Make" is the one verb (the Add sheet's "Make an invoice" /
+  "Make a quote", the dashboard and invoices intros), the Add sheet has "Add a client or
+  supplier" and the dashboard's separate button is gone; the Quotes list uses the same
+  + Add sheet as the other lists; the receipts star reads "Keep handy" / "Kept handy",
+  its filter "Kept handy only"; the header marks the page you're on (`aria-current`,
+  semibold), drops Free invoice and Check a company from the main row, and a "More
+  pages" button reaches Needs review, Mileage, VAT, both Recurring lists, Files,
+  Feedback and the two strangers' pages — a real button, not `<details>`: open only on
+  the page it was opened on, closed by Escape or a tap elsewhere, not in the page while
+  closed (`test-one-handed` had caught the closed menu's links hit-testing as covered,
+  and two "More"s on the signed-in Free page); phones get room at the foot for the
+  Feedback pill. Suites: settings-add 37/37 (the sheet's contact row, the export's new
+  lists), settings-save 40/40 (personal use), first-week 22/22 (every page reachable
+  from the header, the current one marked, a pick closes the menu), one-handed 17/17,
+  labels, neutral, fit-320, fit-sweep, empty-account, dark-mode, sign-out,
+  what-surfaces, first-page green. Asked mid-batch "are you good there": yes; "carry
+  on".
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

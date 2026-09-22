@@ -39,7 +39,9 @@ try {
   check("empty list says no quotes", true);
   check("nav has Quotes", await page.evaluate(() => [...document.querySelectorAll("header a")].some((a) => a.textContent === "Quotes")));
 
-  await clickText(page, "New quote");
+  await clickText(page, "+ Add");
+  await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] a')].find((a) => a.innerText.split("\n")[0].trim() === "Make a quote").click());
   await waitText(page, "Quote number");
   const number = await page.evaluate(() => [...document.querySelectorAll("input")].find((i) => i.previousElementSibling?.textContent === "Quote number")?.value);
   check("first number is Q-0001", number === "Q-0001", number);
