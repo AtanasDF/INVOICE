@@ -42,6 +42,7 @@ const GROUPS: Group[] = [
     links: [
       ["/scan", "Scan"],
       ["/copy", "Copy a document"],
+      ["/convert", "Change a file"],
       ["/check-company", "Check a company"],
       ["/vat", "VAT"],
       ["/files", "Files"],

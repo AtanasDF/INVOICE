@@ -148,6 +148,13 @@ text (.txt) and spreadsheet (.csv). All but the PDF and the pictures are read of
 printed sheet itself (`src/lib/sheetFile.ts`), so no screen keeps its own copy of the
 totals; `src/lib/saveFile.ts` is the only place a file is handed to the device.
 
+**Change a file** (`/convert`, `src/lib/convert.ts`) turns what people already have into
+what they need, all on the device: a picture into PNG/JPEG/WEBP or a PDF, several pictures
+or PDFs into one PDF, a PDF into a picture a page or into its words, and a spreadsheet or
+data file into a spreadsheet, data, a web page, plain text or a PDF. PDF reading is
+`pdfjs-dist`, whose worker `scripts/copy-vendor.mjs` copies to `public/vendor` beside
+OpenCV (both gitignored); everything else is canvas and `pdf-lib`. Nothing is uploaded.
+
 Each tool carries a short **how it works** note the first few times it is opened (`Tip`,
 `tip:<id>` in localStorage): scan, copy, check a company, expenses, VAT, mileage, files
 and needs-review.

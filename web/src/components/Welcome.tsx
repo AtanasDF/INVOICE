@@ -9,6 +9,7 @@ const DOES = [
   ["Photograph a receipt or a bill", "and it reads it for you, so your costs add themselves up."],
   ["Check a company", "before you work for them: real, still trading, and who runs it."],
   ["Copy any paper", "with your phone into one file to keep or send."],
+  ["Change a file", "a photo into a PDF, a PDF into pictures or words, a spreadsheet into data."],
   ["See what you're owed", "and what is late, and what to put by for tax."],
 ];
 
