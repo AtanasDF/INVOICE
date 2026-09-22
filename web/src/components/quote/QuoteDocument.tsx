@@ -10,7 +10,7 @@ export function quoteTotal(quote: Quote, vatRegistered: boolean): number {
 }
 
 // The quote as the client sees it: on screen, printed and as the PDF.
-export default function QuoteDocument({ quote, client, profile }: { quote: Quote; client: Client | null; profile: BusinessProfile | null }) {
+export default function QuoteDocument({ quote, client, profile, logo }: { quote: Quote; client: Client | null; profile: BusinessProfile | null; logo?: string | null }) {
   const vatRegistered = profile?.vatRegistered ?? false;
   const totals = computeInvoiceTotals(quote.items, vatRegistered);
   const deposit = depositGross(quote, vatRegistered);
@@ -18,6 +18,10 @@ export default function QuoteDocument({ quote, client, profile }: { quote: Quote
     <>
       <div className="flex items-start justify-between gap-6">
         <div>
+          {logo?.startsWith("data:image/") && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt="" className="mb-2 max-h-16 max-w-[12rem] object-contain object-left" />
+          )}
           {profile?.businessName && <p className="text-lg font-bold">{profile.businessName}</p>}
           {profile?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
           {vatRegistered && profile?.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
+import { logoForOwner } from "@/lib/logoServer";
 
 export type PublicInvoice = {
   invoice: Invoice;
@@ -7,6 +8,8 @@ export type PublicInvoice = {
   profile: BusinessProfile;
   creditNotes: CreditNote[];
   payments: InvoicePayment[];
+  // The owner's logo, inline (src/lib/logoServer.ts); null when there's none.
+  logo: string | null;
 };
 
 // What the customer's link shows, read with the service role on the server:
@@ -88,5 +91,6 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
     } as BusinessProfile,
     creditNotes: (notes ?? []).map((c, i) => ({ id: String(i), invoiceId: "", date: c.date, amount: Number(c.amount), reason: c.reason ?? "" })),
     payments: (pays ?? []).map((p, i) => ({ id: String(i), invoiceId: "", date: p.date, amount: Number(p.amount), method: null, note: "" })),
+    logo: await logoForOwner(admin, link.user_id, bp?.logo_url),
   };
 }

@@ -34,6 +34,7 @@ import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { logoSrc, prepareLogo, uploadLogo } from "@/lib/logo";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -66,6 +67,7 @@ type FormValues = {
   bankDetails: string;
   reminderTexts: Record<ReminderKind, string>;
   latePaymentInterest: boolean;
+  logoUrl: string | null;
 };
 
 export default function SettingsPage() {
@@ -112,6 +114,12 @@ export default function SettingsPage() {
   const [bankDetails, setBankDetails] = useState("");
   const [reminderTexts, setReminderTexts] = useState<Record<ReminderKind, string>>({ before: "", due: "", after: "", late: "", final: "" });
   const [latePaymentInterest, setLatePaymentInterest] = useState(false);
+  // The stored logo ("storage:<path>") and what it looks like; uploaded as
+  // soon as it's picked, kept on the profile when Save is pressed.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
   // Highest sequence number already used among existing invoices sharing
   // the current prefix -- lets the Next number field warn when it's set
   // lower than that, which would make the series look like it went
@@ -152,6 +160,7 @@ export default function SettingsPage() {
         bankDetails: p.bankDetails,
         reminderTexts: texts,
         latePaymentInterest: p.reminderLatePaymentInterest,
+        logoUrl: p.logoUrl ?? null,
       };
       setBusinessName(loaded.businessName);
       setRegisteredName(loaded.registeredName);
@@ -169,6 +178,8 @@ export default function SettingsPage() {
       setBankDetails(loaded.bankDetails);
       setReminderTexts(texts);
       setLatePaymentInterest(loaded.latePaymentInterest);
+      setLogoUrl(loaded.logoUrl);
+      void logoSrc(loaded.logoUrl).then(setLogoPreview);
       setSnapshot(JSON.stringify(loaded));
       const sequenceNumbers = invoices
         .map((inv) => parseSequenceNumber(inv.number, p.invoicePrefix))
@@ -195,6 +206,7 @@ export default function SettingsPage() {
     bankDetails,
     reminderTexts,
     latePaymentInterest,
+    logoUrl,
   };
   const current = JSON.stringify(values);
   const dirty = snapshot !== null && current !== snapshot;
@@ -254,6 +266,30 @@ export default function SettingsPage() {
     const other = arrowRefs.current[`${row}:${dir === "-1" ? "1" : "-1"}`];
     (same && !same.disabled ? same : other)?.focus();
   }, [categories]);
+
+  async function pickLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user?.id) return;
+    setLogoError(null);
+    setLogoBusy(true);
+    try {
+      const prepared = await prepareLogo(file);
+      const ref = await uploadLogo(user.id, prepared.blob, prepared.ext);
+      setLogoUrl(ref);
+      setLogoPreview(prepared.dataUrl);
+    } catch (err) {
+      setLogoError(err instanceof Error && /picture/.test(err.message) ? err.message : saveFailed(err, "Couldn't add the logo just now."));
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  function removeLogo() {
+    if (!window.confirm("Take the logo off your invoices and quotes? It goes when you press Save.")) return;
+    setLogoUrl(null);
+    setLogoPreview(null);
+  }
 
   async function regenerateInboxToken() {
     // Every other destructive tap in the app asks first; the old address
@@ -357,7 +393,7 @@ export default function SettingsPage() {
         accountKind,
         vatNumber,
         address,
-        logoUrl: null,
+        logoUrl,
         showOverdueReminders,
         customCategories: categories,
         inboxToken,
@@ -578,6 +614,30 @@ export default function SettingsPage() {
           )}
 
           <AddressFields address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address"} />
+
+          {!personal && (
+            <div className="border-t pt-3">
+              <p className="text-xs text-neutral-500">Logo</p>
+              {logoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoPreview} alt="Your logo" className="mt-1 max-h-16 max-w-[12rem] object-contain object-left" />
+              ) : (
+                <p className="mt-1 text-sm text-neutral-600">No logo yet. It goes at the top of your invoices and quotes.</p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <label aria-disabled={logoBusy} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${SMALL_BUTTON}`}>
+                  {logoBusy ? "Adding…" : logoPreview ? "Change logo" : "Add a logo"}
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickLogo} disabled={logoBusy} />
+                </label>
+                {logoPreview && (
+                  <button type="button" onClick={removeLogo} className={SMALL_BUTTON}>
+                    Remove logo
+                  </button>
+                )}
+              </div>
+              {logoError && <p role="alert" className="mt-1 text-sm text-red-600">{logoError}</p>}
+            </div>
+          )}
         </div>
 
         {!personal && (

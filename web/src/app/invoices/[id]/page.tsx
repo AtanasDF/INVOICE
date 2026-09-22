@@ -21,6 +21,7 @@ import { celebratePaid } from "@/components/PaidCelebration";
 import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import { logoSrc } from "@/lib/logo";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -65,6 +66,7 @@ export default function InvoiceViewPage() {
   const [paySaving, setPaySaving] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [cnDate, setCnDate] = useState(() => todayISO());
@@ -148,6 +150,7 @@ export default function InvoiceViewPage() {
         setPayments(paid);
         setLink(existingLink);
         setProfile(biz);
+        void logoSrc(biz.logoUrl).then((l) => { if (!cancelled) setLogo(l); });
         setEditDueDate(inv.dueDate ?? "");
         setEditPaymentTerms(inv.paymentTerms);
         setEditNotes(inv.notes);
@@ -774,7 +777,7 @@ export default function InvoiceViewPage() {
       )}
 
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
-        <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} />
+        <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} logo={logo} />
       </div>
 
       <InvoiceReminders invoice={invoice} client={client} amountDue={amountDue} hasPayments={payments.length > 0} />
@@ -815,7 +818,7 @@ export default function InvoiceViewPage() {
       </div>
 
       <SendInvoicePanel
-        sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} forPdf />}
+        sheet={<IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} forPdf logo={logo} />}
         viewUrl={link ? invoiceLinkUrl(link.token) : ""}
         ensureViewUrl={ensureLink}
         pdfKey={JSON.stringify([invoice, client, profile, creditNotes, payments])}

@@ -12,13 +12,15 @@ const signedMoney = (n: number) => `${n < 0 ? "−" : ""}${money(Math.abs(n))}`;
 
 // The issued invoice as the customer sees it: on screen, printed, and as
 // the PDF that's emailed or shared (forPdf drops notes meant for the owner).
-export default function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf }: {
+export default function IssuedInvoice({ invoice, client, profile, creditNotes, payments, forPdf, logo }: {
   invoice: Invoice;
   client: Client | null;
   profile: BusinessProfile | null;
   creditNotes: CreditNote[];
   payments: InvoicePayment[];
   forPdf?: boolean;
+  // The business logo as a data: URL (src/lib/logo.ts); nothing else is drawn.
+  logo?: string | null;
 }) {
   const vatRegistered = invoiceVat(invoice, profile?.vatRegistered ?? false);
   const totals = invoiceCharge(invoice, vatRegistered);
@@ -34,11 +36,15 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   return (
     <>
       <div className="flex items-start justify-between">
-        {profile?.businessName && (
+        {(profile?.businessName || logo) && (
           <div>
-            <p className="text-lg font-bold">{profile.businessName}</p>
-            {profile.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
-            {vatRegistered && profile.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
+            {logo?.startsWith("data:image/") && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt="" className="mb-2 max-h-16 max-w-[12rem] object-contain object-left" />
+            )}
+            {profile?.businessName && <p className="text-lg font-bold">{profile.businessName}</p>}
+            {profile?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{profile.address}</p>}
+            {vatRegistered && profile?.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
           </div>
         )}
         <div className="text-right">

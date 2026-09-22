@@ -150,12 +150,12 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       </div>
 
       <div className="rounded-xl border bg-white p-6 text-neutral-900 shadow-sm print:border-0 print:p-0 print:shadow-none">
-        <QuoteDocument quote={q} client={data.client} profile={data.profile} />
+        <QuoteDocument quote={q} client={data.client} profile={data.profile} logo={data.logo} />
       </div>
       <p className="text-center text-xs text-neutral-400 print:hidden">Sent with Invoicer</p>
       <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
         <div ref={sheetRef} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
-          <QuoteDocument quote={q} client={data.client} profile={data.profile} />
+          <QuoteDocument quote={q} client={data.client} profile={data.profile} logo={data.logo} />
         </div>
       </div>
     </div>

@@ -61,12 +61,12 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
       </div>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
-        <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf />
+        <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf logo={data.logo} />
       </div>
       <p className="text-center text-xs text-neutral-400 print:hidden">Sent with Invoicer</p>
       <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
         <div ref={sheetRef} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
-          <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf />
+          <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf logo={data.logo} />
         </div>
       </div>
     </div>

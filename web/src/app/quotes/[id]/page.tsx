@@ -17,6 +17,7 @@ import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, shortDate, termsLength } from "@/lib/quoteStatus";
 import { errorText, loadFailed } from "@/lib/errorText";
 import { depositDeductions, depositGross, depositLines, depositTag } from "@/lib/quoteDeposit";
+import { logoSrc } from "@/lib/logo";
 
 type Open = Exclude<QuoteStatus, "invoiced">;
 
@@ -43,7 +44,8 @@ async function fetchQuote(id: string) {
     }
   }
   const link = quote ? await quoteLinksStore.forQuote(quote.id).catch(() => null) : null;
-  return { quote, clients, profile, orphan, depositInvoice, depositOrphan, link };
+  const logo = await logoSrc(profile.logoUrl);
+  return { quote, clients, profile, orphan, depositInvoice, depositOrphan, link, logo };
 }
 
 export default function QuotePage() {
@@ -52,6 +54,7 @@ export default function QuotePage() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
   // An invoiced quote whose link wasn't saved: the invoice made from it,
   // found by its "from Q-..." tag, if there is one.
   const [orphan, setOrphan] = useState<Invoice | null | undefined>(undefined);
@@ -76,6 +79,7 @@ export default function QuotePage() {
       setQuote(d.quote);
     setClients(d.clients);
     setProfile(d.profile);
+        setLogo(d.logo);
       setOrphan(d.orphan);
       setDepositInvoice(d.depositInvoice);
       setDepositOrphan(d.depositOrphan);
@@ -89,6 +93,7 @@ export default function QuotePage() {
         setQuote(d.quote);
         setClients(d.clients);
         setProfile(d.profile);
+        setLogo(d.logo);
         setOrphan(d.orphan);
         setDepositInvoice(d.depositInvoice);
         setDepositOrphan(d.depositOrphan);
@@ -537,7 +542,7 @@ export default function QuotePage() {
           link) belong beside sending, once there's a payment provider. */}
       {sending ? (
         <QuoteSendCard
-          sheet={<QuoteDocument quote={q} client={client} profile={docProfile} />}
+          sheet={<QuoteDocument quote={q} client={client} profile={docProfile} logo={logo} />}
           pdfKey={JSON.stringify([q.number, q.date, q.validUntil, q.items, q.notes, q.deposit, client, profile])}
           quoteId={q.id}
           // A draft's link shows nothing to the customer, so it isn't put in
@@ -582,7 +587,7 @@ export default function QuotePage() {
       )}
 
       <div className="overflow-x-auto rounded-xl border bg-white p-4 text-neutral-900 shadow-sm sm:p-6 print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none">
-        <QuoteDocument quote={q} client={client} profile={docProfile} />
+        <QuoteDocument quote={q} client={client} profile={docProfile} logo={logo} />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { BusinessProfile, Client, Quote } from "@/lib/storage";
+import { logoForOwner } from "@/lib/logoServer";
 import { todayISO } from "@/lib/today";
 
 export type PublicQuote = {
@@ -8,6 +9,7 @@ export type PublicQuote = {
   profile: BusinessProfile;
   response: { answer: "accepted" | "declined"; at: string; name: string | null } | null;
   expired: boolean;
+  logo: string | null;
 };
 
 // What the customer's quote link shows, read with the service role on the
@@ -42,7 +44,7 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
     q.client_id
       ? admin.from("clients").select("name, email, address, vat_number, is_company, contact_person").eq("id", q.client_id).eq("user_id", link.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    admin.from("business_profile").select("business_name, address, vat_number, vat_registered").eq("user_id", link.user_id).maybeSingle(),
+    admin.from("business_profile").select("business_name, address, vat_number, vat_registered, logo_url").eq("user_id", link.user_id).maybeSingle(),
   ]);
 
   const today = todayISO();
@@ -104,5 +106,6 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
         ? { answer: link.response, at: link.responded_at, name: link.responder_name }
         : null,
     expired: !!q.valid_until && q.valid_until < today,
+    logo: await logoForOwner(admin, link.user_id, bp?.logo_url),
   };
 }

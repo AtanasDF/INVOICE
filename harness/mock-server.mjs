@@ -21,6 +21,18 @@ export function startMockServer(port, db = makeDb()) {
         res.writeHead(200, { ...cors, "content-type": "application/json" });
         return res.end(JSON.stringify({ Key: path }));
       }
+      // Storage downloads (the logo on a customer's /i/ and /q/ page): only
+      // files a suite put in db.files; anything else is not found, as
+      // Storage answers. Every read is logged, so a suite can prove a refused
+      // path was never fetched at all.
+      if (req.method === "GET" && u.pathname.startsWith("/storage/v1/object/receipts/")) {
+        const path = decodeURIComponent(u.pathname.slice("/storage/v1/object/receipts/".length));
+        db.log.push({ key: `STORAGE GET ${path}` });
+        const f = db.files?.[path];
+        if (!f) { res.writeHead(400, { ...cors, "content-type": "application/json" }); return res.end(JSON.stringify({ statusCode: "404", error: "not_found", message: "Object not found" })); }
+        res.writeHead(200, { ...cors, "content-type": f.type });
+        return res.end(f.bytes);
+      }
       // A server-side route checking who is asking (auth.getUser with the
       // bearer token): any token is the harness user, no token is nobody.
       if (u.pathname === "/auth/v1/user") {
