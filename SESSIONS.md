@@ -389,6 +389,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   clear, no-silent-contacts, receipts-list, texts, empty-account, first-week, delight,
   what-surfaces, vat-return green. (`test-receipts-list` ends in an error after its 31
   checks — the runner counts it green because 31 = 31; it did so before tonight too.)
+- **08:33, back on the timer.** Second dozen, 14–17: an empty account's dashboard now
+  says "Nothing here yet — scan a receipt or write an invoice and this page fills in"
+  instead of nine £0.00s, and keeps saying it after the tip's three showings; with data,
+  the lateness card shows only while something is outstanding and "This month so far"
+  no longer repeats the tile's figure. The Quotes empty state has a next step; the VAT
+  page says "Loading…" until its figures arrive. The five `break-words` left are
+  `wrap-anywhere`. The expenses page's month, year and 30-day range, the paid
+  celebration's month and the Free draft's year read the London clock (`todayISO`), not
+  UTC — the exact hour-after-midnight bug CLAUDE.md documents, in three more places.
+  empty-account 135/135 (three new checks), long-values 28/28 (a 60-character detail
+  value and a long supplier address seeded), midnight 8/8 (the expenses boxes at 00:30
+  BST), first-week, quiet-failures, what-surfaces, delight, fit-320, vat-return green.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

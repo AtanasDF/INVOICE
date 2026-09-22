@@ -91,6 +91,9 @@ function Dashboard() {
   const [billsBannerDismissed, setBillsBannerDismissed] = useState(false);
   const [billsError, setBillsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Nothing in the account at all: the page says what to do instead of
+  // showing nine £0.00s (the sweep, 2026-09-22).
+  const [hasAnything, setHasAnything] = useState(true);
 
   // On iOS with the native camera chosen, the dashboard's Scan tap is
   // the one real user gesture available -- spending it on navigation to
@@ -162,6 +165,7 @@ function Dashboard() {
         paymentsStore.all(),
       ]);
       if (cancelled) return;
+      setHasAnything(invoices.length > 0 || receipts.length > 0);
       const today = todayISO();
       // Compare "YYYY-MM" string prefixes rather than Date object fields --
       // constructing a Date from a bare date string and reading local
@@ -384,6 +388,17 @@ function Dashboard() {
         </div>
       </div>
 
+      {!hasAnything && (
+        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <h2 className="font-semibold">Nothing here yet</h2>
+          <p className="mt-1 text-neutral-600">
+            Scan a receipt or write an invoice and this page fills in: what you&apos;re owed, what&apos;s overdue, and what
+            you&apos;ve spent this month.
+          </p>
+        </div>
+      )}
+
+      {hasAnything && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link href="/invoices" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
           <div className="text-3xl font-bold">{money(owedToMe)}</div>
@@ -398,6 +413,7 @@ function Dashboard() {
           <div className="mt-1 text-sm text-neutral-600">Spent this month</div>
         </Link>
       </div>
+      )}
 
       <div className="flex flex-wrap gap-4">
         <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
@@ -436,6 +452,7 @@ function Dashboard() {
         </div>
       )}
 
+      {hasAnything && (
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">Awaiting payment</h2>
         {awaitingPayment.length === 0 ? (
@@ -466,7 +483,9 @@ function Dashboard() {
           </Link>
         )}
       </div>
+      )}
 
+      {hasAnything && outstandingInvoices.length > 0 && (
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">How late is what you&apos;re owed</h2>
         <div className="mt-3 space-y-2">
@@ -478,12 +497,14 @@ function Dashboard() {
           ))}
         </div>
       </div>
+      )}
 
-      {tax && <TaxSoFar estimate={tax} />}
+      {tax && hasAnything && <TaxSoFar estimate={tax} />}
 
+      {hasAnything && (
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This month so far</h2>
-        <div className="mt-3 grid grid-cols-3 gap-4">
+        <div className="mt-3 grid grid-cols-2 gap-4">
           <div>
             <div className="wrap-anywhere text-2xl font-bold">{money(monthTotal)}</div>
             <div className="text-sm text-neutral-600">Spent excl. VAT</div>
@@ -492,15 +513,12 @@ function Dashboard() {
             <div className="wrap-anywhere text-2xl font-bold">{money(monthVat)}</div>
             <div className="text-sm text-neutral-600">VAT on those costs</div>
           </div>
-          <div>
-            <div className="wrap-anywhere text-2xl font-bold">{money((monthTotal + monthVat))}</div>
-            <div className="text-sm text-neutral-600">Spent incl. VAT</div>
-          </div>
         </div>
         <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-blue-600">
           View full expense summary &rarr;
         </Link>
       </div>
+      )}
     </div>
   );
 }

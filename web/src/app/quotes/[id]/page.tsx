@@ -415,7 +415,7 @@ export default function QuotePage() {
         <p className="text-xs text-neutral-500">For</p>
         <p className="font-medium">{client?.name ?? "No client"}</p>
         {client && <p className="text-sm text-neutral-600">{customerKind(client)}</p>}
-        {contact && <p className="break-words text-sm text-neutral-500">{contact}</p>}
+        {contact && <p className="wrap-anywhere text-sm text-neutral-500">{contact}</p>}
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 sm:grid-cols-3">
           <div className="col-span-2 sm:col-span-1">
             <dt className="text-xs text-neutral-500">Total{vatRegistered ? " incl. VAT" : ""}</dt>

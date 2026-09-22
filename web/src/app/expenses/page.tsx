@@ -46,14 +46,16 @@ export default function ExpensesPage() {
   const [error, setError] = useState<string | null>(null);
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "year" | "custom">("month");
   const [weekAnchor, setWeekAnchor] = useState(() => todayISO());
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [year, setYear] = useState(() => String(new Date().getFullYear()));
+  // Off the London clock, like every other "today" in the app: at 00:30 BST
+  // on the 1st the UTC clock still says last month.
+  const [month, setMonth] = useState(() => todayISO().slice(0, 7));
+  const [year, setYear] = useState(() => todayISO().slice(0, 4));
   // Any arbitrary span -- three days, two weeks, a month and a half,
   // whatever -- alongside the week/month/year presets, not instead of
   // them. Defaults to the last 30 days so it starts on a sensible range
   // rather than empty.
   const [customFrom, setCustomFrom] = useState(() => {
-    const d = new Date();
+    const d = new Date(todayISO() + "T12:00:00Z");
     d.setUTCDate(d.getUTCDate() - 30);
     return d.toISOString().slice(0, 10);
   });

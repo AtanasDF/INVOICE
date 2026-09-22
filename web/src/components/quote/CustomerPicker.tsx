@@ -81,7 +81,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
           <div className="min-w-0">
             <p className="font-medium">{picked.name}</p>
             <p className="text-sm text-neutral-600">{customerKind(picked)}</p>
-            {contact && <p className="break-words text-sm text-neutral-500">{contact}</p>}
+            {contact && <p className="wrap-anywhere text-sm text-neutral-500">{contact}</p>}
           </div>
           <button type="button" onClick={() => setBrowsing(true)} className={`shrink-0 ${SECONDARY}`}>
             Change

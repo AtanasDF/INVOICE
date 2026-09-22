@@ -134,7 +134,7 @@ export function nextInvoiceNumber(number: string): string {
   if (!runs.length) return "";
   const last = runs[runs.length - 1];
   const before = runs[runs.length - 2];
-  const year = new Date().getFullYear();
+  const year = Number(todayISO().slice(0, 4));
   // What can be a year at the end of an invoice number: 2026 or 2025 or
   // even 2019 written in full, and 26 or 25 written short. The old rule
   // only accepted four digits within a year of today, so "3/25", "4/26"

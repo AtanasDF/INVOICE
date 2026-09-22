@@ -65,9 +65,17 @@ try {
 
   // The empty states themselves: each list has to say what to do next.
   const says = (path, ...words) => words.some((w) => (seen[path] ?? "").toLowerCase().includes(w.toLowerCase()));
-  check("the dashboard welcomes a new account", says("/", "new here", "nothing yet", "get started", "first invoice"), seen["/"]?.slice(0, 500));
+  check("the dashboard welcomes a new account", says("/", "new here", "nothing here yet", "get started", "first invoice"), seen["/"]?.slice(0, 500));
+  check("...and shows no £0.00 for figures it doesn't have", !seen["/"].includes("£0.00"), seen["/"]?.slice(0, 500));
+  // Once the tip's three showings are used up, the welcome must still be there.
+  await page.evaluate(() => localStorage.setItem("tip:dashboard-welcome", "3"));
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(900);
+  const later = await bodyText(page);
+  check("the welcome outlives the tip", later.includes("Nothing here yet") && !later.includes("New here?") && !later.includes("£0.00"), later.slice(0, 400));
   check("empty invoices says what to do", says("/invoices", "no invoices", "first invoice", "nothing here"), seen["/invoices"]?.slice(0, 400));
   check("empty quotes says what to do", says("/quotes", "no quotes", "first quote", "nothing here"), seen["/quotes"]?.slice(0, 400));
+  check("...with a next step", says("/quotes", "Make one to price a job before you start."), seen["/quotes"]?.slice(0, 400));
   check("empty receipts says what to do", says("/receipts", "no receipts", "nothing here", "scan"), seen["/receipts"]?.slice(0, 400));
   check("empty contacts says what to do", says("/clients", "no contacts", "add", "nothing here"), seen["/clients"]?.slice(0, 400));
   check("empty expenses copes with no receipts", says("/expenses", "nothing", "no receipts", "£0.00"), seen["/expenses"]?.slice(0, 400));

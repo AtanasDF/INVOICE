@@ -104,7 +104,7 @@ export default function QuotesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {quotes.length === 0 && !error && <p className="text-sm text-neutral-500">No quotes yet.</p>}
+          {quotes.length === 0 && !error && <p className="text-sm text-neutral-500">No quotes yet. Make one to price a job before you start.</p>}
           {quotes.map((q) => {
             const deposit = depositGross(q, vatOf(q));
             const open = q.status === "draft" || q.status === "sent";

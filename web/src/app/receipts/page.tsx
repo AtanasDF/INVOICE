@@ -474,7 +474,7 @@ export default function ReceiptsPage() {
                       checked={!unticked.has(receipt.id)}
                       onChange={() => toggleLinkTick(receipt.id)}
                     />
-                    <span className="min-w-0 break-words">
+                    <span className="min-w-0 wrap-anywhere">
                       {receipt.vendor}
                       {receipt.invoiceNumber && ` · ${receipt.invoiceNumber}`} → <span className="font-medium text-neutral-800">{supplier.name}</span>
                     </span>
@@ -756,7 +756,7 @@ export default function ReceiptsPage() {
                   {extraPages > 0 && <div>{extraPages + 1} pages</div>}
                   {r.notes && <div className="italic">{r.notes}</div>}
                   {details.map((d, i) => (
-                    <div key={i} className="break-words"><span className="text-neutral-500">{d.label}:</span> {d.value}</div>
+                    <div key={i} className="wrap-anywhere"><span className="text-neutral-500">{d.label}:</span> {d.value}</div>
                   ))}
                   {r.warrantyMonths != null && (
                     <div className="text-xs text-neutral-400">

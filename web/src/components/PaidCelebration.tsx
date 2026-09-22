@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { money } from "@/lib/money";
 import { paymentsStore } from "@/lib/storage";
 import { haptic } from "@/lib/haptics";
+import { todayISO } from "@/lib/today";
 
 type Paid = { amount: number; from?: string | null; number?: string | null };
 const EVENT = "invoicer:paid";
@@ -30,7 +31,7 @@ export default function PaidCelebration() {
       setPaid({ ...(e as CustomEvent<Paid>).detail, key });
       setMonth(null);
       haptic();
-      const thisMonth = new Date().toISOString().slice(0, 7);
+      const thisMonth = todayISO().slice(0, 7);
       paymentsStore
         .all()
         .then((ps) => setMonth(ps.filter((p) => p.date.slice(0, 7) === thisMonth).reduce((s, p) => s + p.amount, 0)))

@@ -69,6 +69,7 @@ export default function VatPage() {
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {!data && !error && <p className="text-sm text-neutral-500">Loading…</p>}
       {data && !data.vatRegistered && (
         <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
           Settings says you&apos;re not VAT registered, so your invoices carry no VAT. The purchases below still show the VAT you were charged.

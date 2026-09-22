@@ -53,7 +53,7 @@ export default function OrderLists({ plan, request, from, emailOf }: { plan: Pla
                     {order.items.length} {order.items.length === 1 ? "line" : "lines"}
                     {order.deliveryEx ? ` · delivery ${formatPence(order.deliveryEx)}` : ""} · {formatPence(order.inc)} inc VAT
                   </p>
-                  <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-neutral-50 p-3 font-sans text-sm text-neutral-800">{text}</pre>
+                  <pre className="mt-2 whitespace-pre-wrap wrap-anywhere rounded-lg bg-neutral-50 p-3 font-sans text-sm text-neutral-800">{text}</pre>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button type="button" onClick={() => copy(order, text)} className={SECONDARY}>
                       {copied === order.offer.id ? "Copied" : "Copy"}

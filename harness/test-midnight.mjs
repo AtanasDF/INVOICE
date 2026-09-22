@@ -65,6 +65,19 @@ try {
   check("a receipt entered after midnight is dated today, not yesterday", receiptDate === UK_DAY, `${receiptDate} (should be ${UK_DAY}, was ${UTC_DAY})`);
 
   // The tax card must see an invoice issued the same night.
+  // The expenses page's period boxes read the London day too.
+  await page.goto(`${BASE}/expenses`, { waitUntil: "networkidle0" });
+  await sleep(600);
+  const boxes = await page.evaluate(() => ({
+    month: document.querySelector('input[type="month"]')?.value ?? null,
+    year: [...document.querySelectorAll("input")].find((i) => /^\d{4}$/.test(i.value))?.value ?? null,
+  }));
+  check("the expenses month box shows the London month", boxes.month === null || boxes.month === UK_DAY.slice(0, 7), JSON.stringify(boxes));
+  const customButton = await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /^Custom/.test(x.textContent.trim())); b?.click(); return !!b; });
+  await sleep(300);
+  const range = await page.evaluate(() => [...document.querySelectorAll('input[type="date"]')].map((i) => i.value));
+  check("the custom range ends on the London day and starts 30 days before it", !customButton || (range.includes(UK_DAY) && range.includes("2026-08-22") && !range.includes(UTC_DAY)), JSON.stringify(range));
+
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(2200);
   const dash = await bodyText(page);
