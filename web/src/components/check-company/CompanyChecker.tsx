@@ -150,16 +150,16 @@ export default function CompanyChecker() {
           )}
         </div>
         <p className="mt-2 text-xs text-neutral-500">
-          Limited companies and LLPs only. A sole trader is not on the register, so nothing here will find one.
+          Only limited companies are on the register. A sole trader won&apos;t be found here.
         </p>
       </form>
 
       {configured === false && (
         <div className={CARD} data-testid="not-configured">
-          <h2 className="font-semibold">The lookup isn&apos;t switched on yet</h2>
+          <h2 className="font-semibold">This check is coming soon</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            This page reads the Companies House register through their API, and the key for it hasn&apos;t been added to the site
-            yet. Until it is, search the register directly — it is free and public.
+            For now you can look the company up on the official site. It is free, and the facts are the same ones this page
+            will show.
           </p>
           <a href={chSearch} target="_blank" rel="noopener noreferrer" className={`mt-3 inline-block ${SECONDARY}`}>
             Open the Companies House register

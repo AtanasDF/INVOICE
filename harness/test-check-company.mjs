@@ -98,7 +98,7 @@ try {
   await page.goto(`${base}/check-company`, { waitUntil: "networkidle0" });
   await waitFor('[data-testid="not-configured"]');
   const offText = await text("body");
-  check("the page explains the lookup isn't on", /isn't switched on yet/.test(offText), offText.slice(0, 200));
+  check("the page says the check is coming, in plain words", /This check is coming soon/.test(offText) && !/API|key/.test(offText), offText.slice(0, 200));
   check("it offers the Companies House register instead", /Open the Companies House register/.test(offText));
   check("the button searches Companies House instead of erroring", (await page.$eval('a[href*="find-and-update"]', (a) => a.href)).includes("/search?q="));
   check("nothing looks broken", !/error|failed|undefined/i.test(offText), offText.slice(0, 200));

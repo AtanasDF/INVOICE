@@ -345,6 +345,12 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   before anything can be found and looked like nothing (his report last night). The
   11-pixel "Edge detection: loading…" is now "Getting ready… the first time takes a
   moment", white on dark, readable. camera-tip and torch-nocv green.
+- **Surprise 12 of 12, plain words for strangers**: the free page's chooser (surprise 8)
+  and now the company check's waiting state — "This check is coming soon. For now you
+  can look the company up on the official site." instead of a paragraph about an API and
+  a key, and "Only limited companies are on the register. A sole trader won't be found
+  here." instead of "LLPs". `test-check-company` 54/54, `test-first-page` 13/13. The
+  banned-word sweep of the editor itself is item 22 on the list, not done.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on
