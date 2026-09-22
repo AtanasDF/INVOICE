@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { errorText, loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import Tip from "@/components/Tip";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -143,6 +144,7 @@ export default function MileagePage() {
           {RATES.car.after * 100}p. Each trip is saved as an expense.
         </p>
       </div>
+      <Tip id="mileage-how">How it works: add a trip and it is saved as an expense at HMRC&apos;s rate. No receipt needed.</Tip>
 
       <form onSubmit={save} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <div className="grid grid-cols-2 gap-3">

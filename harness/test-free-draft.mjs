@@ -2,7 +2,7 @@
 // account and nothing saved on a server. Whatever they type has to still
 // be there after a reload, a back button, or a phone that drops the tab --
 // losing it is the last thing they'd ever do here.
-import { makeDb, launchSignedIn, sleep, bodyText, clickText } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -20,13 +20,20 @@ const type = (match, value) =>
   }, match, value);
 
 try {
-  // Signed out on purpose: this is the public page.
+  // Nothing works before an account (Atanas, 2026-09-22): a stranger is
+  // sent to the front door, and the page itself opens once signed in.
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
+  await sleep(900);
+  check("a stranger is sent to sign in", new URL(page.url()).pathname === "/login", page.url());
+  await signIn(page, BASE);
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
+  await page.evaluate(() => localStorage.removeItem("free-invoice-draft"));
   await page.reload({ waitUntil: "networkidle0" });
   await sleep(1200);
 
-  check("the page opens with no account", (await bodyText(page)).length > 100);
+  check("the page opens for an account", (await bodyText(page)).length > 100);
   // Typing one in is open to all; scanning one in asks for a free sign-in
   // first (Atanas, 2026-09-22), with the draft kept.
   const gate = await page.evaluate(() => {
@@ -34,7 +41,7 @@ try {
     return { href: link ? decodeURIComponent(new URL(link.href).pathname + new URL(link.href).search) : null, camera: !![...document.querySelectorAll("button,label")].find((b) => b.textContent.trim() === "Take a photo of an old invoice") };
   });
   const opening = await bodyText(page);
-  check("a stranger's photo button leads to a sign-in, not the camera, and says why", gate.href === "/login?next=/free-invoice" && !gate.camera && /needs a free sign-in first/.test(opening), JSON.stringify({ href: gate.href, camera: gate.camera, said: /needs a free sign-in first/.test(opening) }));
+  check("signed in, the photo button opens the camera itself", !gate.href && gate.camera, JSON.stringify({ href: gate.href, camera: gate.camera, said: /needs a free sign-in first/.test(opening) }));
   check("the chooser asks in plain words", /How would you like to start\?/.test(opening) && /Type it in/.test(opening) && /Fill in a few boxes/.test(opening), opening.slice(0, 300));
   check("the page says so at the top", /no sign-in needed\. Copying an old one in from a photo takes a free sign-in first/.test(opening), opening.slice(0, 300));
   // It opens on a chooser: blank, a quote, or scan one you've sent before.

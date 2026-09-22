@@ -4,6 +4,7 @@
 import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
 import { startFixtures } from "./ch-fixtures.mjs";
+import { fakeSession } from "./mockdb.mjs";
 
 const OUT = new URL(".", import.meta.url).pathname;
 // The app this suite starts. It used to point at
@@ -63,6 +64,16 @@ await page.emulate({
   viewport: { width: 375, height: 812, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
 });
+// Every page needs an account since 2026-09-22, and this suite is about
+// the register, not the sign-in: the session goes in before each load.
+await page.evaluateOnNewDocument((key, session) => {
+  localStorage.setItem(key, JSON.stringify(session));
+  const clear = localStorage.clear.bind(localStorage);
+  localStorage.clear = () => {
+    clear();
+    localStorage.setItem(key, JSON.stringify(session));
+  };
+}, "sb-localhost-auth-token", fakeSession());
 await page.evaluateOnNewDocument(() => {
   window.__copied = null;
   window.__shared = null;

@@ -123,16 +123,34 @@ never stand in for a failed load; and anything that removes a record asks first 
 ## How people get around
 
 One shape, not two (Atanas, 2026-09-22: "make it as one whole app not two different
-apps"). `/` for a stranger is the **free page** (`src/components/Welcome.tsx`): every free
-tool as its own big button — make an invoice or a quote, start from a photo of an old
-invoice, check a company, copy a document — each with a line saying what it does, the two
-that need a free sign-in saying so, and "We keep nothing you make here. Save it or
-download it to keep it." Its words follow `notes/first-page-research.md`, banned words
-included (`test-first-page` checks them).
+apps"), and **nothing works before an account** ("nothing should work before the user
+register... a plain page with some nice advertising of the app and the log in
+rectangulars"). `/` for a stranger is the **front door** (`src/components/Welcome.tsx`):
+the headline, five short lines of what the app does, what you can save it as, and
+`SignInCard` beside them. Every other page redirects to `/login`; only `/`, `/login`,
+`/reset-password` and the customer links `/i/`, `/q/`, `/r/` are public (the Gate in
+`AppShell`). Its words follow `notes/first-page-research.md` (`test-first-page`), which
+now allows "account" and "PDF" because the page is about making one.
 
-"Start from an old invoice" goes to `/free-invoice?start=photo`, which opens the camera on
-arrival (not over a draft, not for a stranger, and not on the iPhone's own-camera path,
-which only opens from a tap) and tidies the address back to `/free-invoice`.
+`SignInCard` (`src/components/SignInCard.tsx`, used by `/` and `/login`) is the whole of
+signing in: two tabs, **Sign in** and **New here**, a label over every box, the password
+typed twice when the account is new ("The two passwords are not the same"), then the
+check-your-email screen with the six-number code. The submit button says "Sign me in" so
+it is not the same words as the tab. `/login?new=1` opens on making an account.
+
+`/free-invoice?start=photo` opens the camera on arrival (not over a draft, not for a
+stranger, and not on the iPhone's own-camera path, which only opens from a tap) and tidies
+the address back to `/free-invoice`.
+
+A document leaves the app in seven shapes, free page included: **Save as** (`SaveAsMenu`)
+gives PDF, picture (.png), smaller picture (.jpg), Word (.doc), web page (.html), plain
+text (.txt) and spreadsheet (.csv). All but the PDF and the pictures are read off the
+printed sheet itself (`src/lib/sheetFile.ts`), so no screen keeps its own copy of the
+totals; `src/lib/saveFile.ts` is the only place a file is handed to the device.
+
+Each tool carries a short **how it works** note the first few times it is opened (`Tip`,
+`tip:<id>` in localStorage): scan, copy, check a company, expenses, VAT, mileage, files
+and needs-review.
 
 Signed in, `/` is the dashboard, and the same tools are its first row: Scan a receipt,
 Make an invoice, Copy a document, Check a company, with "+ Add" and "Upload photos or

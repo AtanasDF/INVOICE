@@ -1,12 +1,14 @@
-// The front door for a stranger (notes/first-page-research.md): no bounce
-// to the sign-in form, two big buttons that say what they do, big type,
-// no words from the banned list, and the dashboard untouched for someone
-// signed in.
+// The front door: a plain page that says what the app is for, with the
+// sign-in and the new-account boxes on it, and nothing else working before
+// an account (Atanas, 2026-09-22: "nothing should work before the user
+// register... a plain page with some nice advertising of the app and the
+// log in rectangulars"). Words and sizes follow notes/first-page-research.md.
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, shot } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const BANNED = ["PDF", "scan", "upload", "template", "generate", "account", "sign up", "register", "VAT", "CIS", "UTR", "officers", "API", "instantly", "easy"];
+// "account" and "sign in" have to be said here; the rest of the jargon does not.
+const BANNED = ["scan", "upload", "template", "generate", "API", "instantly", "easy", "CIS", "UTR", "officers"];
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], recurring_expenses: [], credit_notes: [], invoice_payments: [] });
@@ -18,89 +20,67 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  await sleep(800);
+  await sleep(900);
   const text = await bodyText(page);
-  check("a stranger stays on the front door, not bounced to sign-in", page.url() === `${BASE}/` && !/Welcome back/.test(text), page.url());
-  check("the headline and the promise", text.includes("Free tools") && text.includes("Make invoices and quotes, check a company, copy any paper. All free, nothing to pay."), text.slice(0, 200));
-  // Every free tool on the one page, each a big button of its own with a
-  // line saying what it does (Atanas, 2026-09-22).
-  const buttons = await page.evaluate(() => {
-    const info = (a) => ({
-      label: a.textContent.trim(),
-      href: new URL(a.href).pathname + new URL(a.href).search,
-      h: Math.round(a.getBoundingClientRect().height),
-      w: Math.round(a.getBoundingClientRect().width),
-      size: parseFloat(getComputedStyle(a).fontSize),
-      dark: getComputedStyle(a).backgroundColor,
-    });
-    return {
-      tools: [...document.querySelectorAll("main li a")].map(info),
-      width: window.innerWidth,
-      h1: parseFloat(getComputedStyle(document.querySelector("h1")).fontSize),
-      body: [...document.querySelectorAll("main p")].map((p) => parseFloat(getComputedStyle(p).fontSize)),
-    };
-  });
+  check("a stranger stays on the front door", page.url() === `${BASE}/`, page.url());
+  check("the headline says what it is for", text.includes("Invoices, receipts and what you're owed, in one place."), text.slice(0, 200));
+  check("...and that an account is free and quick", text.includes("Make an account and it's all yours. Free, and it takes a minute."), text.slice(0, 300));
   check(
-    "the four free tools, in order, each to its own page",
-    JSON.stringify(buttons.tools.map((b) => [b.label, b.href])) ===
-      JSON.stringify([
-        ["Make an invoice or a quote", "/free-invoice"],
-        ["Start from an old invoice", "/login?next=%2Ffree-invoice%3Fstart%3Dphoto"],
-        ["Check a company", "/check-company"],
-        ["Copy a document", "/copy"],
-      ]),
-    JSON.stringify(buttons.tools.map((b) => [b.label, b.href]))
-  );
-  check(
-    "each is a full-width button of at least 60px, bold, 20px",
-    buttons.tools.length === 4 && buttons.tools.every((b) => b.h >= 60 && b.w >= buttons.width - 40 && b.size >= 20),
-    JSON.stringify(buttons.tools)
-  );
-  check("one of them is the main one", buttons.tools.filter((b) => b.dark !== "rgb(255, 255, 255)").length === 1, JSON.stringify(buttons.tools.map((b) => b.dark)));
-  check("the headline is 32px or more, nothing on the page under 16px", buttons.h1 >= 32 && buttons.body.every((s) => s >= 16), JSON.stringify({ h1: buttons.h1, body: buttons.body }));
-  check(
-    "each tool says in a line what it does, and which need a free sign-in",
-    text.includes("Say what you did and what it costs. Print it, save it or send it.") &&
-      text.includes("Take a photo of one you sent before. We fill in the next one for you to check.") &&
-      text.includes("See if a company is real, still trading, and who runs it.") &&
-      text.includes("Photograph any paper, or pick files, into one file to save, share or email.") &&
-      (text.match(/Needs a free sign-in\./g) ?? []).length === 2,
+    "five short lines say what it does",
+    ["Make an invoice or a quote", "Photograph a receipt or a bill", "Check a company", "Copy any paper", "See what you're owed"].every((l) => text.includes(l)),
     text.slice(0, 600)
   );
-  check("the foot line about what we keep", text.includes("We keep nothing you make here. Save it or download it to keep it."));
+  check("and what you can save it as", text.includes("as a PDF, a picture, a Word file or a spreadsheet"), text.slice(0, 700));
+
+  // The boxes themselves.
+  const box = await page.evaluate(() => {
+    const tabs = [...document.querySelectorAll('[role="tab"]')].map((t) => ({ text: t.textContent.trim(), on: t.getAttribute("aria-selected") === "true" }));
+    const labels = [...document.querySelectorAll("main label")].map((l) => l.textContent.trim());
+    const fields = [...document.querySelectorAll("main input")].map((i) => ({ type: i.type, name: i.name }));
+    const submit = [...document.querySelectorAll("main form button")].map((b) => b.textContent.trim());
+    return { tabs, labels, fields, submit, h1: parseFloat(getComputedStyle(document.querySelector("h1")).fontSize), body: [...document.querySelectorAll("main p, main li")].map((p) => parseFloat(getComputedStyle(p).fontSize)) };
+  });
+  check("two choices, signing in first and marked", JSON.stringify(box.tabs) === JSON.stringify([{ text: "Sign in", on: true }, { text: "New here", on: false }]), JSON.stringify(box.tabs));
+  check("signing in asks for an email and a password, both labelled", JSON.stringify(box.labels) === JSON.stringify(["Your email", "Password"]) && box.fields.some((f) => f.name === "email") && box.fields.some((f) => f.name === "password"), JSON.stringify(box));
+  check("the button says what it does", box.submit.includes("Sign me in"), JSON.stringify(box.submit));
+  check("the headline is 32px or more, nothing on the page under 16px", box.h1 >= 32 && box.body.every((s) => s >= 16), JSON.stringify({ h1: box.h1, body: box.body }));
+
+  await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].find((t) => t.textContent.trim() === "New here")?.click());
+  await sleep(300);
+  const made = await page.evaluate(() => ({
+    heading: [...document.querySelectorAll("main h2")].map((h) => h.textContent.trim()),
+    labels: [...document.querySelectorAll("main label")].map((l) => l.textContent.trim()),
+    submit: [...document.querySelectorAll("main form button")].map((b) => b.textContent.trim()),
+    says: document.body.innerText,
+  }));
+  check("making an account asks for the password twice, in plain words", JSON.stringify(made.labels) === JSON.stringify(["Your email", "Make a password", "Type the password again"]), JSON.stringify(made.labels));
+  check("...and says what happens next", made.heading.includes("Make an account") && made.says.includes("It's free. We'll send one email to check it's you.") && made.submit.includes("Make my account"), JSON.stringify(made.heading) + JSON.stringify(made.submit));
+
   const main = await page.evaluate(() => document.querySelector("main").innerText);
   const found = BANNED.filter((w) => new RegExp(`\\b${w}\\b`, w === w.toUpperCase() ? "" : "i").test(main));
   check("none of the banned words on the page", found.length === 0, JSON.stringify(found));
-  check("Sign in is in the header for the one who has one", /Sign in/.test(text));
-  check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await shot(page, "first-page");
+  check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await page.setViewport({ width: 320, height: 640 });
   await sleep(300);
   check("fits 320px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await page.setViewport({ width: 375, height: 812 });
 
-  // Tapping through works before anything else loads: plain links.
-  await page.evaluate(() => [...document.querySelectorAll("main a")].find((a) => a.textContent.trim() === "Make an invoice or a quote").click());
-  await page.waitForFunction(() => location.pathname === "/free-invoice", { timeout: 10000 }).catch(() => {});
-  check("Make an invoice goes to the free page", page.url().endsWith("/free-invoice"), page.url());
+  // Nothing else works before an account.
+  const shut = [];
+  for (const path of ["/free-invoice", "/check-company", "/copy", "/receipts", "/invoices", "/settings"]) {
+    await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
+    await sleep(600);
+    shut.push([path, new URL(page.url()).pathname]);
+  }
+  check("every other page sends a stranger to sign in", shut.every(([, landed]) => landed === "/login"), JSON.stringify(shut));
 
-  // Someone signed in still gets their dashboard.
+  // Someone signed in gets their dashboard, with the tools on it.
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  await sleep(800);
-  const home = await bodyText(page);
-  check("signed in, the root is the dashboard, with the free tools among its own", /Dashboard/.test(home) && !home.includes("Free tools") && home.includes("Copy a document") && home.includes("Check a company"), home.slice(0, 300));
-  // "Start from an old invoice" lands on the free page with the camera
-  // already open, instead of the chooser asking the same question again.
-  await page.evaluate(() => localStorage.removeItem("free-invoice-draft"));
-  await page.goto(`${BASE}/free-invoice?start=photo`, { waitUntil: "networkidle0" });
-  await sleep(1200);
-  const photo = await bodyText(page);
-  check("arriving from Start from an old invoice opens the camera, not the chooser", !photo.includes("How would you like to start?"), photo.slice(0, 200));
-  check("...and the address is tidied, so a reload doesn't open it again", new URL(page.url()).search === "", page.url());
-  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
   await sleep(900);
-  check("the free page on its own still asks how to start", (await bodyText(page)).includes("How would you like to start?"));
+  const home = await bodyText(page);
+  check("signed in, the root is the dashboard with the tools on it", /Dashboard/.test(home) && home.includes("Make an invoice") && home.includes("Copy a document") && home.includes("Check a company") && !home.includes("Make an account"), home.slice(0, 300));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

@@ -57,24 +57,22 @@ try {
   const cdp = await page.createCDPSession();
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
 
-  // A stranger.
+  // Nothing works before an account (Atanas, 2026-09-22): a stranger is
+  // sent to the front door, which is the sign-in page itself.
   await page.goto(`${BASE}/copy`, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
   await page.goto(`${BASE}/copy`, { waitUntil: "networkidle0" });
-  await sleep(600);
+  await sleep(700);
   let text = await bodyText(page);
-  const signInLink = await page.evaluate(() => [...document.querySelectorAll("main a")].find((a) => a.textContent.trim() === "Sign in to copy a document")?.getAttribute("href"));
-  check("a stranger is asked to sign in, and brought back here after", signInLink === "/login?next=%2Fcopy" && !(await page.$('input[type="file"]')), String(signInLink));
-  check("the page says what it does in plain words", text.includes("Copy a document") && text.includes("Photograph any paper"), text.slice(0, 200));
-  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  await sleep(500);
-  check("the front door leads here", await page.evaluate(() => [...document.querySelectorAll("main a")].some((a) => a.getAttribute("href") === "/copy")));
-  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
-  await sleep(500);
-  check("so does the free page", await page.evaluate(() => [...document.querySelectorAll("main a")].some((a) => a.getAttribute("href") === "/copy")));
+  check("a stranger is sent to sign in, and gets no camera", new URL(page.url()).pathname === "/login" && !(await page.$('input[type="file"]')), page.url());
+  check("...and the front door says what the app is for", (await page.goto(`${BASE}/`, { waitUntil: "networkidle0" })) && (await sleep(500)) === undefined && /Invoices, receipts and what you&#x27;re owed|Invoices, receipts and what you're owed/.test(await bodyText(page)), (await bodyText(page)).slice(0, 160));
 
   // Signed in.
   await signIn(page, BASE);
+  await page.goto(`${BASE}/copy`, { waitUntil: "networkidle0" });
+  await sleep(600);
+  text = await bodyText(page);
+  check("the page says what it does in plain words", text.includes("Copy a document") && text.includes("Photograph any paper"), text.slice(0, 200));
   await page.goto(`${BASE}/copy`, { waitUntil: "networkidle0" });
   await sleep(600);
   text = await bodyText(page);

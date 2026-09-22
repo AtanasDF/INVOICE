@@ -6,6 +6,7 @@ import { effectiveCategories, withCurrent } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import Tip from "@/components/Tip";
 
 type DraftState = {
   vendor: string;
@@ -127,6 +128,7 @@ export default function ReviewQueuePage() {
           Receipts that came in by email — check what was read off them before they count toward your records.
         </p>
       </div>
+      <Tip id="review-how">How it works: check what was read off each one. Once you save it, it counts towards your totals.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 

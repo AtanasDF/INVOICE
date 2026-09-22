@@ -78,6 +78,10 @@ try {
     for (const el of document.querySelectorAll("button, a[href]")) {
       const r = el.getBoundingClientRect();
       if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > innerHeight) continue;
+      // A closed menu (a <details>) still lays its pages out, but the
+      // browser paints none of them and a tap cannot reach them.
+      if (el.checkVisibility && !el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
+      if (el.closest("details") && !el.closest("details").open && el.tagName !== "SUMMARY") continue;
       const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) {
         out.push({ label: (el.textContent || "").trim().slice(0, 24), over: (hit.textContent || "").trim().slice(0, 24) });

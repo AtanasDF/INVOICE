@@ -40,12 +40,24 @@ try {
   // A stranger throughout.
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
-  for (const [path, name] of [["/", "the front door"], ["/login", "the sign-in page"], ["/check-company", "the company check"]]) {
+  for (const [path, name] of [["/", "the front door"], ["/login", "the sign-in page"]]) {
     await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
     await sleep(600);
     const t = await main();
-    check(`${name}: none of the banned words`, found(t).length === 0, JSON.stringify(found(t)));
+    // The front door and the sign-in page are about making an account, so
+    // those words belong there; "PDF" is on the front door's list of what
+    // you can save, which is what people ask for by name.
+    const allow = new Set(["account", "sign up", "register", "PDF"]);
+    check(`${name}: none of the banned words`, found(t, allow).length === 0, JSON.stringify(found(t, allow)));
     for (const s of longOnes(t)) console.log(`LONG (${name}, ${s.split(/\s+/).length} words): ${s.slice(0, 140)}`);
+  }
+  // Everything else needs an account (Atanas, 2026-09-22).
+  await signIn(page, BASE);
+  await page.goto(`${BASE}/check-company`, { waitUntil: "networkidle0" });
+  await sleep(600);
+  {
+    const t = await main();
+    check("the company check: none of the banned words", found(t).length === 0, JSON.stringify(found(t)));
   }
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.removeItem("free-invoice-draft"); for (const id of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + id, "3"); });

@@ -207,7 +207,9 @@ function Gate({ children }: { children: React.ReactNode }) {
   // password) -- unlike /login, being authenticated here must NOT
   // bounce them away before they finish.
   const isResetPasswordPage = pathname === "/reset-password";
-  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/" || pathname === "/free-invoice" || pathname === "/check-company" || pathname === "/copy" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/");
+  // Nothing works before an account (Atanas, 2026-09-22), except the front
+  // door itself and the links a customer is sent.
+  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/");
 
   useEffect(() => {
     if (loading) return;

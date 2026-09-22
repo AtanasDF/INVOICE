@@ -8,6 +8,7 @@ import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed } from "@/lib/errorText";
 import { shortDate } from "@/lib/dates";
+import Tip from "@/components/Tip";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -108,6 +109,7 @@ export default function FilesPage() {
         <h1 className="text-2xl font-bold">File library</h1>
         <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place.</p>
       </div>
+      <Tip id="files-how">How it works: every photo and file you have saved is here, newest first. Tap one to see it or save it to your device.</Tip>
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>

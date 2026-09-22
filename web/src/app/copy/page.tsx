@@ -10,6 +10,7 @@ import type { DocPage } from "@/lib/documentPdf";
 import { shortDate } from "@/lib/dates";
 import { todayISO } from "@/lib/today";
 import { SITE_NAME } from "@/lib/siteName";
+import Tip from "@/components/Tip";
 
 // Copy any paper: photos (straightened by the scanner) or files, in order,
 // into one PDF to save, share or email. Nothing is read by the AI and
@@ -164,6 +165,7 @@ export default function CopyDocumentPage() {
           save or send.
         </p>
       </div>
+      <Tip id="copy-how">How it works: take photos or pick files, put them in order, and they become one file to save, share or email.</Tip>
 
       {loading ? null : !user ? (
         <div className="space-y-2 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

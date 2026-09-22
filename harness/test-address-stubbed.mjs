@@ -9,7 +9,7 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./mock-server.mjs";
-import { makeDb, UID } from "./mockdb.mjs";
+import { fakeSession, makeDb, UID } from "./mockdb.mjs";
 
 const WEB = "/Users/nasko/Desktop/INVOICE/web";
 const PORT = 3313;
@@ -218,132 +218,135 @@ try {
   r = await search({ q: "ZZ99 9ZZ" }, true);
   check("Royal Mail's own not-found is the same kept-as-typed offer", r.body.badPostcode === true, JSON.stringify(r.body));
 
-  // ---- The browser: a stranger on the Free page ---------------------------
+  // ---- The browser ---------------------------------------------------------
   browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true, args: ["--no-first-run"] });
   const page = await browser.newPage();
   await page.setViewport({ width: 375, height: 900 });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
   const asked = [];
   page.on("request", (req) => { if (req.url().endsWith("/api/address-search") && req.method() === "POST") asked.push(JSON.parse(req.postData() || "{}")); });
-  await page.goto(`${base}/free-invoice`, { waitUntil: "networkidle0", timeout: 180000 });
-  await page.evaluate(() => { localStorage.clear(); for (const t of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + t, "3"); });
-  await page.reload({ waitUntil: "networkidle0", timeout: 180000 });
-  const clickText = async (text) => {
-    const ok = await page.evaluate((t) => { const b = [...document.querySelectorAll("button,a,label")].find((x) => x.textContent.trim() === t); if (b) b.click(); return !!b; }, text);
-    if (!ok) throw new Error("no button: " + text);
-  };
-  await clickText("Start a quote");
-  await sleep(600);
-  await clickText("Add more details");
-  await sleep(500);
-  const input = async (i, label) => (await page.$$(`input[aria-label="${label}"]`))[i];
-  const block = (i) => page.evaluate((i) => {
-    const b = [...document.querySelectorAll('input[aria-label="Postcode"]')][i].closest(".space-y-2");
-    const v = (l) => b.querySelector(`input[aria-label="${l}"]`).value;
-    return { line1: v("House number and street"), town: v("Town or city"), postcode: v("Postcode"), options: [...b.querySelectorAll('[role="option"]')].map((o) => o.querySelector("span").textContent), note: [...b.querySelectorAll("p.text-xs")].map((p) => p.textContent).join(" | ") };
-  }, i);
-  const waitOptions = (i, ms = 8000) => page.waitForFunction((i) => [...document.querySelectorAll('input[aria-label="Postcode"]')][i].closest(".space-y-2").querySelectorAll('[role="option"]').length > 0, { timeout: ms }, i).then(() => true, () => false);
-  const pick = (i, label) => page.evaluate((i, label) => {
-    const b = [...document.querySelectorAll('input[aria-label="Postcode"]')][i].closest(".space-y-2");
-    const o = [...b.querySelectorAll('[role="option"] button')].find((x) => x.querySelector("span").textContent === label);
-    o?.click();
-    return !!o;
-  }, i, label);
-
-  asked.length = 0;
-  await (await input(0, "Postcode")).type("SW1A 2AA", { delay: 60 });
-  const listed = await waitOptions(0);
-  check("his first ask: a postcode typed lists its addresses with no button pressed", listed && (await block(0)).options.includes("10 Downing Street"), JSON.stringify(await block(0)));
-  check("...after one search for the whole postcode, not one per letter", asked.length === 1 && asked[0].q === "SW1A 2AA", JSON.stringify(asked));
-  check("picked 10 Downing Street", await pick(0, "10 Downing Street"));
-  await sleep(300);
-  let f = await block(0);
-  check("...it fills the street, town and postcode and closes the list", f.line1 === "10 Downing Street" && f.town === "London" && f.postcode === "SW1A 2AA" && f.options.length === 0, JSON.stringify(f));
-  asked.length = 0;
-  await (await input(0, "Flat, building or area")).type("Rear entrance", { delay: 30 });
-  await sleep(1500);
-  check("typing elsewhere in an address already settled searches nothing", asked.length === 0 && (await block(0)).options.length === 0, JSON.stringify(asked));
-
-  asked.length = 0;
-  await (await input(1, "House number and street")).type("149 Benares Road", { delay: 50 });
-  await (await input(1, "Town or city")).type("London", { delay: 50 });
-  const found = await waitOptions(1);
-  f = await block(1);
-  check("his second ask: a number and street typed finds the street by itself", found && JSON.stringify(f.options) === JSON.stringify(["149 Benares Road"]), JSON.stringify(f));
-  check("...searching once the typing stopped, not on every letter", asked.length >= 1 && asked.length <= 2 && asked.at(-1).q === "149 Benares Road, London", JSON.stringify(asked));
-  await pick(1, "149 Benares Road");
-  await sleep(300);
-  f = await block(1);
-  check("...and the pick ends with the postcode in its box", f.line1 === "149 Benares Road" && f.town === "London" && f.postcode === "SE18 1HS", JSON.stringify(f));
-
-  // His own postcode: no houses in the free data, so his street is offered.
-  await page.evaluate(() => {
-    const el = [...document.querySelectorAll('input[aria-label="Postcode"]')][1];
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "");
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await page.evaluate(() => {
-    const el = [...document.querySelectorAll('input[aria-label="House number and street"]')][1];
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "149");
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await sleep(1200);
-  asked.length = 0;
-  await (await input(1, "Postcode")).type("se18 1hu", { delay: 60 });
-  await waitOptions(1);
-  f = await block(1);
-  check("a postcode with no houses lists the streets there", JSON.stringify(f.options) === JSON.stringify(["Benares Road", "St. Nicholas Road", "Amar Court", "Not listed? Use just the postcode"]), JSON.stringify(f));
-  check("...and says what to do in plain words", /No houses are listed for SE18 1HU in the free directory\. Pick your street, then add your house number\./.test(f.note), f.note);
-  await pick(1, "Benares Road");
-  await sleep(300);
-  f = await block(1);
-  check("picking the street keeps the number typed and the postcode", f.line1 === "149 Benares Road" && f.town === "London" && f.postcode === "SE18 1HU", JSON.stringify(f));
-  check("the Free page never asked for Royal Mail's list", idealCalls() === 4, String(idealCalls()));
-
-  // The map fails once: the box asks again by itself and the list comes.
-  stub.photonFails = 1;
-  asked.length = 0;
-  await page.evaluate(() => {
-    const el = [...document.querySelectorAll('input[aria-label="Postcode"]')][1];
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "");
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await (await input(1, "Postcode")).type("SE18 1HS", { delay: 60 });
-  const retried = await waitOptions(1, 12000);
-  f = await block(1);
-  check("a search the map fails once is asked again by itself, and answers", retried && f.options[0] === "SE18 1HS, London" && asked.filter((a) => a.q === "SE18 1HS").length === 2 && !/isn't answering/.test(f.note), JSON.stringify({ f, asked }));
-  check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-
-  // ---- Signed in: Royal Mail's list, then the key refused -----------------
-  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  const exp = Math.floor(Date.now() / 1000) + 86400;
-  const user = { id: UID, aud: "authenticated", role: "authenticated", email: "owner@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", app_metadata: {}, user_metadata: {} };
-  const session = { access_token: `${b64({ alg: "HS256" })}.${b64({ sub: UID, exp, role: "authenticated" })}.x`, refresh_token: "r", token_type: "bearer", expires_in: 86400, expires_at: exp, user };
-  await page.evaluate((s) => localStorage.setItem("sb-localhost-auth-token", JSON.stringify(s)), session);
+  // Every page needs an account since 2026-09-22; the session goes in
+  // before each load, and a suite's localStorage.clear() puts it back.
+  await page.evaluateOnNewDocument((key, session) => {
+    localStorage.setItem(key, JSON.stringify(session));
+    const clear = localStorage.clear.bind(localStorage);
+    localStorage.clear = () => {
+      clear();
+      localStorage.setItem(key, JSON.stringify(session));
+    };
+  }, "sb-localhost-auth-token", fakeSession());
   await page.goto(`${base}/clients/new`, { waitUntil: "networkidle0", timeout: 180000 });
   await page.waitForFunction(() => !!document.querySelector('input[aria-label="Postcode"]'), { timeout: 60000 }).catch(() => {});
-  await (await input(0, "Postcode")).type("SE18 1HU", { delay: 60 });
-  await waitOptions(0);
-  f = await block(0);
-  check("signed in, the postcode lists Royal Mail's addresses", JSON.stringify(f.options) === JSON.stringify(["149 Benares Road", "Flat 1, 151 Benares Road"]) && /Royal Mail addresses/.test(f.note), JSON.stringify(f));
-  await pick(0, "Flat 1, 151 Benares Road");
-  await sleep(300);
-  f = await block(0);
-  check("...a pick fills every box", f.line1 === "Flat 1" && f.town === "London" && f.postcode === "SE18 1HU", JSON.stringify(f));
+  const input = async (label) => (await page.$$(`input[aria-label="${label}"]`))[0];
+  const setBox = (label, value) =>
+    page.evaluate((l, v) => {
+      const el = [...document.querySelectorAll(`input[aria-label="${l}"]`)][0];
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, v);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }, label, value);
+  const block = () =>
+    page.evaluate(() => {
+      const b = document.querySelector('input[aria-label="Postcode"]').closest(".space-y-2");
+      const v = (l) => b.querySelector(`input[aria-label="${l}"]`).value;
+      return {
+        line1: v("House number and street"),
+        town: v("Town or city"),
+        postcode: v("Postcode"),
+        options: [...b.querySelectorAll('[role="option"]')].map((o) => o.querySelector("span").textContent),
+        note: [...b.querySelectorAll("p.text-xs")].map((p) => p.textContent).join(" | "),
+      };
+    });
+  const waitOptions = (ms = 8000) =>
+    page
+      .waitForFunction(() => document.querySelector('input[aria-label="Postcode"]').closest(".space-y-2").querySelectorAll('[role="option"]').length > 0, { timeout: ms })
+      .then(() => true, () => false);
+  const pick = (label) =>
+    page.evaluate((label) => {
+      const b = document.querySelector('input[aria-label="Postcode"]').closest(".space-y-2");
+      const o = [...b.querySelectorAll('[role="option"] button')].find((x) => x.querySelector("span").textContent === label);
+      o?.click();
+      return !!o;
+    }, label);
+  const clearAddress = async () => {
+    for (const l of ["House number and street", "Flat, building or area", "Town or city", "Postcode"]) await setBox(l, "");
+    await sleep(900);
+  };
 
+  // Royal Mail's own list first: this server has a key, and a signed-in
+  // person is who it is for.
+  await (await input("Postcode")).type("SE18 1HU", { delay: 60 });
+  await waitOptions();
+  let f = await block();
+  check("signed in with a key, the postcode lists Royal Mail's addresses", JSON.stringify(f.options) === JSON.stringify(["149 Benares Road", "Flat 1, 151 Benares Road"]) && /Royal Mail addresses/.test(f.note), JSON.stringify(f));
+  check("picked one of them", await pick("Flat 1, 151 Benares Road"));
+  await sleep(300);
+  f = await block();
+  check("...and it fills every box", f.line1 === "Flat 1" && f.town === "London" && f.postcode === "SE18 1HU", JSON.stringify(f));
+
+  // ---- The key refused: the free lookups answer from here on --------------
   stub.paf = "no-balance";
   const was = idealCalls();
   r = await search({ q: "M1 1AE" }, true);
   check("out of credit: the free list instead, marked as such", r.body.source === "osm" && r.body.fallback === true && r.body.items[0]?.lines?.at(-1) === "M1 1AE", JSON.stringify(r.body).slice(0, 200));
-  r = await search({ q: "SW1A 2AA" }, true);
+  r = await search({ q: "SE18 1HS" }, true);
   check("...and the key is rested: the next search doesn't ask Royal Mail at all", idealCalls() === was + 1 && r.body.fallback === true, `${was} -> ${idealCalls()}`);
   check("...logged once, in words", (serverLog.match(/Ideal Postcodes refused the key \(402\)/g) ?? []).length === 1, serverLog.split("\n").filter((l) => /address-search/.test(l)).join(" / ").slice(0, 300));
+
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForFunction(() => !!document.querySelector('input[aria-label="Postcode"]'), { timeout: 60000 }).catch(() => {});
-  await (await input(0, "Postcode")).type("SW1A 2AA", { delay: 60 });
-  await waitOptions(0);
-  f = await block(0);
-  check("the box says why the list is the free one", /^Royal Mail's list isn't available just now, so this is the free one\./.test(f.note) && f.options.includes("10 Downing Street"), f.note);
+  asked.length = 0;
+  await (await input("Postcode")).type("SW1A 2AA", { delay: 60 });
+  const listed = await waitOptions();
+  f = await block();
+  check("his first ask: a postcode typed lists its addresses with no button pressed", listed && f.options.includes("10 Downing Street"), JSON.stringify(f));
+  check("...after one search for the whole postcode, not one per letter", asked.length === 1 && asked[0].q === "SW1A 2AA", JSON.stringify(asked));
+  check("...and the box says why this list is the free one", /^Royal Mail's list isn't available just now, so this is the free one\./.test(f.note), f.note);
+  check("picked 10 Downing Street", await pick("10 Downing Street"));
+  await sleep(300);
+  f = await block();
+  check("...it fills the street, town and postcode and closes the list", f.line1 === "10 Downing Street" && f.town === "London" && f.postcode === "SW1A 2AA" && f.options.length === 0, JSON.stringify(f));
+  asked.length = 0;
+  await (await input("Flat, building or area")).type("Rear entrance", { delay: 30 });
+  await sleep(1500);
+  check("typing elsewhere in an address already settled searches nothing", asked.length === 0 && (await block()).options.length === 0, JSON.stringify(asked));
+
+  await clearAddress();
+  asked.length = 0;
+  await (await input("House number and street")).type("149 Benares Road", { delay: 50 });
+  await (await input("Town or city")).type("London", { delay: 50 });
+  const found = await waitOptions();
+  f = await block();
+  check("his second ask: a number and street typed finds the street by itself", found && JSON.stringify(f.options) === JSON.stringify(["149 Benares Road"]), JSON.stringify(f));
+  check("...searching once the typing stopped, not on every letter", asked.length >= 1 && asked.length <= 2 && asked.at(-1).q === "149 Benares Road, London", JSON.stringify(asked));
+  await pick("149 Benares Road");
+  await sleep(300);
+  f = await block();
+  check("...and the pick ends with the postcode in its box", f.line1 === "149 Benares Road" && f.town === "London" && f.postcode === "SE18 1HS", JSON.stringify(f));
+
+  // His own postcode: no houses in the free data, so his street is offered.
+  await clearAddress();
+  await setBox("House number and street", "149");
+  await sleep(900);
+  asked.length = 0;
+  await (await input("Postcode")).type("se18 1hu", { delay: 60 });
+  await waitOptions();
+  f = await block();
+  check("a postcode with no houses lists the streets there", JSON.stringify(f.options) === JSON.stringify(["Benares Road", "St. Nicholas Road", "Amar Court", "Not listed? Use just the postcode"]), JSON.stringify(f));
+  check("...and says what to do in plain words", /No houses are listed for SE18 1HU in the free directory\. Pick your street, then add your house number\./.test(f.note), f.note);
+  await pick("Benares Road");
+  await sleep(300);
+  f = await block();
+  check("picking the street keeps the number typed and the postcode", f.line1 === "149 Benares Road" && f.town === "London" && f.postcode === "SE18 1HU", JSON.stringify(f));
+
+  // The map fails once: the box asks again by itself and the list comes.
+  stub.photonFails = 1;
+  await clearAddress();
+  asked.length = 0;
+  await (await input("Postcode")).type("SE18 1HL", { delay: 60 });
+  const retried = await waitOptions(14000);
+  f = await block();
+  check("a search the map fails once is asked again by itself, and answers", retried && asked.filter((a) => a.q === "SE18 1HL").length === 2 && !/isn't answering/.test(f.note), JSON.stringify({ f, asked }));
+  check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

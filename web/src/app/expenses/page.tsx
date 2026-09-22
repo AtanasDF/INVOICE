@@ -9,6 +9,7 @@ import { CreditNote, Invoice, Receipt, businessProfileStore, creditNotesStore, i
 import { incomeOf } from "@/lib/periodIncome";
 import { loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import Tip from "@/components/Tip";
 
 const SpendChart = dynamic(() => import("@/components/SpendChart"), { ssr: false });
 
@@ -176,6 +177,7 @@ export default function ExpensesPage() {
             <Link href="/vat" className="underline">VAT</Link>
           </span>
         </div>
+      <Tip id="expenses-how">How it works: every receipt and bill you save adds itself up here, by category and by month.</Tip>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border text-sm">
             <button

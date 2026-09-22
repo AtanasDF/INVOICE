@@ -29,6 +29,7 @@ import { useCompanyLookup } from "@/lib/companyConfigured";
 import { saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
+import Tip from "@/components/Tip";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -1181,6 +1182,7 @@ export default function ScanPage() {
             </button>
           )}
         </div>
+        <Tip id="scan-how">How it works: hold the phone over the paper. It takes the photo when the page is still, reads what&apos;s on it, and you check the numbers before saving.</Tip>
         {typePickerOpen && (
           <div className="mt-2 flex flex-wrap gap-2">
             {(baseMode === "archival" || baseMode === "contact") && (

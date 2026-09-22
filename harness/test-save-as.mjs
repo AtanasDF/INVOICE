@@ -63,8 +63,9 @@ const openSaveAs = () =>
 
 try {
   // ---- The free page: no account at all ----
+  await signIn(page, BASE);
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => localStorage.removeItem("free-invoice-draft"));
   await page.reload({ waitUntil: "networkidle0" });
   await sleep(1000);
   await clickText(page, "Type it in");
@@ -105,7 +106,6 @@ try {
 
   // ---- The same menu on an invoice in the app ----
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL2 });
-  await signIn(page, BASE);
   await page.goto(`${BASE}/invoices/${INVOICE}`, { waitUntil: "networkidle0" });
   await sleep(1500);
   await openSaveAs();

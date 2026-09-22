@@ -637,6 +637,24 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   the group marked for the page you are on); `test-settings-save` taps its links through
   the Menu, which the unsaved guard holds as before. Full run 99 suites, the two it caught
   fixed and green; the whole run again after them, 99 suites, all green (3e6f6ad).
+- **Nothing before an account, and a front door that says why** (Atanas, 2026-09-22
+  evening: "there shouldn't be any free options before you're able to register... it
+  should be a plain page with some nice advertising of the app and the log in
+  rectangulars"). `/` for a stranger is now the headline, five short lines of what the app
+  does, what you can save it as, and the sign-in card beside them; every other page sends
+  a stranger to `/login`, and only the customer links stay public. The card itself is two
+  tabs (Sign in / New here), a label over every box, the password typed twice when the
+  account is new, and the check-your-email screen with its six-number code; the button
+  says "Sign me in" so it isn't the same words as the tab. `/login?new=1` opens on making
+  an account.
+- **A short "how it works" the first time** on scan, copy, check a company, expenses, VAT,
+  mileage, files and needs-review, in one sentence each.
+- **Ten suites had to learn the new rule** (they used the free tools as strangers):
+  test-first-page rewritten for the front door (16/16), test-sign-up for the new card
+  (19/19), test-free-draft, test-plain-words, test-copy-document, test-save-as,
+  test-address-fields, test-check-company and test-address-stubbed sign in first, and
+  test-one-handed now skips what the browser does not paint (a closed <details> still lays
+  its pages out). Full run: 100 suites, all green.
 - **Final full run** (99 suites): 97 green. The two misses were the newly converted link
   suites meeting a freshly compiling dev server under load (a page still "Loading…", a
   first press past 15 s, a mid-test reload); fixed by compiling their routes first and

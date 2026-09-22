@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import CompanyReportView from "@/components/check-company/CompanyReportView";
 import { asCompanyNumber, CH_SEARCH_URL, type CompanyHit, type CompanyReport, longDate } from "@/lib/companyReport";
+import Tip from "@/components/Tip";
 
 const CARD = "rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
 const PRIMARY = "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 min-h-14 text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
@@ -122,6 +123,7 @@ export default function CompanyChecker() {
         <h1 className="text-[2rem] font-bold leading-tight sm:text-4xl">What is the company called?</h1>
         <p className="mt-2 text-lg text-neutral-700">See if it is real, still trading, and who runs it. Free, nothing to join.</p>
       </div>
+      <Tip id="check-company-how">How it works: type a company&apos;s name or its number. We ask Companies House and show what they hold. Nothing is kept here.</Tip>
 
       <form onSubmit={submit} className={CARD}>
         <label htmlFor="company-query" className="text-base text-neutral-700">

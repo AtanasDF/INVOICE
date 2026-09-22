@@ -8,6 +8,7 @@ import { VatBasis, previousQuarter, quarterLabel, quarterOf, vatFigures } from "
 import { shortDate } from "@/lib/quoteStatus";
 import { loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import Tip from "@/components/Tip";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -67,6 +68,7 @@ export default function VatPage() {
         <h1 className="mt-1 text-2xl font-bold">VAT</h1>
         <p className="mt-1 text-neutral-600">The figures for a quarter, worked out from your invoices and receipts. Check them, then copy them into HMRC&apos;s form.</p>
       </div>
+      <Tip id="vat-how">How it works: these figures come from your own invoices and receipts. Copy them into your VAT return. Nothing is sent from here.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {!data && !error && <p className="text-sm text-neutral-500">Loading…</p>}
