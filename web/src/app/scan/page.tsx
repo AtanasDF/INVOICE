@@ -28,6 +28,7 @@ import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components
 import { useCompanyLookup } from "@/lib/companyConfigured";
 import { saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -55,6 +56,8 @@ type Form = {
   totalConf: Confidence | null;
   vatAmount: string;
   vatConf: Confidence | null;
+  // The printed rate the VAT was worked out from, when the document shows no figure.
+  vatWorkedOut: number | null;
   currency: string;
   fxRateInput: string;
   details: DocumentDetails;
@@ -88,6 +91,7 @@ const EMPTY_FORM: Form = {
   totalConf: null,
   vatAmount: "",
   vatConf: null,
+  vatWorkedOut: null,
   currency: "GBP",
   fxRateInput: "",
   details: {},
@@ -203,6 +207,7 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
   }));
   const clientId = touched.has("clientId") ? f.clientId : match?.id ?? "";
   const categoryGuess = result.category ?? f.category;
+  const vat = vatForReading(result);
   return {
     ...f,
     docType: result.documentType,
@@ -233,8 +238,9 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
       totalConf: result.totalAmountConfidence,
     }),
     ...unless("vatAmount", {
-      vatAmount: result.vatAmount !== null ? String(result.vatAmount) : "",
-      vatConf: result.vatAmountConfidence,
+      vatAmount: vat.vatAmount !== null ? String(vat.vatAmount) : "",
+      vatConf: vat.vatAmountConfidence,
+      vatWorkedOut: vat.workedOutFromRate,
     }),
     ...unless("details", { details: documentDetailsFromScan(result.details) }),
     ...unless("notes", { notes: result.notes ?? "" }),
@@ -1403,10 +1409,11 @@ export default function ScanPage() {
                 <input
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.vatAmount}
-                  onChange={(e) => patch({ vatAmount: e.target.value })}
+                  onChange={(e) => patch({ vatAmount: e.target.value, vatWorkedOut: null })}
                   inputMode="decimal"
                 />
                 <FieldFlag confidence={form.vatConf} />
+                {form.vatWorkedOut !== null && <p className="mt-1 text-xs text-neutral-600">{workedOutNote(form.vatWorkedOut)}</p>}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">

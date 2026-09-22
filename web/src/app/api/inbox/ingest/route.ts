@@ -7,6 +7,7 @@ import type { DocumentType } from "@/lib/storage";
 import { storeImageForUser } from "@/lib/receiptImagesServer";
 import { pdfWithPages } from "@/lib/pdfPages";
 import { todayISO } from "@/lib/today";
+import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 
 export const runtime = "nodejs";
 
@@ -191,7 +192,8 @@ export async function POST(req: Request) {
         // A credit note is stored negative so it nets against spend.
         const sign = documentType === "credit_note" ? -1 : 1;
         const total = result.totalAmount ?? 0;
-        const vat = result.vatAmount ?? 0;
+        const vatRead = vatForReading(result);
+        const vat = vatRead.vatAmount ?? 0;
         let amount: number;
         let vatAmount: number;
         let originalAmount: number | null = null;
@@ -241,6 +243,7 @@ export async function POST(req: Request) {
         if (originalCurrency && fxRate === null) {
           cues.push(`This document is in ${originalCurrency}, and no exchange rate could be fetched. The figures below are the ${originalCurrency} ones, NOT pounds — convert them before approving.`);
         }
+        if (vatRead.workedOutFromRate !== null) cues.push(workedOutNote(vatRead.workedOutFromRate));
         const notes = [file.note, result.notes, ...cues].filter(Boolean).join("\n");
 
         const { data, error } = await admin

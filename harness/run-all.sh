@@ -33,7 +33,7 @@ REWRITE
 fi
 
 SUITES=(
-  test-tax-rules test-reminder-clock test-money-edges test-vat-cash-basis test-pdf-pages test-next-number test-dates test-vat-pennies
+  test-tax-rules test-reminder-clock test-money-edges test-vat-cash-basis test-pdf-pages test-next-number test-dates test-vat-pennies test-vat-from-rate
   test-first-week test-prefix-wipe test-what-surfaces test-empty-account test-numbering test-half-saved test-keyboards test-long-values
   test-no-accidents test-public-links test-labels test-one-total test-round-trip
   test-currency test-dark-mode test-route-guards test-rls-audit test-one-handed test-free-draft test-bad-scan test-print test-no-silent-contacts test-fit-sweep test-company-picker test-company-number
@@ -42,7 +42,7 @@ SUITES=(
   test-cis test-delight test-texts test-tips test-share test-camera-tip test-camera-refusal test-big-account
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
   test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow test-odd-files test-exif-rotation test-weight
-  test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save
+  test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save test-vat-rate-scan
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev
@@ -70,8 +70,9 @@ done
 # The run itself used to exit 0 whatever the suites said, so a script or a
 # person checking only the status saw every run as green -- including the
 # one where every browser suite crashed on a missing puppeteer-core.
-# Judged by the summary itself (passed must equal total), not by counting
+# Judged by the summary itself (passed must equal total, and be more than
+# nothing: a suite that dies before its first check prints 0/0), not by counting
 # FAIL lines: ten suites end a thrown error with `console.log("ERROR", ...);
 # results.push(false)`, which prints no FAIL line and still isn't a pass.
-bad=$(cat "$OUT"/*.txt 2>/dev/null | awk '/^== /{ if ($0 ~ /CRASHED/) { n++; next } if (match($0, /"passed":[0-9]+,"total":[0-9]+/)) { split(substr($0, RSTART, RLENGTH), a, /[:,]/); if (a[2] != a[4]) n++ } else n++ } END { print n + 0 }')
+bad=$(cat "$OUT"/*.txt 2>/dev/null | awk '/^== /{ if ($0 ~ /CRASHED/) { n++; next } if (match($0, /"passed":[0-9]+,"total":[0-9]+/)) { split(substr($0, RSTART, RLENGTH), a, /[:,]/); if (a[2] != a[4] || a[4] == 0) n++ } else n++ } END { print n + 0 }')
 [ "$bad" -eq 0 ] || { echo "$bad suite(s) not green"; exit 1; }

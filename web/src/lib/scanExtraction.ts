@@ -69,6 +69,10 @@ export type ScanToolOutput = {
   currency: string | null;
   vatAmount: number | null;
   vatAmountConfidence: "high" | "low";
+  // The one VAT rate printed as applying to the whole document, as a
+  // percentage, when no VAT figure is printed; the app works the figure
+  // out from it (src/lib/vatFromRate.ts). Null otherwise.
+  vatRate: number | null;
   category: string | null;
   lineItems: ScanLineItem[];
   details: ScanDetails;
@@ -173,6 +177,13 @@ function buildDocumentSchema(categories: string[]): Record<string, unknown> {
         description: "VAT/tax portion only, not the total. Always positive, even on a credit note.",
       },
       vatAmountConfidence: confidence,
+      vatRate: {
+        type: ["number", "null"],
+        description:
+          "Only when NO VAT figure is printed: the single VAT rate printed as applying to the whole document, as a " +
+          "percentage (20 for \"VAT 20%\" or \"incl. VAT @ 20%\"). Null when a VAT figure is printed, when no rate is " +
+          "printed, when more than one rate applies, or when any item is marked zero-rated or exempt.",
+      },
       category: nullableEnum(categories, "Best-guess overall expense category, or null if unclear."),
       lineItems: {
         type: "array",
@@ -248,6 +259,7 @@ function buildDocumentSchema(categories: string[]): Record<string, unknown> {
       "currency",
       "vatAmount",
       "vatAmountConfidence",
+      "vatRate",
       "category",
       "lineItems",
       "details",
@@ -305,7 +317,10 @@ const PROMPT =
   "given, leave dueDate null and put the terms in details.paymentTerms. " +
   "totalAmount is the grand total actually paid or charged, INCLUDING VAT/tax -- read it directly off whatever " +
   "is printed as the final total, never a subtotal. vatAmount is the VAT/tax portion alone, read directly if " +
-  "it's printed. Set currency only when totalAmount is genuinely NOT in GBP -- leave it null for a plain UK " +
+  "it's printed; never work it out yourself. If no VAT figure is printed but one VAT rate is printed as applying " +
+  "to the whole document (\"VAT 20%\", \"incl. VAT @ 20%\"), put that percentage in vatRate and leave vatAmount " +
+  "null; leave vatRate null when a VAT figure is printed, when no rate is printed, when more than one rate " +
+  "applies, or when any item is zero-rated or exempt. Set currency only when totalAmount is genuinely NOT in GBP -- leave it null for a plain UK " +
   "document (£, or no symbol at all). Never guess an exchange rate yourself, only the currency it's in. " +
   "Capture bank details (account number, sort code, IBAN, BIC), payment terms, payment references, PO / " +
   "order / customer reference numbers, the supplier's address, VAT number, email and phone, and any delivery " +

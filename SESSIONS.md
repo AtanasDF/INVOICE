@@ -258,6 +258,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   (mockdb.mjs), which had hung two suites. Three suites fail the same way on the commit
   before this one — `test-company` (7/8), `test-company-picker` (18 then a wait) and
   `test-review-fixes` (a wait) — so they are older and on the list, not from this.
+- **Surprise 2 of 12, VAT from a printed rate** (his GO OUTDOORS receipt: "20%" printed,
+  no VAT figure, VAT box empty, £0 in box 4): the reader now reports the one rate printed
+  as applying to the whole document (`vatRate`, null when a figure is printed, when more
+  than one rate applies, or when anything is zero-rated or exempt) and never does the sum
+  itself; `src/lib/vatFromRate.ts` works the figure out to the penny, marks it low
+  confidence so it is flagged and held back from "Save all ready", and the scan page says
+  "VAT worked out from the 20% rate printed" under the box until a figure is typed over
+  it. The email import does the same and puts the note on the review row. New suites
+  `test-vat-from-rate` (12/12, logic) and `test-vat-rate-scan` (6/6, mocked reader). Full
+  harness: 77 suites, one fail — Settings at 320px, five pixels over from the category
+  rows, fixed (`min-w-0` on the box) — then green; `run-all.sh` now also counts a suite
+  that prints 0/0 as not green, which is what `test-review-fixes` has been doing.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

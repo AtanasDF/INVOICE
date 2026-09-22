@@ -623,7 +623,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 <input
-                  className="flex-1 rounded-lg border px-3 py-2 text-sm"
+                  className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
                   aria-label={`Category ${i + 1}`}
                   value={c}
                   onChange={(e) => renameCategory(i, e.target.value)}
