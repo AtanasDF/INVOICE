@@ -12,11 +12,24 @@ export type AddressMatch = {
   // Only a postcode's town and postcode: it goes in under the house and
   // street already typed instead of replacing them.
   partial?: boolean;
+  // A street near a postcode with no houses listed: it goes in with the
+  // house number already typed, and keeps a street already typed in full.
+  street?: boolean;
 };
 
 export type AddressSource = "paf" | "osm";
 
-export type AddressSearchResult = { source: AddressSource; items: AddressMatch[]; badPostcode?: boolean; busy?: boolean };
+export type AddressSearchResult = {
+  source: AddressSource;
+  items: AddressMatch[];
+  badPostcode?: boolean;
+  busy?: boolean;
+  // A postcode the free data has no houses for (its streets are offered).
+  noHouses?: boolean;
+  // Royal Mail's list would have been used, but the lookups are used up or
+  // failing for now.
+  fallback?: boolean;
+};
 
 // When a postcode isn't in the lists (a new build can take months to
 // appear, or it's mistyped), it can still go in as typed.
@@ -217,6 +230,15 @@ export function matchedWords(p: OsmProperties & { town?: string }, words: string
   return words.filter((w) => hay.includes(w)).length;
 }
 
+// Worth a search by itself while it's typed: a house number and a street,
+// or a street's name with its kind ("Mill Lane"); not a flat number or a
+// house name on its own, which would only list strangers' houses.
+export function looksLikeStreet(line1: string): boolean {
+  const t = line1.trim();
+  if (!typedWords(t).length) return false;
+  return /^\d+[a-z]?(?:-\d+[a-z]?)?\s+\S/i.test(t) || fold(t).split(/[\s,]+/).some((w) => STREET_KINDS.has(w) && w !== "the" && w !== "and" && w !== "&");
+}
+
 // What was typed before the first comma is the street (a house number and
 // street, in the form's first box); what follows is the town. The street's
 // words must all be there; the town's may not be, since the town
@@ -237,8 +259,10 @@ export function matchesTypedWords(p: OsmProperties & { town?: string }, typed: s
   return t.must.every(has) && (t.must.length > 0 || t.may.every(has));
 }
 
-// A street is offered as the house number typed (if any) and the street
-// and town, without a postcode: OpenStreetMap's is for one stretch of it.
+// A street is offered as the house number typed (if any), the street and
+// the town, and its postcode where the free data has one or one is near:
+// a street typed should end with its postcode (Atanas, 2026-09-22). That
+// postcode is for one stretch of the road, so the row asks to check it.
 export function osmMatch(p: OsmProperties, id: string, { town: townOverride, houseNumber }: { town?: string; houseNumber?: string } = {}): AddressMatch | null {
   if (p.countrycode && p.countrycode.toUpperCase() !== "GB") return null;
   const street = p.street?.trim();
@@ -251,8 +275,8 @@ export function osmMatch(p: OsmProperties, id: string, { town: townOverride, hou
     const name = (p.name || street || "").trim();
     if (!name || !town) return null;
     const first = houseNumber ? `${houseNumber} ${name}` : name;
-    const area = postcode?.split(" ")[0];
-    return { id, label: first, detail: `${town}${area ? ` ${area}` : ""} · add the postcode`, lines: [first, town] };
+    if (postcode) return { id, label: first, detail: `${town} ${postcode} · check it's your postcode`, lines: [first, town, postcode] };
+    return { id, label: first, detail: `${town} · add the postcode`, lines: [first, town] };
   }
   const first = number && street ? `${number} ${street}` : number ? "" : street ?? "";
   if (!number && !p.name) return null;

@@ -104,6 +104,10 @@ try {
   r = await findIn(1);
   if (r.options.length === 1 && /Fills in the town and postcode/.test(r.options[0])) {
     check("no houses listed: the note says so and what to do", /No houses are listed for SE18 1HU/.test(r.note ?? "") && /type your house number and street/.test(r.note ?? ""), r.note);
+  } else if (r.options.some((o) => /^Benares Road/.test(o))) {
+    // Since 2026-09-22 the streets around a postcode with no houses are
+    // offered, so a pick leaves only the house number to type.
+    check("no houses listed: its streets are offered, and the note says to pick one", /No houses are listed for SE18 1HU/.test(r.note ?? "") && /Pick your street, then add your house number/.test(r.note ?? ""), r.note);
   } else {
     check("SE18 1HU now has houses in the free directory (the wording case can't be shown here)", true);
   }

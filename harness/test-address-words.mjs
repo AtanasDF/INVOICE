@@ -1,7 +1,7 @@
 // The free address search keeps only matches that carry the words typed:
 // "149 Benares Road" once listed a school in Devon and one in Hampshire
 // (Atanas, 2026-09-22). Pure logic, off the app's own module.
-import { typedWords, typedParts, matchesTypedWords } from "./gen/lib/addressLookup.js";
+import { typedWords, typedParts, matchesTypedWords, looksLikeStreet, osmMatch } from "./gen/lib/addressLookup.js";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const j = JSON.stringify;
@@ -39,5 +39,18 @@ check("the town typed may be missing from the map's fields", matchesTypedWords({
 check("...but the street's own name may not", !matchesTypedWords({ name: "Church Road", city: "Huddersfield" }, typedParts("12 Market Street, Huddersfield")));
 check("with no street words, the town is what must match", matchesTypedWords({ name: "The Street", city: "Woolwich" }, typedParts("12 The Street, Woolwich")) && !matchesTypedWords({ name: "The Street", city: "Leeds" }, typedParts("12 The Street, Woolwich")));
 check("with one word typed it has to be there", !matchesTypedWords(teignmouth, typedWords("149 Benares Road")));
+
+// What searches by itself as it's typed (his second ask): a number and a
+// street, or a street's name with its kind; not a flat number, a house name
+// on its own or half a word.
+for (const [typed, want] of [["149 Benares Road", true], ["149 Ben", true], ["Mill Lane", true], ["Unit 4, Mill Lane", true], ["12-14 High Street", true], ["149", false], ["149 B", false], ["Rose Cottage", false], ["Flat 2", false], ["12 The Street", false], ["", false]]) {
+  check(`${JSON.stringify(typed)} ${want ? "searches" : "waits"}`, looksLikeStreet(typed) === want);
+}
+// A street ends with its postcode when the free data has one, and asks for
+// it to be checked; without one it still says to add it.
+const withPc = osmMatch({ osm_key: "highway", type: "street", name: "Benares Road", city: "London", postcode: "se18 1hs" }, "osm:0", { houseNumber: "149" });
+check("a street with a postcode fills it and asks to check it", j(withPc?.lines) === j(["149 Benares Road", "London", "SE18 1HS"]) && /check it's your postcode/.test(withPc?.detail ?? ""), j(withPc));
+const noPc = osmMatch({ osm_key: "highway", type: "street", name: "Amar Court", city: "London" }, "osm:1");
+check("a street without one says to add it", j(noPc?.lines) === j(["Amar Court", "London"]) && /add the postcode/.test(noPc?.detail ?? ""), j(noPc));
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { AddressMatch, AddressSearchResult, joinAddress, normalisePostcode, partsFromLines, splitAddress } from "@/lib/addressLookup";
+import { AddressMatch, AddressParts, AddressSearchResult, joinAddress, looksLikeStreet, normalisePostcode, partsFromLines, splitAddress } from "@/lib/addressLookup";
 import { supabase } from "@/lib/supabaseClient";
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -12,11 +12,21 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
+// A postcode is searched tidied, so "se18 1hu" typed and tidied on leaving
+// the box is one search, not two.
+const queryOf = (p: AddressParts) => (normalisePostcode(p.postcode) ?? p.postcode.trim()) || [p.line1, p.town].map((s) => s.trim()).filter(Boolean).join(", ");
+// Atanas, 2026-09-22: a postcode should list its addresses, and an address
+// give its postcode, without anyone having to find a button. A whole
+// postcode searches by itself after a short pause or on leaving the box; a
+// number and street after a slightly longer one. Find stays for a retry.
+const POSTCODE_PAUSE_MS = 700;
+const STREET_PAUSE_MS = 900;
+const autoReady = (p: AddressParts) => (p.postcode.trim() ? !!normalisePostcode(p.postcode) : looksLikeStreet(p.line1));
 
-// A UK address in its own fields, with one Find that searches by whatever is
-// filled in: a postcode lists the addresses in it, a number and street finds
-// matching ones. Picking one fills the fields it knows and leaves the rest
-// alone, so nothing typed is ever wiped.
+// A UK address in its own fields, searched by whatever is filled in: a
+// postcode lists the addresses in it, a number and street finds matching
+// ones with their postcode. Picking one fills the fields it knows and leaves
+// the rest alone, so nothing typed is ever wiped.
 export default function AddressFields({ address, onAddress, label = "Address", streetPlaceholder = "House number and street" }: {
   address: string;
   onAddress: (next: string) => void;
@@ -30,15 +40,24 @@ export default function AddressFields({ address, onAddress, label = "Address", s
   // Companies House pick) is read in when it isn't what we just sent out.
   const [parts, setParts] = useState(() => splitAddress(address));
   const [sent, setSent] = useState(address);
+  // The query the fields are settled on: the last searched, picked or
+  // loaded one. Typing searches only a query that isn't, so a record opened
+  // for a one-line change doesn't pop up its postcode's list.
+  const [settled, setSettled] = useState(() => queryOf(splitAddress(address)));
   if (address !== sent) {
     setSent(address);
     setParts(splitAddress(address));
+    setSettled(queryOf(splitAddress(address)));
   }
   const [result, setResult] = useState<(AddressSearchResult & { q: string; free?: boolean }) | null>(null);
   const [searching, setSearching] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The query whose answer the list is waiting for: a slower, older answer
+  // is dropped.
+  const asked = useRef<string | null>(null);
   const onAddressRef = useRef(onAddress);
   const addressRef = useRef(address);
   useEffect(() => {
@@ -49,31 +68,47 @@ export default function AddressFields({ address, onAddress, label = "Address", s
     mounted.current = true;
     return () => {
       mounted.current = false;
+      if (timer.current) clearTimeout(timer.current);
     };
   }, []);
 
-  const query = (parts.postcode.trim() || [parts.line1, parts.town].map((p) => p.trim()).filter(Boolean).join(", ")).trim();
+  const query = queryOf(parts);
   const items = result?.items ?? [];
 
+  // Only typing searches by itself: a pick, a scan or a saved record filling
+  // the fields never opens the list.
   function set(patch: Partial<typeof parts>) {
     const next = { ...parts, ...patch };
     setParts(next);
     const text = joinAddress(next);
     setSent(text);
     onAddress(text);
+    if (timer.current) clearTimeout(timer.current);
+    const q = queryOf(next);
+    if (q === settled) return;
+    if (autoReady(next)) timer.current = setTimeout(() => void find(q), next.postcode.trim() ? POSTCODE_PAUSE_MS : STREET_PAUSE_MS);
+    // Not searchable yet (half a postcode, say): typing it whole again
+    // searches again.
+    else if (settled) setSettled("");
   }
 
   // Only what the pick actually carries is written, so a postcode-only pick
-  // keeps the house and street already typed.
-  function fill(lines: string[]) {
+  // keeps the house and street already typed. A street picked near a
+  // postcode keeps the house number typed, or the whole line if it already
+  // names that street.
+  function fill(lines: string[], street = false) {
     const found = partsFromLines(lines);
+    const typed = parts.line1.trim();
+    const number = /^(\d+[a-z]?(?:-\d+[a-z]?)?)\b/i.exec(typed)?.[1];
+    const line1 = !street || !typed ? found.line1 || parts.line1 : typed.toLowerCase().includes(found.line1.toLowerCase()) ? typed : number ? `${number} ${found.line1}` : found.line1;
     const next = {
-      line1: found.line1 || parts.line1,
+      line1,
       line2: found.line2 || parts.line2,
       town: found.town || parts.town,
       postcode: found.postcode || parts.postcode,
     };
     setParts(next);
+    setSettled(queryOf(next));
     const text = joinAddress(next);
     setSent(text);
     onAddressRef.current(text);
@@ -81,24 +116,28 @@ export default function AddressFields({ address, onAddress, label = "Address", s
     setError(null);
   }
 
-  async function find() {
-    if (query.length < 3 || searching) return;
+  async function find(q = query) {
+    if (q.length < 3) return;
+    if (timer.current) clearTimeout(timer.current);
+    setSettled(q);
+    asked.current = q;
     setSearching(true);
     setError(null);
     try {
-      const res = await fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ q: query }) });
-      if (!mounted.current) return;
-      setResult({ ...((await res.json()) as AddressSearchResult), q: query });
+      const res = await fetch("/api/address-search", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ q }) });
+      const body = (await res.json()) as AddressSearchResult;
+      if (!mounted.current || asked.current !== q) return;
+      setResult({ ...body, q });
     } catch {
-      if (mounted.current) setResult({ source: "osm", items: [], busy: true, q: query });
+      if (mounted.current && asked.current === q) setResult({ source: "osm", items: [], busy: true, q });
     } finally {
-      if (mounted.current) setSearching(false);
+      if (mounted.current && asked.current === q) setSearching(false);
     }
   }
 
   async function pick(m: AddressMatch) {
     if (m.lines) {
-      fill(m.lines);
+      fill(m.lines, m.street);
       return;
     }
     if (fetching) return;
@@ -130,6 +169,8 @@ export default function AddressFields({ address, onAddress, label = "Address", s
     find();
   }
 
+  const typedPostcode = normalisePostcode(result?.q ?? "") ?? result?.q;
+  const lead = result?.fallback || result?.free ? "Royal Mail's list isn't available just now, so this is the free one. " : "";
   const note = searching
     ? "Searching…"
     : result?.busy
@@ -140,9 +181,11 @@ export default function AddressFields({ address, onAddress, label = "Address", s
           ? "No matches. Try the postcode on its own, or type the address in yourself."
           : result?.source === "paf"
             ? "Royal Mail addresses. Tap one to fill it in."
-            : items.length === 1 && items[0].partial
-              ? `No houses are listed for ${normalisePostcode(result?.q ?? "") ?? result?.q} in the free directory. Tap it to fill in the town and postcode, then type your house number and street. Addresses © OpenStreetMap contributors.`
-              : `${result?.free ? "Free address search for now. " : ""}Tap one to fill it in. Addresses © OpenStreetMap contributors.`;
+            : result?.noHouses && items.some((m) => m.street)
+              ? `${lead}No houses are listed for ${typedPostcode} in the free directory. Pick your street, then add your house number. Addresses © OpenStreetMap contributors.`
+              : items.length === 1 && items[0].partial
+                ? `${lead}No houses are listed for ${typedPostcode} in the free directory. Tap it to fill in the town and postcode, then type your house number and street. Addresses © OpenStreetMap contributors.`
+                : `${lead}Tap one to fill it in. Addresses © OpenStreetMap contributors.`;
 
   return (
     <div className="space-y-2">
@@ -164,7 +207,9 @@ export default function AddressFields({ address, onAddress, label = "Address", s
           onChange={(e) => set({ postcode: e.target.value })}
           onBlur={() => {
             const tidy = normalisePostcode(parts.postcode);
-            if (tidy && tidy !== parts.postcode) set({ postcode: tidy });
+            if (!tidy) return;
+            if (tidy !== parts.postcode) set({ postcode: tidy });
+            if (tidy !== settled) void find(tidy);
           }}
           onKeyDown={onEnter}
         />
@@ -172,14 +217,14 @@ export default function AddressFields({ address, onAddress, label = "Address", s
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={find}
+          onClick={() => void find()}
           disabled={query.length < 3 || searching || fetching}
           className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-40"
         >
           {searching ? "Looking…" : "Find address"}
         </button>
         <span className="text-xs text-neutral-500">
-          {parts.postcode.trim() ? "Lists the addresses at that postcode." : "Fill in a postcode, or a number and street, and tap Find."}
+          {parts.postcode.trim() ? "Lists the addresses at that postcode." : "A postcode lists its addresses; a number and street finds its postcode."}
         </span>
       </div>
       {result && (

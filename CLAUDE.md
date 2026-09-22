@@ -404,8 +404,16 @@ and OpenStreetMap via photon.komoot.io (houses and streets; not every UK house i
 so a postcode can always be used on its own). Optional `IDEAL_POSTCODES_API_KEY` (not
 set) gives signed-in users Royal Mail's full address file; it's paid per postcode list or
 picked address, capped per account (20/5 min, 100/day) and overall (150/5 min, 400/day),
-and falls back to the free lookup when capped or failing. Set a daily limit and no auto
-top-up on the key in the Ideal Postcodes dashboard too.
+and falls back to the free lookup when capped or failing (the box says so); a key refused
+for itself (401/402) rests ten minutes. Set a daily limit and no auto top-up on the key
+in the Ideal Postcodes dashboard too. Atanas's two asks (2026-09-22) are how the box
+behaves: a whole postcode lists its addresses by itself (700 ms pause, or leaving the
+box) and a number and street finds its postcode (900 ms); only typing searches, never a
+pick, a scan or a loaded record. A street's postcode (OpenStreetMap's, or the nearest from
+postcodes.io) is filled with "check it's your postcode", since a road's covers one stretch;
+a postcode with no houses in the free data lists its streets. `POSTCODES_API_BASE`,
+`PHOTON_API_BASE` and `IDEAL_POSTCODES_API_BASE` point the three services at stand-ins,
+as `COMPANIES_HOUSE_API_BASE` does, for `harness/test-address-stubbed.mjs`.
 
 ## Who else works here
 
