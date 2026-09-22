@@ -36,6 +36,16 @@ const saveVisible = () => page.evaluate(() => {
   return !!r && r.top >= 0 && r.bottom <= window.innerHeight;
 });
 
+const menuLink = async (label) => {
+  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Menu")?.click());
+  await sleep(250);
+  const ok = await page.evaluate((l) => {
+    const a = [...document.querySelectorAll("header a")].find((x) => x.textContent.trim() === l);
+    a?.click();
+    return !!a;
+  }, label);
+  if (!ok) throw new Error("no link in the menu: " + label);
+};
 try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
@@ -114,10 +124,13 @@ try {
   check("the Save button is in view while the page is scrolled to the top", await saveVisible());
   check("the bar says the changes are unsaved", (await barText()).includes("Unsaved changes."), await barText());
   await shot(page, "settings-save-bar");
-  await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Quotes")?.click());
+  // On a phone the header's pages are behind one Menu button; the guard
+  // holds a tap on any link, in the menu as anywhere else.
+  await menuLink("Quotes");
   await sleep(400);
   check("a tap on a link is held, with the choices", page.url().includes("/settings") && /Save and go/.test(await barText()) && /Leave without saving/.test(await barText()), `${page.url()} ${await barText()}`);
   await click("Stay");
+  await page.keyboard.press("Escape");
   await sleep(200);
   check("Stay puts the bar back", (await barText()).includes("Unsaved changes.") && !(await barText()).includes("Save and go"));
 
@@ -132,7 +145,7 @@ try {
 
   await setField("#invoice-prefix", "XX-");
   await sleep(150);
-  await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Quotes")?.click());
+  await menuLink("Quotes");
   await sleep(300);
   await click("Leave without saving");
   await page.waitForFunction(() => location.pathname === "/quotes", { timeout: 10000 }).catch(() => {});
@@ -143,7 +156,7 @@ try {
   await sleep(600);
   await setField("#invoice-prefix", "ZZ-");
   await sleep(150);
-  await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Invoices")?.click());
+  await menuLink("Invoices");
   await sleep(300);
   await click("Save and go");
   await page.waitForFunction(() => location.pathname === "/invoices", { timeout: 10000 }).catch(() => {});
@@ -173,6 +186,7 @@ try {
   await sleep(400);
   check("Sign out with unsaved changes is held like a link", page.url().includes("/settings") && /Save and go/.test(await barText()), `${page.url()} ${await barText()}`);
   await click("Stay");
+  await page.keyboard.press("Escape");
   await sleep(200);
 
   for (let i = 0; i < 40; i++) {

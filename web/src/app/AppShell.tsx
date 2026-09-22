@@ -10,23 +10,60 @@ import { useWakeLock } from "@/lib/wakeLock";
 import PaidCelebration from "@/components/PaidCelebration";
 import { SITE_NAME } from "@/lib/siteName";
 
-const MORE: [string, string][] = [
-  ["/receipts/review", "Needs review"],
-  ["/mileage", "Mileage"],
-  ["/vat", "VAT"],
-  ["/recurring", "Recurring expenses"],
-  ["/recurring/invoices", "Recurring invoices"],
-  ["/files", "Files"],
-  ["/copy", "Copy a document"],
-  ["/feedback", "Feedback"],
-  ["/free-invoice", "Free invoice"],
-  ["/check-company", "Check a company"],
+type Group = { label: string; links: [string, string][] };
+
+// The whole app in three groups (Atanas, 2026-09-22: "make it as one whole
+// app not two different apps"): money coming in, money going out, and the
+// tools, the free ones among them. Every page has a place here, so there
+// is no "More pages" drawer any more, and a phone shows one Menu button
+// instead of nine links wrapping to three rows.
+const GROUPS: Group[] = [
+  {
+    label: "Money in",
+    links: [
+      ["/invoices", "Invoices"],
+      ["/quotes", "Quotes"],
+      ["/clients", "Clients & suppliers"],
+      ["/recurring/invoices", "Recurring invoices"],
+    ],
+  },
+  {
+    label: "Money out",
+    links: [
+      ["/receipts", "Receipts & bills"],
+      ["/receipts/review", "Needs review"],
+      ["/expenses", "Expenses"],
+      ["/mileage", "Mileage"],
+      ["/recurring", "Recurring expenses"],
+    ],
+  },
+  {
+    label: "Tools",
+    links: [
+      ["/scan", "Scan"],
+      ["/copy", "Copy a document"],
+      ["/check-company", "Check a company"],
+      ["/vat", "VAT"],
+      ["/files", "Files"],
+      ["/feedback", "Feedback"],
+    ],
+  },
 ];
+const HREFS = ["/", "/settings", ...GROUPS.flatMap((g) => g.links.map(([href]) => href))];
+
+// The page you are on is the longest address that matches it, so
+// /receipts/review marks Needs review rather than Receipts & bills.
+function useCurrentHref(): string | null {
+  const path = usePathname();
+  return (
+    HREFS.filter((href) => (href === "/" ? path === "/" : path === href || path.startsWith(href + "/")))
+      .sort((a, b) => b.length - a.length)[0] ?? null
+  );
+}
 
 // The page you are on is marked, darker and announced as current.
 function NavLink({ href, children, className = "" }: { href: string; children: React.ReactNode; className?: string }) {
-  const path = usePathname();
-  const current = href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
+  const current = useCurrentHref() === href;
   return (
     <Link href={href} aria-current={current ? "page" : undefined} className={`${className} ${current ? "font-semibold text-neutral-900" : ""}`.trim()}>
       {children}
@@ -34,18 +71,15 @@ function NavLink({ href, children, className = "" }: { href: string; children: R
   );
 }
 
-// The pages that had no way in from the header, and the two for strangers.
-// Not "More": the Free page has its own More on a phone, and two of them
-// on one screen is one too many. Open only on the page it was opened on,
-// so any move closes it without an effect; Escape or a tap elsewhere too.
-function MorePages() {
+// Open only on the page it was opened on, so any move closes it without an
+// effect; Escape or a tap elsewhere too.
+function Menu({ label, here, width, children }: { label: string; here: boolean; width: string; children: React.ReactNode }) {
   const path = usePathname();
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === path;
   const box = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const listId = useId();
-  const here = MORE.some(([href]) => path === href || path.startsWith(href + "/"));
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -71,20 +105,58 @@ function MorePages() {
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         onClick={() => setOpenOn(open ? null : path)}
-        className={here ? "font-semibold text-neutral-900" : ""}
+        className={`flex items-center gap-1 ${here ? "font-semibold text-neutral-900" : ""}`.trim()}
       >
-        More pages
+        {label}
+        <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5">
+          <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {open && (
-        <div id={listId} onClick={() => setOpenOn(null)} className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border bg-white py-1 text-neutral-800 shadow-lg">
-          {MORE.map(([href, label]) => (
+        <div id={listId} onClick={() => setOpenOn(null)} className={`absolute right-0 z-30 mt-2 ${width} max-h-[80vh] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupMenu({ group }: { group: Group }) {
+  const current = useCurrentHref();
+  return (
+    <Menu label={group.label} here={group.links.some(([href]) => href === current)} width="w-56">
+      {group.links.map(([href, label]) => (
+        <NavLink key={href} href={href} className="block px-4 py-2.5">
+          {label}
+        </NavLink>
+      ))}
+    </Menu>
+  );
+}
+
+function PhoneMenu() {
+  const current = useCurrentHref();
+  return (
+    <Menu label="Menu" here={!!current && current !== "/"} width="w-[min(18rem,calc(100vw-2rem))]">
+      <NavLink href="/" className="block px-4 py-2.5">
+        Home
+      </NavLink>
+      {GROUPS.map((g) => (
+        <div key={g.label} className="border-t pb-1">
+          <p className="px-4 pb-1 pt-2 text-xs text-neutral-500">{g.label}</p>
+          {g.links.map(([href, label]) => (
             <NavLink key={href} href={href} className="block px-4 py-2.5">
               {label}
             </NavLink>
           ))}
         </div>
-      )}
-    </div>
+      ))}
+      <div className="border-t pt-1">
+        <NavLink href="/settings" className="block px-4 py-2.5">
+          Settings
+        </NavLink>
+      </div>
+    </Menu>
   );
 }
 
@@ -100,15 +172,17 @@ function Header() {
           {SITE_NAME}
         </Link>
         {user ? (
-          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
-            <NavLink href="/">Home</NavLink>
-            <NavLink href="/clients">Clients & suppliers</NavLink>
-            <NavLink href="/receipts">Receipts &amp; bills</NavLink>
-            <NavLink href="/invoices">Invoices</NavLink>
-            <NavLink href="/quotes">Quotes</NavLink>
-            <NavLink href="/expenses">Expenses</NavLink>
-            <NavLink href="/settings">Settings</NavLink>
-            <MorePages />
+          <nav className="flex items-center gap-x-4 text-sm font-medium text-neutral-600">
+            <div className="hidden items-center gap-x-4 sm:flex">
+              <NavLink href="/">Home</NavLink>
+              {GROUPS.map((g) => (
+                <GroupMenu key={g.label} group={g} />
+              ))}
+              <NavLink href="/settings">Settings</NavLink>
+            </div>
+            <div className="sm:hidden">
+              <PhoneMenu />
+            </div>
             <button
               onClick={() => void signOut()}
               className="text-neutral-500 hover:text-neutral-900"
@@ -117,9 +191,9 @@ function Header() {
             </button>
           </nav>
         ) : (
+          // A stranger's way around is the free page itself (the brand goes
+          // back to it), so the header holds one thing.
           <nav className="flex items-center gap-x-4 text-sm font-medium text-neutral-600">
-            <Link href="/free-invoice">Free invoice</Link>
-            <Link href="/check-company">Check a company</Link>
             <Link href="/login">Sign in</Link>
           </nav>
         )}

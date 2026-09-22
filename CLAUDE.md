@@ -120,6 +120,34 @@ never stand in for a failed load; and anything that removes a record asks first 
 `window.confirm`, naming what goes. Long names wrap with `wrap-anywhere` (not
 `break-words`, which leaves min-content alone and lets one long word push the page).
 
+## How people get around
+
+One shape, not two (Atanas, 2026-09-22: "make it as one whole app not two different
+apps"). `/` for a stranger is the **free page** (`src/components/Welcome.tsx`): every free
+tool as its own big button — make an invoice or a quote, start from a photo of an old
+invoice, check a company, copy a document — each with a line saying what it does, the two
+that need a free sign-in saying so, and "We keep nothing you make here. Save it or
+download it to keep it." Its words follow `notes/first-page-research.md`, banned words
+included (`test-first-page` checks them).
+
+"Start from an old invoice" goes to `/free-invoice?start=photo`, which opens the camera on
+arrival (not over a draft, not for a stranger, and not on the iPhone's own-camera path,
+which only opens from a tap) and tidies the address back to `/free-invoice`.
+
+Signed in, `/` is the dashboard, and the same tools are its first row: Scan a receipt,
+Make an invoice, Copy a document, Check a company, with "+ Add" and "Upload photos or
+PDFs" under them. The header groups every page — **Money in** (invoices, quotes, clients,
+recurring invoices), **Money out** (receipts & bills, needs review, expenses, mileage,
+recurring expenses), **Tools** (scan, copy a document, check a company, VAT, files,
+feedback) and Settings — and a phone shows one **Menu** button holding the lot (nine links
+used to wrap to three rows). There is no "More pages" drawer. The page you are on is the
+longest address that matches, so /receipts/review marks Needs review, not Receipts & bills.
+
+**No paid tier is built.** Everyone signed in has the full app, free (Atanas, 2026-09-22:
+"I want people to still try it for free for now and I don't want to pay anything more for
+now"). The plan when payments come: a paid switch on each account that only he can set,
+off by default, free accounts seeing the free page alone; item 56 in `notes/tonight-list.md`.
+
 ## What day it is
 
 `todayISO()` (`src/lib/today.ts`) is the only place that answers it, and it answers in

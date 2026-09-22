@@ -67,3 +67,21 @@ export function TorchIcon({ className = "h-4 w-4" }: IconProps) {
     </svg>
   );
 }
+
+export function SearchIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" d="m16 16 4.5 4.5" />
+    </svg>
+  );
+}
+
+export function CopyIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+      <rect x="4" y="3" width="11" height="14" rx="2" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 21h9a2 2 0 0 0 2-2V8" />
+    </svg>
+  );
+}

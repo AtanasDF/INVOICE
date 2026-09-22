@@ -616,6 +616,27 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   server and run nightly (18/18 each); they had gone stale unseen on the dead-link wording.
 - **28, a candidate picture** (notes/front-page-picture/): the phone over the invoice with
   the green outline, 2.7 KB of SVG, not on the site until Atanas says yes.
+- **The free tools organised, and one app around them** (Atanas, 2026-09-22 afternoon:
+  "I'm not happy with how the free features are shown... I want them all organised on the
+  first page... make it as one whole app not two different apps"). `/` for a stranger is
+  now the free page: four big buttons, one of them the main one — make an invoice or a
+  quote, start from an old invoice, check a company, copy a document — each with its line,
+  the two needing a free sign-in saying so, and "We keep nothing you make here". "Start
+  from an old invoice" goes to `/free-invoice?start=photo`, which opens the camera on
+  arrival and tidies the address. Signed in, the dashboard's first row is the same four
+  tools, and the header is three groups (Money in, Money out, Tools) plus Settings, with
+  one Menu button on a phone: no "More pages" drawer, and item 74's wrapped header solved.
+  A stranger's header holds only Sign in; the brand goes back to the free page.
+- **No paywall yet, by his call**: "I want people to still try it for free for now and I
+  don't want to pay anything more for now". So everyone signed in keeps the whole app, and
+  the paid switch (a column only he can set, payments flipping it later) is written up in
+  item 56 for when payments come. Nothing new costs anything.
+- **Tests**: `test-first-page` rewritten for the free page (17/17: the four tools and where
+  they go, one main button, sizes, the lines, the banned words, the camera opening from
+  Start from an old invoice); `test-first-week` for the grouped header (24/24, including
+  the group marked for the page you are on); `test-settings-save` taps its links through
+  the Menu, which the unsaved guard holds as before. Full run 99 suites, the two it caught
+  fixed and green.
 - **Final full run** (99 suites): 97 green. The two misses were the newly converted link
   suites meeting a freshly compiling dev server under load (a page still "Loading…", a
   first press past 15 s, a mid-test reload); fixed by compiling their routes first and

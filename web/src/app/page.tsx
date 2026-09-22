@@ -16,7 +16,7 @@ import {
   recurringExpensesStore,
 } from "@/lib/storage";
 import { isOverdue } from "@/lib/invoiceStatus";
-import { FolderIcon, RepeatIcon } from "@/components/icons";
+import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
@@ -34,6 +34,13 @@ import { showOnAppIcon } from "@/lib/appBadge";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+
+// The four things people come here to do, the free tools among them, in
+// one row (Atanas, 2026-09-22: the free tools belong inside the app, not
+// off to one side). The first is the camera, which on the iPhone's own
+// camera path has to be the file input itself.
+const TILE = "flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md";
+const TILE_DARK = "flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-xl bg-neutral-900 p-3 text-center text-sm font-medium text-white shadow-sm transition hover:bg-neutral-800";
 
 function ScanIcon() {
   return (
@@ -296,8 +303,8 @@ function Dashboard() {
       </div>
 
       <Tip id="dashboard-welcome">
-        New here? Tap <strong>Scan</strong> to photograph receipts and supplier invoices (several in a row is fine), or
-        make an invoice. Clients, suppliers and expenses fill in as you go.
+        New here? Tap <strong>Scan a receipt</strong> to photograph receipts and supplier invoices (several in a row is
+        fine), or <strong>Make an invoice</strong>. Clients, suppliers and expenses fill in as you go.
       </Tip>
 
       {showOverdueBanner && !bannerDismissed && (
@@ -342,45 +349,50 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="flex gap-3">
-        {isIOS && readScannerMode() === "native" ? (
-          <label
-            aria-label="Scan a document"
-            aria-disabled={scanHandoffBusy}
-            className="flex aspect-square w-24 flex-shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-neutral-800 sm:w-28"
-          >
-            <ScanIcon />
-            <span className="text-xs font-medium">{scanHandoffBusy ? "Preparing…" : "Scan"}</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={onIOSScanCapture}
-              disabled={scanHandoffBusy}
-              className="hidden"
-            />
-          </label>
-        ) : (
-          <Link
-            href="/scan"
-            aria-label="Scan a document"
-            className="flex aspect-square w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-neutral-800 sm:w-28"
-          >
-            <ScanIcon />
-            <span className="text-xs font-medium">Scan</span>
+      <section aria-label="What would you like to do?" className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {isIOS && readScannerMode() === "native" ? (
+            <label aria-disabled={scanHandoffBusy} className={`${TILE_DARK} cursor-pointer`}>
+              <ScanIcon />
+              <span>{scanHandoffBusy ? "Preparing…" : "Scan a receipt"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={onIOSScanCapture}
+                disabled={scanHandoffBusy}
+                className="hidden"
+              />
+            </label>
+          ) : (
+            <Link href="/scan" className={TILE_DARK}>
+              <ScanIcon />
+              <span>Scan a receipt</span>
+            </Link>
+          )}
+          <Link href="/invoices/new" className={TILE}>
+            <DocumentIcon className="h-8 w-8" />
+            <span>Make an invoice</span>
           </Link>
-        )}
-        <div className="grid flex-1 grid-cols-1 gap-2">
-          {/* One button for a receipt, an invoice or a quote; the tile
-              beside it stays the one-tap camera. */}
+          <Link href="/copy" className={TILE}>
+            <CopyIcon className="h-8 w-8" />
+            <span>Copy a document</span>
+          </Link>
+          <Link href="/check-company" className={TILE}>
+            <SearchIcon className="h-8 w-8" />
+            <span>Check a company</span>
+          </Link>
+        </div>
+        {/* One button for anything else: a quote, a receipt by hand, files. */}
+        <div className="flex flex-wrap items-center gap-2">
           <AddAnything />
           <UploadFilesButton
             href="/scan"
             label="Upload photos or PDFs"
-            buttonClassName="flex w-full items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md"
+            buttonClassName="flex items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md"
           />
         </div>
-      </div>
+      </section>
 
       {!hasAnything && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

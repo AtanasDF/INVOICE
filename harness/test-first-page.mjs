@@ -21,17 +21,53 @@ try {
   await sleep(800);
   const text = await bodyText(page);
   check("a stranger stays on the front door, not bounced to sign-in", page.url() === `${BASE}/` && !/Welcome back/.test(text), page.url());
-  check("the headline and the promise", text.includes("Make an invoice. Check a company.") && text.includes("Both are free. Nothing to join. Nothing to pay."), text.slice(0, 200));
+  check("the headline and the promise", text.includes("Free tools") && text.includes("Make invoices and quotes, check a company, copy any paper. All free, nothing to pay."), text.slice(0, 200));
+  // Every free tool on the one page, each a big button of its own with a
+  // line saying what it does (Atanas, 2026-09-22).
   const buttons = await page.evaluate(() => {
-    const big = (t) => [...document.querySelectorAll("main a")].find((a) => a.textContent.trim() === t);
-    const info = (a) => (a ? { href: new URL(a.href).pathname, h: Math.round(a.getBoundingClientRect().height), w: Math.round(a.getBoundingClientRect().width), size: parseFloat(getComputedStyle(a).fontSize), weight: getComputedStyle(a).fontWeight } : null);
-    return { make: info(big("Make an invoice")), checkCo: info(big("Check a company")), width: window.innerWidth, h1: parseFloat(getComputedStyle(document.querySelector("h1")).fontSize), body: [...document.querySelectorAll("main p")].map((p) => parseFloat(getComputedStyle(p).fontSize)) };
+    const info = (a) => ({
+      label: a.textContent.trim(),
+      href: new URL(a.href).pathname + new URL(a.href).search,
+      h: Math.round(a.getBoundingClientRect().height),
+      w: Math.round(a.getBoundingClientRect().width),
+      size: parseFloat(getComputedStyle(a).fontSize),
+      dark: getComputedStyle(a).backgroundColor,
+    });
+    return {
+      tools: [...document.querySelectorAll("main li a")].map(info),
+      width: window.innerWidth,
+      h1: parseFloat(getComputedStyle(document.querySelector("h1")).fontSize),
+      body: [...document.querySelectorAll("main p")].map((p) => parseFloat(getComputedStyle(p).fontSize)),
+    };
   });
-  check("Make an invoice is a full-width button of at least 60px, bold, 20px, to the free page", buttons.make && buttons.make.href === "/free-invoice" && buttons.make.h >= 60 && buttons.make.w >= buttons.width - 40 && buttons.make.size >= 20 && Number(buttons.make.weight) >= 700, JSON.stringify(buttons.make));
-  check("Check a company is the same size, to the company check", buttons.checkCo && buttons.checkCo.href === "/check-company" && buttons.checkCo.h >= 60 && buttons.checkCo.size >= 20, JSON.stringify(buttons.checkCo));
+  check(
+    "the four free tools, in order, each to its own page",
+    JSON.stringify(buttons.tools.map((b) => [b.label, b.href])) ===
+      JSON.stringify([
+        ["Make an invoice or a quote", "/free-invoice"],
+        ["Start from an old invoice", "/login?next=%2Ffree-invoice%3Fstart%3Dphoto"],
+        ["Check a company", "/check-company"],
+        ["Copy a document", "/copy"],
+      ]),
+    JSON.stringify(buttons.tools.map((b) => [b.label, b.href]))
+  );
+  check(
+    "each is a full-width button of at least 60px, bold, 20px",
+    buttons.tools.length === 4 && buttons.tools.every((b) => b.h >= 60 && b.w >= buttons.width - 40 && b.size >= 20),
+    JSON.stringify(buttons.tools)
+  );
+  check("one of them is the main one", buttons.tools.filter((b) => b.dark !== "rgb(255, 255, 255)").length === 1, JSON.stringify(buttons.tools.map((b) => b.dark)));
   check("the headline is 32px or more, nothing on the page under 16px", buttons.h1 >= 32 && buttons.body.every((s) => s >= 16), JSON.stringify({ h1: buttons.h1, body: buttons.body }));
-  check("each button has its one-line explanation", text.includes("Say what you did and what it costs. Then print it or email it.") && text.includes("See if a company is real, still trading, and who runs it."));
-  check("the foot line about what we keep", text.includes("We do not keep anything you type unless you ask us to."));
+  check(
+    "each tool says in a line what it does, and which need a free sign-in",
+    text.includes("Say what you did and what it costs. Print it, save it or send it.") &&
+      text.includes("Take a photo of one you sent before. We fill in the next one for you to check.") &&
+      text.includes("See if a company is real, still trading, and who runs it.") &&
+      text.includes("Photograph any paper, or pick files, into one file to save, share or email.") &&
+      (text.match(/Needs a free sign-in\./g) ?? []).length === 2,
+    text.slice(0, 600)
+  );
+  check("the foot line about what we keep", text.includes("We keep nothing you make here. Save it or download it to keep it."));
   const main = await page.evaluate(() => document.querySelector("main").innerText);
   const found = BANNED.filter((w) => new RegExp(`\\b${w}\\b`, w === w.toUpperCase() ? "" : "i").test(main));
   check("none of the banned words on the page", found.length === 0, JSON.stringify(found));
@@ -44,7 +80,7 @@ try {
   await page.setViewport({ width: 375, height: 812 });
 
   // Tapping through works before anything else loads: plain links.
-  await page.evaluate(() => [...document.querySelectorAll("main a")].find((a) => a.textContent.trim() === "Make an invoice").click());
+  await page.evaluate(() => [...document.querySelectorAll("main a")].find((a) => a.textContent.trim() === "Make an invoice or a quote").click());
   await page.waitForFunction(() => location.pathname === "/free-invoice", { timeout: 10000 }).catch(() => {});
   check("Make an invoice goes to the free page", page.url().endsWith("/free-invoice"), page.url());
 
@@ -53,7 +89,18 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(800);
   const home = await bodyText(page);
-  check("signed in, the root is the dashboard", /Dashboard/.test(home) && !home.includes("Make an invoice. Check a company."), home.slice(0, 200));
+  check("signed in, the root is the dashboard, with the free tools among its own", /Dashboard/.test(home) && !home.includes("Free tools") && home.includes("Copy a document") && home.includes("Check a company"), home.slice(0, 300));
+  // "Start from an old invoice" lands on the free page with the camera
+  // already open, instead of the chooser asking the same question again.
+  await page.evaluate(() => localStorage.removeItem("free-invoice-draft"));
+  await page.goto(`${BASE}/free-invoice?start=photo`, { waitUntil: "networkidle0" });
+  await sleep(1200);
+  const photo = await bodyText(page);
+  check("arriving from Start from an old invoice opens the camera, not the chooser", !photo.includes("How would you like to start?"), photo.slice(0, 200));
+  check("...and the address is tidied, so a reload doesn't open it again", new URL(page.url()).search === "", page.url());
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
+  await sleep(900);
+  check("the free page on its own still asks how to start", (await bodyText(page)).includes("How would you like to start?"));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

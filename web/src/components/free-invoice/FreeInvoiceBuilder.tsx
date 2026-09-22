@@ -13,6 +13,7 @@ import SendByEmail from "@/components/free-invoice/SendByEmail";
 import { Segmented } from "@/components/free-invoice/fields";
 import { DocumentIcon } from "@/components/icons";
 import { useAuth } from "@/lib/authContext";
+import { readScannerMode, useIsIOS } from "@/lib/platform";
 import type { ScanEngine } from "@/lib/extractors";
 import type { InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { MAX_BATCH_CHARS } from "@/lib/scanClient";
@@ -59,7 +60,18 @@ export default function FreeInvoiceBuilder() {
   const [stage, setStage] = useState<Stage>(draft ? "editor" : "start");
   const [engine, setEngine] = useState<ScanEngine>("claude");
   const [pages, setPages] = useState<CapturedFile[]>([]);
-  const [capturing, setCapturing] = useState(false);
+  const isIOS = useIsIOS();
+  // The free page's "Start from an old invoice" arrives with ?start=photo:
+  // the camera opens straight away, as the chooser's photo button would.
+  // Not over a draft in progress, not for a stranger (the chooser asks them
+  // to sign in), and not on the iPhone's own-camera path, which only opens
+  // from a tap, so the chooser's button is still the way in there.
+  const [capturing, setCapturing] = useState(
+    () => !draft && !!user && !(isIOS && readScannerMode() === "native") && new URLSearchParams(window.location.search).get("start") === "photo"
+  );
+  useEffect(() => {
+    if (window.location.search.includes("start=")) window.history.replaceState(null, "", "/free-invoice");
+  }, []);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   const [note, setNote] = useState<"resumed" | "filled" | "next" | null>(draft ? "resumed" : null);

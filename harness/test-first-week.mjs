@@ -103,12 +103,14 @@ try {
   check("nothing is shown as owed, because it's paid", /£0\.00[\s\S]{0,40}Owed/.test(dash) || /Owed[\s\S]{0,40}£0\.00/.test(dash), flat(dash).slice(0, 400));
   check("the month's spending shows the £120", /£120\.00|£100\.00/.test(dash), flat(dash).slice(flat(dash).indexOf("Spent"), flat(dash).indexOf("Spent") + 80));
 
-  // Every signed-in page can be reached from the header, and the one you are on is marked.
-  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "More pages")?.click());
+  // Every signed-in page can be reached from the header, and the one you
+  // are on is marked. On a phone that is one Menu button; on a wide screen
+  // three groups (Atanas, 2026-09-22: one organised app).
+  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Menu")?.click());
   await sleep(200);
   const reach = await page.evaluate(() => {
     const hrefs = [...document.querySelectorAll("header a")].map((a) => a.getAttribute("href"));
-    const current = [...document.querySelectorAll('header a[aria-current="page"]')].map((a) => a.getAttribute("href"));
+    const current = [...new Set([...document.querySelectorAll('header a[aria-current="page"]')].map((a) => a.getAttribute("href")))];
     return { hrefs, current };
   });
   const wanted = ["/", "/clients", "/receipts", "/invoices", "/quotes", "/expenses", "/settings", "/receipts/review", "/mileage", "/vat", "/recurring", "/recurring/invoices", "/files", "/feedback"];
@@ -117,8 +119,17 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("header a")].find((a) => a.getAttribute("href") === "/mileage")?.click());
   await page.waitForFunction(() => location.pathname === "/mileage", { timeout: 10000 }).catch(() => {});
   await sleep(300);
-  check("picking a page from More pages goes there and closes the menu", page.url().endsWith("/mileage") && !(await page.evaluate(() => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === "/vat"))), page.url());
-  check("...and the button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "More pages")?.className.includes("font-semibold")));
+  check("picking a page from the menu goes there and closes it", page.url().endsWith("/mileage") && !(await page.evaluate(() => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === "/vat"))), page.url());
+  check("...and the Menu button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Menu")?.className.includes("font-semibold")));
+  // Wide enough for the groups themselves: the one holding this page is marked.
+  await page.setViewport({ width: 900, height: 900 });
+  await sleep(300);
+  const groups = await page.evaluate(() => [...document.querySelectorAll("header button")].map((b) => ({ label: b.textContent.trim(), here: b.className.includes("font-semibold") })));
+  check("on a wide screen the three groups sit in the header, Money out marked for Mileage", JSON.stringify(groups.filter((g) => g.label !== "Sign out")) === JSON.stringify([{ label: "Money in", here: false }, { label: "Money out", here: true }, { label: "Tools", here: false }, { label: "Menu", here: true }]), JSON.stringify(groups));
+  await page.evaluate(() => [...document.querySelectorAll("header button")].find((b) => b.textContent.trim() === "Money in")?.click());
+  await sleep(200);
+  check("a group opens its pages", await page.evaluate(() => ["/invoices", "/quotes", "/clients", "/recurring/invoices"].every((h) => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === h))));
+  await page.setViewport({ width: 375, height: 812 });
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(500);
 

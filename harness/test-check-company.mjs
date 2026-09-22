@@ -221,7 +221,7 @@ try {
 
   // ---- The way in ----
   await page.goto(`${base}/free-invoice`, { waitUntil: "networkidle0" });
-  check("the free invoice page links to it", await page.evaluate(() => [...document.querySelectorAll('a[href="/check-company"]')].length >= 2));
+  check("the free invoice page links to it", await page.evaluate(() => [...document.querySelectorAll('a[href="/check-company"]')].length >= 1));
 
   // ---- Companies House down, which is not the visitor's fault ----
   // An outage used to be reported as "Too many checks from this
