@@ -19,6 +19,7 @@ import { phoneLinks } from "@/lib/customerText";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 // What this customer was actually billed: gross, incl. VAT, less any CIS
 // the contractor keeps back -- the "Amount due" figure on the invoice
@@ -437,7 +438,7 @@ export default function ClientsPage() {
                       const overdue = isOverdue(inv.status, inv.dueDate);
                       return (
                         <div key={inv.id} className="flex items-center justify-between text-sm">
-                          <span>{displayInvoiceNumber(inv)} · {inv.date} · {money(invoiceTotal(inv, vatRegistered, creditedOn(inv.id)))}</span>
+                          <span>{displayInvoiceNumber(inv)} · {shortDate(inv.date)} · {money(invoiceTotal(inv, vatRegistered, creditedOn(inv.id)))}</span>
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
                             {invoiceStatusLabel(inv.status, overdue)}
                           </span>

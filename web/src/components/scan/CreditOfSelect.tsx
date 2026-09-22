@@ -3,10 +3,11 @@
 import type { Client, Receipt } from "@/lib/storage";
 import { money } from "@/lib/money";
 import { normaliseSupplierName } from "@/lib/supplierMatch";
+import { shortDate } from "@/lib/dates";
 
 function invoiceLabel(inv: Receipt, clients: Client[]): string {
   const supplier = clients.find((c) => c.id === inv.clientId)?.name || inv.vendor || "Unknown supplier";
-  return `${inv.invoiceNumber || "No number"} · ${supplier} · ${money((inv.amount + inv.vatAmount))} · ${inv.date}`;
+  return `${inv.invoiceNumber || "No number"} · ${supplier} · ${money((inv.amount + inv.vatAmount))} · ${shortDate(inv.date)}`;
 }
 
 export function sortInvoicesForCredit(invoices: Receipt[], clientId: string, vendor: string): Receipt[] {

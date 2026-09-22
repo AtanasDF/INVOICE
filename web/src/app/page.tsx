@@ -33,6 +33,7 @@ import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 function ScanIcon() {
   return (
@@ -45,10 +46,6 @@ function ScanIcon() {
 
 function daysBetween(from: string, to: string): number {
   return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-}
-
-function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 function billDueLabel(dueDate: string | null, today: string): { text: string; className: string } {
@@ -469,7 +466,7 @@ function Dashboard() {
                 >
                   <span className="min-w-0 wrap-anywhere">
                     #{o.invoice.number} · {o.clientName}
-                    {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · due {o.invoice.dueDate}</span>}
+                    {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · due {shortDate(o.invoice.dueDate)}</span>}
                   </span>
                   <span className="shrink-0 font-medium">{money(o.amountDue)}</span>
                 </Link>

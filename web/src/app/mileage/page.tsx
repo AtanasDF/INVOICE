@@ -21,6 +21,7 @@ import { normalisePostcode } from "@/lib/addressLookup";
 import { supabase } from "@/lib/supabaseClient";
 import { errorText, loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -226,7 +227,7 @@ export default function MileagePage() {
                     <span className="min-w-0">
                       <span className="block truncate">{[t.from, t.to].filter(Boolean).join(" → ") || t.purpose || "Trip"}</span>
                       <span className="block text-xs text-neutral-500">
-                        {r.date} · {t.miles} miles{t.purpose && [t.from, t.to].filter(Boolean).length ? ` · ${t.purpose}` : ""}
+                        {shortDate(r.date)} · {t.miles} miles{t.purpose && [t.from, t.to].filter(Boolean).length ? ` · ${t.purpose}` : ""}
                       </span>
                     </span>
                     <span className="shrink-0 font-medium">{money(r.amount)}</span>

@@ -9,6 +9,7 @@ import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 function RecurringTabs() {
   return (
@@ -236,7 +237,7 @@ export default function RecurringExpensesPage() {
                   <div className="text-sm text-neutral-500">
                     {money((item.amount + item.vatAmount))} · {item.category}{item.supplierId ? ` · ${supplierName(item.supplierId)}` : ""}
                     {" · "}
-                    {item.active ? (due ? <span className="font-medium text-amber-700">Due {item.nextDueDate}</span> : `Next: ${item.nextDueDate}`) : "Paused"}
+                    {item.active ? (due ? <span className="font-medium text-amber-700">Due {shortDate(item.nextDueDate)}</span> : `Next: ${shortDate(item.nextDueDate)}`) : "Paused"}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

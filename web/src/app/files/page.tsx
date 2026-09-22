@@ -7,6 +7,7 @@ import { isPdfDataUrl } from "@/lib/fileType";
 import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed } from "@/lib/errorText";
+import { shortDate } from "@/lib/dates";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -157,7 +158,7 @@ export default function FilesPage() {
                   <img src={r.imageDataUrl ?? undefined} alt="" className="aspect-square w-full rounded-lg object-cover" />
                 )}
                 <div className="mt-2 text-xs font-medium text-neutral-900 truncate">{r.vendor || r.category}</div>
-                <div className="text-xs text-neutral-500">{r.date} · {money(r.amount)}</div>
+                <div className="text-xs text-neutral-500">{shortDate(r.date)} · {money(r.amount)}</div>
                 {extra > 0 && <div className="text-xs text-neutral-500">{extra + 1} pages</div>}
               </button>
             );

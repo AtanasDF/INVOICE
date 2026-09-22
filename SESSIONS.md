@@ -401,6 +401,14 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   empty-account 135/135 (three new checks), long-values 28/28 (a 60-character detail
   value and a long supplier address seeded), midnight 8/8 (the expenses boxes at 00:30
   BST), first-week, quiet-failures, what-surfaces, delight, fit-320, vat-return green.
+- **18, dates people say**: `src/lib/dates.ts` holds the one short-date helper (the
+  quote code re-exports it); the dashboard's due dates, the invoices list (date, due,
+  credit notes), the clients' payment history, the files tiles, the mileage list, both
+  recurring lists, the invoice page's credit notes and remove-payment confirm, the
+  credit-of choices and the issued invoice's credit-note line all read "1 Oct 2026",
+  never 2026-10-01. New suite `test-plain-dates` (11/11: one of each record, eight pages
+  walked, any year-month-day in visible text fails); first-week, delight, empty-account,
+  mileage, statement, print, quiet-failures, what-surfaces, credit-rollback green.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

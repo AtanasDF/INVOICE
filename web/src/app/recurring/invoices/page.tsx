@@ -20,6 +20,7 @@ import { NumberInput } from "@/components/free-invoice/fields";
 import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 function RecurringTabs() {
   return (
@@ -289,7 +290,7 @@ export default function RecurringInvoicesPage() {
                   <div className="text-sm text-neutral-500">
                     {money(total)} · {item.items.length} {item.items.length === 1 ? "line" : "lines"}
                     {" · "}
-                    {item.active ? (due ? <span className="font-medium text-amber-700">Due {item.nextDueDate}</span> : `Next: ${item.nextDueDate}`) : "Paused"}
+                    {item.active ? (due ? <span className="font-medium text-amber-700">Due {shortDate(item.nextDueDate)}</span> : `Next: ${shortDate(item.nextDueDate)}`) : "Paused"}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

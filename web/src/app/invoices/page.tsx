@@ -13,6 +13,7 @@ import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
 
@@ -297,18 +298,18 @@ export default function InvoicesPage() {
                     )}
                   </div>
                   <div className="wrap-anywhere text-sm text-neutral-500">
-                    {inv.date} · {money(netTotal(inv))}
+                    {shortDate(inv.date)} · {money(netTotal(inv))}
                     {notes.length > 0 && (
                       <>
                         {" "}<span className="line-through">{money(total(inv))}</span> after {money(creditOffDue(charge(inv), creditedAmount))} credited
                       </>
                     )}
                     {paidSoFar(inv) > 0 && inv.status !== "paid" && ` · ${money(paidSoFar(inv))} paid, ${money(balance(inv))} still owed`}
-                    {inv.dueDate && ` · due ${inv.dueDate}`}
+                    {inv.dueDate && ` · due ${shortDate(inv.dueDate)}`}
                   </div>
                   {notes.map((c) => (
                     <div key={c.id} className="pl-4 text-xs text-neutral-500">
-                      Credit note {c.date} · {money(-c.amount)}{c.reason && ` · ${c.reason}`}
+                      Credit note {shortDate(c.date)} · {money(-c.amount)}{c.reason && ` · ${c.reason}`}
                     </div>
                   ))}
                   {inv.tags.length > 0 && (

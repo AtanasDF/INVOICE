@@ -20,6 +20,7 @@ import { depositTag } from "@/lib/quoteDeposit";
 import { celebratePaid } from "@/components/PaidCelebration";
 import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { shortDate } from "@/lib/dates";
 
 function addDays(dateStr: string, days: number): string {
   // Same UTC-safe pattern as everywhere else in the app.
@@ -293,7 +294,7 @@ export default function InvoiceViewPage() {
 
   async function removePayment(p: InvoicePayment) {
     if (!invoice) return;
-    if (!window.confirm(`Remove the ${money(p.amount)} received on ${p.date}? The balance goes back up, and this can't be undone.`)) return;
+    if (!window.confirm(`Remove the ${money(p.amount)} received on ${shortDate(p.date)}? The balance goes back up, and this can't be undone.`)) return;
     const id = p.id;
     setPayError(null);
     try {
@@ -950,7 +951,7 @@ export default function InvoiceViewPage() {
           <div className="mt-3 space-y-2">
             {creditNotes.map((c) => (
               <div key={c.id} className="flex items-center justify-between border-b pb-2 text-sm">
-                <span>{c.date} — {money(c.amount)}{c.reason ? ` · ${c.reason}` : ""}</span>
+                <span>{shortDate(c.date)} — {money(c.amount)}{c.reason ? ` · ${c.reason}` : ""}</span>
                 <button onClick={() => removeCreditNote(c)} className="text-red-600">Remove</button>
               </div>
             ))}

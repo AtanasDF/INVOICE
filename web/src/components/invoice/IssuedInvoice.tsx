@@ -117,7 +117,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         )}
         {creditNotes.map((c) => (
           <div key={c.id} className="flex justify-end text-neutral-500">
-            <span>Credit note {c.date}{c.reason ? ` (${c.reason})` : ""}: {money(-c.amount)}</span>
+            <span>Credit note {longDate(c.date)}{c.reason ? ` (${c.reason})` : ""}: {money(-c.amount)}</span>
           </div>
         ))}
         {payments.map((p) => (
