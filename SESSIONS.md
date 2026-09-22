@@ -566,6 +566,42 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   and storage is only ever read for the owner's folder); twenty neighbouring suites
   green. The customer pages turn out to be drawn in the browser, not in the server's
   HTML, so a check on the raw page proves nothing either way.
+- **26, one name** (63e84ba): "Invoiceover" (from the domain) wherever the app names
+  itself: the tab, header, sign-in line, home-screen label and manifest, notifications,
+  email senders ("<business> via Invoiceover"), "Sent with" on the customer pages, PDFs
+  and the four sign-in emails waiting to be pasted into Supabase. One constant,
+  `src/lib/siteName.ts`; `test-site-name` holds the manifest and service worker to it and
+  searches every app file for an older spelling. His to change in one line.
+- **Two files git stored as binary** (63e84ba): the document-emailing route and the scan
+  client each held a raw control byte where an escape belonged. They worked, but git
+  showed no diff for either and grep skipped them, which is how three "Invoicer" lines
+  hid from the rename. Plain text now; `test-source-text` checks all 541 source files.
+- **54, stale notes** (63e84ba): the scan route's sign-in rule in CLAUDE.md, and in the
+  standing notes the capture pause, the default reader, the limiter, the local keys and
+  the Worker and Resend steps, all corrected against the code.
+- **42b and 82, the address finder, properly this time** (8678bad): 42b had been ticked
+  at 04:46 for only its Devon-schools filter and no-houses note. Now his two asks work: a
+  whole postcode lists its addresses by itself (700 ms, or leaving the box) and a number
+  and street finds its postcode (900 ms), no button needed; only typing searches. A
+  street's postcode comes from OpenStreetMap or the nearest from postcodes.io, marked
+  "check it's your postcode"; a postcode with no houses lists its streets, and a pick
+  keeps the typed house number; a refused Royal Mail key rests ten minutes and the box
+  says the list is the free one. The three services take stand-in hosts:
+  `test-address-stubbed` 37/37 off the internet (the paid path included),
+  `test-address-words` 37/37, `test-address-fields` 25/25 against the live services.
+- **53, the supplier page** (b995fa4): `test-public-request` 28/28 on its own dev server
+  (the stand-in database now answers a supplier's online answer by migration-028's
+  rules). `test-quote-requests` writes screenshots into another project's scratch folder,
+  so it is left alone. /i/ and /q/ open and show the logo in `test-public-logo`; their
+  Accept/Decline and open counting are still only in `test-links`/`test-quote-links`,
+  which need a server built against the stand-in.
+- **Full run after these** (95 suites): 92 green; `test-share` (Chrome took over 30 s to
+  start) and `test-camera-tip` (the camera took over 700 ms, which is what shows the tip)
+  failed on load, not code, and passed on a rerun, as did everything touching addresses.
+  Three suites (`test-neutral`, `test-plain-words`, `test-copy-document`) printed their
+  results and then never exited, browsers gone, no sockets; stopped by hand, all green
+  alone. The load was iCloud (`bird`, `fileproviderd`) syncing build and profile files.
+  `test-weight` 8/8: the dashboard is under its 1.5 MB.
 - **Full run with the stricter judge** (before the last three): 89 suites, 87 green; the
   two others were `test-check-company` beside the other dev-server suites (now run one at
   a time — 54/54 alone) and `test-sign-up` mid-edit (18/18 on the new build).
