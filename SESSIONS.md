@@ -208,6 +208,28 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   it left the zoom at 1.09× and broke the old suite's expectations). New synthetic-scene
   suite `test-autozoom-out` (5/5); `test-autozoom` 8/8, `test-conditions` 12/12.
 - CLAUDE.md's scanner notes updated for both.
+- **01:45, still zoomed on the middle of a receipt** (his second report): zoomed in, a
+  text block or table on the page makes a clean four-corner shape that passes for the
+  page itself, so the scanner sat zoomed in on part of a receipt, never "lost" and never
+  backing off. Fix in the tree, built and green (`test-autozoom-out` 5/5, `test-autozoom`
+  8/8, `test-far`, `test-conditions`), **not committed**: while zoomed, every candidate
+  must look like paper (lighter than round it, clear of the edge). Held because Atanas
+  asked for a pause to reset the app; it goes in when he says go.
+- **02:00, his other chat overloaded.** Diagnosed from here: the machine was fine (8 GB,
+  31% free); that session's transcript is 11.5 MB with WhatsApp and a dozen connectors
+  loaded. On his "copy all plus the long chat history": a full backup at
+  `~/Desktop/Claude backup 2026-09-22/` (210 MB, verified byte for byte) — that session's
+  export and its 132 transcripts and memory, the 47 scheduled tasks, the global
+  CLAUDE.md, this project's memory and transcripts, a README saying what each is. He is
+  starting that chat afresh; the folder is what to point it at.
+- **02:30, the first page** (his night-list item: Free invoice and Check a company on
+  one page, a picture of the scan, one or two buttons, "three old kids should be able
+  to do that"): a five-agent research pass, written up as `notes/first-page-research.md`
+  — what a stranger sees today (bounced to the sign-in form, the free tools its two
+  smallest links; the company check switched off live and talking about an API key),
+  the page to build instead (headline, line, two full-width buttons with one line each,
+  the picture described, the foot line), the screen after each button, the type and
+  contrast rules with sources, and the words never to use. Nothing built; his to react to.
 
 **Open, for Atanas** (`notes/tonight.md`): fix the GO OUTDOORS date on his own account
 (2012 → 2026); the business details in Settings, whenever he likes.
