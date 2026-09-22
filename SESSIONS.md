@@ -310,6 +310,16 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   to the signed-in list (37/37); `test-free-draft` checks the stranger's card (8/8);
   autozoom, camera-tip, tips, pinch, share and what-surfaces green.
   (Surprise 5, the company-number box filling the name, went in with Settings.)
+- **Surprise 7 of 12, the front door** (`notes/first-page-research.md`, built as
+  recommended, without the picture): a stranger at `/` now sees "Make an invoice. Check a
+  company." / "Both are free. Nothing to join. Nothing to pay.", two full-width 64px
+  buttons with one line each, "The facts come from Companies House.", and "We do not keep
+  anything you type unless you ask us to." — instead of being bounced to the sign-in
+  form (`src/components/Welcome.tsx`; the root page picks Welcome or the dashboard by
+  the session; the Gate lets `/` through). Signed in, the dashboard is as it was. New
+  suite `test-first-page` (13/13: no bounce, hrefs, button size, type sizes, none of the
+  research's banned words, 320px, the dashboard signed in); sign-out, empty-account and
+  first-week green.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

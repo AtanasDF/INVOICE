@@ -23,6 +23,7 @@ import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
 import AddAnything from "@/components/AddAnything";
+import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import TaxSoFar from "@/components/TaxSoFar";
@@ -68,7 +69,7 @@ const AGING_BUCKETS = [
   { label: "91+ days overdue", test: (days: number) => days >= 91 },
 ];
 
-export default function Dashboard() {
+function Dashboard() {
   const router = useRouter();
   const isIOS = useIsIOS();
   const { user } = useAuth();
@@ -502,4 +503,13 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+// A stranger at the front door gets the welcome page, not a bounce to the
+// sign-in form (notes/first-page-research.md); someone signed in gets
+// their dashboard, as before.
+export default function Home() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  return user ? <Dashboard /> : <Welcome />;
 }
