@@ -28,10 +28,11 @@ changes.
 - No DB write access from code sessions: Atanas signs into the Supabase SQL editor in a
   browser the session can drive (desktop app pane or Claude in Chrome). The editor's
   results grid is canvas-based; read it with a JS `querySelectorAll('[role="gridcell"]')`.
-- Never Read `web/.env.local`; confirm keys by name with `grep -c`. As of 2026-09-22 the
-  local file has `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` filled and
-  `SUPABASE_SERVICE_ROLE_KEY` empty: Vercel marks it sensitive, so `vercel env pull`
-  can't fill it, and `harness/feedback-inbox.mjs` can't run here until Atanas pastes it.
+- Never Read `web/.env.local`; confirm keys by name with `grep -c '^NAME='` (this shell's
+  grep has no `\+`, so `'^NAME=.\+'` silently finds nothing; use awk on the line's length
+  if the value's presence matters). As of 2026-09-22 evening the local file has
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and, pasted by Atanas from the Supabase legacy
+  keys screen, `SUPABASE_SERVICE_ROLE_KEY`: `harness/feedback-inbox.mjs` runs here now.
 - Check `git log` before assuming you are alone: "Cowork" is a second Claude session that
   reviews, runs migrations and tests in rolled-back transactions; its briefs land in
   `Claude outputs/` (untracked). iCloud sync sometimes creates `name 2.ext` duplicates;
