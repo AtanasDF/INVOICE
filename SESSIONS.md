@@ -320,6 +320,16 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   suite `test-first-page` (13/13: no bounce, hrefs, button size, type sizes, none of the
   research's banned words, 320px, the dashboard signed in); sign-out, empty-account and
   first-week green.
+- **Surprise 8 of 12, "How would you like to start?"** (the research's screen after
+  "Make an invoice"): the Free page's chooser is now two big buttons — "Take a photo of an
+  old invoice" ("We copy your details in. You check them. Your phone will ask to use the
+  camera."; for a stranger the same button leads to the sign-in and says why) and "Type it
+  in" ("Fill in a few boxes. We build the invoice as you go.") — with "Start a quote" a
+  small link and the check-company line in plain words. The tip stays. Ten suites and two
+  camera helpers pressed the old labels; swept (`"Start blank"` → `"Type it in"`, `"Scan
+  an existing invoice"` → `"Take a photo of an old invoice"`); free-draft 9/9, tips 7/7,
+  share, autozoom, camera-tip, pinch, what-surfaces, labels, first-page green;
+  `test-company` fails exactly as it did before tonight.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

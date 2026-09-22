@@ -18,7 +18,7 @@ try {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.clear(); for (const id of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + id, "3"); });
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Start blank");
+  await clickText(page, "Type it in");
   await sleep(500);
   await page.evaluate(() => {
     const setVal = (el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); };

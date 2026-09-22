@@ -7,7 +7,7 @@ try {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem("scanner-auto", "off"); });
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Scan an existing invoice");
+  await clickText(page, "Take a photo of an old invoice");
   await page.waitForFunction(() => document.querySelector("video")?.videoWidth > 0, { timeout: 15000 });
   await page.waitForFunction(() => document.body.innerText.includes("Auto-zoom: on"), { timeout: 15000 });
   await sleep(4000); // OpenCV load

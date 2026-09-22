@@ -30,14 +30,15 @@ try {
   // Typing one in is open to all; scanning one in asks for a free sign-in
   // first (Atanas, 2026-09-22), with the draft kept.
   const gate = await page.evaluate(() => {
-    const link = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Sign in to scan");
-    return { href: link ? decodeURIComponent(new URL(link.href).pathname + new URL(link.href).search) : null, camera: !![...document.querySelectorAll("button,label")].find((b) => b.textContent.trim() === "Scan an existing invoice") };
+    const link = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Take a photo of an old invoice");
+    return { href: link ? decodeURIComponent(new URL(link.href).pathname + new URL(link.href).search) : null, camera: !![...document.querySelectorAll("button,label")].find((b) => b.textContent.trim() === "Take a photo of an old invoice") };
   });
   const opening = await bodyText(page);
-  check("a stranger is offered a sign-in to scan, not the camera", gate.href === "/login?next=/free-invoice" && !gate.camera && /Scanning needs a free sign-in/.test(opening), JSON.stringify({ href: gate.href, camera: gate.camera, said: /Scanning needs a free sign-in/.test(opening) }));
+  check("a stranger's photo button leads to a sign-in, not the camera, and says why", gate.href === "/login?next=/free-invoice" && !gate.camera && /needs a free sign-in first/.test(opening), JSON.stringify({ href: gate.href, camera: gate.camera, said: /needs a free sign-in first/.test(opening) }));
+  check("the chooser asks in plain words", /How would you like to start\?/.test(opening) && /Type it in/.test(opening) && /Fill in a few boxes/.test(opening), opening.slice(0, 300));
   check("the page says so at the top", /no sign-in needed\. Scanning one in takes a free sign-in first/.test(opening), opening.slice(0, 300));
   // It opens on a chooser: blank, a quote, or scan one you've sent before.
-  await clickText(page, "Start blank");
+  await clickText(page, "Type it in");
   await sleep(1200);
   const typedBusiness = await type("your business|business name|from", "Dave's Plastering");
   const typedCustomer = await type("customer|bill to|client name", "Mrs Henderson");

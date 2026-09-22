@@ -6,7 +6,7 @@ try {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem("scanner-auto", "off"); localStorage.setItem("scanner-auto-zoom", "off"); for (const t of ["scanner-auto", "free-invoice-scan", "scanner-auto-zoom"]) localStorage.setItem("tip:" + t, "3"); });
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Scan an existing invoice");
+  await clickText(page, "Take a photo of an old invoice");
   await page.waitForFunction(() => document.querySelector("video")?.videoWidth > 2, { timeout: 20000 });
   await sleep(800);
   const cdp = await page.createCDPSession();

@@ -36,7 +36,7 @@ try {
   await page.goto(BASE + "/free-invoice", { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.removeItem("free-invoice-draft"); for (const id of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + id, "3"); });
   await page.reload({ waitUntil: "networkidle0" });
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Start blank")?.click());
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Type it in")?.click());
   await sleep(500);
   const nameSel = 'input[role="combobox"]';
   const combos = await page.$$(nameSel);
@@ -138,7 +138,7 @@ try {
   await p2.goto(BASE + "/free-invoice", { waitUntil: "networkidle0" });
   await p2.evaluate(() => localStorage.removeItem("free-invoice-draft"));
   await p2.reload({ waitUntil: "networkidle0" });
-  await p2.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Start blank")?.click());
+  await p2.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Type it in")?.click());
   await sleep(500);
   check("lookup off: plain inputs, no combobox role", (await p2.$$('input[role="combobox"]')).length === 0);
   await p2.evaluate(() => [...document.querySelectorAll("section")].find((x) => x.querySelector("h2")?.textContent === "Your business").querySelector("input").setAttribute("data-t", "biz"));

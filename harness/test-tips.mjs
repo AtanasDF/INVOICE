@@ -22,7 +22,7 @@ try {
   await shot(page, "tips-free");
   await page.evaluate(() => localStorage.setItem("scanner-auto", "off"));
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Scan an existing invoice");
+  await clickText(page, "Take a photo of an old invoice");
   await page.waitForFunction(() => document.querySelector("video")?.videoWidth > 2, { timeout: 15000 });
   await sleep(1500);
   const cam = await tipText();

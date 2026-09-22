@@ -23,7 +23,7 @@ async function open(auto) {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate((a) => { localStorage.clear(); localStorage.setItem("scanner-auto", a); localStorage.setItem("scanner-auto-zoom", "on"); for (const t of ["scanner-auto", "free-invoice-scan", "scanner-auto-zoom", "scanner-stack", "camera-allow"]) localStorage.setItem("tip:" + t, "3"); }, auto);
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Scan an existing invoice");
+  await clickText(page, "Take a photo of an old invoice");
   await page.waitForFunction(() => document.querySelector("video")?.videoWidth > 0, { timeout: 15000 });
   await page.waitForFunction(() => document.body.innerText.includes("Auto-zoom: on"), { timeout: 15000 });
   await sleep(4000); // OpenCV

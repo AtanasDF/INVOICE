@@ -34,6 +34,6 @@ export async function openScanner(page, { auto = "off" } = {}) {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate((a) => { localStorage.clear(); localStorage.setItem("scanner-auto", a); }, auto);
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Scan an existing invoice");
+  await clickText(page, "Take a photo of an old invoice");
   await page.waitForFunction(() => document.querySelector("video")?.videoWidth > 2, { timeout: 15000 });
 }

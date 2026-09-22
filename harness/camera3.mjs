@@ -38,7 +38,7 @@ export async function openScanner(page, { auto = "off", zoomOn = "on" } = {}) {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate((a, z) => { localStorage.clear(); localStorage.setItem("scanner-auto", a); localStorage.setItem("scanner-auto-zoom", z); for (const t of ["scanner-auto", "free-invoice-scan", "scanner-auto-zoom", "scanner-stack", "camera-allow"]) localStorage.setItem("tip:" + t, "3"); }, auto, zoomOn);
   await page.reload({ waitUntil: "networkidle0" });
-  await clickText(page, "Scan an existing invoice");
+  await clickText(page, "Take a photo of an old invoice");
   await page.waitForFunction(() => document.querySelector("video")?.videoWidth > 2, { timeout: 20000 });
 }
 // Decoded size and a few pixel stats of a posted data URL, measured in the page.

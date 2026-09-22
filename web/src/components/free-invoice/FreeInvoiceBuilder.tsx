@@ -268,51 +268,50 @@ export default function FreeInvoiceBuilder() {
 
       {stage === "start" && (
         <Tip id="free-invoice-scan">
-          Tip: scan an invoice you&apos;ve sent before, even a handwritten one, and the next one is made for you: same
-          details, number moved on, dated today.
+          Tip: photograph an invoice you&apos;ve sent before, even a handwritten one, and the next one is made for you:
+          same details, number moved on, dated today.
         </Tip>
       )}
 
       {stage === "start" && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <h2 className="font-semibold">How do you want to start?</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <h2 className="text-xl font-bold">How would you like to start?</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col rounded-lg border p-4">
-              <p className="font-medium">Start blank</p>
-              <p className="mt-1 flex-1 text-sm text-neutral-600">Type in the details and watch the invoice, or the quote, build itself alongside.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => startBlank()} className="w-fit rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
-                  Start blank
-                </button>
-                <button type="button" onClick={() => startBlank("quote")} className="w-fit rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                  Start a quote
-                </button>
-              </div>
-            </div>
-            <div className="flex flex-col rounded-lg border p-4">
-              <p className="font-medium">Scan an existing invoice</p>
-              <p className="mt-1 flex-1 text-sm text-neutral-600">Photograph one you have sent before, even a rough or handwritten one. Your details, customer and lines are copied in, the number moves on by one and the date is today.</p>
               {user ? (
-                <div className="mt-3 flex flex-wrap items-end gap-3">
-                  <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                    Scan an existing invoice
-                  </CaptureButton>
-                  <EnginePicker value={engine} onChange={setEngine} />
-                </div>
+                <CaptureButton onOpen={() => setCapturing(true)} onCapture={addPage} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-bold text-white">
+                  Take a photo of an old invoice
+                </CaptureButton>
               ) : (
                 // Scanning costs a read each time, so it is for people who
                 // have signed in (free); typing one in stays open to all.
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm text-neutral-600">Scanning needs a free sign-in, so every scan comes from a real person. Anything you&apos;ve typed here stays.</p>
-                  <Link href="/login?next=%2Ffree-invoice" className="inline-block rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                    Sign in to scan
-                  </Link>
+                <Link href="/login?next=%2Ffree-invoice" className="flex min-h-14 w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-bold text-white">
+                  Take a photo of an old invoice
+                </Link>
+              )}
+              <p className="mt-3 flex-1 text-base text-neutral-700">
+                {user
+                  ? "We copy your details in. You check them. Your phone will ask to use the camera."
+                  : "We copy your details in. You check them. It needs a free sign-in first, so every scan comes from a real person; anything you've typed here stays."}
+              </p>
+              {user && (
+                <div className="mt-3">
+                  <EnginePicker value={engine} onChange={setEngine} />
                 </div>
               )}
             </div>
+            <div className="flex flex-col rounded-lg border p-4">
+              <button type="button" onClick={() => startBlank()} className="flex min-h-14 w-full items-center justify-center rounded-lg border-2 border-neutral-900 bg-white px-4 py-3 text-center text-lg font-bold text-neutral-900">
+                Type it in
+              </button>
+              <p className="mt-3 flex-1 text-base text-neutral-700">Fill in a few boxes. We build the invoice as you go.</p>
+              <button type="button" onClick={() => startBlank("quote")} className="mt-3 w-fit text-base text-neutral-700 underline">
+                Start a quote
+              </button>
+            </div>
           </div>
-          <p className="mt-4 text-sm text-neutral-600">
-            New customer? <Link href="/check-company" className="font-medium underline">Check the company</Link> first — free, straight from the Companies House register.
+          <p className="mt-4 text-base text-neutral-700">
+            New customer? <Link href="/check-company" className="font-medium underline">Check the company</Link> first. It is free, straight from the Companies House register.
           </p>
         </div>
       )}
