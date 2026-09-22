@@ -33,7 +33,7 @@ REWRITE
 fi
 
 SUITES=(
-  test-tax-rules test-reminder-clock test-money-edges test-vat-cash-basis test-pdf-pages test-next-number test-dates test-vat-pennies test-vat-from-rate
+  test-tax-rules test-reminder-clock test-money-edges test-vat-cash-basis test-pdf-pages test-next-number test-dates test-vat-pennies test-vat-from-rate test-address-words
   test-first-week test-prefix-wipe test-what-surfaces test-empty-account test-numbering test-half-saved test-keyboards test-long-values
   test-no-accidents test-public-links test-labels test-one-total test-round-trip
   test-currency test-dark-mode test-route-guards test-rls-audit test-one-handed test-free-draft test-bad-scan test-print test-no-silent-contacts test-fit-sweep test-company-picker test-company-number

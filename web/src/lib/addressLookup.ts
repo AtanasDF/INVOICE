@@ -190,6 +190,28 @@ function osmTown(p: OsmProperties): string {
   return (p.district || p.locality || city || p.county || "").trim();
 }
 
+// Words that name a kind of street rather than the street itself.
+const STREET_KINDS = new Set(["road", "rd", "street", "st", "lane", "ln", "avenue", "ave", "close", "cl", "drive", "dr", "way", "place", "pl", "court", "ct", "crescent", "cres", "terrace", "gardens", "grove", "square", "sq", "hill", "park", "row", "walk", "mews", "the", "and", "&"]);
+
+// OpenStreetMap's search is fuzzy: "149 Benares Road" came back with the
+// road, then a school in Devon and one in Hampshire that share nothing but
+// the word Road (Atanas, 2026-09-22: "you find something else, it gives you
+// nothing"). A match must carry every real word typed -- the street's name,
+// a town if one was typed -- somewhere in its own name, street or town.
+export function typedWords(q: string): string[] {
+  return q
+    .replace(/^\d+[a-z]?(?:-\d+[a-z]?)?\s+/i, "")
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter((w) => w.length >= 3 && !STREET_KINDS.has(w));
+}
+
+export function matchesTypedWords(p: OsmProperties, words: string[]): boolean {
+  if (!words.length) return true;
+  const hay = [p.name, p.street, p.city, p.locality, p.district, p.county].filter(Boolean).join(" ").toLowerCase();
+  return words.every((w) => hay.includes(w));
+}
+
 // A street is offered as the house number typed (if any) and the street
 // and town, without a postcode: OpenStreetMap's is for one stretch of it.
 export function osmMatch(p: OsmProperties, id: string, { town: townOverride, houseNumber }: { town?: string; houseNumber?: string } = {}): AddressMatch | null {

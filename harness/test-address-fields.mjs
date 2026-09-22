@@ -74,6 +74,33 @@ try {
   check("number and street finds addresses", r.options.length >= 1, JSON.stringify(r.options).slice(0, 200));
   check("picking one fills its postcode", (await pickOption("Downing Street")) && (await sleep(300), (await fields(1)).postcode?.length >= 5), JSON.stringify(await fields(1)));
 
+  // A fuzzy match from the other end of the country is not offered:
+  // "149 Benares Road" once listed a school in Devon and one in Hampshire.
+  await type(1, "Postcode", "");
+  await type(1, "House number and street", "149 Benares Road");
+  await type(1, "Town or city", "London");
+  r = await findIn(1);
+  check("a street typed lists only places carrying its name", r.options.every((o) => /Benares/i.test(o)), JSON.stringify(r.options).slice(0, 300));
+  check("...nothing from Devon or Hampshire", !r.options.some((o) => /Teignmouth|Steep|Bedales/i.test(o)), JSON.stringify(r.options).slice(0, 300));
+
+  // A postcode the free directory has no houses for says so plainly
+  // (Atanas's own, 2026-09-22: "it gives you nothing"). Only checked while
+  // OpenStreetMap still has none there.
+  await type(1, "House number and street", "");
+  await type(1, "Town or city", "");
+  await type(1, "Postcode", "SE18 1HU");
+  r = await findIn(1);
+  if (r.options.length === 1 && /Fills in the town and postcode/.test(r.options[0])) {
+    check("no houses listed: the note says so and what to do", /No houses are listed for SE18 1HU/.test(r.note ?? "") && /type your house number and street/.test(r.note ?? ""), r.note);
+  } else {
+    check("SE18 1HU now has houses in the free directory (the wording case can't be shown here)", true);
+  }
+  check("picked the postcode itself", await pickOption("SE18 1HU"));
+  await sleep(300);
+  f = await fields(1);
+  check("it fills the town and postcode and leaves the street for typing", f.town === "London" && f.postcode === "SE18 1HU" && f.line1 === "", JSON.stringify(f));
+  await type(1, "House number and street", "149 Benares Road");
+
   // A postcode that doesn't exist.
   await type(0, "House number and street", "Unit 4, Mill Lane");
   await type(0, "Postcode", "ZZ99 9ZZ");
@@ -91,6 +118,6 @@ try {
   await clickText(page, "Preview");
   await sleep(800);
   const t = await page.evaluate(() => document.body.innerText);
-  check("preview prints the addresses", t.includes("Mill Lane") && t.includes("Downing Street"), t.slice(0, 300));
+  check("preview prints the addresses", t.includes("Mill Lane") && t.includes("Benares Road") && t.includes("SE18 1HU"), t.slice(0, 300));
 } catch (e) { console.log("ERROR", e.message); await shot(page, "address-fields-error"); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

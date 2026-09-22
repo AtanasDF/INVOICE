@@ -270,6 +270,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   harness: 77 suites, one fail — Settings at 320px, five pixels over from the category
   rows, fixed (`min-w-0` on the box) — then green; `run-all.sh` now also counts a suite
   that prints 0/0 as not green, which is what `test-review-fixes` has been doing.
+- **Surprise 3 of 12, the address finder's free path** (his "it doesn't work at all",
+  reproduced live: SE18 1HU lists nothing but itself; "149 Benares Road" lists the road,
+  then a school in Devon and one in Hampshire). The real answer is Royal Mail's file
+  (`notes/address-lookup-options.md`, his key); meanwhile the free search keeps only
+  matches carrying every real word typed (`typedWords`, `matchesTypedWords` in
+  `addressLookup.ts`: the house number and words like Road are not words to match), and
+  a postcode with no houses listed says so in the box — "No houses are listed for SE18
+  1HU in the free directory. Tap it to fill in the town and postcode, then type your
+  house number and street." — instead of a bare list of one. New logic suite
+  `test-address-words` (13/13); `test-address-fields` (live postcodes.io and photon)
+  grew five checks, 23/23. He added a list item at 04:50: a free "scan anything" button on
+  the free page, 23 files a day per user, export or send on (item 29b).
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

@@ -5,12 +5,14 @@ import {
   AddressSource,
   OsmProperties,
   PafAddress,
+  matchesTypedWords,
   normalisePostcode,
   osmMatch,
   postcodeAsTyped,
   postcodeTown,
   pafLines,
   townCase,
+  typedWords,
 } from "@/lib/addressLookup";
 import { addressKey, allow, allowShared } from "@/lib/rateLimit";
 import { signedInUser } from "@/lib/serverAuth";
@@ -111,7 +113,8 @@ async function searchOsm(q: string): Promise<AddressSearchResult> {
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&countrycode=GB&layer=house&layer=street&limit=8&lang=en`;
     const { body } = await getJson<Photon>(url);
     const houseNumber = /^(\d+[a-z]?(?:-\d+[a-z]?)?)\s+\S/i.exec(q)?.[1];
-    const features = (body?.features ?? []).map((f) => f.properties ?? {});
+    const words = typedWords(q);
+    const features = (body?.features ?? []).map((f) => f.properties ?? {}).filter((p) => matchesTypedWords(p, words));
     const towns = await townsFor(features.map((p) => (p.postcode ? normalisePostcode(p.postcode) : null)));
     const items = unique(
       features.map((p, i) => {

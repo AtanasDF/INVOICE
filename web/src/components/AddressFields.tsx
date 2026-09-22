@@ -140,7 +140,9 @@ export default function AddressFields({ address, onAddress, label = "Address", s
           ? "No matches. Try the postcode on its own, or type the address in yourself."
           : result?.source === "paf"
             ? "Royal Mail addresses. Tap one to fill it in."
-            : `${result?.free ? "Free address search for now. " : ""}Tap one to fill it in. Addresses © OpenStreetMap contributors.`;
+            : items.length === 1 && items[0].partial
+              ? `No houses are listed for ${normalisePostcode(result?.q ?? "") ?? result?.q} in the free directory. Tap it to fill in the town and postcode, then type your house number and street. Addresses © OpenStreetMap contributors.`
+              : `${result?.free ? "Free address search for now. " : ""}Tap one to fill it in. Addresses © OpenStreetMap contributors.`;
 
   return (
     <div className="space-y-2">
