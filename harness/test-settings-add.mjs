@@ -91,7 +91,7 @@ try {
   await sleep(600);
   let text = await bodyText(page);
   check("settings: the signed-in email is shown", text.includes("harness@example.com"), text.slice(0, 300));
-  check("settings: says where the data lives", /Supabase|EU \(Ireland\)/.test(text) && text.includes("expire after seven days"));
+  check("settings: says where the data lives, in plain words", text.includes("EU (Ireland)") && text.includes("expire after seven days") && !/Postgres|Supabase|bucket/.test(text));
   check("settings: no delete button, says how to ask instead", !/delete (my )?account/i.test(text) && text.includes("no delete button"));
   const accountButtons = await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()));
   check("settings: sign out, sign-in link and export are all there",
@@ -132,7 +132,7 @@ try {
   check("registered name, number and account kind save",
     savedRow.company_number === "87654321" && savedRow.registered_name === "NP Trading Ltd" && savedRow.account_kind === "limited" && savedRow.business_name === "Nasko Plastering",
     JSON.stringify(savedRow).slice(0, 200));
-  check("saved cleanly, no migration warning", (await bodyText(page)).includes("Saved.") && !(await bodyText(page)).includes("migration-029"));
+  check("saved cleanly, no migration warning", (await bodyText(page)).includes("Saved.") && !(await bodyText(page)).includes("database update"));
 
   // ── The address label follows what the account is for ─────────────
   check("limited: business address", (await addressLabel(page)).startsWith("Business address"), await addressLabel(page));
@@ -285,7 +285,7 @@ try {
     const savedOld = old.tables.business_profile.at(-1);
     old.tables.business_profile = [savedOld];
     check("columns absent: the rest of the profile still saves", refused === 1 && savedOld.business_name === "Nasko Plastering" && !("registered_name" in savedOld), `${refused} ${JSON.stringify(savedOld).slice(0, 150)}`);
-    check("columns absent: it says what didn't save", (await bodyText(p4)).includes("migration-029"), (await bodyText(p4)).slice(0, 200));
+    check("columns absent: it says what didn't save", (await bodyText(p4)).includes("need a database update first"), (await bodyText(p4)).slice(0, 200));
     await p4.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" });
     await sleep(600);
     check("columns absent: the invoices list is unchanged", (await bodyText(p4)).includes("Invoices"));

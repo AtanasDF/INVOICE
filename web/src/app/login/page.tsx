@@ -77,7 +77,12 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const confirmTo = () => ({ emailRedirectTo: `${window.location.origin}/login?next=%2F` });
+  // The confirmation link comes back to where they were going (the Free
+  // page, with its draft still on this phone), not to the dashboard.
+  const confirmTo = () => {
+    const next = new URLSearchParams(window.location.search).get("next") ?? "/";
+    return { emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent(next.startsWith("/") && !next.startsWith("//") ? next : "/")}` };
+  };
 
   async function resend() {
     const to = pendingEmail || email;

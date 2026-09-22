@@ -41,7 +41,8 @@ const press = (text) => page.evaluate((t) => {
 try {
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle0" });
+  // Arriving from the Free page's photo button, as a stranger would.
+  await page.goto(`${BASE}/login?next=%2Ffree-invoice`, { waitUntil: "networkidle0" });
   await sleep(500);
   let text = await bodyText(page);
   check("the way in for a newcomer is in plain words", text.includes("New here? Make a sign-in") && !/account/i.test(text), text.slice(0, 300));
@@ -55,7 +56,7 @@ try {
   await page.waitForFunction(() => document.body.innerText.includes("Check your email"), { timeout: 10000 });
   text = await bodyText(page);
   const signup = calls.find((c) => c.what === "signup");
-  check("sign-up asks for the confirmation link to come back to the app", !!signup && /\/login\?next=%2F$/.test(signup.redirect ?? ""), JSON.stringify(signup?.redirect));
+  check("sign-up's confirmation link brings them back to where they were going", !!signup && /\/login\?next=%2Ffree-invoice$/.test(signup.redirect ?? ""), JSON.stringify(signup?.redirect));
   check("with no session yet the page says to check the email, naming the address", text.includes("We've sent a link to newcomer@example.com") && text.includes("Send it again") && text.includes("junk folder"), text.slice(0, 400));
   check("no password box on that screen", !(await page.$('input[name="password"]')));
   await press("Send it again");

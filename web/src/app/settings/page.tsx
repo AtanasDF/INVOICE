@@ -268,7 +268,7 @@ export default function SettingsPage() {
       setInboxToken(token);
       setInboxRevealed(false);
     } catch (err) {
-      setInboxError(saveFailed(err, "Could not generate an import address."));
+      setInboxError(saveFailed(err, "Couldn't make an address just now."));
     } finally {
       setInboxBusy(false);
     }
@@ -602,10 +602,16 @@ export default function SettingsPage() {
               id="vat-number"
               className="w-full rounded-lg border px-3 py-2 disabled:bg-neutral-50 disabled:text-neutral-400"
               placeholder="GB123456789"
+              aria-describedby="vat-number-note"
               value={vatNumber}
               disabled={!vatRegistered}
               onChange={(e) => setVatNumber(e.target.value)}
             />
+            <p id="vat-number-note" className="mt-1 text-xs text-neutral-600">
+              {vatNumber.trim() && !/^(GB)?\s*\d{3}\s*\d{4}\s*\d{2}(\s*\d{3})?$/i.test(vatNumber.trim())
+                ? "A UK VAT number is GB and nine digits, like GB123456789. Check it against your VAT certificate."
+                : "As it appears on your VAT certificate."}
+            </p>
           </div>
         </div>
         )}
@@ -826,8 +832,8 @@ export default function SettingsPage() {
           <p role="status" className="sr-only">{saved && !migrationPending ? "Saved." : ""}</p>
           {saved && migrationPending && (
             <p className="text-sm text-amber-700">
-              Saved, apart from what you&apos;re using the app for and the registered company details: this database hasn&apos;t
-              had migration-029 run against it yet. Everything else is in.
+              Saved, apart from what you&apos;re using the app for and the registered company details: those need a
+              database update first. Everything else is in.
             </p>
           )}
         </div>
@@ -874,31 +880,32 @@ export default function SettingsPage() {
           <>
             <p className="text-xs font-medium text-amber-700">
               Treat this address like a password. Anyone who has it can send mail that creates receipts in your
-              account — don&apos;t post it publicly, and regenerate it below if it ever ends up somewhere it
+              account — don&apos;t post it publicly, and get a new one below if it ever ends up somewhere it
               shouldn&apos;t.
             </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
-                {inboxRevealed ? inboxAddress(inboxToken) : `u-${"•".repeat(32)}@invoiceover.com`}
-              </code>
+            {/* The address on a line of its own, the buttons on the next: on a phone the three never fitted one row. */}
+            <code className="block overflow-x-auto whitespace-nowrap rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
+              {inboxRevealed ? inboxAddress(inboxToken) : `u-${"•".repeat(12)}@invoiceover.com`}
+            </code>
+            <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setInboxRevealed((v) => !v)} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
-                {inboxRevealed ? "Hide" : "Reveal"}
+                {inboxRevealed ? "Hide" : "Show"}
               </button>
               <button type="button" onClick={copyInboxAddress} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
                 {inboxCopied ? "Copied" : "Copy"}
               </button>
+              <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
+                {inboxBusy ? "Working…" : "Get a new address"}
+              </button>
             </div>
-            <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
-              {inboxBusy ? "Working…" : "Regenerate address"}
-            </button>
             <p className="text-xs text-neutral-500">
-              Regenerating immediately stops the old address from working — use this if it ever ends up somewhere
-              you didn&apos;t intend.
+              A new address stops the old one working straight away — use it if the address ever ends up somewhere you
+              didn&apos;t intend.
             </p>
           </>
         ) : (
           <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
-            {inboxBusy ? "Generating…" : "Get my import address"}
+            {inboxBusy ? "Making it…" : "Get an address to email receipts to"}
           </button>
         )}
       </div>
@@ -927,10 +934,9 @@ export default function SettingsPage() {
         <div className="border-t pt-3">
           <p className="text-xs text-neutral-500">Where your data lives</p>
           <p className="mt-1 text-sm text-neutral-600">
-            In a Postgres database run by Supabase in the EU (Ireland), locked to your account: every table is read and
-            written only by the signed-in owner. Scanned photos and PDFs sit in a private bucket and are handed out as
-            links that expire after seven days. Invoice and quote links you share are the one exception — anyone holding
-            that address sees that one document, until you stop the link from its page.
+            Kept in the EU (Ireland), and only you can read it. Photos of receipts are shown through links that
+            expire after seven days. An invoice or quote link you send is the one exception: whoever has it sees that
+            one document, until you stop the link from its page.
           </p>
         </div>
 
@@ -938,9 +944,9 @@ export default function SettingsPage() {
           <p className="text-xs text-neutral-500">Take it all with you</p>
           <p className="mt-1 text-sm text-neutral-600">
             Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, price
-            requests to suppliers, recurring expenses and invoices, the reminders sent and feedback — as one JSON file, with
-            the scanned images and PDFs inside it. Invoices, receipts and
-            clients also export as CSV from their own pages, for a spreadsheet or an accountant.
+            requests to suppliers, recurring expenses and invoices, the reminders sent and feedback — as one file, with
+            the photos and documents inside it. For a spreadsheet or an accountant, the invoices, receipts and clients pages
+            each have &quot;Download for a spreadsheet&quot;.
           </p>
           {exportError && <p role="alert" className="mt-2 text-sm text-red-600">{exportError}</p>}
           <button type="button" onClick={exportData} disabled={exporting} className={`mt-2 ${SMALL_BUTTON}`}>

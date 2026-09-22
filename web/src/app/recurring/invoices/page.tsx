@@ -187,8 +187,7 @@ export default function RecurringInvoicesPage() {
       <div>
         <h1 className="text-2xl font-bold">Recurring</h1>
         <p className="mt-1 text-neutral-600">
-          Work that repeats on a schedule — generates a draft invoice automatically each month, for you to check
-          and send.
+          Work that repeats on a schedule. A draft invoice is made for you each month, for you to check and send.
         </p>
       </div>
 
@@ -300,7 +299,7 @@ export default function RecurringInvoicesPage() {
                       disabled={generatingId === item.id}
                       className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      {generatingId === item.id ? "Generating…" : "Generate now"}
+                      {generatingId === item.id ? "Making…" : "Make it now"}
                     </button>
                   )}
                   <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600 underline">

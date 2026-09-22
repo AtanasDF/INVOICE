@@ -63,12 +63,12 @@ try {
   await page.waitForFunction(() => document.body.innerText.includes("Email import"), { timeout: 20000 });
   const tokenBefore = db.tables.business_profile.at(-1).inbox_token;
   asked = null; answer = false;
-  await clickText(page, "Regenerate address");
+  await clickText(page, "Get a new address");
   await sleep(700);
   check("settings: a new import address asks first, naming the consequence", !!asked && /old one stops working/i.test(asked), String(asked));
   check("settings: saying no keeps the old address", db.tables.business_profile.at(-1).inbox_token === tokenBefore);
   asked = null; answer = true;
-  await clickText(page, "Regenerate address");
+  await clickText(page, "Get a new address");
   await sleep(900);
   check("settings: saying yes makes a new one", !!asked && db.tables.business_profile.at(-1).inbox_token !== tokenBefore, String(db.tables.business_profile.at(-1).inbox_token).slice(0, 8));
 

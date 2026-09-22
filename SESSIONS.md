@@ -505,6 +505,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   labels, neutral, fit-320, fit-sweep, empty-account, dark-mode, sign-out,
   what-surfaces, first-page green. Asked mid-batch "are you good there": yes; "carry
   on".
+- **12, 39, 63, 64**: inside the app the machinery words are gone — "Get a new address"
+  and "Get an address to email receipts to" (not Regenerate / import), "Couldn't make an
+  address", "Make it now" / "Making…" and "a draft invoice is made for you each month" on
+  recurring invoices, "need a database update first" (not migration-029), "Kept in the EU
+  (Ireland), and only you can read it" (not Postgres, Supabase, bucket), "as one file" and
+  "Download for a spreadsheet" (not JSON, CSV). The import address sits on its own line
+  with Show / Copy / Get a new address beneath; the VAT number has a note, and says what a
+  UK number looks like when the one typed doesn't. A sign-up's confirmation link now
+  comes back to where the person was going (`?next=`, the Free page with its draft),
+  not the dashboard. `test-plain-words` also walks 20 signed-in pages for developer and
+  talking-down words (7/7); settings-add, no-accidents, sign-up (the link back to the
+  Free page), settings-save, labels, clear, what-surfaces, empty-account green.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.
