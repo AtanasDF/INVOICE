@@ -144,6 +144,32 @@ export function handle(db, method, path, search, headers, body) {
     return { status: 200, json: null };
   }
 
+  // A supplier's online answer (migration-028's function, service role):
+  // once, while the request is open and not past its date, only that
+  // link's row; prices kept only for lines on the request.
+  if (path === "/rest/v1/rpc/submit_quote_request_response") {
+    const b = body ?? {};
+    db.log.push({ key: "RPC submit_quote_request_response", body: b });
+    if (!["replied", "declined"].includes(b.p_status) || (b.p_delivery != null && b.p_delivery < 0)) return { status: 200, json: [] };
+    const row = (db.tables.quote_request_suppliers ?? []).find((r) => r.token === b.p_token);
+    if (!row || row.status !== "waiting") return { status: 200, json: [] };
+    const req = (db.tables.quote_requests ?? []).find((r) => r.id === row.request_id && r.user_id === row.user_id);
+    if (!req || req.status !== "open" || (req.needed_by && req.needed_by < todayISO())) return { status: 200, json: [] };
+    const replied = b.p_status === "replied";
+    const known = new Set((req.items ?? []).map((it) => it.id));
+    Object.assign(row, {
+      status: b.p_status,
+      source: "online",
+      responded_at: new Date().toISOString(),
+      responder_name: (b.p_name ?? "").trim().slice(0, 120) || null,
+      prices: replied ? Object.fromEntries(Object.entries(b.p_prices ?? {}).filter(([id]) => known.has(id))) : {},
+      delivery: replied ? b.p_delivery : null,
+      vat_included: replied && !!b.p_vat_included,
+      valid_until: replied ? b.p_valid_until : null,
+      note: (b.p_note ?? "").slice(0, 2000),
+    });
+    return { status: 200, json: [{ row_id: row.id, req_id: row.request_id, owner_id: row.user_id }] };
+  }
   if (path === "/rest/v1/rpc/respond_to_quote_link") {
     const { p_token, p_response, p_name } = body ?? {};
     if (!["accepted", "declined"].includes(p_response)) return { status: 200, json: [] };
