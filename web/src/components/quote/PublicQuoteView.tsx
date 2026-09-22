@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import QuoteDocument, { money, quoteTotal } from "@/components/quote/QuoteDocument";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
+import SaveAsMenu from "@/components/SaveAsMenu";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicQuote } from "@/lib/publicQuote";
 import { saveFailed } from "@/lib/errorText";
@@ -145,6 +146,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
         <button onClick={download} disabled={making} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
           {making ? "Making the PDF…" : "Download PDF"}
         </button>
+        <SaveAsMenu sheet={() => sheetRef.current} name={`Quote ${q.number}`} onPdf={download} />
         <button onClick={() => window.print()} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
           Print
         </button>

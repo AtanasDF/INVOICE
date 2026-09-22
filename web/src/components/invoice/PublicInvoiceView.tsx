@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
+import SaveAsMenu from "@/components/SaveAsMenu";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicInvoice } from "@/lib/publicInvoice";
 import { saveFailed } from "@/lib/errorText";
@@ -55,6 +56,7 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
           <button onClick={download} disabled={making} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {making ? "Making the PDF…" : "Download PDF"}
           </button>
+          <SaveAsMenu sheet={() => sheetRef.current} name={`Invoice ${data.invoice.number}`} onPdf={download} />
           <button onClick={() => window.print()} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             Print
           </button>

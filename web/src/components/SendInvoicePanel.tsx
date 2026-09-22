@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
+import SaveAsMenu from "@/components/SaveAsMenu";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
 import { saveFailed } from "@/lib/errorText";
@@ -104,7 +105,7 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
     document.body
   );
 
-  return { currentPdf, share, download, shareState, shareError, sheetPortal };
+  return { currentPdf, share, download, shareState, shareError, sheetPortal, sheetRef, filename };
 }
 
 export type DocumentPdf = ReturnType<typeof useDocumentPdf>;
@@ -124,6 +125,7 @@ export function ShareButtons({ pdf, children }: { pdf: DocumentPdf; children?: R
         <button type="button" onClick={pdf.download} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
           Download PDF
         </button>
+        <SaveAsMenu sheet={() => pdf.sheetRef.current} name={pdf.filename.replace(/\.pdf$/, "")} onPdf={pdf.download} />
         {children}
       </div>
       {pdf.shareError && <p role="alert" className="mt-2 text-sm text-red-600">{pdf.shareError}</p>}

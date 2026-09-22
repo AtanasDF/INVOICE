@@ -12,6 +12,7 @@
 # all disposable; only the source in harness/ is kept.
 harness/node_modules
 harness/profile-*/
+harness/downloads-*/
 harness/profile/
 harness/gen/
 harness/*.mjpeg

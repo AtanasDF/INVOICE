@@ -29,6 +29,8 @@ import {
   writeFreeInvoiceDraft,
 } from "@/lib/freeInvoiceDraft";
 import Tip from "@/components/Tip";
+import SaveAsMenu, { SAVE_FORMATS, SAVE_FAILED, saveSheetAs } from "@/components/SaveAsMenu";
+import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/lib/invoicePdf";
 import { saveFailed } from "@/lib/errorText";
 
 const MAX_PAGES = 3;
@@ -78,6 +80,11 @@ export default function FreeInvoiceBuilder() {
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [printing, setPrinting] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // The printed sheet the other formats are read from is put up only while
+  // a save list is open, so typing an invoice never re-draws an A4 page.
+  const [savingOpen, setSavingOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveSheet = useRef<HTMLDivElement>(null);
   // Bumped whenever a different invoice starts, so the send panel forgets
   // the last one's recipient and "Sent".
   const [invoiceGen, setInvoiceGen] = useState(0);
@@ -224,6 +231,8 @@ export default function FreeInvoiceBuilder() {
     );
   }
 
+  const docName = `${quote ? "Quote" : "Invoice"} ${draft?.number ?? ""}`.trim();
+
   const actions = (
     <>
       <button type="button" onClick={goToSend} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
@@ -232,6 +241,7 @@ export default function FreeInvoiceBuilder() {
       <button type="button" onClick={print} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         Print or save
       </button>
+      <SaveAsMenu sheet={() => saveSheet.current} name={docName} onOpenChange={setSavingOpen} />
       <button type="button" onClick={startNext} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         {quote ? "Next quote" : "Next invoice"}
       </button>
@@ -249,8 +259,28 @@ export default function FreeInvoiceBuilder() {
   const mobileActions = (
     <>
       {moreOpen && (
-        <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border bg-white shadow-lg">
-          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={menuItem}>{quote ? "Next quote" : "Next invoice"}</button>
+        <div className="absolute inset-x-3 bottom-full mb-2 max-h-[70vh] overflow-y-auto rounded-xl border bg-white shadow-lg">
+          <p className="px-4 pt-3 text-xs text-neutral-500">Save as</p>
+          {SAVE_FORMATS.map((f) => (
+            <button
+              key={f.kind}
+              type="button"
+              onClick={async () => {
+                setSaveError(null);
+                try {
+                  if (!saveSheet.current) throw new Error("not ready");
+                  await saveSheetAs(f.kind, saveSheet.current, docName);
+                  setMoreOpen(false);
+                } catch {
+                  setSaveError(SAVE_FAILED);
+                }
+              }}
+              className={`${menuItem} flex-col items-start`}
+            >
+              {f.label} <span className="font-normal text-neutral-500">{f.ending}</span>
+            </button>
+          ))}
+          <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>{quote ? "Next quote" : "Next invoice"}</button>
           <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Keep a copy in the app</button>
           <button type="button" onClick={() => { setMoreOpen(false); startOver(); }} className={`${menuItem} border-t text-neutral-600`}>Start over</button>
         </div>
@@ -272,6 +302,15 @@ export default function FreeInvoiceBuilder() {
 
   return (
     <div className={`space-y-6 ${stage === "editor" ? "pb-28 sm:pb-0" : ""}`}>
+      {(savingOpen || moreOpen) && draft && createPortal(
+        <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
+          <div ref={saveSheet} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
+            <InvoiceDocument draft={draft} />
+          </div>
+        </div>,
+        document.body
+      )}
+      {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{quote ? "Free quote" : "Free invoice"}</h1>
