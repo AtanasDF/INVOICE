@@ -97,7 +97,9 @@ const MIN_CORNER_SIN = 0.35;
 // "focus has settled" check rather than an absolute bar. A run that
 // stays stable for STABLE_TIMEOUT_MS captures regardless of sharpness so
 // a dim room never dead-locks the scanner.
-const STABLE_MS = 600;
+// 600 fired before the phone had focused (Atanas, first real receipt,
+// 2026-09-22): another half second lets the lens settle.
+const STABLE_MS = 1100;
 const MOVE_TOLERANCE = 0.02;
 const MIN_COVERAGE = 0.09;
 const SHARPNESS_RATIO = 0.7;
@@ -143,6 +145,10 @@ const AUTO_ZOOM_MAX_LENS = 4;
 const AUTO_ZOOM_MIN_STEP = 1.15;
 const AUTO_ZOOM_SETTLE_MS = 350;
 const AUTO_ZOOM_LOST_MS = 1500;
+// Zoomed in and the page now runs to the edges -- the phone came closer,
+// or the zoom went too far for it: zoom out just enough for it to fit,
+// after AUTO_ZOOM_SETTLE_MS, rather than leaving a page too big to read.
+const AUTO_ZOOM_OUT_FIT = 0.95;
 // A pinch without the camera's own zoom crops the picture: past 3× there's
 // too little of the photo left to read.
 const PINCH_CSS_MAX = 3;
@@ -800,6 +806,7 @@ export default function DocumentCapture({
   const autoZoomRef = useRef(readAutoZoom());
   const userZoomedRef = useRef(false);
   const smallSinceRef = useRef<number | null>(null);
+  const bigSinceRef = useRef<number | null>(null);
   const lostSinceRef = useRef<number | null>(null);
   const zoomCooldownRef = useRef(0);
   const statusRef = useRef<Status>("starting");
@@ -1294,6 +1301,23 @@ export default function DocumentCapture({
           const fit = fitFactor(smooth, workW, workH);
           const step = Math.min(room, fit, AUTO_ZOOM_TARGET / span);
           const canZoom = span < AUTO_ZOOM_BELOW && step >= AUTO_ZOOM_MIN_STEP;
+          // The other way round: a corner already within FIT_MARGIN of the
+          // edge while zoomed in. Zoom out to where the page fits, and no
+          // further -- "a little", not back to 1.
+          const tooClose = fit < 1 && level > 1 && autoZoomRef.current && !userZoomedRef.current;
+          if (tooClose && !capturedRef.current && now >= zoomCooldownRef.current) {
+            if (bigSinceRef.current === null) bigSinceRef.current = now;
+            else if (now - bigSinceRef.current >= AUTO_ZOOM_SETTLE_MS) {
+              bigSinceRef.current = null;
+              zoomToRef.current(Math.max(1, level * fit * AUTO_ZOOM_OUT_FIT));
+              zoomCooldownRef.current = now + AUTO_ZOOM_COOLDOWN_MS;
+              resetStable();
+              setCoach("zooming");
+              return;
+            }
+          } else {
+            bigSinceRef.current = null;
+          }
           if (canZoom && !capturedRef.current && now >= zoomCooldownRef.current && !moved) {
             if (smallSinceRef.current === null) smallSinceRef.current = now;
             else if (now - smallSinceRef.current >= AUTO_ZOOM_SETTLE_MS) {
@@ -1330,6 +1354,7 @@ export default function DocumentCapture({
           resetStable();
           setCoach("line");
           smallSinceRef.current = null;
+          bigSinceRef.current = null;
           const now = performance.now();
           if (autoZoomRef.current && !userZoomedRef.current && !capturedRef.current && now >= zoomCooldownRef.current && zoomLevel() > 1) {
             if (lostSinceRef.current === null) lostSinceRef.current = now;

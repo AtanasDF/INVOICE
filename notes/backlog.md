@@ -186,6 +186,14 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   pattern took the 12 of the time as a two-digit year. Fixed in `documentDate.ts` (time
   stripped first; a two-digit year followed by a colon is never a year), `test-dates`
   34/34. Atanas's own row still needs its date edited by him.
+- [x] **The shot fired before the phone had focused** (Atanas: "give it another half a
+  second") — the hold-still before auto-capture is 1.1 s, was 0.6 s (`STABLE_MS`).
+  `harness/test-autozoom-out.mjs` asserts no capture inside a second of a page appearing.
+- [x] **Zoomed in and the page fills the view, the scanner stayed zoomed** (Atanas: "if
+  the zoom is maxed and the phone is far, unzoom a little") — a found page with a corner
+  within the fit margin while zoomed now zooms out to where it fits, after the usual
+  settle; a page lost altogether still goes back to 1× as before. Same suite: 2.2× → 1×
+  and found again. `test-autozoom` 8/8 and `test-conditions` 12/12 still.
 - [ ] Compute VAT from a printed rate when the receipt prints no VAT figure (GO OUTDOORS
   prints "20%" per line and a total; Gemini leaves VAT empty, Claude infers £4.83).
 - [ ] A "getting ready" indicator on the scanner's cold start: the first open on a phone

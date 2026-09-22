@@ -201,6 +201,14 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   ready" indicator on a cold start is the follow-up, not started (his "don't change
   anything for now").
 
+- **01:30, two scanner asks from the phone**: the shot came before the lens had focused
+  (hold-still now 1.1 s, was 0.6 s), and zoomed in with the page filling the view the
+  scanner stayed zoomed (a found page hugging the fit margin while zoomed now zooms out
+  to where it fits; a lost page still snaps to 1× — a half-way step was tried and undone,
+  it left the zoom at 1.09× and broke the old suite's expectations). New synthetic-scene
+  suite `test-autozoom-out` (5/5); `test-autozoom` 8/8, `test-conditions` 12/12.
+- CLAUDE.md's scanner notes updated for both.
+
 **Open, for Atanas** (`notes/tonight.md`): fix the GO OUTDOORS date on his own account
 (2012 → 2026); the business details in Settings, whenever he likes.
 
