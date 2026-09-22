@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { saveFailed } from "@/lib/errorText";
+import { SITE_NAME } from "@/lib/siteName";
 
 function PasswordField({
   value,
@@ -183,7 +184,7 @@ export default function LoginPage() {
     return (
       <div className="mx-auto max-w-sm space-y-6">
         <div>
-          <p className="text-sm font-medium text-neutral-500">Invoicer — invoices, receipts, and expenses in one place.</p>
+          <p className="text-sm font-medium text-neutral-500">{SITE_NAME} — invoices, receipts, and expenses in one place.</p>
           <h1 className="mt-3 text-2xl font-bold">{title}</h1>
           <p className="mt-1 text-neutral-600">{subtitle}</p>
         </div>
@@ -242,7 +243,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm space-y-6">
       <div>
-        <p className="text-sm font-medium text-neutral-500">Invoicer — invoices, receipts, and expenses in one place.</p>
+        <p className="text-sm font-medium text-neutral-500">{SITE_NAME} — invoices, receipts, and expenses in one place.</p>
         <h1 className="mt-3 text-2xl font-bold">{title}</h1>
         <p className="mt-1 text-neutral-600">{subtitle}</p>
       </div>

@@ -6,6 +6,7 @@ import { longDate } from "@/components/invoice/InvoiceDocument";
 import { LinePrice, RequestItem, cellFor, formatPence, quantityText, supplierTotal } from "@/lib/quoteCompare";
 import type { PublicQuoteRequest } from "@/lib/publicQuoteRequest";
 import { saveFailed } from "@/lib/errorText";
+import { SITE_NAME } from "@/lib/siteName";
 
 type Sent = { prices: Record<string, LinePrice>; delivery: number | null; vatIncluded: boolean; validUntil: string | null; note: string };
 
@@ -186,7 +187,7 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
         )}
         {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
-      <p className="text-center text-xs text-neutral-400">Sent with Invoicer</p>
+      <p className="text-center text-xs text-neutral-400">Sent with {SITE_NAME}</p>
     </div>
   );
 }

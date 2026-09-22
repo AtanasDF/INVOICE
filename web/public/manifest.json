@@ -1,6 +1,6 @@
 {
-  "name": "Invoice & Expenses",
-  "short_name": "Invoice",
+  "name": "Invoiceover",
+  "short_name": "Invoiceover",
   "description": "Invoices, receipts and expense tracking for the self-employed",
   "start_url": "/",
   "display": "standalone",

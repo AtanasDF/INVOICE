@@ -7,6 +7,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicQuote } from "@/lib/publicQuote";
 import { saveFailed } from "@/lib/errorText";
+import { SITE_NAME } from "@/lib/siteName";
 
 type Answer = "accepted" | "declined";
 
@@ -152,7 +153,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       <div className="rounded-xl border bg-white p-6 text-neutral-900 shadow-sm print:border-0 print:p-0 print:shadow-none">
         <QuoteDocument quote={q} client={data.client} profile={data.profile} logo={data.logo} />
       </div>
-      <p className="text-center text-xs text-neutral-400 print:hidden">Sent with Invoicer</p>
+      <p className="text-center text-xs text-neutral-400 print:hidden">Sent with {SITE_NAME}</p>
       <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
         <div ref={sheetRef} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
           <QuoteDocument quote={q} client={data.client} profile={data.profile} logo={data.logo} />

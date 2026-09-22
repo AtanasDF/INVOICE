@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { allow } from "@/lib/rateLimit";
 import { FEEDBACK_MAX, feedbackEmailHtml, feedbackEmailSubject, feedbackEmailText } from "@/lib/feedbackEmail";
+import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
 
-const FROM = "Invoicer <feedback@invoiceover.com>";
+const FROM = `${SITE_NAME} <feedback@invoiceover.com>`;
 const HOUR = 60 * 60 * 1000;
 const PER_HOUR = 20;
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");

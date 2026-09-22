@@ -8,10 +8,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "Invoice & Expenses", body: event.data ? event.data.text() : "" };
+    data = { title: "Invoiceover", body: event.data ? event.data.text() : "" };
   }
 
-  const title = data.title || "Invoice & Expenses";
+  const title = data.title || "Invoiceover";
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",

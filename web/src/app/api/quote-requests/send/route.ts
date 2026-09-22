@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { allow, release } from "@/lib/rateLimit";
 import { longDate } from "@/lib/reminderTemplates";
 import { QuoteRequestEmailInput, quoteRequestEmailHtml, quoteRequestEmailSubject, quoteRequestEmailText } from "@/lib/quoteRequestEmail";
+import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -10,7 +11,7 @@ export const maxDuration = 30;
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 const EMAIL_RE = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/;
-const DEFAULT_FROM = "Invoicer <invoices@invoiceover.com>";
+const DEFAULT_FROM = `${SITE_NAME} <invoices@invoiceover.com>`;
 
 // Signed-in only, and only to the supplier's saved address: everything in
 // the email is read here from the owner's own rows (as the owner, so RLS
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
   };
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
   const fromAddress = /<([^>]+)>/.exec(from)?.[1] ?? from;
-  const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via Invoicer`;
+  const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via ${SITE_NAME}`;
   let res: Response;
   try {
     res = await fetch("https://api.resend.com/emails", {

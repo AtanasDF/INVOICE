@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { DocPage, pageCount, pagesToPdf, pdfName } from "@/lib/documentPdf";
 import { shortDate } from "@/lib/dates";
 import { todayISO } from "@/lib/today";
+import { SITE_NAME } from "@/lib/siteName";
 
 // Copy any paper: photos (straightened by the scanner) or files, in order,
 // into one PDF to save, share or email. Nothing is read by the AI and
@@ -245,7 +246,7 @@ export default function CopyDocumentPage() {
                 <button disabled={sending || making} className={SMALL}>
                   {sending ? "Sending…" : "Send"}
                 </button>
-                <p className="text-xs text-neutral-600">It goes from Invoicer with your email address to reply to.</p>
+                <p className="text-xs text-neutral-600">It goes from {SITE_NAME} with your email address to reply to.</p>
               </form>
 
               {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

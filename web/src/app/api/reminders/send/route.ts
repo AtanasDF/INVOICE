@@ -4,6 +4,7 @@ import { VatLineItem } from "@/lib/vat";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
 import { todayISO } from "@/lib/today";
+import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
 
@@ -151,7 +152,7 @@ export async function GET(req: Request) {
         failures.push(`${inv.id}: no owner email, not sent`);
         continue;
       }
-      const fromName = `${businessName.replace(/["<>\\\r\n]/g, "") || "Your supplier"} via Invoicer`;
+      const fromName = `${businessName.replace(/["<>\\\r\n]/g, "") || "Your supplier"} via ${SITE_NAME}`;
 
       // Claim the slot before sending, so two overlapping runs can't both
       // send it: only the run whose insert lands goes on. A send that the

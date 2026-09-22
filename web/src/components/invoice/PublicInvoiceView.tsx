@@ -6,6 +6,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicInvoice } from "@/lib/publicInvoice";
 import { saveFailed } from "@/lib/errorText";
+import { SITE_NAME } from "@/lib/siteName";
 
 // The customer's view of an invoice they were sent a link to: the invoice
 // itself, a PDF to keep, and a quiet "opened" signal back to the sender.
@@ -63,7 +64,7 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
       <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
         <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf logo={data.logo} />
       </div>
-      <p className="text-center text-xs text-neutral-400 print:hidden">Sent with Invoicer</p>
+      <p className="text-center text-xs text-neutral-400 print:hidden">Sent with {SITE_NAME}</p>
       <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
         <div ref={sheetRef} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
           <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf logo={data.logo} />

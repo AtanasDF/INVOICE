@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { allow, release } from "@/lib/rateLimit";
 import { InvoiceEmailInput, invoiceEmailHtml, invoiceEmailSubject, invoiceEmailText } from "@/lib/invoiceEmail";
+import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -16,7 +17,7 @@ const MAX_PDF_CHARS = 4_000_000;
 const EMAIL_RE = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/;
 // The app's own domain, the one payment reminders send from too; it has to
 // be verified in Resend before anything is delivered.
-const DEFAULT_FROM = "Invoicer <invoices@invoiceover.com>";
+const DEFAULT_FROM = `${SITE_NAME} <invoices@invoiceover.com>`;
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 // Single-line fields end up in the subject and sender name.
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
   const fromAddress = /<([^>]+)>/.exec(from)?.[1] ?? from;
   const filename = `${input.docType === "quote" ? "Quote" : "Invoice"}${input.number ? `-${input.number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
   // Quoted, and stripped of anything that could end the header or the quote.
-  const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via Invoicer`;
+  const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via ${SITE_NAME}`;
   let res: Response;
   try {
     res = await fetch("https://api.resend.com/emails", {

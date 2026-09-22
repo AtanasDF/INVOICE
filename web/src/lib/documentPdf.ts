@@ -1,4 +1,5 @@
 import { PDFDocument } from "pdf-lib";
+import { SITE_NAME } from "@/lib/siteName";
 
 // "Copy a document" (Atanas, 2026-09-22: "another scanner button which is
 // going to scan files, no matter what files ... then they will be able to
@@ -21,7 +22,7 @@ const bytesOf = (dataUrl: string) => {
 export async function pagesToPdf(pages: DocPage[], title: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(title);
-  doc.setProducer("Invoicer");
+  doc.setProducer(SITE_NAME);
   for (const p of pages) {
     const bytes = bytesOf(p.dataUrl);
     if (p.mediaType === "application/pdf") {

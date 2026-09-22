@@ -28,8 +28,10 @@ changes.
 - No DB write access from code sessions: Atanas signs into the Supabase SQL editor in a
   browser the session can drive (desktop app pane or Claude in Chrome). The editor's
   results grid is canvas-based; read it with a JS `querySelectorAll('[role="gridcell"]')`.
-- Never Read `web/.env.local`; confirm keys by name with `grep -c`. Local file has EMPTY
-  `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`; `GEMINI_API_KEY` is present.
+- Never Read `web/.env.local`; confirm keys by name with `grep -c`. As of 2026-09-22 the
+  local file has `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` filled and
+  `SUPABASE_SERVICE_ROLE_KEY` empty: Vercel marks it sensitive, so `vercel env pull`
+  can't fill it, and `harness/feedback-inbox.mjs` can't run here until Atanas pastes it.
 - Check `git log` before assuming you are alone: "Cowork" is a second Claude session that
   reviews, runs migrations and tests in rolled-back transactions; its briefs land in
   `Claude outputs/` (untracked). iCloud sync sometimes creates `name 2.ext` duplicates;
@@ -181,7 +183,8 @@ changes.
 - OpenCV: never `import()` `@techstark/opencv-js` (its `module.exports` is a Promise and
   Turbopack's interop rejects it). It is served from `public/vendor/opencv-5.0.0.js` via
   a prebuild copy and loaded as a script. Auto-capture gates: MIN_CONTOUR_AREA 0.06,
-  MIN_COVERAGE 0.09, STABLE_MS 600, STABLE_TIMEOUT_MS 2500, SHARPNESS_FLOOR 12,
+  MIN_COVERAGE 0.09, STABLE_MS 1100 (was 600 until 2026-09-22: his first real receipt was
+  shot before the lens had focused), STABLE_TIMEOUT_MS 2500, SHARPNESS_FLOOR 12,
   SHARPNESS_RATIO 0.7, tick 150ms. Atanas confirmed the iPhone scanner works (2026-09-18).
 - Gemini: `gemini-3.5-flash-lite` via `@google/genai` Interactions API; `thinking_level`
   must be lowercase; the SDK retries 429/5xx five times by default, so the client is
@@ -189,8 +192,10 @@ changes.
   model; billing is a £20 prepaid balance on Google billing account
   `015649-CDA16A-FCF373`, activated 2026-09-18. Roughly a third of a penny per document;
   Claude Opus 5 is a few pence.
-- Main scanner defaults to Claude with a signed-in "Read with" switch (localStorage
-  `scan-engine`); the Free invoice page defaults to Gemini for visitors.
+- Every scan reads with Gemini unless the device has `scan-engine` set to "claude"
+  (`/scan?engine=claude` sets it; the "Read with" picker shows only then). The Free
+  page's photo of an old invoice also reads with Gemini, and needs a sign-in like every
+  other scan since 2026-09-22.
 
 - Claude extraction was failing on every read until 2026-09-19 (tool schema rejected), so
   every earlier "scanner doesn't recognise" report from Atanas was likely Gemini-only or an
@@ -233,7 +238,10 @@ changes.
 - Scanned supplier invoices and credit notes are expense documents in `receipts`, never
   in the sales `invoices` table; credit notes stored negative.
 - App-wide wake lock kept at Atanas's request.
-- Anonymous scanning is Gemini-only; the in-memory rate limiter is a known gap.
+- Scanning needs a sign-in everywhere (Atanas, 2026-09-22: "everyone should have to sign
+  in in order to be able to scan"); the Free page still lets a stranger type an invoice.
+  Scan limits are counted in the database (`hit_rate_limit`, migration-018), with
+  per-instance memory only as the fallback when that call fails.
 - The Free invoice page is public and browser-only; "Save to your account" carries a
   localStorage draft through sign-up into `/invoices/new`.
 - Send by email needs an account (decided 2026-09-19 after review found the open route
@@ -343,7 +351,8 @@ the rest:
    a running tax estimate, opened-invoice alerts and WhatsApp/SMS sharing, firmer
    reminders with UK late-payment interest, quotes/deposits, invoice by typing.)
 7. Atanas's side: Safari camera permission, business details in Settings, invoice
-   counter, Resend key, Cloudflare Worker deploy, revoke the old Mapbox token.
+   counter, revoke the old Mapbox token. (Resend key set 2026-09-19; the Cloudflare
+   Worker deployed 2026-09-21.)
 8. Bank connection (Atanas, 19/09 evening: "keep in mind, don't start it now"): read-only
    Open Banking through an FCA-authorised provider, so received and outgoing payments come
    in by themselves. The app never sees bank logins; he approves in his bank's own app and

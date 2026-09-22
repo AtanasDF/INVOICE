@@ -16,6 +16,7 @@ import {
   typedParts,
 } from "@/lib/addressLookup";
 import { addressKey, allow, allowShared } from "@/lib/rateLimit";
+import { SITE_NAME } from "@/lib/siteName";
 import { signedInUser } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
@@ -39,7 +40,7 @@ const PAF_CHARGED_DAY = 400;
 const PAF_FREE_TOTAL = 300;
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; result: AddressSearchResult }>();
-const UA = { "User-Agent": "Invoicer (https://invoiceover.com)" };
+const UA = { "User-Agent": `${SITE_NAME} (https://invoiceover.com)` };
 const PAF = "https://api.ideal-postcodes.co.uk/v1";
 // Houses around a postcode's centre, for the free lookup: a postcode is a
 // street or two, so this reaches all of it in towns and most in villages.

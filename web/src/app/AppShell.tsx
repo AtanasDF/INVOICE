@@ -8,6 +8,7 @@ import { safeNext } from "@/lib/safeNext";
 import { signOut } from "@/lib/signOut";
 import { useWakeLock } from "@/lib/wakeLock";
 import PaidCelebration from "@/components/PaidCelebration";
+import { SITE_NAME } from "@/lib/siteName";
 
 const MORE: [string, string][] = [
   ["/receipts/review", "Needs review"],
@@ -96,7 +97,7 @@ function Header() {
     <header className="border-b bg-white text-neutral-900 print:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
         <Link href="/" className="text-lg font-semibold">
-          Invoicer
+          {SITE_NAME}
         </Link>
         {user ? (
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">

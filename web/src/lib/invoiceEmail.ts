@@ -1,6 +1,7 @@
 // The email a customer receives with an invoice attached. Every value in
 // it comes from the sender's form, so all of it is escaped; the layout is
 // fixed so the route can't be used to send arbitrary content.
+import { SITE_NAME } from "@/lib/siteName";
 
 export type InvoiceEmailInput = {
   issuerName: string;
@@ -70,6 +71,6 @@ ${i.viewUrl ? `<tr><td style="padding:18px 28px 0"><a href="${esc(i.viewUrl)}" s
 ${i.bank.length ? `<tr><td style="padding:18px 28px 0"><p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#737373">Payment details</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${i.bank.map(([k, v]) => row(k, v)).join("")}</table></td></tr>` : ""}
 <tr><td style="padding:22px 28px 28px;font-size:14px;color:#525252">The ${word(i)} is attached as a PDF.${i.issuerEmail ? ` Reply to this email to reach ${esc(i.issuerName)}.` : ""}</td></tr>
 </table>
-<p style="margin:16px 0 0;font-size:12px;color:#a3a3a3">Sent with Invoicer</p>
+<p style="margin:16px 0 0;font-size:12px;color:#a3a3a3">Sent with ${SITE_NAME}</p>
 </td></tr></table></body></html>`;
 }

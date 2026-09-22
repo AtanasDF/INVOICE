@@ -271,10 +271,11 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
   Dates are parsed day-first server-side from the printed string
   (`src/lib/documentDate.ts`); ambiguous ones must be confirmed in the UI.
 - `POST /api/scan` requires the signed-in user's Supabase bearer token; `engine` is
-  optional. `POST /api/invoice-template` (used by the public Free invoice page) is
-  unauthenticated: anonymous callers always get Gemini, `claude` needs a bearer token,
-  limits (10/hour/IP, 200/hour global) are counted in the database via `hit_rate_limit`
-  (service role, HMAC'd keys), falling back to per-instance memory if that fails. `POST /api/contact-scan` (signed in) lists every business/person on any photo
+  optional. `POST /api/invoice-template` (the Free page's photo of an old invoice) is
+  signed-in only too since 2026-09-22, Atanas's rule that everyone signs in to scan:
+  Gemini unless `engine` is `claude`, 60 an hour per account and 200 an hour overall,
+  counted in the database via `hit_rate_limit` (service role, HMAC'd keys), falling back
+  to per-instance memory if that fails. The Free page stays open for typing an invoice. `POST /api/contact-scan` (signed in) lists every business/person on any photo
   for the new client/supplier form.
 - A scanned invoice on the Free page becomes the NEXT invoice (`templateToDraft`): number
   +1 via `nextInvoiceNumber` (labels like "No." stripped, year-last formats bump the
@@ -458,6 +459,7 @@ them against the original before deleting.
 - Offline scan queue (keep captures on the phone until there's signal) is not built: it
   needs a caching service worker; worth doing only with an iPhone to test on.
 - Atanas's side: Safari camera permission (aA → Website Settings → Camera → Allow),
-  business details in Settings (still placeholder; reminders and invoice emails use the
-  business name and bank details from there), `invoice_next_number` at 357358,
-  Cloudflare Worker deploy, revoke the old Mapbox token.
+  business details in Settings on Hidefield (reminders and invoice emails use the
+  business name and bank details from there; the "PLACEHOLDER" business name is on the
+  test account, atanaschoo@gmail.com, not his), `invoice_next_number` at 357358, revoke
+  the old Mapbox token. (The Cloudflare Worker was deployed 2026-09-21.)

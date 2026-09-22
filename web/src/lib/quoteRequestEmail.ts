@@ -1,6 +1,7 @@
 // The email a supplier gets asking them to price a list. Built on the server
 // from the saved request, so nothing in it comes from the browser; every
 // value is escaped and the layout is fixed.
+import { SITE_NAME } from "@/lib/siteName";
 
 export type QuoteRequestEmailInput = {
   issuerName: string;
@@ -74,6 +75,6 @@ ${i.notes ? `<tr><td style="padding:12px 28px 0;font-size:14px;line-height:1.5;c
 <tr><td style="padding:20px 28px 0"><a href="${esc(i.link)}" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px">Type your prices in</a></td></tr>
 <tr><td style="padding:18px 28px 28px;font-size:14px;color:#525252">Or reply to this email with your quote${i.replyTo ? ` to reach ${esc(i.issuerName)}` : ""}.</td></tr>
 </table>
-<p style="margin:16px 0 0;font-size:12px;color:#a3a3a3">Sent with Invoicer</p>
+<p style="margin:16px 0 0;font-size:12px;color:#a3a3a3">Sent with ${SITE_NAME}</p>
 </td></tr></table></body></html>`;
 }

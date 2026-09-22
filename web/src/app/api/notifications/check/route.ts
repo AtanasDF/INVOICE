@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { selfAssessmentNotice } from "@/lib/taxEstimate";
 import { todayISO } from "@/lib/today";
+import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
 
@@ -119,7 +120,7 @@ export async function GET(req: Request) {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-            JSON.stringify({ title: "Invoice & Expenses", body, url: "/", badge: due.overdueInvoices + due.dueRecurring + due.dueBills })
+            JSON.stringify({ title: SITE_NAME, body, url: "/", badge: due.overdueInvoices + due.dueRecurring + due.dueBills })
           );
           notified += 1;
         } catch (err) {
