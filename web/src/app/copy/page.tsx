@@ -5,28 +5,19 @@ import { useState } from "react";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import { useAuth } from "@/lib/authContext";
-import { supabase } from "@/lib/supabaseClient";
 import type { DocPage } from "@/lib/documentPdf";
 import { shortDate } from "@/lib/dates";
 import { todayISO } from "@/lib/today";
-import { SITE_NAME } from "@/lib/siteName";
 import Tip from "@/components/Tip";
+import EmailFileForm from "@/components/EmailFileForm";
 
 // Copy any paper: photos (straightened by the scanner) or files, in order,
 // into one PDF to save, share or email. Nothing is read by the AI and
 // nothing is kept: the pages live in this page until it is left.
 const BIG = "flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-center text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
-const SMALL = "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
 type Made = { blob: Blob; name: string; pages: number };
 
-const toBase64 = (blob: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).slice(String(r.result).indexOf(",") + 1));
-    r.onerror = () => reject(new Error("Couldn't read the file."));
-    r.readAsDataURL(blob);
-  });
 
 export default function CopyDocumentPage() {
   const { user, loading } = useAuth();
@@ -37,9 +28,6 @@ export default function CopyDocumentPage() {
   const [making, setMaking] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sendTo, setSendTo] = useState("");
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
   const fallbackName = `Document ${shortDate(todayISO())}`;
 
   function add(more: DocPage[]) {
@@ -117,31 +105,6 @@ export default function CopyDocumentPage() {
     }
   }
 
-  async function email(e: React.FormEvent) {
-    e.preventDefault();
-    const m = await make();
-    if (!m) return;
-    setSending(true);
-    setError(null);
-    setNote(null);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const res = await fetch("/api/send-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {}) },
-        body: JSON.stringify({ to: sendTo.trim(), filename: m.name, pdf: await toBase64(m.blob), message }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; to?: string };
-      if (!res.ok) throw new Error(body.error || "It couldn't be sent. Try again in a minute.");
-      setNote(`Sent to ${body.to ?? sendTo.trim()}.`);
-      setSendTo("");
-      setMessage("");
-    } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "It couldn't be sent. Try again in a minute.");
-    } finally {
-      setSending(false);
-    }
-  }
 
   if (capturing) {
     return (
@@ -245,17 +208,7 @@ export default function CopyDocumentPage() {
                 </button>
               </div>
 
-              <form onSubmit={email} className="space-y-2 border-t pt-4">
-                <h3 className="font-semibold">Or email it to someone</h3>
-                <label htmlFor="copy-to" className="text-sm text-neutral-700">Their email address</label>
-                <input id="copy-to" type="email" required className="w-full rounded-lg border px-3 py-2 text-base" value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
-                <label htmlFor="copy-message" className="text-sm text-neutral-700">A note (optional)</label>
-                <textarea id="copy-message" rows={2} className="w-full rounded-lg border px-3 py-2 text-base" value={message} onChange={(e) => setMessage(e.target.value)} />
-                <button disabled={sending || making} className={SMALL}>
-                  {sending ? "Sending…" : "Send"}
-                </button>
-                <p className="text-xs text-neutral-600">It goes from {SITE_NAME} with your email address to reply to.</p>
-              </form>
+              <EmailFileForm file={make} idPrefix="copy" />
 
               {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
               {note && <p className="text-sm text-neutral-700">{note}</p>}

@@ -9,6 +9,7 @@ import { DocumentIcon } from "@/components/icons";
 import { loadFailed } from "@/lib/errorText";
 import { shortDate } from "@/lib/dates";
 import Tip from "@/components/Tip";
+import EmailFileForm from "@/components/EmailFileForm";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -78,6 +79,54 @@ export default function FilesPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [preview]);
+
+  const [makingFile, setMakingFile] = useState(false);
+  const [fileNote, setFileNote] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  // The document as one file: page one and whatever pages came with it.
+  async function makeFile() {
+    if (!preview) return null;
+    setFileError(null);
+    setMakingFile(true);
+    try {
+      const sources = [preview.imageDataUrl, ...loadedPages.map((p) => p.imageDataUrl)].filter((s): s is string => !!s);
+      // A page is a data URL or a signed link, and its kind is whatever it
+      // says it is: a PNG embedded as a JPEG makes no file at all.
+      const pages = await Promise.all(
+        sources.map(async (src) => {
+          const dataUrl = src.startsWith("data:")
+            ? src
+            : await fetch(src)
+                .then((r) => r.blob())
+                .then((b) => new Promise<string>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(String(reader.result));
+                  reader.onerror = () => reject(new Error("unreadable"));
+                  reader.readAsDataURL(b);
+                }));
+          return { dataUrl, mediaType: dataUrl.slice(5, dataUrl.indexOf(";")) || "image/jpeg" };
+        })
+      );
+      const { pagesToPdf, pdfName } = await import("@/lib/documentPdf");
+      const name = pdfName("", `${preview.vendor || preview.category || "Document"} ${shortDate(preview.date)}`);
+      const bytes = await pagesToPdf(pages, name.replace(/\.pdf$/, ""));
+      return { blob: new Blob([bytes as BlobPart], { type: "application/pdf" }), name };
+    } catch {
+      setFileError("That file couldn't be made. Try again.");
+      return null;
+    } finally {
+      setMakingFile(false);
+    }
+  }
+
+  async function saveFile() {
+    const made = await makeFile();
+    if (!made) return;
+    const { saveBlob } = await import("@/lib/saveFile");
+    saveBlob(made.name, made.blob);
+    setFileNote(`Saved as ${made.name}.`);
+  }
 
   const suppliers = useMemo(() => clients.filter((c) => c.kind === "supplier"), [clients]);
 
@@ -196,6 +245,19 @@ export default function FilesPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={previewSrc} alt={`${preview.vendor || preview.category || "Document"}, page ${previewIndex + 1}`} className="max-h-full max-w-full rounded-lg object-contain" />
             )}
+          </div>
+          {/* Every document here can leave: saved as one file, or emailed
+              to anyone (Atanas, 2026-09-22). */}
+          <div className="mt-4 max-h-[45vh] overflow-y-auto rounded-xl bg-white p-4 text-neutral-900" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={saveFile} disabled={makingFile} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {makingFile ? "Making the file…" : "Save it"}
+              </button>
+              <span className="text-sm text-neutral-600">{previewTotalPages === 1 ? "One page" : `${previewTotalPages} pages`}, as one file.</span>
+            </div>
+            {fileNote && <p className="mt-2 text-sm text-neutral-700">{fileNote}</p>}
+            {fileError && <p role="alert" className="mt-2 text-sm text-red-600">{fileError}</p>}
+            <EmailFileForm file={makeFile} idPrefix="library" />
           </div>
           {previewTotalPages > 1 && (
             <div className="mt-4 flex items-center justify-center gap-4 text-sm text-white" onClick={(e) => e.stopPropagation()}>
