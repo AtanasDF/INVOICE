@@ -351,6 +351,16 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   a key, and "Only limited companies are on the register. A sole trader won't be found
   here." instead of "LLPs". `test-check-company` 54/54, `test-first-page` 13/13. The
   banned-word sweep of the editor itself is item 22 on the list, not done.
+- **Surprise 11 of 12, the far suite's nine old failures**: eight were the harness, not
+  the scanner. `large.mjpeg` drew a 556-px-wide page on a 720-px frame, and since the
+  2026-09-21 change the detector looks only at the strip the phone shows (about 499 px
+  here), so the page ran off both sides and the seven "still" checks never saw a capture
+  — the clip now draws it 440 wide (`gen-large.py`). The dark-object and coloured-bill
+  checks demanded "Fit the page" on every tick, but no hint shows until a page is found
+  and a dark clip may say it is dark; they now fail only on a lock-on or a zoom. 34/35.
+  The one left is real and open: with the camera's own still handed over sideways, the
+  scanner falls back to the video frame instead of turning the still upright
+  (`stillOfRegion`, the match score for a 90° turn); on the list.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

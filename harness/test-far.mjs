@@ -53,12 +53,14 @@ if (want("offcentre")) await run("far-offcentre.mjpeg", {}, async (page) => {
 if (want("dark")) await run("dark-thing.mjpeg", {}, async (page) => {
   await openScanner(page);
   const { hints, zooms } = await watch(page, 6000);
-  check("dark phone-like object: not taken for a page", hints.filter(Boolean).every((h) => /Fit the page/.test(h)) && Math.max(...zooms) === 1, `${[...new Set(hints)].join(" | ")} max ${Math.max(...zooms)}`);
+  // No hint shows until a page is found, and a dark clip may say it is
+  // dark; what must never happen is a lock-on or a zoom.
+  check("dark phone-like object: not taken for a page", !hints.some((h) => /Hold still|Ready|zooming|taking the photo/.test(h ?? "")) && Math.max(...zooms) === 1, `${[...new Set(hints)].join(" | ")} max ${Math.max(...zooms)}`);
 });
 if (want("bill")) await run("bill-box.mjpeg", {}, async (page) => {
   await openScanner(page);
   const { hints, zooms } = await watch(page, 6000);
-  check("white box on a coloured bill: not taken for a receipt", Math.max(...zooms) === 1 && hints.every((h) => /Fit the page/.test(h ?? "")), `${[...new Set(hints)].join(" | ")} max ${Math.max(...zooms)}`);
+  check("white box on a coloured bill: not taken for a receipt", Math.max(...zooms) === 1 && !hints.some((h) => /Hold still|Ready|zooming|taking the photo/.test(h ?? "")), `${[...new Set(hints)].join(" | ")} max ${Math.max(...zooms)}`);
 });
 if (want("45")) await run("far-45.mjpeg", {}, async (page, posted) => {
   await openScanner(page, { auto: "on" });

@@ -114,7 +114,10 @@ for i in range(14 * 30):
     frames.append(frame(
         360 + 1.5 * math.sin(t * 1.1) + random.uniform(-0.6, 0.6),
         540 + 1.5 * math.cos(t * 0.9) + random.uniform(-0.6, 0.6),
-        556, 786,
+        # 440 of 720 px wide: the phone shows a middle strip of the sensor
+        # (about 499 px here), and a page wider than that runs off both
+        # sides and is rightly never found (CLAUDE.md, 2026-09-21).
+        440, 622,
         1.4 + 0.25 * math.sin(t * 0.7),
     ))
 
