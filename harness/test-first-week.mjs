@@ -103,6 +103,13 @@ try {
   check("nothing is shown as owed, because it's paid", /£0\.00[\s\S]{0,40}Owed/.test(dash) || /Owed[\s\S]{0,40}£0\.00/.test(dash), flat(dash).slice(0, 400));
   check("the month's spending shows the £120", /£120\.00|£100\.00/.test(dash), flat(dash).slice(flat(dash).indexOf("Spent"), flat(dash).indexOf("Spent") + 80));
 
+  // The Overdue tile opens the invoices list already filtered to overdue.
+  await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Overdue/.test(a.textContent) && a.getAttribute("href")?.includes("status=overdue"))?.click());
+  await page.waitForFunction(() => location.pathname === "/invoices" && location.search.includes("status=overdue"), { timeout: 10000 }).catch(() => {});
+  await sleep(700);
+  const statusBox = await page.evaluate(() => document.querySelector('select[aria-label="Status"]')?.value ?? null);
+  check("the Overdue tile opens the invoices list filtered to Overdue", page.url().includes("status=overdue") && statusBox === "overdue", `${page.url()} ${statusBox}`);
+
   await page.goto(`${BASE}/expenses`, { waitUntil: "networkidle0" });
   await sleep(1600);
   const exp = await bodyText(page);

@@ -390,6 +390,9 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [engine, setEngine] = useState<ScanEngine>(readEngine);
+  // The Claude / Gemini choice is for whoever has already made one on this
+  // device; everyone else just gets the document read.
+  const [engineChosen] = useState(() => typeof window !== "undefined" && localStorage.getItem(ENGINE_KEY) !== null);
   const [walk, setWalkState] = useState<Walk | null>(null);
   // Picked files waiting for the supplier lists; kept here so Try again
   // can still read them if the lists failed to load.
@@ -1211,8 +1214,9 @@ export default function ScanPage() {
                 : "Nothing read yet."
               : scanning
                 ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…`
-                : `${engine === "gemini" ? "Gemini" : "Claude"} read the document — check the details below before saving.`}
+                : "The document has been read — check the details below before saving."}
           </p>
+          {engineChosen && (
           <label className="flex items-center gap-2 text-xs text-neutral-500">
             Read with
             <select
@@ -1225,6 +1229,7 @@ export default function ScanPage() {
               <option value="gemini">Gemini</option>
             </select>
           </label>
+          )}
         </div>
       </div>
 

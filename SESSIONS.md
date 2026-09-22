@@ -409,6 +409,23 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   never 2026-10-01. New suite `test-plain-dates` (11/11: one of each record, eight pages
   walked, any year-month-day in visible text fails); first-week, delight, empty-account,
   mileage, statement, print, quiet-failures, what-surfaces, credit-rollback green.
+- **19–23**: every box has a name — 72 inputs, selects and text areas named from their
+  purpose or their placeholder (a placeholder vanishes as soon as something is typed),
+  the contact pickers and the company-name box naming themselves, the From / To date
+  filters on receipts, invoices and files under visible labels; `test-labels` now
+  checks every box on every page and the two edit forms behind Edit (22/22, was 69
+  without a name). Contrast and size floor: the exchange-rate note, the details line,
+  paused recurring rows, the files' loading text and the unstarred star up to
+  neutral-500/600; the 10-pixel red "CN" is a neutral "Credit note" badge; the
+  11-pixel address and register notes are 12; `test-dark-mode` walks Receipts and
+  Recurring too with an exchange-rate receipt, a warranty and a paused item, both
+  schemes (48/48). "Regenerate address" asks first, naming the consequence
+  (`test-no-accidents` 31/31). The dashboard's Overdue tile and banner and "View all
+  outstanding" open the invoices list already filtered (`?status=`, through the
+  router, since the page renders before the address bar changes), and a client's
+  history links to their invoices (`?client=`); `test-first-week` 18/18. The
+  Claude/Gemini picker on the scan page shows only on a device where one was chosen,
+  and the read line no longer names the engine.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

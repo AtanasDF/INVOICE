@@ -184,26 +184,26 @@ export default function RecurringExpensesPage() {
       <RecurringTabs />
 
       <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <input
+        <input aria-label="Description"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Description (e.g. Van insurance)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <select className="w-full rounded-lg border px-3 py-2" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+        <select aria-label="Supplier" className="w-full rounded-lg border px-3 py-2" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
           <option value="">No supplier / general expense</option>
           {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <div className="grid grid-cols-3 gap-3">
-          <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
+          <select aria-label="Category" className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input className="rounded-lg border px-3 py-2" placeholder="Total (£, incl. VAT)" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} inputMode="decimal" />
-          <input className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
+          <input aria-label="Total (£, incl. VAT)" className="rounded-lg border px-3 py-2" placeholder="Total (£, incl. VAT)" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} inputMode="decimal" />
+          <input aria-label="Of which VAT (£, optional)" className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />
         </div>
         <div>
           <label className="text-xs text-neutral-500">Day of month it&apos;s due (1-28)</label>
-          <input
+          <input aria-label="Day of the month"
             type="number"
             min={1}
             max={28}
@@ -231,7 +231,7 @@ export default function RecurringExpensesPage() {
             return (
               <div key={item.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
-                  <div className={`font-medium ${!item.active ? "text-neutral-400 line-through" : ""}`}>
+                  <div className={`font-medium ${!item.active ? "text-neutral-600 line-through" : ""}`}>
                     {item.description}
                   </div>
                   <div className="text-sm text-neutral-500">

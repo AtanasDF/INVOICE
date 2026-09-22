@@ -204,6 +204,7 @@ export default function ContactField({
           id={id}
           className={inputClassName}
           placeholder={placeholder}
+          aria-label={label ? undefined : word === "client" ? "Customer" : "Supplier"}
           value={shown}
           autoComplete="off"
           role="combobox"

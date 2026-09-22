@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { money } from "@/lib/money";
 import ScanOrAdd from "@/components/ScanOrAdd";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
@@ -14,10 +14,11 @@ import { celebratePaid } from "@/components/PaidCelebration";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import { useSearchParams } from "next/navigation";
 
 type StatusFilter = "" | InvoiceStatus | "overdue" | "to_receive";
 
-export default function InvoicesPage() {
+function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
@@ -28,10 +29,18 @@ export default function InvoicesPage() {
 
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
-  const [filterClientId, setFilterClientId] = useState("");
+  // The dashboard's Overdue tile and banner, and a client's history, open
+  // this list already filtered: ?status=overdue|to_receive and ?client=<id>.
+  // Read through the router, not window.location: on a tap the page renders
+  // before the address bar changes.
+  const params = useSearchParams();
+  const [filterClientId, setFilterClientId] = useState(() => params.get("client") ?? "");
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<StatusFilter>("");
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>(() => {
+    const s = params.get("status");
+    return s === "overdue" || s === "to_receive" ? s : "";
+  });
   const [filterTag, setFilterTag] = useState("");
 
   useEffect(() => {
@@ -219,25 +228,25 @@ export default function InvoicesPage() {
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-6">
-          <input
+          <input aria-label="Search invoice #"
             className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
             placeholder="Search invoice #"
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
           />
-          <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
-          <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
+          <label className="flex flex-col gap-0.5 text-xs text-neutral-500">From<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></label>
+          <label className="flex flex-col gap-0.5 text-xs text-neutral-500">To<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></label>
+          <select aria-label="Customer" className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
             <option value="">All clients</option>
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>
+          <select aria-label="Status" className="rounded-lg border px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>
             <option value="">All statuses</option>
             <option value="to_receive">To receive (owed to me)</option>
             {INVOICE_STATUS_KINDS.map((k) => <option key={k} value={k}>{INVOICE_STATUS_LABELS[k]}</option>)}
             <option value="overdue">Overdue</option>
           </select>
-          <input
+          <input aria-label="Min total (£)"
             className="rounded-lg border px-3 py-2 text-sm"
             placeholder="Min total (£)"
             value={filterMinTotal}
@@ -245,7 +254,7 @@ export default function InvoicesPage() {
             inputMode="decimal"
           />
           {allTags.length > 0 && (
-            <select className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+            <select aria-label="Tag" className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
               <option value="">All tags</option>
               {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -287,7 +296,7 @@ export default function InvoicesPage() {
                       {invoiceStatusLabel(inv.status, overdue)}
                     </span>
                     {notes.length > 0 && (
-                      <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">
+                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800">
                         CN
                       </span>
                     )}
@@ -332,5 +341,13 @@ export default function InvoicesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+      <InvoicesPage />
+    </Suspense>
   );
 }

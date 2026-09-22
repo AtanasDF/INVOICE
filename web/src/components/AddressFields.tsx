@@ -197,8 +197,8 @@ export default function AddressFields({ address, onAddress, label = "Address", s
             </ul>
           )}
           <div className="flex items-center justify-between gap-2 border-t bg-neutral-50 px-3 py-1.5">
-            <p className="text-[11px] text-neutral-500">{note}</p>
-            <button type="button" onClick={() => setResult(null)} className="shrink-0 text-[11px] font-medium text-neutral-600">
+            <p className="text-xs text-neutral-600">{note}</p>
+            <button type="button" onClick={() => setResult(null)} className="shrink-0 text-xs font-medium text-neutral-700">
               Close
             </button>
           </div>

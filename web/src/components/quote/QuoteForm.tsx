@@ -88,15 +88,15 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-neutral-500">Quote number</label>
-          <input className={INPUT} value={v.number} onChange={(e) => set({ number: e.target.value })} />
+          <input aria-label="Quote number" className={INPUT} value={v.number} onChange={(e) => set({ number: e.target.value })} />
         </div>
         <div>
           <label className="text-xs text-neutral-500">Date</label>
-          <input type="date" className={INPUT} value={v.date} onChange={(e) => set({ date: e.target.value })} />
+          <input type="date" aria-label="Date" className={INPUT} value={v.date} onChange={(e) => set({ date: e.target.value })} />
         </div>
         <div>
           <label className="text-xs text-neutral-500">Valid until</label>
-          <input type="date" className={INPUT} value={v.validUntil} onChange={(e) => set({ validUntil: e.target.value })} />
+          <input type="date" aria-label="Valid until" className={INPUT} value={v.validUntil} onChange={(e) => set({ validUntil: e.target.value })} />
         </div>
       </div>
 
@@ -112,6 +112,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
             <input
               className={`col-span-12 ${vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
               placeholder="What the work or item is"
+              aria-label="What the work or item is"
               value={l.description}
               onChange={(e) => setLine(i, { description: e.target.value })}
             />
@@ -179,7 +180,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
 
       <div>
         <label className="text-xs text-neutral-500">Notes (printed on the quote)</label>
-        <textarea rows={3} className={INPUT} placeholder="What's included, what isn't, start date…" value={v.notes} onChange={(e) => set({ notes: e.target.value })} />
+        <textarea rows={3} aria-label="Details" className={INPUT} placeholder="What's included, what isn't, start date…" value={v.notes} onChange={(e) => set({ notes: e.target.value })} />
       </div>
 
       <div className="text-right text-sm text-neutral-700">

@@ -253,6 +253,9 @@ export default function SettingsPage() {
   }, [categories]);
 
   async function regenerateInboxToken() {
+    // Every other destructive tap in the app asks first; the old address
+    // stops working the moment a new one exists.
+    if (inboxToken && !window.confirm("Get a new import address? The old one stops working straight away, and anything still being forwarded to it won't arrive.")) return;
     setInboxError(null);
     setInboxBusy(true);
     try {

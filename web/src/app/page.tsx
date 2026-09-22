@@ -306,7 +306,7 @@ function Dashboard() {
             You have {overdueInvoices.length} overdue {overdueInvoices.length === 1 ? "invoice" : "invoices"} — worth checking if they&apos;ve been paid.
           </span>
           <div className="flex items-center gap-3">
-            <Link href="/invoices" className="font-medium underline">Review</Link>
+            <Link href="/invoices?status=overdue" className="font-medium underline">Review</Link>
             <button onClick={() => setBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
           </div>
         </div>
@@ -401,7 +401,7 @@ function Dashboard() {
           <div className="text-3xl font-bold">{money(owedToMe)}</div>
           <div className="mt-1 text-sm text-neutral-600">Owed to you</div>
         </Link>
-        <Link href="/invoices" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
+        <Link href="/invoices?status=overdue" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
           <div className={`text-3xl font-bold ${overdueAmount > 0 ? "text-red-700" : ""}`}>{money(overdueAmount)}</div>
           <div className="mt-1 text-sm text-neutral-600">Overdue</div>
         </Link>
@@ -475,8 +475,8 @@ function Dashboard() {
           </div>
         )}
         {outstandingInvoices.length > awaitingPayment.length && (
-          <Link href="/invoices" className="mt-3 inline-block text-sm font-medium text-blue-600">
-            View all {outstandingInvoices.length} outstanding &rarr;
+          <Link href="/invoices?status=to_receive" className="mt-3 inline-block text-sm font-medium text-neutral-700 underline">
+            View all {outstandingInvoices.length} outstanding
           </Link>
         )}
       </div>

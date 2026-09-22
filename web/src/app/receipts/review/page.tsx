@@ -165,13 +165,13 @@ export default function ReviewQueuePage() {
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
                     )}
                     <div className="grid grid-cols-2 gap-3">
-                      <input
+                      <input aria-label="Vendor"
                         className="rounded-lg border px-3 py-2 text-sm"
                         placeholder="Vendor"
                         value={draft.vendor}
                         onChange={(e) => updateDraft(r.id, { vendor: e.target.value })}
                       />
-                      <input
+                      <input aria-label="Date"
                         type="date"
                         className="rounded-lg border px-3 py-2 text-sm"
                         value={draft.date}
@@ -192,7 +192,7 @@ export default function ReviewQueuePage() {
                         {isInvoice && (
                           <div>
                             <label className="text-xs text-neutral-500">Due date</label>
-                            <input
+                            <input aria-label="Due date"
                               type="date"
                               className="w-full rounded-lg border px-3 py-2 text-sm"
                               value={draft.dueDate}
@@ -213,14 +213,14 @@ export default function ReviewQueuePage() {
                     </select>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <input
+                      <input aria-label="Total (£, incl. VAT)"
                         className="rounded-lg border px-3 py-2 text-sm"
                         placeholder="Total (£, incl. VAT)"
                         value={draft.totalAmount}
                         onChange={(e) => updateDraft(r.id, { totalAmount: e.target.value })}
                         inputMode="decimal"
                       />
-                      <input
+                      <input aria-label="Of which VAT (£)"
                         className="rounded-lg border px-3 py-2 text-sm"
                         placeholder="Of which VAT (£)"
                         value={draft.vatAmount}
@@ -244,7 +244,7 @@ export default function ReviewQueuePage() {
                       </p>
                     )}
 
-                    <textarea
+                    <textarea aria-label="Notes"
                       className="w-full rounded-lg border px-3 py-2 text-sm"
                       placeholder="Notes"
                       value={draft.notes}

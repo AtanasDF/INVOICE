@@ -315,7 +315,7 @@ export default function NewReceiptPage() {
           emptyOption="No supplier / general expense"
         />
         <div className="grid grid-cols-2 gap-3">
-          <input
+          <input aria-label="Date"
             type="date"
             className="rounded-lg border px-3 py-2"
             value={date}
@@ -325,12 +325,12 @@ export default function NewReceiptPage() {
               setPossibleDuplicate(null);
             }}
           />
-          <select className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
+          <select aria-label="Category" className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {/* The usual category may have left the list when the kind of account changed; it stays choosable. */}
             {(category && !categories.includes(category) ? [category, ...categories] : categories).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <input
+        <input aria-label="Shop or supplier"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Shop or supplier"
           value={vendor}
@@ -341,7 +341,7 @@ export default function NewReceiptPage() {
           }}
         />
         <div className="grid grid-cols-3 gap-3">
-          <input
+          <input aria-label="Total"
             className="col-span-2 rounded-lg border px-3 py-2"
             placeholder={`Total paid (${currency}, incl. VAT)`}
             value={totalAmount}
@@ -352,11 +352,11 @@ export default function NewReceiptPage() {
             }}
             inputMode="decimal"
           />
-          <select className="rounded-lg border px-3 py-2" value={currency} onChange={(e) => onCurrencyChange(e.target.value)}>
+          <select aria-label="Currency" className="rounded-lg border px-3 py-2" value={currency} onChange={(e) => onCurrencyChange(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <input className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => { setVatAmount(e.target.value); setConfirmedDuplicate(false); setPossibleDuplicate(null); }} inputMode="decimal" />
+        <input aria-label="VAT" className="w-full rounded-lg border px-3 py-2" placeholder={`Of which VAT (${currency}, optional)`} value={vatAmount} onChange={(e) => { setVatAmount(e.target.value); setConfirmedDuplicate(false); setPossibleDuplicate(null); }} inputMode="decimal" />
         {currency !== "GBP" && (
           <div className="flex items-center gap-2">
             <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>
@@ -385,19 +385,19 @@ export default function NewReceiptPage() {
             </p>
             {lineItems.map((it, idx) => (
               <div key={idx} className="grid grid-cols-12 items-center gap-2 text-sm">
-                <input
+                <input aria-label="Item"
                   className="col-span-4 rounded-lg border px-2 py-1.5"
                   placeholder="Item"
                   value={it.description}
                   onChange={(e) => updateReceiptLine(idx, { description: e.target.value })}
                 />
-                <input
+                <input aria-label="Qty"
                   className="col-span-2 rounded-lg border px-2 py-1.5"
                   placeholder="Qty"
                   value={it.quantity}
                   onChange={(e) => updateReceiptLine(idx, { quantity: parseFloat(e.target.value) || 0 })}
                 />
-                <input
+                <input aria-label="Price"
                   className="col-span-2 rounded-lg border px-2 py-1.5"
                   placeholder="Price"
                   value={it.unitPrice}
@@ -420,15 +420,15 @@ export default function NewReceiptPage() {
           + Split into multiple items
         </button>
 
-        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-        <input
+        <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <input aria-label="Warranty length in months"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Warranty length in months (optional, e.g. 24)"
           value={warrantyMonths}
           onChange={(e) => setWarrantyMonths(e.target.value)}
           inputMode="numeric"
         />
-        <input
+        <input aria-label="Tags"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Tags, comma separated (optional, e.g. Site A, Q3 job)"
           value={tagsInput}

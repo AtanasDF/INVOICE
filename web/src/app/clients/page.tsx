@@ -336,14 +336,14 @@ export default function ClientsPage() {
                         onPick={(c, fillAddress) => setDraft({ ...draft, name: c.name, companyNumber: c.number, address: fillAddress ?? draft.address })}
                       />
                     ) : (
-                      <input
+                      <input aria-label="Full name"
                         className="w-full rounded-lg border px-3 py-2 text-sm"
                         placeholder="Full name"
                         value={draft.name}
                         onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                       />
                     )}
-                    <input
+                    <input aria-label="Email"
                       type="email"
                       autoComplete="email"
                       className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -353,11 +353,11 @@ export default function ClientsPage() {
                     />
                     <AddressFields address={draft.address} onAddress={(address) => setDraft({ ...draft, address })} />
                     <div className="grid grid-cols-2 gap-3">
-                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
-                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
-                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />
-                      <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency" value={draft.defaultCurrency} onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })} />
+                      <input aria-label="VAT number" className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
+                      <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
+                      <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
+                      <input aria-label="Payment terms" className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />
+                      <input aria-label="Default currency" className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency" value={draft.defaultCurrency} onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })} />
                     </div>
                     {billed && (
                       <label className="flex items-center gap-2 text-sm text-neutral-700">
@@ -414,6 +414,11 @@ export default function ClientsPage() {
                         >
                           {expanded ? "Hide" : "Payment history"}
                         </button>
+                      )}
+                      {clientInvoices.length > 0 && (
+                        <Link href={`/invoices?client=${c.id}`} className="text-sm font-medium text-neutral-700 underline">
+                          All invoices
+                        </Link>
                       )}
                       <button onClick={() => startEdit(c)} className="text-sm font-medium text-blue-600">
                         Edit

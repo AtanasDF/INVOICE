@@ -27,6 +27,7 @@ const PAGES = [
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-labels" });
 const nameless = [];
+const unnamedBoxes = [];
 try {
   await signIn(page, BASE);
   for (const [path, name] of PAGES) {
@@ -44,9 +45,31 @@ try {
         .map(({ el, name }) => `${el.tagName}${el.className ? "." + el.className.toString().slice(0, 30) : ""} "${name}"`)
     );
     for (const b of bad) nameless.push(`${name} (${path}): ${b}`);
+    // The edit forms sit behind an Edit button on the lists.
+    if (path === "/clients" || path === "/receipts") {
+      await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit")?.click());
+      await sleep(400);
+    }
+    // Every box, select and text area needs a name too: a label pointing at
+    // it, a label around it, or an aria-label. A placeholder is not a name;
+    // it vanishes as soon as something is typed.
+    const boxes = await page.evaluate(() =>
+      [...document.querySelectorAll("input:not([type=hidden]):not([type=radio]):not([type=checkbox]):not([type=file]), select, textarea")]
+        .filter((el) => el.offsetParent !== null || el.type === "file")
+        .filter((el) => {
+          const byFor = el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+          const wrapped = el.closest("label");
+          const aria = el.getAttribute("aria-label") || el.getAttribute("aria-labelledby") || el.getAttribute("title");
+          return !byFor && !wrapped && !aria;
+        })
+        .map((el) => `${el.tagName}${el.type ? "[" + el.type + "]" : ""} placeholder="${el.getAttribute("placeholder") ?? ""}"`)
+    );
+    for (const b of boxes) unnamedBoxes.push(`${name} (${path}): ${b}`);
     check(`${name} read`, true);
   }
   for (const n of nameless) console.log("NAMELESS", n);
   check(`every button and link has a name (${nameless.length} without)`, nameless.length === 0, String(nameless.length));
+  for (const n of unnamedBoxes) console.log("UNNAMED BOX", n);
+  check(`every box has a name, not just a placeholder (${unnamedBoxes.length} without)`, unnamedBoxes.length === 0, String(unnamedBoxes.length));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

@@ -786,7 +786,7 @@ export default function NewInvoicePage() {
             />
           </div>
         </div>
-        <input
+        <input aria-label="Payment terms"
           className="w-full rounded-lg border px-3 py-2"
           value={paymentTerms}
           onChange={(e) => {
@@ -806,7 +806,7 @@ export default function NewInvoicePage() {
           </div>
           {items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
-              <input
+              <input aria-label="Description"
                 className={`col-span-12 ${profile?.vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
                 placeholder="Description (e.g. Monthly work, 12-30 June)"
                 value={it.description}
@@ -844,8 +844,8 @@ export default function NewInvoicePage() {
           <button onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>
         </div>
 
-        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-        <input
+        <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <input aria-label="Tags"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Tags, comma separated (optional, e.g. Site A, Q3 job)"
           value={tagsInput}

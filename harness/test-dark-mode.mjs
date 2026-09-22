@@ -13,6 +13,9 @@ db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plasteri
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
 db.tables.invoices.push({ id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: todayISO(), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null });
+// The faint lines the contrast floor is for: an exchange-rate note, a warranty line, a paused item.
+db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: todayISO(), vendor: "Bauhaus Berlin", category: "Supplies", amount: 84.2, vat_amount: 14.03, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: 24, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: 100, original_vat_amount: 16.67, original_currency: "EUR", fx_rate: 0.842 });
+db.tables.recurring_expenses.push({ id: newId(), user_id: "x", description: "Old phone contract", category: "Other", amount: 20, vat_amount: 4, supplier_id: null, day_of_month: 5, next_due_date: todayISO(), active: false });
 
 // Relative luminance and contrast, the WCAG way.
 // Tailwind v4 hands back lab()/oklch() colours, which can't be read as
@@ -57,7 +60,7 @@ const CONTRAST = `(() => {
     .filter((x) => x.ratio < x.need);
 })()`;
 
-const PAGES = [["/", "Dashboard"], ["/invoices", "Invoices"], ["/receipts/new", "New receipt"], ["/settings", "Settings"], ["/free-invoice", "Free invoice"], ["/login", "Sign in"]];
+const PAGES = [["/", "Dashboard"], ["/invoices", "Invoices"], ["/receipts", "Receipts"], ["/receipts/new", "New receipt"], ["/recurring", "Recurring"], ["/settings", "Settings"], ["/free-invoice", "Free invoice"], ["/login", "Sign in"]];
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 375, profile: "profile-dark" });
 try {

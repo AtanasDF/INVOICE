@@ -284,7 +284,7 @@ export default function RecurringInvoicesPage() {
             return (
               <div key={item.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
-                  <div className={`font-medium ${!item.active ? "text-neutral-400 line-through" : ""}`}>
+                  <div className={`font-medium ${!item.active ? "text-neutral-600 line-through" : ""}`}>
                     {clientName(item.clientId)}
                   </div>
                   <div className="text-sm text-neutral-500">

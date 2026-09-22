@@ -83,6 +83,7 @@ export default function CompanyNameInput({
         placeholder={placeholder}
         disabled={disabled}
         aria-labelledby={labelledBy}
+        aria-label={id || labelledBy ? undefined : placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -124,6 +125,9 @@ export default function CompanyNameInput({
         placeholder={lookupPlaceholder || placeholder}
         disabled={disabled}
         aria-labelledby={labelledBy}
+        // A name that stays when the placeholder goes: the plain one, not the
+        // "Type to find it on Companies House" hint.
+        aria-label={id || labelledBy ? undefined : placeholder}
         value={value}
         autoComplete="off"
         role="combobox"
@@ -165,7 +169,7 @@ export default function CompanyNameInput({
               </li>
             ))}
           </ul>
-          <p className="border-t bg-neutral-50 px-3 py-1.5 text-[11px] text-neutral-500">
+          <p className="border-t bg-neutral-50 px-3 py-1.5 text-xs text-neutral-600">
             {searching ? "Searching…" : "From the Companies House register. Pick one to fill in its details."}
           </p>
         </div>

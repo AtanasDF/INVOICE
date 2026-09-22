@@ -112,9 +112,9 @@ export default function FilesPage() {
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
-          <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterSupplierId} onChange={(e) => setFilterSupplierId(e.target.value)}>
+          <label className="flex flex-col gap-0.5 text-xs text-neutral-500">From<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></label>
+          <label className="flex flex-col gap-0.5 text-xs text-neutral-500">To<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></label>
+          <select aria-label="Supplier" className="rounded-lg border px-3 py-2 text-sm" value={filterSupplierId} onChange={(e) => setFilterSupplierId(e.target.value)}>
             <option value="">All suppliers</option>
             {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -179,7 +179,7 @@ export default function FilesPage() {
           <div className="flex items-center justify-between text-white">
             <div>
               <div className="font-medium">{preview.vendor || preview.category}</div>
-              <div className="text-sm text-neutral-300">
+              <div className="text-sm text-neutral-500">
                 {preview.date} · {money(preview.amount)} · {supplierName(preview.clientId)}
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function FilesPage() {
           </div>
           <div className="mt-4 flex flex-1 items-center justify-center overflow-auto" onClick={(e) => e.stopPropagation()}>
             {!previewSrc ? (
-              <p className="text-sm text-neutral-300">Loading page…</p>
+              <p className="text-sm text-neutral-500">Loading page…</p>
             ) : isPdfDataUrl(previewSrc) ? (
               <iframe src={previewSrc} className="h-full w-full rounded-lg bg-white" title="Document preview" />
             ) : (

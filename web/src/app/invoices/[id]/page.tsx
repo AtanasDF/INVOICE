@@ -562,7 +562,7 @@ export default function InvoiceViewPage() {
         </div>
 
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <select className="w-full rounded-lg border px-3 py-2" value={draftClientId} onChange={(e) => setDraftClientId(e.target.value)}>
+          <select aria-label="Customer" className="w-full rounded-lg border px-3 py-2" value={draftClientId} onChange={(e) => setDraftClientId(e.target.value)}>
             <option value="">Select a client or company</option>
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -570,14 +570,14 @@ export default function InvoiceViewPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-neutral-500">Invoice date</label>
-              <input type="date" className="w-full rounded-lg border px-3 py-2" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
+              <input type="date" aria-label="Date" className="w-full rounded-lg border px-3 py-2" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Due date</label>
-              <input type="date" className="w-full rounded-lg border px-3 py-2" value={draftDueDate} onChange={(e) => setDraftDueDate(e.target.value)} />
+              <input type="date" aria-label="Due date" className="w-full rounded-lg border px-3 py-2" value={draftDueDate} onChange={(e) => setDraftDueDate(e.target.value)} />
             </div>
           </div>
-          <input className="w-full rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
+          <input aria-label="Payment terms" className="w-full rounded-lg border px-3 py-2" value={draftPaymentTerms} onChange={(e) => setDraftPaymentTerms(e.target.value)} placeholder="Payment terms (e.g. 30 days)" />
 
           <CisToggle rate={draftCisRate} onChange={setDraftCisRate} />
 
@@ -590,7 +590,7 @@ export default function InvoiceViewPage() {
             </div>
             {draftItems.map((it, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
-                <input
+                <input aria-label="Description"
                   className={`col-span-12 ${vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
                   placeholder="Description"
                   value={it.description}
@@ -627,8 +627,8 @@ export default function InvoiceViewPage() {
             <button onClick={addDraftLine} className="text-sm font-medium text-blue-600">+ Add line</button>
           </div>
 
-          <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
-          <input
+          <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
+          <input aria-label="Tags"
             className="w-full rounded-lg border px-3 py-2"
             placeholder="Tags, comma separated (optional)"
             value={draftTagsInput}
@@ -751,7 +751,7 @@ export default function InvoiceViewPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-neutral-500">Due date</label>
-              <input type="date" className="w-full rounded-lg border px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+              <input type="date" aria-label="Due date" className="w-full rounded-lg border px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Payment terms</label>
@@ -924,7 +924,7 @@ export default function InvoiceViewPage() {
           <form onSubmit={addCreditNote} className="mt-3 space-y-2">
             <div className="grid grid-cols-2 gap-3">
               <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={cnDate} onChange={(e) => setCnDate(e.target.value)} />
-              <input
+              <input aria-label="Amount to credit (£)"
                 className="rounded-lg border px-3 py-2 text-sm"
                 placeholder="Amount to credit (£)"
                 value={cnAmount}
@@ -932,7 +932,7 @@ export default function InvoiceViewPage() {
                 inputMode="decimal"
               />
             </div>
-            <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="Reason (optional)" value={cnReason} onChange={(e) => setCnReason(e.target.value)} />
+            <input aria-label="Reason" className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="Reason (optional)" value={cnReason} onChange={(e) => setCnReason(e.target.value)} />
             {invoice.cisRate !== null && (
               <p className="text-xs text-neutral-500">
                 Credit the value of the work, before CIS: what the contractor pays drops by the same share. To cancel the whole invoice,

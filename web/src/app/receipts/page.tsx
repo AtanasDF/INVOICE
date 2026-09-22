@@ -510,13 +510,13 @@ export default function ReceiptsPage() {
             <option value="credit_note">Credit notes</option>
             {receipts.some((r) => r.documentType === "other") && <option value="other">Other documents</option>}
           </select>
-          <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="From" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
-          <input type="date" className="rounded-lg border px-3 py-2 text-sm" placeholder="To" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+          <label className="flex flex-col gap-0.5 text-xs text-neutral-500">From<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></label>
+          <label className="flex flex-col gap-0.5 text-xs text-neutral-500">To<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></label>
+          <select aria-label="Category" className="rounded-lg border px-3 py-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
             <option value="">All categories</option>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
+          <select aria-label="Supplier" className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
             <option value="">All suppliers</option>
             {suppliers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -527,7 +527,7 @@ export default function ReceiptsPage() {
             Starred only
           </label>
           {allTags.length > 0 && (
-            <select className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+            <select aria-label="Tag" className="rounded-lg border px-3 py-2 text-sm" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
               <option value="">All tags</option>
               {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -570,6 +570,7 @@ export default function ReceiptsPage() {
               <div key={r.id} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${type.className}`}>{type.label}</span>
                 <select
+                  aria-label="Supplier"
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   value={editDraft.clientId}
                   onChange={(e) => setEditDraft({ ...editDraft, clientId: e.target.value })}
@@ -590,7 +591,7 @@ export default function ReceiptsPage() {
                     {isInvoice && (
                       <div>
                         <label className="text-xs text-neutral-500">Due date</label>
-                        <input
+                        <input aria-label="Due date"
                           type="date"
                           className="w-full rounded-lg border px-3 py-2 text-sm"
                           value={editDraft.dueDate}
@@ -601,12 +602,12 @@ export default function ReceiptsPage() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
-                  <select className="rounded-lg border px-3 py-2 text-sm" value={editDraft.category} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
+                  <input aria-label="Date" type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
+                  <select aria-label="Category" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.category} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
                     {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <input
+                <input aria-label="Shop or supplier"
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   placeholder="Shop or supplier"
                   value={editDraft.vendor}
@@ -616,17 +617,19 @@ export default function ReceiptsPage() {
                   <input
                     className="col-span-2 rounded-lg border px-3 py-2 text-sm"
                     placeholder={`${isCredit ? "Credited" : "Total"} (${editDraft.currency}, incl. VAT)`}
+                    aria-label={isCredit ? "Credited (incl. VAT)" : "Total (incl. VAT)"}
                     value={editDraft.totalAmount}
                     onChange={(e) => setEditDraft({ ...editDraft, totalAmount: e.target.value })}
                     inputMode="decimal"
                   />
-                  <select className="rounded-lg border px-3 py-2 text-sm" value={editDraft.currency} onChange={(e) => onEditCurrencyChange(e.target.value)}>
+                  <select aria-label="Currency" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.currency} onChange={(e) => onEditCurrencyChange(e.target.value)}>
                     {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <input
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   placeholder={`Of which VAT (${editDraft.currency})`}
+                  aria-label="Of which VAT"
                   value={editDraft.vatAmount}
                   onChange={(e) => setEditDraft({ ...editDraft, vatAmount: e.target.value })}
                   inputMode="decimal"
@@ -652,7 +655,7 @@ export default function ReceiptsPage() {
                     Paid
                   </label>
                 )}
-                <textarea
+                <textarea aria-label="Notes"
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   placeholder="Notes"
                   value={editDraft.notes}
@@ -693,7 +696,7 @@ export default function ReceiptsPage() {
                     </span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       {credits && (
-                        <span title="Has a credit note" className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">CN</span>
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800">Credit note</span>
                       )}
                       <span className="font-semibold">{money(r.amount + r.vatAmount + (credits?.gross ?? 0))}</span>
                     </span>
@@ -723,7 +726,7 @@ export default function ReceiptsPage() {
                   <button
                     onClick={() => toggleStar(r)}
                     aria-label={r.starred ? "Unstar" : "Star"}
-                    className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-300"}`}
+                    className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-500"}`}
                   >
                     ★
                   </button>
@@ -742,7 +745,7 @@ export default function ReceiptsPage() {
                       <>{money(r.amount)} excl. VAT · {money(r.vatAmount)} VAT</>
                     )}
                     {r.originalCurrency && r.originalAmount != null && (
-                      <span className="text-neutral-400">
+                      <span className="text-neutral-600">
                         {" "}(from {r.originalCurrency} {r.originalAmount.toFixed(2)} @ {r.fxRate?.toFixed(4)})
                       </span>
                     )}
@@ -759,7 +762,7 @@ export default function ReceiptsPage() {
                     <div key={i} className="wrap-anywhere"><span className="text-neutral-500">{d.label}:</span> {d.value}</div>
                   ))}
                   {r.warrantyMonths != null && (
-                    <div className="text-xs text-neutral-400">
+                    <div className="text-xs text-neutral-600">
                       Warranty: {r.warrantyMonths} months (until {addMonths(r.date, r.warrantyMonths)})
                     </div>
                   )}

@@ -202,11 +202,11 @@ export default function ExpensesPage() {
             </button>
           </div>
           {periodMode === "week" ? (
-            <input type="date" className="rounded-lg border px-3 py-2" value={weekAnchor} onChange={(e) => setWeekAnchor(e.target.value)} />
+            <input aria-label="Week" type="date" className="rounded-lg border px-3 py-2" value={weekAnchor} onChange={(e) => setWeekAnchor(e.target.value)} />
           ) : periodMode === "month" ? (
-            <input type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
+            <input aria-label="Month" type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
           ) : periodMode === "year" ? (
-            <input
+            <input aria-label="Year"
               type="number"
               className="w-28 rounded-lg border px-3 py-2"
               value={year}
@@ -214,9 +214,9 @@ export default function ExpensesPage() {
             />
           ) : (
             <div className="flex items-center gap-2">
-              <input type="date" className="rounded-lg border px-3 py-2" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              <input aria-label="From" type="date" className="rounded-lg border px-3 py-2" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
               <span className="text-sm text-neutral-500">to</span>
-              <input type="date" className="rounded-lg border px-3 py-2" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              <input aria-label="To" type="date" className="rounded-lg border px-3 py-2" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
             </div>
           )}
           <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">

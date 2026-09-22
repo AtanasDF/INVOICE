@@ -240,7 +240,7 @@ export default function NewClientPage() {
             }}
           />
         ) : (
-          <input
+          <input aria-label="Full name"
             className="w-full rounded-lg border px-3 py-2"
             placeholder="Full name"
             value={name}
@@ -249,7 +249,7 @@ export default function NewClientPage() {
         )}
         {isCompany && check.company && <p className="text-xs text-neutral-500">Company {check.company.number} on the Companies House register.</p>}
         {isCompany && <RegisterNote check={check} />}
-        <input
+        <input aria-label="Email"
           type="email"
           autoComplete="email"
           className="w-full rounded-lg border px-3 py-2"
@@ -261,11 +261,11 @@ export default function NewClientPage() {
         <details className="rounded-lg border p-3" open>
           <summary className="cursor-pointer text-sm font-medium text-neutral-600">More details (optional)</summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
-            <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency (e.g. GBP)" value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} />
+            <input aria-label="VAT number" className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
+            <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+            <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input aria-label="Payment terms" className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+            <input aria-label="Default currency" className="rounded-lg border px-3 py-2 text-sm" placeholder="Default currency (e.g. GBP)" value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} />
           </div>
         </details>
         {kind === "client" && (

@@ -9,7 +9,7 @@ const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL"
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], receipt_pages: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [] });
 db.allowDelete = ["invoices", "receipts", "clients", "invoice_payments", "credit_notes", "recurring_expenses", "recurring_invoices"];
-db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null });
+db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null, inbox_token: "0123456789abcdef0123456789abcdef" });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
 const INV = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: todayISO(), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null };
@@ -57,5 +57,20 @@ try {
   await removeOn("/receipts", "receipts", "Remove", "Travis Perkins");
   await removeOn("/invoices", "invoices", "Remove", "INV-9");
   await removeOn("/clients", "clients", "Remove", "Acme Kitchens Ltd");
+
+  // A new import address stops the old one at once: it asks first, like every other destructive tap.
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.body.innerText.includes("Email import"), { timeout: 20000 });
+  const tokenBefore = db.tables.business_profile.at(-1).inbox_token;
+  asked = null; answer = false;
+  await clickText(page, "Regenerate address");
+  await sleep(700);
+  check("settings: a new import address asks first, naming the consequence", !!asked && /old one stops working/i.test(asked), String(asked));
+  check("settings: saying no keeps the old address", db.tables.business_profile.at(-1).inbox_token === tokenBefore);
+  asked = null; answer = true;
+  await clickText(page, "Regenerate address");
+  await sleep(900);
+  check("settings: saying yes makes a new one", !!asked && db.tables.business_profile.at(-1).inbox_token !== tokenBefore, String(db.tables.business_profile.at(-1).inbox_token).slice(0, 8));
+
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
