@@ -235,6 +235,29 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   the page to build instead (headline, line, two full-width buttons with one line each,
   the picture described, the foot line), the screen after each button, the type and
   contrast rules with sources, and the words never to use. Nothing built; his to react to.
+- **04:10, his orders for the night**: triple-test everything (suite, live, review);
+  Hidefield may be used for tests within limits (CLAUDE.md); a postcode must give the
+  addresses and an address its postcode; a big list; and "surprise me with 12 things
+  you're gonna fix on your own". The list grew to 87 items with 110 lettered steps
+  (six agents, `notes/tonight-list.md`); `notes/address-lookup-options.md` compares five
+  Royal Mail resellers (Ideal Postcodes recommended, about £11–13 a month at 300
+  lookups, his sign-up and key).
+- **Surprise 1 of 12, Settings** (his six voice notes): cards in a first-timer's order
+  with the account last; VAT is one switch (Without / With) and the number box; numbering
+  is one line; the stale logo sentence is gone; a company's address is no longer
+  "(optional)"; categories follow the kind of account (three starting lists in
+  `src/lib/categories.ts`; an untouched list follows a change of kind, an edited one is
+  offered the kind's extras with "Add them", never trimmed); Remove links, ticks and
+  radios in neutral grey; reorder arrows 32px; reminders intro cut to two sentences with
+  the rest under "How it works"; a Save bar that stays in view, says "Unsaved changes.",
+  and holds a tap on any link with Save and go / Leave without saving / Stay. The
+  company-number box looks the number up once complete and fills the name
+  (`CompanyNumberInput`; only visible once the Companies House key exists). New suite
+  `test-settings-save` (31/31); `test-settings-add` 36/36, 16 other suites that visit
+  Settings green. The harness now answers the unsaved-changes prompt on a `goto`
+  (mockdb.mjs), which had hung two suites. Three suites fail the same way on the commit
+  before this one — `test-company` (7/8), `test-company-picker` (18 then a wait) and
+  `test-review-fixes` (a wait) — so they are older and on the list, not from this.
 - **03:45, tonight's list** (`notes/tonight-list.md`): 61 items from every open note, the
   research, his Settings screenshots and three new asks — feedback reaches him by email
   and me at the start of a session; sign-in before scanning; a confirmation email on

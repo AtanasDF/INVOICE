@@ -519,7 +519,7 @@ export default function ScanPage() {
     const [c, r, profile] = await Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]);
     setClients(c);
     putReceipts(r);
-    const cats = effectiveCategories(profile.customCategories);
+    const cats = effectiveCategories(profile.customCategories, profile.accountKind);
     setCategories(cats);
     const usual = mostUsedCategory(r.map((receipt) => receipt.category));
     if (usual) setForm((f) => (f.category ? f : { ...f, category: usual }));

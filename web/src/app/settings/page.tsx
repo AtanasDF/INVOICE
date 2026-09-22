@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AccountKind,
   businessProfileStore,
@@ -15,7 +16,7 @@ import {
   receiptsStore,
   recurringExpensesStore,
 } from "@/lib/storage";
-import { CATEGORIES, effectiveCategories } from "@/lib/categories";
+import { KIND_WORD, defaultCategoriesFor, effectiveCategories, isDefaultSet, missingFor, withKindCategories } from "@/lib/categories";
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
 import { signOut } from "@/lib/signOut";
@@ -24,6 +25,7 @@ import { DEFAULT_REMINDER_TEXT, REMINDER_SCHEDULE, ReminderKind } from "@/lib/re
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
 import { inlineImage } from "@/lib/receiptImages";
 import CompanyNameInput from "@/components/CompanyNameInput";
+import CompanyNumberInput from "@/components/CompanyNumberInput";
 import AddressFields from "@/components/AddressFields";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -32,16 +34,40 @@ import { todayISO } from "@/lib/today";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
-// personal use has no business at all. Nothing else follows from this
-// yet -- see notes/future-ideas.md.
+// personal use has no business at all. The kind also picks the starting
+// list of expense categories (src/lib/categories.ts).
 const ACCOUNT_KINDS: { value: AccountKind; label: string; hint: string }[] = [
   { value: "limited", label: "A limited company", hint: "Registered at Companies House" },
   { value: "sole_trader", label: "A sole trader", hint: "Self-employed, working under your own name or a trading name" },
   { value: "personal", label: "Personal use", hint: "Keeping track of your own spending" },
 ];
+const VAT_CHOICES: { label: string; on: boolean }[] = [
+  { label: "Without VAT", on: false },
+  { label: "With VAT", on: true },
+];
+const CARD = "space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
+const SMALL_BUTTON = "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50";
+
+type FormValues = {
+  businessName: string;
+  registeredName: string;
+  companyNumber: string;
+  accountKind: AccountKind | null;
+  vatNumber: string;
+  address: string;
+  showOverdueReminders: boolean;
+  categories: string[];
+  invoicePrefix: string;
+  invoiceNextNumber: string;
+  vatRegistered: boolean;
+  bankDetails: string;
+  reminderTexts: Record<ReminderKind, string>;
+  latePaymentInterest: boolean;
+};
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [businessName, setBusinessName] = useState("");
   const [registeredName, setRegisteredName] = useState("");
   const [companyNumber, setCompanyNumber] = useState("");
@@ -88,31 +114,54 @@ export default function SettingsPage() {
   // lower than that, which would make the series look like it went
   // backwards rather than actually starting fresh.
   const [highestExistingNumber, setHighestExistingNumber] = useState(0);
+  // The form as it was loaded or last saved. Anything different from it is
+  // unsaved, which the bar at the bottom says, and a tap on a link is held
+  // until the person says whether to save first.
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([businessProfileStore.get(), invoicesStore.all()]).then(([p, invoices]) => {
-      setBusinessName(p.businessName);
-      setRegisteredName(p.registeredName);
-      setCompanyNumber(p.companyNumber);
-      setAccountKind(p.accountKind);
-      setVatNumber(p.vatNumber);
-      setAddress(p.address);
-      setShowOverdueReminders(p.showOverdueReminders);
-      setCategories(effectiveCategories(p.customCategories));
-      setInboxToken(p.inboxToken);
-      setInvoicePrefix(p.invoicePrefix);
-      setInvoiceNextNumber(String(p.invoiceNextNumber));
-      setLoadedNextNumber(p.invoiceNextNumber);
-      setVatRegistered(p.vatRegistered);
-      setBankDetails(p.bankDetails);
-      setReminderTexts({
+      const texts = {
         before: p.reminderTextBefore ?? "",
         due: p.reminderTextDue ?? "",
         after: p.reminderTextAfter ?? "",
         late: p.reminderTextLate ?? "",
         final: p.reminderTextFinal ?? "",
-      });
-      setLatePaymentInterest(p.reminderLatePaymentInterest);
+      };
+      const loaded: FormValues = {
+        businessName: p.businessName,
+        registeredName: p.registeredName,
+        companyNumber: p.companyNumber,
+        accountKind: p.accountKind,
+        vatNumber: p.vatNumber,
+        address: p.address,
+        showOverdueReminders: p.showOverdueReminders,
+        categories: effectiveCategories(p.customCategories, p.accountKind),
+        invoicePrefix: p.invoicePrefix,
+        invoiceNextNumber: String(p.invoiceNextNumber),
+        vatRegistered: p.vatRegistered,
+        bankDetails: p.bankDetails,
+        reminderTexts: texts,
+        latePaymentInterest: p.reminderLatePaymentInterest,
+      };
+      setBusinessName(loaded.businessName);
+      setRegisteredName(loaded.registeredName);
+      setCompanyNumber(loaded.companyNumber);
+      setAccountKind(loaded.accountKind);
+      setVatNumber(loaded.vatNumber);
+      setAddress(loaded.address);
+      setShowOverdueReminders(loaded.showOverdueReminders);
+      setCategories(loaded.categories);
+      setInboxToken(p.inboxToken);
+      setInvoicePrefix(loaded.invoicePrefix);
+      setInvoiceNextNumber(loaded.invoiceNextNumber);
+      setLoadedNextNumber(p.invoiceNextNumber);
+      setVatRegistered(loaded.vatRegistered);
+      setBankDetails(loaded.bankDetails);
+      setReminderTexts(texts);
+      setLatePaymentInterest(loaded.latePaymentInterest);
+      setSnapshot(JSON.stringify(loaded));
       const sequenceNumbers = invoices
         .map((inv) => parseSequenceNumber(inv.number, p.invoicePrefix))
         .filter((n): n is number => n !== null);
@@ -122,6 +171,47 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
     getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
   }, []);
+
+  const values: FormValues = {
+    businessName,
+    registeredName,
+    companyNumber,
+    accountKind,
+    vatNumber,
+    address,
+    showOverdueReminders,
+    categories,
+    invoicePrefix,
+    invoiceNextNumber,
+    vatRegistered,
+    bankDetails,
+    reminderTexts,
+    latePaymentInterest,
+  };
+  const current = JSON.stringify(values);
+  const dirty = snapshot !== null && current !== snapshot;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (e: BeforeUnloadEvent) => e.preventDefault();
+    // Caught before React sees the click, so neither a plain link nor a
+    // Next.js one gets to navigate; the bar then asks what to do.
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || a.target === "_blank") return;
+      const href = a.getAttribute("href") ?? "";
+      if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeaving(href);
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [dirty]);
 
   async function regenerateInboxToken() {
     setInboxError(null);
@@ -167,6 +257,13 @@ export default function SettingsPage() {
     }
   }
 
+  // A starting list that was never edited follows the kind; an edited one
+  // is only ever offered additions (below the list), never trimmed.
+  function chooseKind(kind: AccountKind) {
+    setAccountKind(kind);
+    setCategories((prev) => (isDefaultSet(prev) ? defaultCategoriesFor(kind) : prev));
+  }
+
   function moveCategory(index: number, direction: -1 | 1) {
     setCategories((prev) => {
       const next = [...prev];
@@ -193,12 +290,8 @@ export default function SettingsPage() {
     setNewCategory("");
   }
 
-  function resetCategoriesToDefault() {
-    setCategories([...CATEGORIES]);
-  }
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
+  async function save(e?: React.FormEvent): Promise<boolean> {
+    e?.preventDefault();
     setError(null);
     setSaved(false);
     setSaving(true);
@@ -226,18 +319,34 @@ export default function SettingsPage() {
         reminderTextDue: reminderTexts.due.trim() || null,
         reminderTextAfter: reminderTexts.after.trim() || null,
         reminderTextLate: reminderTexts.late.trim() || null,
-        reminderTextFinal: reminderTexts.final.trim() || null,
         reminderLatePaymentInterest: latePaymentInterest,
+        reminderTextFinal: reminderTexts.final.trim() || null,
       });
       setMigrationPending(!full);
       setLoadedNextNumber(nextNumber);
       setInvoiceNextNumber(String(nextNumber));
+      setSnapshot(JSON.stringify({ ...values, invoiceNextNumber: String(nextNumber) }));
       setSaved(true);
+      return true;
     } catch (err) {
       setError(saveFailed(err, "Could not save your profile."));
+      return false;
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveAndGo() {
+    const to = leaving;
+    setLeaving(null);
+    if ((await save()) && to) router.push(to);
+  }
+
+  function leaveWithoutSaving() {
+    const to = leaving;
+    setLeaving(null);
+    setSnapshot(current);
+    if (to) router.push(to);
   }
 
   // The same email Supabase sends for "forgot my password": opening it
@@ -295,101 +404,29 @@ export default function SettingsPage() {
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
   // Empty boxes here would look like settings that had been wiped, and
   // saving over them would wipe them for real.
-  if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
+  if (error && snapshot === null) return <p role="alert" className="text-sm text-red-600">{error}</p>;
 
   const nextNumberTooLow = (parseInt(invoiceNextNumber, 10) || 0) <= highestExistingNumber && highestExistingNumber > 0;
   // Registered details stay on screen once they're filled in, whatever the
   // kind says, so changing your mind can't hide what's printed.
   const limited = accountKind === "limited" || !!registeredName || !!companyNumber;
   const personal = accountKind === "personal";
+  const missing = missingFor(categories, accountKind);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-neutral-600">
-          Your business details fill in automatically on every invoice you create. Your account and your data are here too.
+          Your business details go on every invoice, quote and reminder. Your account and your data are at the bottom.
         </p>
       </div>
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <div>
-          <h2 className="font-semibold">Your account</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            You&apos;re signed in as <span className="font-medium text-neutral-900">{user?.email ?? "—"}</span>. That address
-            is the one reminders and invoice emails come back to when a customer replies.
-          </p>
-        </div>
-
-        <div className="border-t pt-3">
-          <p className="text-xs text-neutral-500">Getting back in</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            Signed out, or forgotten the password? Ask for a link by email — it opens the app already signed in and lets
-            you set a new password. From the sign-in screen it&apos;s the same thing: <strong>Forgotten your password?</strong>
-          </p>
-          <button
-            type="button"
-            onClick={emailSignInLink}
-            disabled={signInBusy || !user?.email}
-            className="mt-2 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-          >
-            {signInBusy ? "Sending…" : "Email me a sign-in link"}
-          </button>
-          {signInNote && <p className="mt-2 text-sm text-neutral-600">{signInNote}</p>}
-        </div>
-
-        <div className="border-t pt-3">
-          <p className="text-xs text-neutral-500">Where your data lives</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            In a Postgres database run by Supabase in the EU (Ireland), locked to your account: every table is read and
-            written only by the signed-in owner. Scanned photos and PDFs sit in a private bucket and are handed out as
-            links that expire after seven days. Invoice and quote links you share are the one exception — anyone holding
-            that address sees that one document, until you stop the link from its page.
-          </p>
-        </div>
-
-        <div className="border-t pt-3">
-          <p className="text-xs text-neutral-500">Take it all with you</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, recurring
-            expenses and feedback — as one JSON file, with the scanned images and PDFs inside it. Invoices, receipts and
-            clients also export as CSV from their own pages, for a spreadsheet or an accountant.
-          </p>
-          {exportError && <p role="alert" className="mt-2 text-sm text-red-600">{exportError}</p>}
-          <button
-            type="button"
-            onClick={exportData}
-            disabled={exporting}
-            className="mt-2 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-          >
-            {exporting ? "Preparing your download…" : "Download all my data"}
-          </button>
-        </div>
-
-        <div className="border-t pt-3">
-          <p className="text-xs text-neutral-500">Closing the account</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            There&apos;s no delete button anywhere in this app, on purpose: an accounting record you&apos;ve thrown away by
-            accident can&apos;t be got back, and HMRC expects you to keep it for six years. To have the account and
-            everything in it removed, ask through <a href="/feedback" className="underline">Feedback</a> and it&apos;s done
-            by hand, once, after you&apos;ve exported what you want to keep.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
-        >
-          Sign out
-        </button>
-      </div>
-
       <form onSubmit={save} className="space-y-6">
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className={CARD}>
           <div>
             <h2 className="font-semibold">Your business</h2>
-            <p className="mt-1 text-sm text-neutral-600">Fill this in once and it goes on every invoice, quote and reminder.</p>
+            <p className="mt-1 text-sm text-neutral-600">Fill this in once.</p>
           </div>
 
           <fieldset>
@@ -398,11 +435,11 @@ export default function SettingsPage() {
               {ACCOUNT_KINDS.map((k) => (
                 <label key={k.value} className="flex items-start gap-2 text-sm">
                   <input
-                    className="mt-1"
+                    className="mt-1 accent-neutral-900"
                     type="radio"
                     name="account-kind"
                     checked={accountKind === k.value}
-                    onChange={() => setAccountKind(k.value)}
+                    onChange={() => chooseKind(k.value)}
                   />
                   <span>
                     {k.label}
@@ -430,20 +467,21 @@ export default function SettingsPage() {
             />
             <p className="mt-1 text-xs text-neutral-500">
               {limited
-                ? "The name customers know you by — the headline on every document. If it isn't the name on the register, fill that in below as well."
-                : "The name customers know you by — the headline on every document."}
+                ? "The name customers know you by, the headline on every document. If it isn't the name on the register, fill that in below too."
+                : "The name customers know you by, the headline on every document."}
             </p>
           </div>
 
           {limited && (
             <div className="space-y-3 rounded-lg border bg-neutral-50 p-3">
               <p className="text-sm text-neutral-600">
-                A limited company must show its registered name and company number on its invoices (Companies Act 2006).
-                Fill both in and they print small at the foot of the invoice, leaving your trading name as the headline.
+                A limited company must print its registered name and number on its invoices. They go small at the foot;
+                your trading name stays the headline.
               </p>
               <div>
-                <label className="text-xs text-neutral-500">Registered company name</label>
+                <label className="text-xs text-neutral-500" htmlFor="registered-name">Registered company name</label>
                 <CompanyNameInput
+                  id="registered-name"
                   className="w-full rounded-lg border px-3 py-2"
                   placeholder="As registered at Companies House"
                   lookupPlaceholder="Type to find it on Companies House"
@@ -456,58 +494,61 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-neutral-500">Company number</label>
-                <input
+                <label className="text-xs text-neutral-500" htmlFor="company-number">Company number</label>
+                <CompanyNumberInput
+                  id="company-number"
                   className="w-full rounded-lg border px-3 py-2"
                   placeholder="e.g. 12345678"
                   value={companyNumber}
-                  onChange={(e) => setCompanyNumber(e.target.value)}
+                  onChange={setCompanyNumber}
+                  name={registeredName}
+                  onFound={(c) => {
+                    setRegisteredName(c.name);
+                    if (!address.trim() && c.address) setAddress(c.address);
+                  }}
                 />
               </div>
             </div>
           )}
 
-          <AddressFields address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address (optional)"} />
-          <p className="text-xs text-neutral-500">
-            A logo can go here too once file storage is set up — not yet, so this is text-only for now.
-          </p>
-
-          <label className="flex items-center gap-2 border-t pt-3 text-sm">
-            <input type="checkbox" checked={showOverdueReminders} onChange={(e) => setShowOverdueReminders(e.target.checked)} />
-            Gently remind me on the dashboard about overdue invoices
-          </label>
+          <AddressFields address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address"} />
         </div>
 
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <div>
-            <h2 className="font-semibold">VAT</h2>
-            <p className="mt-1 text-sm text-neutral-600">
-              Off by default. When off, invoices show no VAT block at all and your VAT number is never printed,
-              even if it&apos;s filled in below — so deregistering doesn&apos;t mean you have to go blank that field too.
-            </p>
+        <div className={CARD}>
+          <h2 className="font-semibold">VAT</h2>
+          <div role="radiogroup" aria-label="VAT" className="inline-flex rounded-lg border p-0.5">
+            {VAT_CHOICES.map((c) => (
+              <button
+                key={c.label}
+                type="button"
+                role="radio"
+                aria-checked={vatRegistered === c.on}
+                onClick={() => setVatRegistered(c.on)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${vatRegistered === c.on ? "bg-neutral-900 text-white" : "text-neutral-700"}`}
+              >
+                {c.label}
+              </button>
+            ))}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={vatRegistered} onChange={(e) => setVatRegistered(e.target.checked)} />
-            VAT registered
-          </label>
-          <div>
-            <label className="text-xs text-neutral-500" htmlFor="vat-number">VAT number</label>
-            <input
-              id="vat-number"
-              className="w-full rounded-lg border px-3 py-2"
-              value={vatNumber}
-              onChange={(e) => setVatNumber(e.target.value)}
-            />
-          </div>
+          {vatRegistered && (
+            <div>
+              <label className="text-xs text-neutral-500" htmlFor="vat-number">VAT number</label>
+              <input
+                id="vat-number"
+                className="w-full rounded-lg border px-3 py-2"
+                placeholder="GB123456789"
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className={CARD}>
           <div>
             <h2 className="font-semibold">Invoice numbering</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              The next invoice you mark as sent is assigned {invoicePrefix}{invoiceNextNumber} automatically — there&apos;s
-              no way to override that per invoice any more, so this is the only place that controls the sequence.
-              It advances by one every time an invoice is actually sent.
+              The next invoice will be <span className="font-medium text-neutral-900">{invoicePrefix}{invoiceNextNumber}</span>.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -535,83 +576,39 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className={CARD}>
           <div>
             <h2 className="font-semibold">Bank details</h2>
-            <p className="mt-1 text-sm text-neutral-600">
-              Shown as a dedicated &quot;How to pay&quot; block on printed invoices, instead of buried in the notes.
-            </p>
+            <p className="mt-1 text-sm text-neutral-600">Printed on every invoice as &quot;How to pay&quot;.</p>
           </div>
           <textarea
             className="w-full rounded-lg border px-3 py-2"
             placeholder="Account name, sort code, account number / IBAN, etc."
+            aria-label="Bank details"
             value={bankDetails}
             onChange={(e) => setBankDetails(e.target.value)}
             rows={3}
           />
         </div>
 
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <div>
-            <h2 className="font-semibold">Payment reminders</h2>
-            <p className="mt-1 text-sm text-neutral-600">
-              Up to five reminders go out per unpaid invoice, each a little firmer: 3 days before it&apos;s due, on
-              the due date, then 7, 14 and 30 days after. They go to any client with reminders turned on (see their
-              entry under Clients), come from your business name, replies go to your email, and your bank details
-              are added underneath. Nothing more is sent after the final notice. Part-paid invoices are chased for
-              what&apos;s still owed once their payments are recorded; one marked part-paid with no payments recorded
-              gets none, since its balance isn&apos;t known. Edit the wording below; leave a box blank to use
-              the default text. Use <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>,{" "}
-              <code>{"{{amount_due}}"}</code>, <code>{"{{due_date}}"}</code> and <code>{"{{pay_by}}"}</code> (a week
-              from the day it&apos;s sent) anywhere in the text.
-            </p>
-          </div>
-          {REMINDER_SCHEDULE.map((r) => (
-            <div key={r.kind}>
-              <label className="text-xs text-neutral-500">{r.label}</label>
-              <textarea
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder={DEFAULT_REMINDER_TEXT[r.kind]}
-                value={reminderTexts[r.kind]}
-                onChange={(e) => setReminderTexts((prev) => ({ ...prev, [r.kind]: e.target.value }))}
-                rows={2}
-              />
-            </div>
-          ))}
-          <label className="flex items-start gap-2 border-t pt-3 text-sm">
-            <input className="mt-1" type="checkbox" checked={latePaymentInterest} onChange={(e) => setLatePaymentInterest(e.target.checked)} />
-            <span>
-              In the final notice to a business client, say you can claim late-payment interest
-              <span className="block text-xs text-neutral-500">
-                Under the Late Payment of Commercial Debts (Interest) Act 1998 a business can claim 8% a year above
-                the Bank of England base rate, plus £40, £70 or £100 compensation depending on the amount. It
-                doesn&apos;t apply to private individuals: only clients marked Company get it, so check private
-                customers are marked Individual under Clients. Leave this off if your own terms set a late-payment
-                interest rate, since that replaces the statutory one.
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className={CARD}>
           <div>
             <h2 className="font-semibold">Expense categories</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              Reorder, rename, add, or remove categories to match how you actually track spending. Removing one
-              doesn&apos;t change any receipt that already used it — it just stops showing up for new ones.
+              Reorder, rename, add or remove. Removing one leaves the receipts that used it as they are.
             </p>
           </div>
 
           <div className="space-y-2">
             {categories.map((c, i) => (
               <div key={i} className="flex items-center gap-2">
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-1">
                   <button
                     type="button"
                     onClick={() => moveCategory(i, -1)}
                     disabled={i === 0}
-                    className="px-1 text-xs text-neutral-500 disabled:opacity-30"
-                    aria-label="Move up"
+                    className="h-8 w-8 rounded-md border text-sm text-neutral-600 disabled:opacity-30"
+                    aria-label={`Move ${c} up`}
                   >
                     ▲
                   </button>
@@ -619,18 +616,19 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => moveCategory(i, 1)}
                     disabled={i === categories.length - 1}
-                    className="px-1 text-xs text-neutral-500 disabled:opacity-30"
-                    aria-label="Move down"
+                    className="h-8 w-8 rounded-md border text-sm text-neutral-600 disabled:opacity-30"
+                    aria-label={`Move ${c} down`}
                   >
                     ▼
                   </button>
                 </div>
                 <input
                   className="flex-1 rounded-lg border px-3 py-2 text-sm"
+                  aria-label={`Category ${i + 1}`}
                   value={c}
                   onChange={(e) => renameCategory(i, e.target.value)}
                 />
-                <button type="button" onClick={() => removeCategory(i)} className="text-sm text-red-600">
+                <button type="button" onClick={() => removeCategory(i)} className="px-2 py-2 text-sm text-neutral-500 underline">
                   Remove
                 </button>
               </div>
@@ -642,6 +640,7 @@ export default function SettingsPage() {
             <input
               className="flex-1 rounded-lg border px-3 py-2 text-sm"
               placeholder="Add a category (e.g. Childcare)"
+              aria-label="New category"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
               onKeyDown={(e) => {
@@ -652,31 +651,120 @@ export default function SettingsPage() {
               Add
             </button>
           </div>
-          <button type="button" onClick={resetCategoriesToDefault} className="text-sm text-neutral-500 underline">
+          {accountKind && missing.length > 0 && (
+            <div className="rounded-lg border bg-neutral-50 p-3 text-sm">
+              <p className="text-neutral-600">
+                The {KIND_WORD[accountKind]} list also has: {missing.join(", ")}.
+              </p>
+              <button
+                type="button"
+                onClick={() => setCategories((prev) => withKindCategories(prev, accountKind))}
+                className="mt-2 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700"
+              >
+                Add them
+              </button>
+            </div>
+          )}
+          <button type="button" onClick={() => setCategories(defaultCategoriesFor(accountKind))} className="text-sm text-neutral-500 underline">
             Reset to defaults
           </button>
         </div>
 
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {saved && !migrationPending && <p className="text-sm text-green-700">Saved.</p>}
-        <p role="status" className="sr-only">{saved && !migrationPending ? "Saved." : ""}</p>
-        {saved && migrationPending && (
-          <p className="text-sm text-amber-700">
-            Saved, apart from what you&apos;re using the app for and the registered company details: this database hasn&apos;t
-            had migration-029 run against it yet. Everything else is in.
-          </p>
-        )}
-        <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? "Saving…" : "Save"}
-        </button>
+        <div className={CARD}>
+          <div>
+            <h2 className="font-semibold">Payment reminders</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              Up to five reminders go out for an unpaid invoice: 3 days before it&apos;s due, on the day, then 7, 14 and 30
+              days after, each a little firmer. They go to clients with reminders switched on under Clients.
+            </p>
+            <details className="mt-2 text-sm text-neutral-600">
+              <summary className="cursor-pointer font-medium text-neutral-700">How it works</summary>
+              <p className="mt-2">
+                Reminders come from your business name, replies go to your email, and your bank details are added
+                underneath. Nothing more is sent after the final notice. Part-paid invoices are chased for what&apos;s still
+                owed once their payments are recorded; one marked part-paid with no payments recorded gets none, since its
+                balance isn&apos;t known. Edit the wording below; leave a box blank to use the default text. Use{" "}
+                <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>, <code>{"{{amount_due}}"}</code>,{" "}
+                <code>{"{{due_date}}"}</code> and <code>{"{{pay_by}}"}</code> (a week from the day it&apos;s sent) anywhere in
+                the text.
+              </p>
+            </details>
+          </div>
+          {REMINDER_SCHEDULE.map((r) => (
+            <div key={r.kind}>
+              <label className="text-xs text-neutral-500" htmlFor={`reminder-${r.kind}`}>{r.label}</label>
+              <textarea
+                id={`reminder-${r.kind}`}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                placeholder={DEFAULT_REMINDER_TEXT[r.kind]}
+                value={reminderTexts[r.kind]}
+                onChange={(e) => setReminderTexts((prev) => ({ ...prev, [r.kind]: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          ))}
+          <label className="flex items-start gap-2 border-t pt-3 text-sm">
+            <input className="mt-1 accent-neutral-900" type="checkbox" checked={latePaymentInterest} onChange={(e) => setLatePaymentInterest(e.target.checked)} />
+            <span>
+              In the final notice to a business client, say you can claim late-payment interest
+              <span className="block text-xs text-neutral-500">
+                Under the Late Payment of Commercial Debts (Interest) Act 1998 a business can claim 8% a year above
+                the Bank of England base rate, plus £40, £70 or £100 compensation depending on the amount. It
+                doesn&apos;t apply to private individuals: only clients marked Company get it, so check private
+                customers are marked Individual under Clients. Leave this off if your own terms set a late-payment
+                interest rate, since that replaces the statutory one.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input className="accent-neutral-900" type="checkbox" checked={showOverdueReminders} onChange={(e) => setShowOverdueReminders(e.target.checked)} />
+            Gently remind me on the dashboard about overdue invoices
+          </label>
+        </div>
+
+        <div
+          className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t bg-white/95 px-4 pt-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:shadow-sm"
+          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        >
+          {leaving ? (
+            <div className="flex flex-wrap items-center gap-2 pr-24 text-sm">
+              <span className="font-medium">You have unsaved changes.</span>
+              <button type="button" onClick={saveAndGo} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {saving ? "Saving…" : "Save and go"}
+              </button>
+              <button type="button" onClick={leaveWithoutSaving} className={SMALL_BUTTON}>
+                Leave without saving
+              </button>
+              <button type="button" onClick={() => setLeaving(null)} className="text-sm text-neutral-600 underline">
+                Stay
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3 pr-24">
+              <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {saving ? "Saving…" : "Save"}
+              </button>
+              {dirty && <span className="text-sm text-neutral-600">Unsaved changes.</span>}
+              {!dirty && saved && !migrationPending && <span className="text-sm text-green-700">Saved.</span>}
+            </div>
+          )}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          <p role="status" className="sr-only">{saved && !migrationPending ? "Saved." : ""}</p>
+          {saved && migrationPending && (
+            <p className="text-sm text-amber-700">
+              Saved, apart from what you&apos;re using the app for and the registered company details: this database hasn&apos;t
+              had migration-029 run against it yet. Everything else is in.
+            </p>
+          )}
+        </div>
       </form>
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className={CARD}>
         <div>
           <h2 className="font-semibold">Notifications</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Get a push notification (even when this app isn&apos;t open) when an invoice is overdue or a recurring
-            expense is due — a daily check, same conditions as the reminder banners on the dashboard.
+            A push notification, even when the app isn&apos;t open, when an invoice is overdue, a bill or recurring expense
+            is due, a customer opens or answers a quote or opens an invoice, or a supplier sends prices.
           </p>
         </div>
         {!pushSupported() ? (
@@ -690,19 +778,14 @@ export default function SettingsPage() {
         ) : (
           <>
             {pushError && <p role="alert" className="text-sm text-red-600">{pushError}</p>}
-            <button
-              type="button"
-              onClick={togglePush}
-              disabled={pushBusy}
-              className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-            >
+            <button type="button" onClick={togglePush} disabled={pushBusy} className={SMALL_BUTTON}>
               {pushBusy ? "Working…" : pushEnabled ? "Turn off notifications" : "Turn on notifications"}
             </button>
           </>
         )}
       </div>
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className={CARD}>
         <div>
           <h2 className="font-semibold">Email import</h2>
           <p className="mt-1 text-sm text-neutral-600">
@@ -724,23 +807,14 @@ export default function SettingsPage() {
               <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
                 {inboxRevealed ? inboxAddress(inboxToken) : `u-${"•".repeat(32)}@invoiceover.com`}
               </code>
-              <button
-                type="button"
-                onClick={() => setInboxRevealed((v) => !v)}
-                className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700"
-              >
+              <button type="button" onClick={() => setInboxRevealed((v) => !v)} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
                 {inboxRevealed ? "Hide" : "Reveal"}
               </button>
               <button type="button" onClick={copyInboxAddress} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
                 {inboxCopied ? "Copied" : "Copy"}
               </button>
             </div>
-            <button
-              type="button"
-              onClick={regenerateInboxToken}
-              disabled={inboxBusy}
-              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
-            >
+            <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
               {inboxBusy ? "Working…" : "Regenerate address"}
             </button>
             <p className="text-xs text-neutral-500">
@@ -749,15 +823,69 @@ export default function SettingsPage() {
             </p>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={regenerateInboxToken}
-            disabled={inboxBusy}
-            className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50"
-          >
+          <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
             {inboxBusy ? "Generating…" : "Get my import address"}
           </button>
         )}
+      </div>
+
+      <div className={CARD}>
+        <div>
+          <h2 className="font-semibold">Your account</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            You&apos;re signed in as <span className="font-medium text-neutral-900">{user?.email ?? "—"}</span>. That address
+            is the one reminders and invoice emails come back to when a customer replies.
+          </p>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Getting back in</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Signed out, or forgotten the password? Ask for a link by email — it opens the app already signed in and lets
+            you set a new password. From the sign-in screen it&apos;s the same thing: <strong>Forgotten your password?</strong>
+          </p>
+          <button type="button" onClick={emailSignInLink} disabled={signInBusy || !user?.email} className={`mt-2 ${SMALL_BUTTON}`}>
+            {signInBusy ? "Sending…" : "Email me a sign-in link"}
+          </button>
+          {signInNote && <p className="mt-2 text-sm text-neutral-600">{signInNote}</p>}
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Where your data lives</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            In a Postgres database run by Supabase in the EU (Ireland), locked to your account: every table is read and
+            written only by the signed-in owner. Scanned photos and PDFs sit in a private bucket and are handed out as
+            links that expire after seven days. Invoice and quote links you share are the one exception — anyone holding
+            that address sees that one document, until you stop the link from its page.
+          </p>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Take it all with you</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, recurring
+            expenses and feedback — as one JSON file, with the scanned images and PDFs inside it. Invoices, receipts and
+            clients also export as CSV from their own pages, for a spreadsheet or an accountant.
+          </p>
+          {exportError && <p role="alert" className="mt-2 text-sm text-red-600">{exportError}</p>}
+          <button type="button" onClick={exportData} disabled={exporting} className={`mt-2 ${SMALL_BUTTON}`}>
+            {exporting ? "Preparing your download…" : "Download all my data"}
+          </button>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-neutral-500">Closing the account</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            There&apos;s no delete button anywhere in this app, on purpose: an accounting record you&apos;ve thrown away by
+            accident can&apos;t be got back, and HMRC expects you to keep it for six years. To have the account and
+            everything in it removed, ask through <a href="/feedback" className="underline">Feedback</a> and it&apos;s done
+            by hand, once, after you&apos;ve exported what you want to keep.
+          </p>
+        </div>
+
+        <button type="button" onClick={() => void signOut()} className={SMALL_BUTTON}>
+          Sign out
+        </button>
       </div>
     </div>
   );

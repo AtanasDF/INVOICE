@@ -43,7 +43,7 @@ export default function RecurringExpensesPage() {
       .then(([r, c, profile]) => {
         setItems(r);
         setClients(c);
-        const active = effectiveCategories(profile.customCategories);
+        const active = effectiveCategories(profile.customCategories, profile.accountKind);
         setCategories(active);
         setCategory(active[0]);
       })

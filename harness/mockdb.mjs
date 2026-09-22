@@ -238,6 +238,11 @@ export async function launchSignedIn(db, { width = 375, base = "http://localhost
   const page = await browser.newPage();
   await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+  // Settings warns before a page is left with unsaved changes; headless
+  // Chrome raises that as a dialog even for a goto, and an unanswered one
+  // hangs the navigation. A suite is a person who chose to leave. Answered
+  // in a catch: a suite with its own dialog handler may get there first.
+  page.on("dialog", (d) => { if (d.type() === "beforeunload") d.accept().catch(() => {}); });
   page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) console.log("CONSOLE", m.text().slice(0, 200)); });
   await page.setRequestInterception(true);
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*", "Access-Control-Expose-Headers": "*" };

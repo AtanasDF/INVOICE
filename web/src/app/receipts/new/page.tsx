@@ -59,7 +59,7 @@ export default function NewReceiptPage() {
       .then(([c, r, profile]) => {
         setClients(c);
         setReceipts(r);
-        setCategories(effectiveCategories(profile.customCategories));
+        setCategories(effectiveCategories(profile.customCategories, profile.accountKind));
         const usual = mostUsedCategory(r.map((receipt) => receipt.category));
         if (usual) setCategory(usual);
       })

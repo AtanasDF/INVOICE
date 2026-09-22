@@ -155,7 +155,7 @@ export default function ReceiptsPage() {
       .then(([c, r, profile, counts]) => {
         setClients(c);
         setReceipts(r);
-        setCategories(effectiveCategories(profile.customCategories));
+        setCategories(effectiveCategories(profile.customCategories, profile.accountKind));
         setPageCounts(counts);
         setLinkSkips(readLinkSkips());
       })

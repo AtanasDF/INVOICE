@@ -52,7 +52,7 @@ const pick = (page, label) => page.evaluate((t) => {
   a.click();
 }, label);
 const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-const addressLabel = (page) => page.evaluate(() => [...document.querySelectorAll("span,label,legend")].map((e) => e.textContent.trim()).find((t) => /^(Business|Your) address \(optional\)$/.test(t)) ?? "");
+const addressLabel = (page) => page.evaluate(() => [...document.querySelectorAll("span,label,legend")].map((e) => e.textContent.trim()).find((t) => /^(Business|Your) address( \(optional\))?$/.test(t)) ?? "");
 // The camera never opens for real here: a canvas stream stands in for it,
 // and the permission state is whatever each test says it is.
 const fakeCamera = (page, state) =>

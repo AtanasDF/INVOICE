@@ -56,7 +56,7 @@ export default function ReviewQueuePage() {
         const pending = r.filter((x) => x.needsReview);
         setReceipts(pending);
         setClients(c);
-        setCategories(effectiveCategories(profile.customCategories));
+        setCategories(effectiveCategories(profile.customCategories, profile.accountKind));
         setDrafts(Object.fromEntries(pending.map((x) => [x.id, draftFor(x)])));
       })
       .catch((err) => setError(loadFailed(err, "the review queue")))
