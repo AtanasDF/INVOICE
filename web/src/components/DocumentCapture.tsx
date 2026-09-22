@@ -2029,7 +2029,7 @@ export default function DocumentCapture({
           {barcodeValue && !shownFailure && (
             <div className="pointer-events-auto rounded-lg bg-white/95 p-3 text-sm text-neutral-900 shadow">
               <div className="font-medium">Barcode detected: {barcodeValue}</div>
-              <button onClick={() => setBarcodeValue(null)} className="mt-1 text-xs text-blue-600">Dismiss</button>
+              <button onClick={() => setBarcodeValue(null)} className="mt-1 text-xs text-neutral-700 underline">Dismiss</button>
             </div>
           )}
         </div>

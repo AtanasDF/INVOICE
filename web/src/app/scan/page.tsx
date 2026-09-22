@@ -1172,7 +1172,7 @@ export default function ScanPage() {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (
-            <button type="button" onClick={() => setTypePickerOpen((o) => !o)} className="text-xs font-medium text-blue-600">
+            <button type="button" onClick={() => setTypePickerOpen((o) => !o)} className="text-xs font-medium text-neutral-700 underline">
               {changeLabel}
             </button>
           )}
@@ -1263,7 +1263,7 @@ export default function ScanPage() {
                 <a href="/clients" className="font-medium underline">View suppliers</a>
               </p>
             )}
-            {supplierSaved && <p className="text-sm text-green-700">Saved as a new supplier.</p>}
+            {supplierSaved && <p className="text-sm text-neutral-700">Saved as a new supplier.</p>}
             {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
             <div className="flex flex-wrap gap-3">
               <button
@@ -1325,7 +1325,7 @@ export default function ScanPage() {
               {form.clientId && form.vendor && (
                 <p className="mt-1 text-xs text-neutral-500">Read as &quot;{form.vendor}&quot;.</p>
               )}
-              {supplierSaved && <p className="mt-1 text-sm text-green-700">Saved as a new supplier.</p>}
+              {supplierSaved && <p className="mt-1 text-sm text-neutral-700">Saved as a new supplier.</p>}
               {supplierDuplicate && <p className="mt-1 text-sm text-amber-700">Already a supplier — using the existing one.</p>}
             </div>
 

@@ -263,7 +263,7 @@ function InvoicesPage() {
         {hasActiveFilters && (
           <button
             onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterClientId(""); setFilterMinTotal(""); setFilterSearch(""); setFilterStatus(""); setFilterTag(""); }}
-            className="mt-2 text-sm text-blue-600"
+            className="mt-2 text-sm text-neutral-700 underline"
           >
             Clear filters
           </button>
@@ -301,7 +301,7 @@ function InvoicesPage() {
                       </span>
                     )}
                     {(inv.status === "sent" || inv.status === "partial") && (
-                      <button onClick={() => quickMarkPaid(inv)} disabled={marking.includes(inv.id)} className="text-xs font-medium text-blue-600 underline disabled:opacity-50">
+                      <button onClick={() => quickMarkPaid(inv)} disabled={marking.includes(inv.id)} className="text-xs font-medium text-neutral-700 underline disabled:opacity-50">
                         Mark as paid
                       </button>
                     )}
@@ -330,10 +330,10 @@ function InvoicesPage() {
                   )}
                 </div>
                 <div className="flex shrink-0 gap-3">
-                  <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-blue-600">
+                  <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-neutral-700 underline">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
                   </Link>
-                  <button onClick={() => removeInvoice(inv)} className="text-sm text-red-600">Remove</button>
+                  <button onClick={() => removeInvoice(inv)} className="text-sm text-neutral-600">Remove</button>
                 </div>
               </div>
             );

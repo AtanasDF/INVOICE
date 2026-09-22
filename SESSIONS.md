@@ -426,6 +426,18 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   history links to their invoices (`?client=`); `test-first-week` 18/18. The
   Claude/Gemini picker on the scan page shows only on a device where one was chosen,
   and the read line no longer names the engine.
+- **24, neutral greys across the app**: 40 blue links and buttons (dashboard, clients,
+  invoices, receipts, files, VAT, the "+ Add line"s, the quote and invoice pages, the
+  reset page, the price finder, the reminders card) are dark underlined text; the twelve
+  red Remove / Discard / ✕ buttons are grey, the confirm carrying the warning; the blue
+  "emailed receipts waiting" banner is the neutral card; "Saved." and "Sent." are grey.
+  Kept on purpose: the round status and type badges, the amber banners, red alerts,
+  money that is overdue or negative. New suite `test-neutral` (20 pages through the
+  mock, every visible element's computed colour; blue-ish, or red-ish outside those
+  exceptions, fails naming the text): 20/20. **Full harness at 10:40: 86 suites, every
+  one green except `test-review-fixes`, which dies before its first check (0/0) exactly
+  as it did before tonight and is now counted honestly.** The list carries a tick and the
+  commit on each of the 32 items landed since 03:45.
 - **05:43, paused** at Atanas's ask ("start again in two hours and 50 min"): a one-shot
   timer restarts the work at 08:33. Next up: items 14–24 of the second dozen, then the
   rest of `notes/tonight-list.md`.

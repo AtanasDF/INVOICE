@@ -398,19 +398,19 @@ export default function ClientsPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       {phoneLinks(c.phone) && (
-                        <button onClick={() => setTextingId(textingId === c.id ? null : c.id)} className="text-sm font-medium text-blue-600">
+                        <button onClick={() => setTextingId(textingId === c.id ? null : c.id)} className="text-sm font-medium text-neutral-700 underline">
                           {textingId === c.id ? "Close" : "Send a text"}
                         </button>
                       )}
                       {clientInvoices.length > 0 && (
-                        <Link href={`/clients/${c.id}/statement`} className="text-sm font-medium text-blue-600">
+                        <Link href={`/clients/${c.id}/statement`} className="text-sm font-medium text-neutral-700 underline">
                           Statement
                         </Link>
                       )}
                       {clientInvoices.length > 0 && (
                         <button
                           onClick={() => setExpandedClientId(expanded ? null : c.id)}
-                          className="text-sm font-medium text-blue-600"
+                          className="text-sm font-medium text-neutral-700 underline"
                         >
                           {expanded ? "Hide" : "Payment history"}
                         </button>
@@ -420,13 +420,13 @@ export default function ClientsPage() {
                           All invoices
                         </Link>
                       )}
-                      <button onClick={() => startEdit(c)} className="text-sm font-medium text-blue-600">
+                      <button onClick={() => startEdit(c)} className="text-sm font-medium text-neutral-700 underline">
                         Edit
                       </button>
                       <button onClick={() => toggleArchived(c)} className="text-sm font-medium text-neutral-600">
                         {c.archived ? "Unarchive" : "Archive"}
                       </button>
-                      <button onClick={() => removeClient(c)} className="text-sm text-red-600">
+                      <button onClick={() => removeClient(c)} className="text-sm text-neutral-600">
                         Remove
                       </button>
                     </div>

@@ -148,7 +148,7 @@ export default function VatPage() {
               </div>
             ))}
           </dl>
-          <button type="button" onClick={() => setShowLines((v) => !v)} className="mt-3 text-sm font-medium text-blue-600">
+          <button type="button" onClick={() => setShowLines((v) => !v)} className="mt-3 text-sm font-medium text-neutral-700 underline">
             {showLines ? "Hide what's in it" : "What's in it"}
           </button>
           {showLines && (

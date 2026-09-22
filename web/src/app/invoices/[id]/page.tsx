@@ -620,11 +620,11 @@ export default function InvoiceViewPage() {
                     {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                   </select>
                 )}
-                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
+                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600">✕</button>
                 {draftCisRate !== null && <LineKind item={it} onChange={(kind) => updateDraftItem(idx, { kind })} />}
               </div>
             ))}
-            <button onClick={addDraftLine} className="text-sm font-medium text-blue-600">+ Add line</button>
+            <button onClick={addDraftLine} className="text-sm font-medium text-neutral-700 underline">+ Add line</button>
           </div>
 
           <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
@@ -862,7 +862,7 @@ export default function InvoiceViewPage() {
                 setShowPayForm((v) => !v);
                 setPayAmount(amount(amountDue).replace(/,/g, ""));
               }}
-              className="text-sm font-medium text-blue-600"
+              className="text-sm font-medium text-neutral-700 underline"
             >
               {showPayForm ? "Cancel" : "+ Record a payment"}
             </button>
@@ -904,7 +904,7 @@ export default function InvoiceViewPage() {
                   {p.method ? ` · ${PAYMENT_METHOD_LABELS[p.method]}` : ""}
                   {p.note ? ` · ${p.note}` : ""}
                 </span>
-                <button onClick={() => removePayment(p)} className="shrink-0 text-red-600">Remove</button>
+                <button onClick={() => removePayment(p)} className="shrink-0 text-neutral-600">Remove</button>
               </div>
             ))}
             <p className="text-sm font-medium">{amountDue > 0 ? `Still owed: ${money(amountDue)}` : "Paid in full."}</p>
@@ -916,7 +916,7 @@ export default function InvoiceViewPage() {
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Credit notes</h2>
-          <button onClick={() => setShowCnForm((v) => !v)} className="text-sm font-medium text-blue-600">
+          <button onClick={() => setShowCnForm((v) => !v)} className="text-sm font-medium text-neutral-700 underline">
             {showCnForm ? "Cancel" : "+ New credit note"}
           </button>
         </div>
@@ -952,7 +952,7 @@ export default function InvoiceViewPage() {
             {creditNotes.map((c) => (
               <div key={c.id} className="flex items-center justify-between border-b pb-2 text-sm">
                 <span>{shortDate(c.date)} — {money(c.amount)}{c.reason ? ` · ${c.reason}` : ""}</span>
-                <button onClick={() => removeCreditNote(c)} className="text-red-600">Remove</button>
+                <button onClick={() => removeCreditNote(c)} className="text-neutral-600">Remove</button>
               </div>
             ))}
           </div>

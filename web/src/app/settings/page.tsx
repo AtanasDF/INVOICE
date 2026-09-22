@@ -800,7 +800,7 @@ export default function SettingsPage() {
                 {saving ? "Saving…" : "Save"}
               </button>
               {dirty && <span className="text-sm text-neutral-600">Unsaved changes.</span>}
-              {!dirty && saved && !migrationPending && <span className="text-sm text-green-700">Saved.</span>}
+              {!dirty && saved && !migrationPending && <span className="text-sm text-neutral-700">Saved.</span>}
             </div>
           )}
           {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

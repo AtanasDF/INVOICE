@@ -411,12 +411,12 @@ export default function NewReceiptPage() {
                   <option value="">No category</option>
                   {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <button type="button" onClick={() => removeReceiptLine(idx)} aria-label={`Remove item ${idx + 1}`} className="col-span-1 text-red-600">✕</button>
+                <button type="button" onClick={() => removeReceiptLine(idx)} aria-label={`Remove item ${idx + 1}`} className="col-span-1 text-neutral-600">✕</button>
               </div>
             ))}
           </div>
         )}
-        <button type="button" onClick={addReceiptLine} className="text-sm font-medium text-blue-600">
+        <button type="button" onClick={addReceiptLine} className="text-sm font-medium text-neutral-700 underline">
           + Split into multiple items
         </button>
 

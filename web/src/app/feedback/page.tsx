@@ -74,7 +74,7 @@ export default function FeedbackPage() {
           rows={4}
         />
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {sent && <p className="text-sm text-green-700">{sent}</p>}
+        {sent && <p className="text-sm text-neutral-700">{sent}</p>}
         <p role="status" className="sr-only">{sent ?? ""}</p>
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Sending…" : "Send feedback"}

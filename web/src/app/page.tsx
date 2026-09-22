@@ -334,7 +334,7 @@ function Dashboard() {
       )}
 
       {needsReviewCount > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+        <div className="flex items-center justify-between rounded-xl border bg-neutral-50 p-4 text-sm text-neutral-800">
           <span>
             {needsReviewCount} emailed {needsReviewCount === 1 ? "receipt is" : "receipts are"} waiting on review before {needsReviewCount === 1 ? "it counts" : "they count"} toward your totals.
           </span>
@@ -413,13 +413,13 @@ function Dashboard() {
       )}
 
       <div className="flex flex-wrap gap-4">
-        <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
+        <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
           <FolderIcon /> Browse your file library &rarr;
         </Link>
-        <Link href="/recurring" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
+        <Link href="/recurring" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
           <RepeatIcon /> Recurring expenses &rarr;
         </Link>
-        <Link href="/recurring/invoices" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
+        <Link href="/recurring/invoices" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
           <RepeatIcon /> Recurring invoices &rarr;
         </Link>
       </div>
@@ -440,7 +440,7 @@ function Dashboard() {
                   </span>
                   <span className="flex shrink-0 items-center gap-3 whitespace-nowrap">
                     <span className="font-medium">{money((b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)))}</span>
-                    <button onClick={() => markBillPaid(b)} className="font-medium text-blue-600">Mark as paid</button>
+                    <button onClick={() => markBillPaid(b)} className="font-medium text-neutral-700 underline">Mark as paid</button>
                   </span>
                 </div>
               );
@@ -511,7 +511,7 @@ function Dashboard() {
             <div className="text-sm text-neutral-600">VAT on those costs</div>
           </div>
         </div>
-        <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-blue-600">
+        <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-neutral-700 underline">
           View full expense summary &rarr;
         </Link>
       </div>

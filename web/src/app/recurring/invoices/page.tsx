@@ -239,10 +239,10 @@ export default function RecurringInvoicesPage() {
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button type="button" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-red-600">✕</button>
+              <button type="button" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600">✕</button>
             </div>
           ))}
-          <button type="button" onClick={addLine} className="text-sm font-medium text-blue-600">+ Add line</button>
+          <button type="button" onClick={addLine} className="text-sm font-medium text-neutral-700 underline">+ Add line</button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -306,7 +306,7 @@ export default function RecurringInvoicesPage() {
                   <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600">
                     {item.active ? "Pause" : "Resume"}
                   </button>
-                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-red-600">
+                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-neutral-600">
                     Remove
                   </button>
                 </div>

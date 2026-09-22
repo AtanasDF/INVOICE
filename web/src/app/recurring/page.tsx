@@ -253,7 +253,7 @@ export default function RecurringExpensesPage() {
                   <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600">
                     {item.active ? "Pause" : "Resume"}
                   </button>
-                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-red-600">
+                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-neutral-600">
                     Remove
                   </button>
                 </div>

@@ -122,7 +122,7 @@ export default function FilesPage() {
         {hasActiveFilters && (
           <button
             onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterSupplierId(""); }}
-            className="mt-2 text-sm text-blue-600"
+            className="mt-2 text-sm text-neutral-700 underline"
           >
             Clear filters
           </button>
@@ -138,7 +138,7 @@ export default function FilesPage() {
           {hasActiveFilters ? (
             "No files match these filters."
           ) : (
-            <>No scanned or uploaded documents yet. <Link href="/scan" className="text-blue-600 underline">Scan one</Link>.</>
+            <>No scanned or uploaded documents yet. <Link href="/scan" className="text-neutral-700 underline">Scan one</Link>.</>
           )}
         </p>
       ) : (

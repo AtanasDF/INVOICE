@@ -134,7 +134,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
             </button>
             {l.description.trim() && (
               <div className="col-span-12">
-                <button type="button" onClick={() => setFinding(finding === i ? null : i)} aria-expanded={finding === i} className="text-xs font-medium text-blue-600">
+                <button type="button" onClick={() => setFinding(finding === i ? null : i)} aria-expanded={finding === i} className="text-xs font-medium text-neutral-700 underline">
                   {finding === i ? "Close" : "Find it cheaper"}
                 </button>
                 {finding === i && (

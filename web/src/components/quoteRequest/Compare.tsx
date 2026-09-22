@@ -115,7 +115,7 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
                           type="button"
                           onClick={() => setFinding(finding === item.id ? null : item.id)}
                           aria-expanded={finding === item.id}
-                          className="mt-0.5 text-xs font-medium text-blue-600"
+                          className="mt-0.5 text-xs font-medium text-neutral-700 underline"
                         >
                           {finding === item.id ? "Close" : "Find cheaper"}
                         </button>

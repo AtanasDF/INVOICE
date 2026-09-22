@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
         <p className="text-neutral-600">
           This password reset link is invalid or has expired. Request a new one from the sign-in page.
         </p>
-        <button onClick={() => router.push("/login")} className="text-sm font-medium text-blue-600">
+        <button onClick={() => router.push("/login")} className="text-sm font-medium text-neutral-700 underline">
           Back to sign in
         </button>
       </div>

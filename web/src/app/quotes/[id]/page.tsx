@@ -134,7 +134,7 @@ export default function QuotePage() {
       <div className="space-y-2">
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <p className="text-sm text-neutral-600">Quote not found.</p>
-        <Link href="/quotes" className="text-sm font-medium text-blue-600">Back to quotes</Link>
+        <Link href="/quotes" className="text-sm font-medium text-neutral-700 underline">Back to quotes</Link>
       </div>
     );
   }
@@ -446,7 +446,7 @@ export default function QuotePage() {
           invoiceId ? (
             <p className="text-sm text-neutral-700">
               Turned into an invoice.{" "}
-              <Link href={`/invoices/${invoiceId}`} className="font-medium text-blue-600">Open the invoice</Link>
+              <Link href={`/invoices/${invoiceId}`} className="font-medium text-neutral-700 underline">Open the invoice</Link>
             </p>
           ) : (
             <div className="space-y-3 text-sm text-neutral-700">
@@ -513,7 +513,7 @@ export default function QuotePage() {
         {depositInvoice && (
           <p className="mt-3 border-t pt-3 text-sm text-neutral-700">
             Deposit invoiced ({depositInvoice.status === "draft" ? "draft, not sent yet" : depositInvoice.status}).{" "}
-            <Link href={`/invoices/${depositInvoice.id}`} className="font-medium text-blue-600">Open the deposit invoice</Link>
+            <Link href={`/invoices/${depositInvoice.id}`} className="font-medium text-neutral-700 underline">Open the deposit invoice</Link>
           </p>
         )}
         {q.depositClaimed && !depositInvoice && depositOrphan === null && (

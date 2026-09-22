@@ -536,7 +536,7 @@ export default function ReceiptsPage() {
         {hasActiveFilters && (
           <button
             onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); setFilterTag(""); setFilterType(""); setFilterBill(""); }}
-            className="mt-2 text-sm text-blue-600"
+            className="mt-2 text-sm text-neutral-700 underline"
           >
             Clear filters
           </button>
@@ -721,7 +721,7 @@ export default function ReceiptsPage() {
                 </button>
                 <div className="flex items-center gap-3">
                   {isInvoice && !r.paid && !r.needsReview && (
-                    <button onClick={() => markPaid(r)} className="font-medium text-blue-600">Mark as paid</button>
+                    <button onClick={() => markPaid(r)} className="font-medium text-neutral-700 underline">Mark as paid</button>
                   )}
                   <button
                     onClick={() => toggleStar(r)}
@@ -730,8 +730,8 @@ export default function ReceiptsPage() {
                   >
                     ★
                   </button>
-                  <button onClick={() => startEditReceipt(r)} className="font-medium text-blue-600">Edit</button>
-                  <button onClick={() => removeReceipt(r)} className="text-red-600">Remove</button>
+                  <button onClick={() => startEditReceipt(r)} className="font-medium text-neutral-700 underline">Edit</button>
+                  <button onClick={() => removeReceipt(r)} className="text-neutral-600">Remove</button>
                 </div>
               </div>
               {detailsOpen && (

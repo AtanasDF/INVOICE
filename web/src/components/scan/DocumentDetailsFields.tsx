@@ -55,7 +55,7 @@ export default function DocumentDetailsFields({ details, onChange }: {
       <button
         type="button"
         onClick={() => onChange({ ...details, other: [...other, { label: "", value: "" }] })}
-        className="text-sm font-medium text-blue-600"
+        className="text-sm font-medium text-neutral-700 underline"
       >
         + Add a detail
       </button>

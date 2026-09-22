@@ -165,7 +165,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
               <ul className="mt-1 space-y-1">
                 {guide.cheaper.map((c, i) => (
                   <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-                    <a href={webSearch(`${c.what} price UK`)} target="_blank" rel="noreferrer noopener" className="font-medium text-blue-600">
+                    <a href={webSearch(`${c.what} price UK`)} target="_blank" rel="noreferrer noopener" className="font-medium text-neutral-700 underline">
                       {c.what}
                     </a>
                     <span className="text-xs text-neutral-600">{c.why}</span>
