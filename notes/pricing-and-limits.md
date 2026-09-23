@@ -29,9 +29,20 @@ file is the thinking behind the numbers when it comes.
 - Earlier the same night: free at first even at a little cost, a small charge for extra
   storage, then real money when the whole paid app launches.
 
-## The maths behind it
+## What it actually costs (real numbers, not estimates)
 
-Estimates, to be checked against the first real bills — no month of live billing exists yet.
+- **Vercel Pro: £19 a month**, charged 2026-09-23, plus about £2 for the part-month from
+  the day of upgrading (they bill pro rata for the days left in the cycle). $20 + VAT. The
+  plan carries $20 of included usage credit, so bandwidth and functions come out of that
+  before anything extra is charged. He is on Pro because their free plan forbids commercial
+  use — it is a licence question, not a limits one.
+- Supabase: still free. Resend: still free (3,000 emails a month). Gemini: pennies.
+- So the fixed bill today is **£19**, rising to about £39 when Supabase's free limits go.
+  Against his £100 ceiling that leaves real room for flyers.
+
+## The maths behind the limits
+
+Estimates, to be checked against the first real bills — no month of live scanning exists yet.
 
 - **Scanning is cheap.** Gemini flash-lite on one document is a fraction of a penny. Ten a
   day, every day, spent in full, is pennies a month per person; the real average will be a
