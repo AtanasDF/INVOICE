@@ -1,5 +1,8 @@
 # Invoicer — working notes for Claude Code
 
+**New chat, new account or new machine: read `notes/handover.md` first.** It says where
+things stand, what is half-finished, and what is waiting on Atanas.
+
 Invoice and expense tracker for a UK freelancer (Atanas, GitHub AtanasDF). The data in
 it is his real accounting record. Read this file before doing anything. Two accounts
 matter: **`fragov@hidefield.co.uk` (Hidefield) is his real record; `atanaschoo@gmail.com`
