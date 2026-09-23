@@ -146,3 +146,22 @@ BASE=http://localhost:3000 node test-convert.mjs
 and only then go looking. `JOBS=1` does the whole run serially if several are
 flaking at once. A genuine failure names a check; these name a frame or a
 timeout and take the whole suite down with them.
+
+
+## Don't wait on `pgrep -f run-all.sh`
+
+A shell that waits with
+
+```
+until ! pgrep -f run-all.sh >/dev/null; do sleep 20; done
+```
+
+**never exits**, because its own command line contains the string `run-all.sh`, so pgrep
+matches the waiter itself. On 2026-09-23 three of these sat spinning long after the run
+had finished, and the run looked stuck when it had been done for some time.
+
+Wait on the output instead, which is written only at the end:
+
+```
+until [ -s /tmp/harness.log ]; do sleep 20; done
+```

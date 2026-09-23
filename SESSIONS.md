@@ -116,6 +116,20 @@ checks **proved to fail first** (18/20 and 28/30 with the guards removed and reb
 Their routes, by contrast, are the best-worded code in the project — every refusal a
 written sentence. The one gap was the PDF button, relaying pdf-lib's words to a customer.
 
+Two findings came out of looking for a suite to pin the payment fix with. First, the fix
+itself: the invoice page guarded both of its payment writes on **state**, which the second
+of two presses in one tick reads before React has re-rendered — so both wrote, and an
+invoice could be **paid twice in a real accounting record**. Second, `run-all.sh` lists its
+suites by hand and **14 harness-shaped suites had never been added**: written before
+run-all.sh existed, each against a hand-built server on its own port, though every one of
+them takes `$BASE`. Four are green and are back in the run (**83 checks**); the rest are
+stale rather than failing and are listed in `notes/queue.md` as needing a rewrite or a
+deletion, since a suite that looks like coverage and is not is worse than none.
+
+Two hours of apparent stuckness were my own: a waiter written as
+`until ! pgrep -f run-all.sh` never exits, because its own command line contains
+`run-all.sh` and pgrep matches the waiter. Wait on the log file instead.
+
 **Ended at 116 suites, 2,063 checks, 0 failures.** Three suites first came back not-green
 and were not: `Attempted to use detached Frame` and `Waiting failed: 20000ms exceeded` are
 the four-at-a-time load, and alone they were 20/20, 15/15 and 25/25. That tell is now in
