@@ -110,6 +110,32 @@ Atanas, 2026-09-23 02:4x: "not too many users from the same ip registered in the
 for a week or more time if needed like a month", and "think of other options to protect
 from people who are abusing it".
 
+### Settled 2026-09-23: a weekly cap per address is the wrong tool, and would hurt him most
+
+Looked at properly, and the recommendation is **not to build it**. Three findings:
+
+1. **Supabase already limits it.** Authentication → Rate Limits has "Rate limit for sign-ups
+   and sign-ins", set to **30 an hour per IP address**, with IP forwarding on so it sees the
+   real address through Vercel rather than Vercel's own. That is the mechanism, and it
+   exists.
+2. **A per-week cap cannot be built without making things worse.** Sign-up goes straight
+   from the browser to Supabase; our server never sees it. Adding a weekly cap would mean
+   routing sign-up through our own route, which means handling people's passwords on our
+   server — a real reduction in security bought for a protection we do not need.
+3. **And it would fall hardest on his own customers.** The whole plan is depots: rooms full
+   of self-employed drivers, on one wifi, telling each other about it. That is dozens of
+   real accounts from a single address in a single week — exactly the pattern a weekly cap
+   is designed to stop. The flyer campaign and the abuse look identical from the outside.
+
+So the address limit stays as Supabase's hourly one, **and should not be lowered**. The
+real protection is the other three, all of which are now built: the people-check on sign-up,
+the confirmation email, and the refusal of throwaway inboxes. Between them an attacker needs
+a fresh person, a real inbox and a new address for every account — while a driver at a depot
+is not inconvenienced at all.
+
+(Kept below: the original thinking, which is still right about *how* to behave if a limit is
+ever reached.)
+
 **A limit per address, with its eyes open.** One internet address is not one person: a
 building site, a café, an office, a whole block of flats and most phone networks put
 hundreds of people behind one. A hard limit of one or two accounts a week would quietly
