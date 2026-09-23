@@ -847,6 +847,11 @@ export type BusinessProfile = {
   // What the account is for. Null until it's chosen, and today it only
   // decides whether the address is "Business address" or "Your address".
   accountKind: AccountKind | null;
+  // "free" or "paid" (migration-036). Only Atanas can change it, by hand in
+  // SQL: nothing sells a paid plan yet, and a switch the app could flip would
+  // be a switch anyone could flip. Read `?? "free"` so the app works against a
+  // database where 036 has not been run.
+  plan: "free" | "paid";
   vatNumber: string;
   address: string;
   logoUrl: string | null;
@@ -893,6 +898,8 @@ type BusinessProfileRow = {
   registered_name?: string | null;
   company_number?: string | null;
   account_kind?: AccountKind | null;
+  // migration-036; absent from the row until it has been run
+  plan?: string | null;
   vat_number: string | null;
   address: string | null;
   logo_url: string | null;
@@ -917,6 +924,7 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     registeredName: r.registered_name ?? "",
     companyNumber: r.company_number ?? "",
     accountKind: r.account_kind ?? null,
+    plan: r.plan === "paid" ? "paid" : "free",
     vatNumber: r.vat_number ?? "",
     address: r.address ?? "",
     logoUrl: r.logo_url,
@@ -938,7 +946,12 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
   };
 }
 
+// Everything about the business that the app may write. `plan` is the one
+// thing it may only read.
+export type SavableBusinessProfile = Omit<BusinessProfile, "plan">;
+
 const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
+  plan: "free",
   businessName: "",
   registeredName: "",
   companyNumber: "",
@@ -969,7 +982,13 @@ export const businessProfileStore = {
   },
   // False when the trading/registered name split couldn't be written
   // because migration-029 hasn't been run yet -- everything else saved.
-  async save(input: BusinessProfile): Promise<boolean> {
+  //
+  // `plan` is deliberately not accepted: it is Atanas's switch, set by hand in
+  // SQL, and a save path that took it would be a way for any account to make
+  // itself paid. The type is what stops it, rather than a comment asking
+  // nicely -- the database refuses it too, but by then the intent is already
+  // wrong.
+  async save(input: SavableBusinessProfile): Promise<boolean> {
     const user_id = await currentUserId();
     const row = {
       user_id,

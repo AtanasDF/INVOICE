@@ -95,6 +95,36 @@ try {
   t = await openScan();
   check("a new account's bigger allowance is not nagged about either", !/more documents today/i.test(t), t.slice(0, 300));
 
+  // --- Settings says plainly what the account allows ---
+  const openSettings = async () => {
+    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+    await sleep(1400);
+    return bodyText(page);
+  };
+
+  db.allowance = allowance({ usedToday: 12, usedThisMonth: 240 });
+  let st = await openSettings();
+  check("Settings says what a free account allows", /What your account allows/.test(st) && /50 documents a day/.test(st) && /600 in a month/.test(st), st.slice(0, 600));
+  check("...and what it has used, today and this month", /12 of 50/.test(st) && /240 of 600/.test(st), st.slice(0, 700));
+  check("...and that copying and writing by hand never count", /never count/i.test(st), st.slice(0, 700));
+  check("...and that the extra 600 is there if needed", /another 600 once, free/i.test(st), st.slice(0, 800));
+
+  db.allowance = allowance({ usedToday: 12, usedThisMonth: 900, topUpUsed: true, topUpAvailable: false, monthLimit: 1200 });
+  st = await openSettings();
+  check("once the extra is used it says when it comes back", /already had your extra 600/i.test(st) && /starts again on the 1st/i.test(st), st.slice(0, 800));
+
+  db.allowance = allowance({ welcome: true, dayLimit: 300, monthLimit: null, usedToday: 40 });
+  st = await openSettings();
+  check("a new account is told about its bigger first week", /bigger allowance for your first week/i.test(st) && /300 documents a day/.test(st), st.slice(0, 700));
+
+  db.allowance = allowance({ plan: "paid", dayLimit: null, monthLimit: null, usedToday: 900 });
+  st = await openSettings();
+  check("a paid account is told it has no limit, and shown no meter", /no limit on what you can photograph/i.test(st) && !/of 50|of 600/.test(st), st.slice(0, 600));
+
+  db.allowance = null;
+  st = await openSettings();
+  check("with no allowance to read, Settings says nothing about plans at all", !/What your account allows/.test(st), st.slice(0, 400));
+
   // --- before the migration was run, this function did not exist ---
   db.allowance = null;
   t = await openScan();

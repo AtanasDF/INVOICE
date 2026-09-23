@@ -32,6 +32,7 @@ import CompanyNumberInput from "@/components/CompanyNumberInput";
 import AddressFields from "@/components/AddressFields";
 import ThemePicker from "@/components/ThemePicker";
 import GetTheApp from "@/components/GetTheApp";
+import { PlanCard } from "@/components/ScansLeft";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -900,6 +901,8 @@ export default function SettingsPage() {
           )}
         </div>
       </form>
+
+      <PlanCard />
 
       <ThemePicker />
 
