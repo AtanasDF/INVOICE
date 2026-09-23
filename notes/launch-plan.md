@@ -63,6 +63,23 @@ Doing these early is what buys the testing week.
   a day, no dependencies, and it is the difference between an icon on the home screen and a
   forgotten tab. This is also the honest answer to "how is it downloaded" before the stores
   exist.
+- **Colour, and a theme people can choose** (his ask, 2026-09-23 03:3x): "we need to make
+  the app a bit more colourful... we can put options so you can change the themes, depends
+  how you like it, which colour. Nothing too special." The app is deliberately neutral greys
+  today (`CLAUDE.md`, House style), so this is a change to that rule, not a slip from it.
+  The cheap and safe way: the colours already live as CSS variables, so a handful of themes
+  is a variable set each plus a picker in Settings remembered per device. Dark mode falls
+  out of the same work. **The house-style rule in `CLAUDE.md` must be rewritten when this
+  lands**, or the next session will keep building grey.
+- **The front door: fewer words, more picture.** "The login page, less explanation... some
+  nice pictures, some invoices, some other shit." It currently carries a headline, five
+  lines of what it does, a line about saving formats and the sign-in card. Cut the
+  explaining, show the thing working. Ties into item 28, the front-page picture.
+- **Invite a friend**, both sides rewarded — see `notes/promotion.md`. The reward must land
+  only after the invited person confirms their email *and* scans something, or it becomes a
+  machine for making fake accounts.
+- **A printable set of fake documents to scan** — see `notes/test-documents.md`. Nothing
+  depends on it, and it is the first honest test the scanner will ever have had.
 - **A privacy policy and terms page.** Needed before any advertising, easy to forget, and
   nothing else depends on it.
 
@@ -71,8 +88,9 @@ Doing these early is what buys the testing week.
 - Run the migration with him, verify it as rule 3 says, turn the limits on.
 - The top-up button and the wording around it.
 - Stripe live, the paid tier switchable.
-- Promotion decided: the Instagram page, and the free-invoice page made to rank for what
-  people actually search ("free invoice template UK"). The advertising share of the £100.
+- Promotion: the flyers and the depots (`notes/promotion.md`), a QR code per place so he
+  can tell which depot worked, the Instagram page, and the free-invoice page made to rank
+  for "free invoice template UK". The advertising share of the £100.
 
 ## Week 3 — testing only
 
@@ -80,6 +98,16 @@ Doing these early is what buys the testing week.
   paid flow, a real sign-up from a real phone on mobile data.
 - A handful of real tradesmen using it before a penny is spent on advertising.
 - The full harness green, and a live pass over every page signed out.
+
+## Payments — to design with him tomorrow
+
+He wants the paid side planned from the beginning even though nothing is charged yet:
+"make a plan for the payments, and we're going to discuss tomorrow." The questions that
+need his answer before anything is built: what the paid tier costs a month; whether there
+is a yearly price; whether extra scans are sold separately or only as part of the tier;
+what happens to someone's photos if they stop paying (they must not be deleted — rule 1);
+and whether the invite bonus is paid time or scans. Stripe is the mechanism; the decision
+is his.
 
 ## Decisions still owed
 
