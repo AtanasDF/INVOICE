@@ -25,12 +25,29 @@ try {
   check("a stranger stays on the front door", page.url() === `${BASE}/`, page.url());
   check("the headline says what it is for", text.includes("Invoices, receipts and what you're owed, in one place."), text.slice(0, 200));
   check("...and that an account is free and quick", text.includes("Make an account and it's all yours. Free, and it takes a minute."), text.slice(0, 300));
+  // Three lines, not six (Atanas, 2026-09-23: "the login page, less
+  // explanation... some nice pictures, some invoices"). The picture carries
+  // what the sentences used to.
   check(
-    "five short lines say what it does",
-    ["Make an invoice or a quote", "Photograph a receipt or a bill", "Check a company", "Copy any paper", "See what you're owed"].every((l) => text.includes(l)),
+    "three short lines say what it does",
+    ["Photograph a bill", "Make an invoice", "See what you're owed"].every((l) => text.includes(l)),
     text.slice(0, 600)
   );
-  check("and what you can save it as", text.includes("as a PDF, a picture, a Word file or a spreadsheet"), text.slice(0, 700));
+  check("no more than three, so it stays a door and not a brochure", (await page.evaluate(() => document.querySelectorAll("main ul li").length)) === 3);
+  check("there is a picture of the paper, and it is described for a screen reader",
+    await page.evaluate(() => {
+      const svg = document.querySelector('main svg[role="img"]');
+      return !!svg && /invoice/i.test(svg.getAttribute("aria-label") || "") && svg.getBoundingClientRect().width > 120;
+    }));
+
+  // On a phone the box people came for must not be buried under the reading.
+  const order = await page.evaluate(() => {
+    const card = document.querySelector('main form') || document.querySelector('[role="tab"]');
+    const list = document.querySelector("main ul");
+    const top = (el) => el.getBoundingClientRect().top + window.scrollY;
+    return { card: top(card), list: top(list), height: document.documentElement.scrollHeight };
+  });
+  check("the sign-in box comes before the reading on a phone", order.card < order.list, JSON.stringify(order));
 
   // The boxes themselves.
   const box = await page.evaluate(() => {
@@ -80,7 +97,11 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(900);
   const home = await bodyText(page);
-  check("signed in, the root is the dashboard with the tools on it", /Dashboard/.test(home) && home.includes("Make an invoice") && home.includes("Copy a document") && home.includes("Check a company") && !home.includes("Make an account"), home.slice(0, 300));
+  check(
+    "signed in, the root is the dashboard, built round the scanner",
+    /Dashboard/.test(home) && home.includes("Scan a receipt or bill") && home.includes("Create an invoice") && home.includes("Copy a document") && !home.includes("Make an account"),
+    home.slice(0, 400)
+  );
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);
