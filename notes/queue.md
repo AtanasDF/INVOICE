@@ -88,7 +88,8 @@ page. Ask him: which screen, and a phone or a trackpad?
 
 26. ~~**[his]** Turnstile keys~~ **done 2026-09-23: live and verified in a real browser.**
     Invisible to honest people — he signed in from a private window and saw nothing at all.
-27. **[his]** Companies House key — the company lookup and the company check are dead without it.
+27. ~~**[his]** Companies House key~~ **done and verified 2026-09-23** — real companies come
+    back from the live register, and the full company check reads the real record.
 28. **[his]** A trading name and address for the privacy and terms pages. Required before
     advertising, and not something to invent.
 29. **[his]** The "free invoice template UK" question: leave it, reopen the free page, or

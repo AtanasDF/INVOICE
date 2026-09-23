@@ -484,8 +484,13 @@ overrides the former. `/api/send-invoice` is signed-in only by design (an open r
 an invoice-fraud relay); the PDF is made in the browser (`src/lib/invoicePdf.ts`).
 Gemini billing is a Google AI Studio prepaid balance on billing account
 `015649-CDA16A-FCF373`.
-`COMPANIES_HOUSE_API_KEY` (not set yet; Atanas registers at the Companies House Developer
-Hub, creates a Live application and a REST API key) switches on the company name lookup
+`COMPANIES_HOUSE_API_KEY` **set 2026-09-23 and verified live** (Developer Hub application
+"Invoiceover", **Live** environment, a **REST** key called "Invoiceover server", 36
+characters; the lookups are made server-side so no JavaScript domain is needed). Searching
+"greggs" returns real companies and `/api/company-check?number=00502851` returns the real
+record. A 401 from Companies House surfaces as `{busy:true}` and a 503, with the real status
+in the server log — the first paste of the key was wrong and that is how it showed up. It
+switches on the company name lookup
 (`/api/company-search`, `CompanyNameInput`): Free page business/customer, client forms,
 Settings. Without it those fields are plain inputs and nothing mentions the lookup. The
 same key switches on the free company check (`/check-company`, `/api/company-check`):
