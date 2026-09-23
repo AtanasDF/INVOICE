@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { claimTopUp, topUpOffered } from "@/lib/scanAllowance";
 
 // The wall, when someone meets it. Shown in place of the usual red error line,
@@ -11,17 +11,26 @@ import { claimTopUp, topUpOffered } from "@/lib/scanAllowance";
 // has and let it decide.
 export default function ScanLimitNotice({ error, onTopUp }: { error: unknown; onTopUp?: () => void }) {
   const [state, setState] = useState<"idle" | "asking" | "done" | "failed" | "already">("idle");
+  // Two presses in one tick both reach this handler: `disabled` only lands on
+  // the render after the first press, and both closures read the same `state`.
+  // Unguarded, the second claim comes back "already", so the screen tells
+  // somebody they have had their extra 600 one beat after granting it.
+  const asking = useRef(false);
   if (!topUpOffered(error)) return null;
 
   const message = error instanceof Error ? error.message : String(error ?? "");
 
   async function ask() {
+    if (asking.current) return;
+    asking.current = true;
     setState("asking");
     const r = await claimTopUp();
     if (r.granted) {
       setState("done");
       onTopUp?.();
     } else {
+      // Only a real failure is worth another press.
+      asking.current = false;
       setState(r.reason === "already" ? "already" : "failed");
     }
   }

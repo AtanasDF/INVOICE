@@ -72,9 +72,32 @@ try {
   check("...with a button to ask for it", button);
   check("...and says it costs nothing", /costs you nothing/i.test(t), t.slice(0, 600));
 
-  // Pressing it grants once.
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Give me another 600/i.test(b.textContent))?.click());
+  // Pressed twice, which is what a slow phone gets: the button is disabled
+  // while it asks, but React only disables it on the re-render AFTER the first
+  // press, so two presses in the same tick both get through to the handler.
+  // The claim itself is once-a-month in the database, so the worst case is not
+  // two allowances -- it is being told "you have already had the extra" one
+  // beat after being told "here is your extra", which reads as having been
+  // refused something that was just granted.
+  await page.evaluate(() => {
+    window.__claims = 0;
+    const real = window.fetch;
+    window.fetch = (input, init) => {
+      const url = typeof input === "string" ? input : input?.url ?? "";
+      if (url.includes("claim_scan_topup")) window.__claims++;
+      return real(input, init);
+    };
+  });
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((x) => /Give me another 600/i.test(x.textContent));
+    b?.click();
+    b?.click();
+  });
   await sleep(2500);
+  const claims = await page.evaluate(() => window.__claims);
+  check("pressing the top-up twice only asks the database once", claims === 1, `${claims} calls`);
+  const after = await bodyText(page);
+  check("...and does not tell somebody they have already had what they just got", !/already had the extra/i.test(after), after.slice(0, 400));
   t = await bodyText(page);
   // A blank page would pass the "button is gone" check below for the wrong
   // reason, so say plainly what happened instead.
