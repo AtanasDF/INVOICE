@@ -38,7 +38,9 @@ as they land.
     `test-free-quote` is stale. `test-address-signed` is **obsolete and safe to delete** —
     it waits for the old address finder that no longer exists. `test-quote-requests` fails
     on module resolution, not the UI. All reasons written into `notes/queue.md` item 43.
-11. `test-quotes` is 6/8 on stale selectors — still to do.
+11. **[done]** `test-quotes` went 6/8 → **34/34** and is in the run. It was never two
+    broken checks: `select[0]` is the VAT-rate picker since the rebuild, so the client was
+    never picked and every step after it set the wrong field and then died.
 
 ## D. Tidy
 

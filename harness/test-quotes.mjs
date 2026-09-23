@@ -45,8 +45,16 @@ try {
   await waitText(page, "Quote number");
   const number = await page.evaluate(() => [...document.querySelectorAll("input")].find((i) => i.previousElementSibling?.textContent === "Quote number")?.value);
   check("first number is Q-0001", number === "Q-0001", number);
-  const options = await page.evaluate(() => [...document.querySelectorAll("select")[0].options].map((o) => o.textContent));
-  check("only live clients offered (no archived, no suppliers)", JSON.stringify(options) === JSON.stringify(["Pick a client…", "Jane Customer"]), JSON.stringify(options));
+  // The client picker is CustomerPicker now -- a radiogroup you search, not a
+  // <select>. This used to read `select[0]`, which since the rebuild is the
+  // VAT-rate picker, so it was reporting the VAT rates as the client list and
+  // every later step set the wrong field.
+  const options = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="radio"]')].map((r) => r.innerText.split("\n")[0].trim()).filter(Boolean));
+  // A supplier IS offered on purpose -- "quotes can go to any client or
+  // supplier" -- so the old expectation of clients-only was the out-of-date
+  // half, not the app. What must never appear is somebody archived.
+  check("live clients and suppliers offered, nobody archived", options.includes("Jane Customer") && options.includes("Supplier Co") && !options.includes("Old Client"), JSON.stringify(options));
   const validUntil = await page.evaluate(() => document.querySelectorAll('input[type="date"]')[1].value);
   check("valid until defaults to 30 days", validUntil === plus(30), validUntil);
   check("form fits 375px", await noHScroll(page));
@@ -56,7 +64,8 @@ try {
   await waitText(page, "Pick who the quote is for.");
   check("save without client is refused", db.tables.quotes.length === 0);
 
-  await setField(page, "select", C1, 0);
+  await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((r) => r.innerText.includes("Jane Customer"))?.click());
+  await sleep(300);
   await setField(page, 'input[placeholder="What the work or item is"]', "Skim coat kitchen", 0);
   await setField(page, 'input[aria-label="Quantity"]', "2", 0);
   await setField(page, 'input[aria-label="Unit price"]', "150.50", 0);
@@ -162,7 +171,8 @@ try {
   await waitText(page, "Quote number");
   const n5 = await page.evaluate(() => [...document.querySelectorAll("input")].find((i) => i.previousElementSibling?.textContent === "Quote number")?.value);
   check("next number follows the highest", n5 === "Q-0005", n5);
-  await setField(page, "select", C1, 0);
+  await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((r) => r.innerText.includes("Jane Customer"))?.click());
+  await sleep(300);
   await setField(page, 'input[placeholder="What the work or item is"]', "x", 0);
   await setField(page, 'input[aria-label="Unit price"]', "5", 0);
   const numIdx = await page.evaluate(() => [...document.querySelectorAll("input")].findIndex((i) => i.previousElementSibling?.textContent === "Quote number"));
