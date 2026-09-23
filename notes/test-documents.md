@@ -39,6 +39,23 @@ just that it failed, and that list is what the next scanner work is built from.
 - **A statement, not an invoice** — which the reader should *refuse* to file as a bill
 - **Dates that fight** — 03/04/2026 (day-first, UK), a US-style date, a date with no year
 
+## Built 2026-09-23 — 102 documents
+
+`harness/gen-test-documents.mjs` makes them: `documents.pdf` (60 A4 pages, print it),
+`expected.json` (what a correct reading looks like, keyed by the id printed at the foot of
+every sheet) and `index.md` (the table of what each one is and what makes it hard). The PDF
+and its HTML are gitignored — they regenerate in seconds — while the key and the index are
+kept, because they are what gets read and annotated.
+
+Sizes are the real ones: a till receipt is 80mm wide and a parking ticket 62mm, because
+that narrowness is half of what makes them hard. Small ones are laid several to a page with
+dashed lines to cut along; A4 documents get a page each.
+
+**A bug worth remembering:** the first run printed every VAT figure a hundred times too
+large, on the sheets as well as in the answer key, from a missing division inside `vatOf`.
+It was caught by reading the key rather than by any test. If this generator grows, check
+that net + VAT equals the total for every document before printing anything.
+
 ## How they get made
 
 The harness already generates synthetic camera clips (`harness/gen-*.py`), so the same
