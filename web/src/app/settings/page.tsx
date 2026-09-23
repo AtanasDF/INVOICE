@@ -33,6 +33,7 @@ import AddressFields from "@/components/AddressFields";
 import ThemePicker from "@/components/ThemePicker";
 import GetTheApp from "@/components/GetTheApp";
 import { PlanCard } from "@/components/ScansLeft";
+import InviteCard from "@/components/InviteCard";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -903,6 +904,8 @@ export default function SettingsPage() {
       </form>
 
       <PlanCard />
+
+      <InviteCard />
 
       <ThemePicker />
 

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { saveFailed } from "@/lib/errorText";
 import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 import { readSource } from "@/lib/source";
+import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites";
 import Turnstile, { turnstileOn } from "@/components/Turnstile";
 
 // One box for signing in and one for making an account, with the choice
@@ -185,6 +186,17 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
           options: { ...confirmTo(), ...(cameFrom ? { data: { came_from: cameFrom } } : {}), ...(captchaToken ? { captchaToken } : {}) },
         });
         if (error) throw error;
+        // A friend's code, recorded now that there is an account to record it
+        // against. It pays nothing here: the bonus comes when they actually
+        // read a document, which is what stops this being a way to make
+        // accounts for money.
+        if (invitesOn() && data.session) {
+          const code = readInvite();
+          if (code) {
+            const r = await claimInvite(code);
+            if (r.claimed || r.reason === "already" || r.reason === "self") forgetInvite();
+          }
+        }
         if (!data.session) {
           setPendingEmail(formEmail);
           go("check-email");

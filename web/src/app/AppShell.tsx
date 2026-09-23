@@ -10,6 +10,7 @@ import { useWakeLock } from "@/lib/wakeLock";
 import PaidCelebration from "@/components/PaidCelebration";
 import { SITE_NAME } from "@/lib/siteName";
 import { rememberSource } from "@/lib/source";
+import { rememberInvite } from "@/lib/invites";
 
 type Group = { label: string; links: [string, string][] };
 
@@ -205,6 +206,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   // make an account the query string is long gone.
   useEffect(() => {
     rememberSource(window.location.search);
+    rememberInvite(window.location.search);
   }, [pathname]);
   const router = useRouter();
   const isLoginPage = pathname === "/login";

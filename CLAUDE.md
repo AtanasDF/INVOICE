@@ -72,7 +72,10 @@ can show the same thing (details in `notes/claude-notes.md`).
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **The app still
    does nothing with any of it until `SCAN_LIMITS=on` in Vercel.** Applied and verified up
-   to 036. (028 created two new tables,
+   to **037** (invite a friend: `invite_codes`, `invite_claims`, `scan_bonuses`, and
+   `my_invite_code` / `claim_invite` / `reward_invite_if_due`, with `take_scans` and
+   `scan_allowance` redefined to count bonuses; 037 needed no backup, altering no existing
+   table, and says so in its header). (028 created two new tables,
    so it needed no backup; 029 added the registered name,
    company number and account kind to business_profile; 030 added clients.company_number;
    031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
@@ -471,7 +474,9 @@ challenge — it renders, then sits pending for ever with no error. That is the 
 not the app. An hour was lost to diagnosing a hostname problem that did not exist; the
 Cloudflare API showed the config had been right all along, and a real Chrome solved it
 first time. Verify this one in a real browser, or not at all.
-`SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
+`NEXT_PUBLIC_INVITES` (not set: invite-a-friend renders nothing, asks for no code and
+claims nothing without it, so it ships changing nothing. migration-037 is already applied,
+so turning it on is one env var). `SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
 **do nothing** until it is `on`, which must wait for migration-036 to be run).
 `RESEND_API_BASE` is only for the harness's stand-in. `vercel env ls
 production` from `web/` lists the names without values.
