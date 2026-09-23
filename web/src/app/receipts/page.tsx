@@ -678,14 +678,24 @@ export default function ReceiptsPage() {
             ) : (
             <div key={r.id} className="rounded-xl border bg-white p-3 text-neutral-900 shadow-sm">
               <div className="flex gap-3">
-                {r.imageDataUrl && (
+                {r.imageDataUrl ? (
                   isPdfDataUrl(r.imageDataUrl) ? (
                     <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-neutral-500"><DocumentIcon className="h-6 w-6" /></div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.imageDataUrl} alt="" className="h-12 w-12 flex-shrink-0 rounded object-cover" />
                   )
-                )}
+                ) : r.details?.photoAgedAt ? (
+                  // The photograph was emailed to them and cleared. Saying so
+                  // is the whole point: an empty frame would read as "your
+                  // receipt is gone", when the receipt is exactly where it was.
+                  <div
+                    title={`The photograph was emailed to you on ${shortDate(r.details.photoAgedAt, today)}. The receipt itself is still here.`}
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-center text-[9px] leading-tight text-neutral-500"
+                  >
+                    Emailed to you
+                  </div>
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium">

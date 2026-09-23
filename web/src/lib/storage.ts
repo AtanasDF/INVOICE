@@ -69,9 +69,15 @@ export type DocumentDetails = {
   // A mileage claim's trip (see src/lib/mileage.ts): never read off a
   // document, so it isn't one of the scanned details.
   mileage?: { miles: number; from: string; to: string; vehicle: string; rate: number; purpose: string };
+  // The day the photograph was emailed to the owner and cleared, to keep the
+  // app affordable (notes/ageing-photos-design.md). Never read off a document
+  // either: the record -- who, when, how much, how much VAT -- is untouched and
+  // stays for ever, and the app says the picture was emailed rather than
+  // showing an empty frame.
+  photoAgedAt?: string;
 };
 
-export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage">, string> = {
+export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage" | "photoAgedAt">, string> = {
   accountNumber: "Account number",
   sortCode: "Sort code",
   iban: "IBAN",

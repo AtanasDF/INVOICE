@@ -144,6 +144,11 @@ export default function FilesPage() {
 
   const hasActiveFilters = filterFrom || filterTo || filterSupplierId;
 
+  // A photograph we emailed away and cleared leaves no tile, which on its own
+  // reads as "my receipts have gone". They have not: say so here, where the
+  // gap is, rather than leaving someone to work it out.
+  const emailed = useMemo(() => receipts.filter((r) => r.details?.photoAgedAt).length, [receipts]);
+
   const previewTotalPages = preview ? 1 + (pageCounts.get(preview.id) ?? 0) : 1;
   const loadedPages = preview && previewPages?.receiptId === preview.id ? previewPages.pages : [];
   const previewSrc = preview ? (previewIndex === 0 ? preview.imageDataUrl : loadedPages[previewIndex - 1]?.imageDataUrl ?? null) : null;
@@ -159,6 +164,12 @@ export default function FilesPage() {
         <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place.</p>
       </div>
       <Tip id="files-how">How it works: every photo and file you have saved is here, newest first. Tap one to see it or save it to your device.</Tip>
+      {emailed > 0 && (
+        <p className="rounded-xl border bg-white p-4 text-sm text-neutral-600 shadow-sm">
+          {emailed === 1 ? "One older photo has" : `${emailed} older photos have`} been emailed to you and cleared from here to keep the app free.
+          {" "}Those receipts are all still in your records — the supplier, the date, the amount and the VAT are untouched.
+        </p>
+      )}
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>

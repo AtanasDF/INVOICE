@@ -1,0 +1,63 @@
+// Deciding which photographs may be let go, kept apart from the job that does
+// it (notes/ageing-photos-design.md) so every rule here can be tested rather
+// than trusted. `src/app/api/photos/age/route.ts` is the only caller.
+//
+// Everything in this file is written to refuse. A photograph is kept unless
+// there is a positive reason it may go, and each refusal carries its reason so
+// a dry run reads as a list of decisions rather than a number.
+
+export type AgeableRow = {
+  id: string;
+  user_id: string;
+  date: string;
+  image_data_url: string | null;
+  details: Record<string, unknown> | null;
+  needs_review?: boolean | null;
+};
+
+export type Skip = { id: string; reason: string };
+
+export const agedAlready = (r: AgeableRow) => !!(r.details as { photoAgedAt?: string } | null)?.photoAgedAt;
+
+// A row is a candidate only on every count at once.
+export function sortOut(rows: AgeableRow[], cutoff: string): { candidates: AgeableRow[]; skipped: Skip[] } {
+  const candidates: AgeableRow[] = [];
+  const skipped: Skip[] = [];
+  for (const r of rows) {
+    if (!r.image_data_url) skipped.push({ id: r.id, reason: "no photograph to let go" });
+    else if (agedAlready(r)) skipped.push({ id: r.id, reason: "already emailed and cleared" });
+    else if (r.needs_review) skipped.push({ id: r.id, reason: "still waiting to be checked" });
+    else if (!r.date || r.date >= cutoff) skipped.push({ id: r.id, reason: "not old enough" });
+    else candidates.push(r);
+  }
+  // Oldest first: if a run only gets through some of them, the ones a person
+  // is least likely to want back are the ones that go.
+  candidates.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1));
+  return { candidates, skipped };
+}
+
+// Anyone paying keeps every photograph, however old.
+export function forOwner(candidates: AgeableRow[], owner: string, paid: Set<string>, perOwner: number): AgeableRow[] {
+  if (paid.has(owner)) return [];
+  return candidates.filter((r) => r.user_id === owner).slice(0, perOwner);
+}
+
+export const cutoffFor = (todayIso: string, days: number) => {
+  const d = new Date(`${todayIso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+};
+
+export const emailSubject = (oldest: string, newest: string) => `Your receipt photographs from ${oldest} to ${newest}`;
+
+// The whole of what someone is told. It has one job: to stop the email reading
+// like something has been taken away, because nothing of their record has.
+export function emailBody(count: number, oldest: string, newest: string): string {
+  const n = count === 1 ? "1 receipt photograph" : `${count} receipt photographs`;
+  return [
+    `Here ${count === 1 ? "is" : "are"} ${n}, from ${oldest} to ${newest}, as one PDF.`,
+    `Keep this email: it is your copy. The pictures are being cleared from the app so it can stay free.`,
+    `Nothing else has changed. Every one of those receipts is still in your records - the supplier, the date, the amount and the VAT are all exactly where they were, and your totals and VAT return are unaffected. Only the photograph has gone.`,
+    `Invoiceover`,
+  ].join("\n\n");
+}

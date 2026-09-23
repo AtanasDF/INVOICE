@@ -64,3 +64,21 @@ overrides the default, so shortening it is an env var rather than a deploy.
   kinder than two.
 - Whether an account should be able to say "keep mine for ever" — cheap to offer, and the
   answer is probably yes once anyone asks.
+
+
+## Switching it on (nothing below has been done)
+
+It is deployed and inert. Three deliberate steps, in this order, none of them done:
+
+1. `PHOTO_AGEING=on` in Vercel. The job now runs when called, builds the PDF, and
+   **removes nothing** -- it answers with a report of what it would have emailed.
+   Read one of those reports before going further.
+2. Add the cron to `web/vercel.json` (`/api/photos/age`, a quiet hour, e.g. `0 3 * * *`).
+   It is deliberately not there yet: an inert route nobody calls is safer than a live
+   schedule waiting on one env var.
+3. `PHOTO_AGEING_DELETE=on`. Only now does a single file go, and only after Resend has
+   accepted the email carrying it.
+
+`PHOTO_AGEING_DAYS` defaults to 92 (three months, as agreed) and can be raised while
+storage allows it. Atanas's rule stands: photographs for three months at most, dropping
+only when it is actually needed, and **the records for ever**.

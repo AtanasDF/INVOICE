@@ -24,6 +24,11 @@ export default function Offline() {
       <p className="mt-6 text-neutral-700">
         When the signal comes back, this page will load by itself if you pull it down, or tap below.
       </p>
+      {/* A real page load, not a <Link>. This screen only ever shows when the
+          app could not be fetched, and a client-side navigation would move
+          between routes the browser still hasn't got -- doing nothing, twice.
+          "Try again" has to go back to the network. */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a href="/" className="mt-3 inline-block rounded-lg bg-neutral-900 px-4 py-3 text-base font-bold text-white">
         Try again
       </a>
