@@ -164,8 +164,11 @@ screens moved under them:
     - `test-deposits` — stale: a 15 s wait times out, the screen moved under it.
     - `test-free-quote` — stale: "no button: Start a quote"; the free page's chooser changed.
     - `test-quotes` — 6/8, reading a `<select>` that is now the VAT-rate picker.
-    - `test-quote-requests` — not a UI problem at all: it imports the app's source and
-      Node can't resolve `@/lib`. It needs the `gen/` compile treatment the logic suites get.
+    - `test-quote-requests` — **import fixed**: `quoteRequestEmail.ts` (and `siteName.ts`)
+      now compile into `gen/` like the other logic suites, and the suite imports
+      `./gen/lib/quoteRequestEmail.js` instead of a `.ts` file whose own `@/lib` import Node
+      could not resolve. It reaches its own 120 s wait now; whether that is the suite or the
+      loaded machine is still to be settled on a quiet one. Not yet in the run.
     - `test-quotes-ux`, `test-quotes-fixes` — written against `feature/quotes-ux`, long merged.
     The camera/clip suites (autozoom, far, bent, torch, pinch, lens, conditions,
     batch-swap) are excluded on purpose and have their own runners.

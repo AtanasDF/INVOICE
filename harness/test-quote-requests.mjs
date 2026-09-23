@@ -6,7 +6,10 @@ import fs from "fs";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./qr-mock-server.mjs";
 import { makeDb, newId, sleep, bodyText } from "./qr-mockdb.mjs";
-import { quoteRequestEmailHtml, quoteRequestEmailSubject, quoteRequestEmailText } from "/Users/nasko/Desktop/INVOICE/web/src/lib/quoteRequestEmail.ts";
+// Compiled from the app's own source into gen/ every run, like the other
+// logic suites. Imported straight from the .ts it could not resolve `@/lib`
+// from inside it, so this suite never ran at all.
+import { quoteRequestEmailHtml, quoteRequestEmailSubject, quoteRequestEmailText } from "./gen/lib/quoteRequestEmail.js";
 
 const BASE = process.env.BASE ?? "http://localhost:3305";
 const OUT = "/private/tmp/claude-501/-Users-nasko-Desktop-MM-INVOICES-AUTO/85090693-d203-4a4e-be6a-5911529c13ff/scratchpad/qr/";
