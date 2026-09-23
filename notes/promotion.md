@@ -31,7 +31,13 @@ dearer per person than the depots, and to a crowd with no common problem — wor
 ## What a flyer actually needs
 
 - A **QR code**, which is the "barcode to scan" he means. It opens the website.
-- **A different code per place** (agreed 2026-09-23: "we can do the different code too"), so the address it opens says where it came from
+- **A different code per place** (agreed 2026-09-23: "we can do the different code too").
+  **Built 2026-09-23:** a flyer points at `invoiceover.com/?from=carlisle-dhl`; the tag is
+  kept on the device the moment they arrive and rides along on the account when they sign
+  up, as `came_from` in the user's own metadata. No table, no migration, nothing personal
+  — just one short tag, cleaned to letters, digits and dashes so the address bar cannot be
+  used to store anything else. The first flyer wins: a later code is someone who was
+  already here. He reads it in Supabase under Authentication → Users., so the address it opens says where it came from
   (`invoiceover.com/?from=carlisle-dhl`). Without that he is paying for flyers with no idea
   which depot worked. This is the cheapest thing on the whole list and the easiest to
   forget.

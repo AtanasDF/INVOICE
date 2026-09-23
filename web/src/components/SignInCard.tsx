@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { saveFailed } from "@/lib/errorText";
 import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
+import { readSource } from "@/lib/source";
 
 // One box for signing in and one for making an account, with the choice
 // between them in plain sight (Atanas, 2026-09-22: "it should be simple
@@ -169,7 +170,15 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         }
       } else {
         if (isThrowawayEmail(formEmail)) throw new Error(THROWAWAY_REFUSED);
-        const { data, error } = await supabase.auth.signUp({ email: formEmail, password: formPassword, options: confirmTo() });
+        // The flyer they came from, if any, rides along on the account itself
+        // rather than needing a table of its own -- it is one short tag, and
+        // it is only ever read to tell one depot from another.
+        const cameFrom = readSource();
+        const { data, error } = await supabase.auth.signUp({
+          email: formEmail,
+          password: formPassword,
+          options: { ...confirmTo(), ...(cameFrom ? { data: { came_from: cameFrom } } : {}) },
+        });
         if (error) throw error;
         if (!data.session) {
           setPendingEmail(formEmail);

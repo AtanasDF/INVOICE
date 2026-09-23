@@ -9,6 +9,7 @@ import { signOut } from "@/lib/signOut";
 import { useWakeLock } from "@/lib/wakeLock";
 import PaidCelebration from "@/components/PaidCelebration";
 import { SITE_NAME } from "@/lib/siteName";
+import { rememberSource } from "@/lib/source";
 
 type Group = { label: string; links: [string, string][] };
 
@@ -200,6 +201,11 @@ function Header() {
 function Gate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  // Which flyer brought them, kept the moment they arrive: by the time they
+  // make an account the query string is long gone.
+  useEffect(() => {
+    rememberSource(window.location.search);
+  }, [pathname]);
   const router = useRouter();
   const isLoginPage = pathname === "/login";
   // A password-reset email link logs the visitor in via a recovery
