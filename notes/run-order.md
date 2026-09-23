@@ -54,7 +54,12 @@ captured word-for-word.
 18. The wall people actually meet at 50, in plain words, with the top-up button.
 19. A logic suite for the arithmetic: London day boundaries, the month boundary, the top-up
     used once only, a failed scan not counted.
-20. A browser suite for the wall itself.
+20. A browser suite for the wall itself. **Deferred on purpose, not skipped:** the wall
+    cannot be reached until migration-036 is run and `SCAN_LIMITS` is `on`, and the only
+    way to fake it in the browser is request interception, which the harness already uses
+    to route Supabase (taking it over blanks the app — learned the hard way tonight). The
+    wording is covered by `test-scan-limit-text.mjs`; this one is written the day the
+    migration lands.
 
 ## Part four — protection, written but switched off
 
