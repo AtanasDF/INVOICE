@@ -40,6 +40,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/feedbackEmail.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/scanLimit.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/throwawayEmail.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/photoAgeing.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/photoAgeing.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/peopleCheck.ts"
   ]
 }

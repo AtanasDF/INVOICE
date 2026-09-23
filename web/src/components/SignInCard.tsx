@@ -7,6 +7,7 @@ import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 import { readSource } from "@/lib/source";
 import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites";
 import Turnstile, { turnstileOn } from "@/components/Turnstile";
+import { peopleCheckProblem } from "@/lib/peopleCheck";
 
 // One box for signing in and one for making an account, with the choice
 // between them in plain sight (Atanas, 2026-09-22: "it should be simple
@@ -137,7 +138,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       if (error) throw error;
       setInfo(`Sent again to ${to}. Give it a minute, and look in the junk folder too.`);
     } catch (err) {
-      setError(saveFailed(err, "Couldn't send it again just now."));
+      setError(peopleCheckProblem(err) ?? saveFailed(err, "Couldn't send it again just now."));
     } finally {
       setBusy(false);
     }
@@ -203,7 +204,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         }
       }
     } catch (err) {
-      setError(saveFailed(err, "Something went wrong."));
+      setError(peopleCheckProblem(err) ?? saveFailed(err, "Something went wrong."));
     } finally {
       setBusy(false);
       // Spent either way: a token is good for one attempt, so a second try
