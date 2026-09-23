@@ -512,9 +512,10 @@ them against the original before deleting.
   permission mode. Moved to :10 and :40 past the hour, clear of the email routines.
 - (Resolved 2026-09-21: `.claude/worktrees/` removed with Atanas at the Mac — 24 worktrees,
   every one clean and on GitHub, `git worktree remove` each; 6 GB back, all branches kept.)
-- Two unused exported functions, flagged not removed: `isMileage` (`src/lib/mileage.ts`,
-  duplicates `tripOf`) and `mergeAddress` (`src/lib/addressLookup.ts`, left from the old
-  AddressFinder). Two `* 2.*` iCloud copies sit in `src/` and are gitignored.
+- (Resolved 2026-09-23: both unused exports removed — `isMileage`, which duplicated
+  `tripOf`, and `mergeAddress`, left behind by the old AddressFinder. Neither was called
+  anywhere in the app or the harness. The iCloud `* 2.*` copies were cleared the same
+  night, and will keep coming back until the project leaves the synced Desktop.)
 
 ## Open items (2026-09-19)
 

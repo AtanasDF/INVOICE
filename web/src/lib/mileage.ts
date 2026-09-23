@@ -37,10 +37,6 @@ export function taxYearLabel(startIso: string): string {
   return `${y}/${String((y + 1) % 100).padStart(2, "0")}`;
 }
 
-export function isMileage(r: Receipt): boolean {
-  return !!r.details?.mileage;
-}
-
 export function tripOf(r: Receipt): Trip | null {
   const t = r.details?.mileage;
   return t ? (t as unknown as Trip) : null;

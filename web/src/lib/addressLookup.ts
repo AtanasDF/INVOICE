@@ -61,46 +61,6 @@ export function townCase(value: string): string {
   });
 }
 
-// A postcode-only pick keeps the house and street already typed, as they
-// were typed, and replaces the old postcode, anything after it, and the old
-// town: the words with the postcode ("Leeds LS1 4AP"), or the part or line
-// just before a postcode standing alone, when it has no digits and isn't
-// all that's left (so "12 High Street, LS1 4AP" and "Rose Cottage, LS1 4AP"
-// keep their first line). Scans store an address on one line with commas,
-// so the postcode's line is taken apart by commas. With no old postcode to
-// go by, nothing typed is dropped.
-export function mergeAddress(existing: string, match: AddressMatch): string {
-  const lines = match.lines ?? [];
-  if (!match.partial) return lines.join("\n");
-  const all = existing
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const partsOf = (l: string) => l.split(",").map((p) => p.trim()).filter(Boolean);
-  const bare = (p: string) => p.replace(/[.;]+$/, "").toUpperCase();
-  const isPostcode = (p: string) => ENDS_WITH_POSTCODE.test(bare(p));
-  const noDigits = (p: string) => !/\d/.test(p);
-  let kept = all;
-  const at = all.findLastIndex((l) => partsOf(l).some(isPostcode));
-  if (at >= 0) {
-    const parts = partsOf(all[at]);
-    const pc = parts.findLastIndex(isPostcode);
-    const rest = parts.slice(0, pc);
-    let before = all.slice(0, at);
-    const townWithPostcode = bare(parts[pc]).replace(ENDS_WITH_POSTCODE, "").trim() !== "";
-    if (!townWithPostcode) {
-      if (rest.length) {
-        if (noDigits(rest[rest.length - 1]) && (rest.length > 1 || before.length)) rest.pop();
-      } else if (before.length > 1 && noDigits(before[before.length - 1])) {
-        before = before.slice(0, -1);
-      }
-    }
-    kept = rest.length ? [...before, rest.join(", ")] : before;
-  }
-  const incoming = new Set(lines.map((l) => l.toLowerCase()));
-  return [...kept.filter((l) => !incoming.has(l.toLowerCase())), ...lines].join("\n");
-}
-
 export type AddressParts = { line1: string; line2: string; town: string; postcode: string };
 
 const POSTCODE_LINE = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
