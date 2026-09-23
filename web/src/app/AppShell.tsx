@@ -216,7 +216,18 @@ function Gate({ children }: { children: React.ReactNode }) {
   const isResetPasswordPage = pathname === "/reset-password";
   // Nothing works before an account (Atanas, 2026-09-22), except the front
   // door itself and the links a customer is sent.
-  const isPublicPage = isLoginPage || isResetPasswordPage || pathname === "/" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/");
+  // Privacy and terms are public on purpose: they have to be readable before
+  // anyone hands over an email address, and an advertiser or app store will
+  // ask for a link that works signed out.
+  const isPublicPage =
+    isLoginPage ||
+    isResetPasswordPage ||
+    pathname === "/" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname.startsWith("/i/") ||
+    pathname.startsWith("/q/") ||
+    pathname.startsWith("/r/");
 
   useEffect(() => {
     if (loading) return;
@@ -266,6 +277,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
+      {/* Small, quiet, and on every page: an advertiser, an app store and a
+          cautious tradesman all want to find these before handing over an
+          email address. Never printed -- a customer's invoice is not the
+          place for them. */}
+      <footer className="mx-auto w-full max-w-4xl px-4 pb-24 pt-2 text-xs text-neutral-500 sm:pb-8 print:hidden">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-4">
+          <span>{SITE_NAME}</span>
+          <Link href="/privacy" className="underline">Your information</Link>
+          <Link href="/terms" className="underline">Terms</Link>
+          <Link href="/feedback" className="underline">Tell us something</Link>
+        </div>
+      </footer>
       <FeedbackButton />
       <PaidCelebration />
     </AuthProvider>
