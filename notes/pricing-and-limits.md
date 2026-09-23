@@ -57,10 +57,31 @@ Estimates, to be checked against the first real bills — no month of live billi
 3. Paid: unlimited scans, photos kept for ever, for a few pounds a month.
 4. Extra scans over the daily cap sold in small amounts, for the rare heavy day.
 
-## To settle with him
+## Settled 2026-09-23 02:2x
 
-- The welcome burst: first days of the app, or first days of each account?
-- 90 days for photos, or longer?
-- Does the auto-email go per document, or one PDF a week or a month?
+- **Scans: 300 a day for a new account at the start, then 50 a day for everyone.** His
+  words: "300 a day at first, but then is it a rational idea to do 50 a day for everyone?"
+  It is rational. The cost is the average and the average will be two or three; 50 is a
+  wall that only an abuser meets. Keep a quiet overall ceiling underneath it so one person
+  cannot run 1,500 documents a month through as a free reader — a cap nobody honest ever
+  sees.
+- **One email, at the moment of deletion, carrying everything that is going.** Not per
+  document and not a weekly digest: the photos that are ageing out are gathered into one
+  PDF and sent once, then removed. "How to email only when you once when you deleting the
+  photos."
+- **Retention shortens over time.** Start generous and cut it as the bill grows: "at some
+  point we don't need photos, so we might decrease and decrease the time of the photos".
+  The record — amount, VAT, supplier, date — never goes.
+- **Budget: up to £100 a month at the beginning**, and that figure includes advertising,
+  not just hosting. Running costs are £35-45 of it, which leaves real room.
+- **Promotion is a conversation he wants to have** — an Instagram page was his first
+  thought, "and other solutions". Not decided, not started.
+
+## Still to settle
+
+
+- The first retention figure to start from, before it is shortened.
+- The overall monthly ceiling that sits under the 50-a-day cap.
+- How it is promoted, and what the advertising share of the £100 buys.
 - Apple requires in-app purchase for anything digital and in-app account deletion; both
   fight the current rules. Decide before wrapping for the stores, not after.
