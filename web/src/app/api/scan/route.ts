@@ -7,10 +7,22 @@ import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocuments, parseDataUrl } from "@
 import { allow, release } from "@/lib/rateLimit";
 
 const HOUR = 60 * 60 * 1000;
-// A batch of receipts is one read per document; a busy evening of scanning
-// fits well inside this, a runaway loop doesn't.
-const USER_PER_HOUR = 150;
-const GLOBAL_PER_HOUR = 600;
+// A burst guard, not a budget. It exists to stop a runaway loop before it
+// costs anything; what a person may actually read in a day is the per-account
+// allowance (src/lib/scanLimit.ts), which is counted properly and can be seen.
+//
+// These numbers were set when nothing else limited anything, and they are a
+// launch risk as they stand: 600 an hour is shared by EVERYBODY, so twenty
+// drivers at a depot catching up on a year of receipts in one evening would
+// exceed it between them and each be told "scanning is busy right now" -- at
+// the exact moment a depot starts talking about it. And a new account is
+// offered 300 documents a day, which 150 an hour quietly contradicts.
+//
+// So once the real limits are on, the guard steps back to being a guard. Until
+// then it stays where it was, because it is the only thing there is.
+const LIMITS_ON = process.env.SCAN_LIMITS === "on";
+const USER_PER_HOUR = LIMITS_ON ? 300 : 150;
+const GLOBAL_PER_HOUR = LIMITS_ON ? 3000 : 600;
 
 export const runtime = "nodejs";
 // A multi-page invoice through claude-opus-5 can take well past the
