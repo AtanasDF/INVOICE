@@ -225,6 +225,7 @@ function Gate({ children }: { children: React.ReactNode }) {
     pathname === "/" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
+    pathname === "/how-to-invoice" ||
     // Shown by the service worker when there is no signal, which is exactly
     // when the sign-in check cannot be made.
     pathname === "/offline" ||
@@ -287,6 +288,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mx-auto w-full max-w-4xl px-4 pb-24 pt-2 text-xs text-neutral-500 sm:pb-8 print:hidden">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-4">
           <span>{SITE_NAME}</span>
+          <Link href="/how-to-invoice" className="underline">How to invoice</Link>
           <Link href="/privacy" className="underline">Your information</Link>
           <Link href="/terms" className="underline">Terms</Link>
           <Link href="/feedback" className="underline">Tell us something</Link>

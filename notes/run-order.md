@@ -36,9 +36,11 @@ captured word-for-word.
     stranger can use, and since "nothing works before you register" the only public pages
     are the front door, privacy and terms. Three ways out, his choice: leave it and lean on
     the flyers; let strangers type an invoice again purely to have something to rank
-    (reverses his rule); or write a public article — "How to invoice when you're
-    self-employed" — that ranks and ends at the sign-up, which keeps the rule intact and is
-    the recommendation.
+    (reverses his rule); or write a public article. **Taken 2026-09-23, on his standing "always do as
+    recommended": `/how-to-invoice` is built** — what a UK invoice must show, numbering,
+    VAT, the CIS labour/materials split, getting paid, keeping records. Public, in the
+    sitemap, linked from every page, and it ends at the sign-up. The rule that nothing works
+    before an account is untouched.
 13. `robots.txt` and a sitemap: public pages found, private ones not.
 14. A real 404 and a real error page, in the app's own words.
 

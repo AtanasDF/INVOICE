@@ -41,9 +41,24 @@ try {
   check("...and that consumer rights are not signed away", /rights you have as a consumer/.test(text), text.slice(0, 2000));
   check("...and which country's law applies", /English law/.test(text), text.slice(-200));
 
+  // The one public page written to be FOUND rather than to be used: ranking
+  // for "free invoice template UK" needs something a stranger can open, and
+  // since nothing works before an account, the honest version answers the
+  // question instead of pretending to be a tool.
+  await page.goto(`${BASE}/how-to-invoice`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  check("a stranger can read the invoicing guide", new URL(page.url()).pathname === "/how-to-invoice", page.url());
+  const guide = await bodyText(page);
+  check("it answers the question it is found for", /unique invoice number/i.test(guide) && /VAT number/i.test(guide), guide.slice(0, 400));
+  check("...covers the two things this trade gets wrong", /Materials are not deducted from/.test(guide) && /Never reuse a number/.test(guide), guide.slice(0, 900));
+  check("...does not pretend to be advice", /isn't tax advice/i.test(guide) && /GOV\.UK/.test(guide), guide.slice(-400));
+  check("...and ends at the sign-up rather than a dead end", await page.evaluate(() => [...document.querySelectorAll("main a")].some((a) => a.getAttribute("href") === "/" && /Make an account/i.test(a.textContent))));
+  const meta = await page.evaluate(() => ({ title: document.title, desc: document.querySelector('meta[name="description"]')?.content ?? "" }));
+  check("...and says what it is, for a search result", /invoice/i.test(meta.title) && /UK/.test(meta.title) && meta.desc.length > 60, JSON.stringify(meta));
+
   // Linked from everywhere, or nobody finds them.
   const links = await footerLinks();
-  check("both are linked in the footer of a public page", links.includes("/privacy") && links.includes("/terms"), JSON.stringify(links));
+  check("the legal pages and the guide are all linked in the footer", links.includes("/privacy") && links.includes("/terms") && links.includes("/how-to-invoice"), JSON.stringify(links));
 
   await signIn(page, BASE);
   await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });

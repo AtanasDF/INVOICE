@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // nothing to resolve a bare "/" against.
   return [
     { url: `${SITE_URL}/`, lastModified: changed, changeFrequency: "weekly", priority: 1 },
+    { url: `${SITE_URL}/how-to-invoice`, lastModified: changed, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/privacy`, lastModified: changed, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/terms`, lastModified: changed, changeFrequency: "yearly", priority: 0.3 },
   ];
