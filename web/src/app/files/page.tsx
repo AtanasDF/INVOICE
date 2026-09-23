@@ -227,14 +227,14 @@ export default function FilesPage() {
           style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
           onClick={closePreview}
         >
-          <div className="flex items-center justify-between text-white">
+          <div className="flex items-center justify-between text-ink-on-dark">
             <div>
               <div className="font-medium">{preview.vendor || preview.category}</div>
               <div className="text-sm text-neutral-500">
                 {shortDate(preview.date)} · {money(preview.amount)} · {supplierName(preview.clientId)}
               </div>
             </div>
-            <button ref={closeRef} onClick={closePreview} aria-label="Close preview" className="text-2xl leading-none text-white/80">✕</button>
+            <button ref={closeRef} onClick={closePreview} aria-label="Close preview" className="text-2xl leading-none text-ink-on-dark/80">✕</button>
           </div>
           <div className="mt-4 flex flex-1 items-center justify-center overflow-auto" onClick={(e) => e.stopPropagation()}>
             {!previewSrc ? (
@@ -260,11 +260,11 @@ export default function FilesPage() {
             <EmailFileForm file={makeFile} idPrefix="library" />
           </div>
           {previewTotalPages > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-4 text-sm text-white" onClick={(e) => e.stopPropagation()}>
+            <div className="mt-4 flex items-center justify-center gap-4 text-sm text-ink-on-dark" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setPreviewIndex((i) => i - 1)}
                 disabled={previewIndex === 0}
-                className="rounded-lg border border-white/40 px-3 py-1.5 font-medium disabled:opacity-40"
+                className="rounded-lg border border-ink-on-dark/40 px-3 py-1.5 font-medium disabled:opacity-40"
               >
                 Previous
               </button>
@@ -272,7 +272,7 @@ export default function FilesPage() {
               <button
                 onClick={() => setPreviewIndex((i) => i + 1)}
                 disabled={previewIndex >= previewTotalPages - 1}
-                className="rounded-lg border border-white/40 px-3 py-1.5 font-medium disabled:opacity-40"
+                className="rounded-lg border border-ink-on-dark/40 px-3 py-1.5 font-medium disabled:opacity-40"
               >
                 Next
               </button>

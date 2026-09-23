@@ -124,9 +124,14 @@ mid-tone. Keep using `neutral-*` and everything follows a theme for free; reach 
 `accent` only where a highlight is genuinely wanted. Never hard-code a hex in a component.
 The five themes are in `src/lib/theme.ts`, the choice lives in localStorage (per device,
 not per account), `THEME_BOOT` sets it in `<head>` before the first paint, and a printed
-invoice is forced back to plain ink. **Dark mode is not built**: it needs `bg-white` and
-`text-white` turned into surface and ink tokens first, or white text lands on white
-buttons. Three conventions worth knowing: a failed load uses
+invoice is forced back to plain ink. **Dark mode is built** (2026-09-23): `[data-theme="dark"]`
+inverts the scale, so `bg-neutral-900 text-white` becomes a light button with dark writing,
+and `--paper` carries `bg-white` with it. Screens that are black by nature — the camera
+viewfinder, the full-screen photo, a tip over a dark backdrop — use `text-ink-on-dark`,
+which is always white; that was the trap, and it was real. The default is **auto**: the app
+follows the phone unless a colour is picked on purpose, and notices if the phone changes at
+sunset. Colour and darkness are not combined (five dark scales for five hues is a bigger
+job than it is worth); picking Dark sets the tint aside. Three conventions worth knowing: a failed load uses
 `loadFailed()` and a failed save `saveFailed()` (both in `src/lib/errorText.ts`) — never
 `err instanceof Error ? err.message : "..."`, which is never true for a Supabase error and
 throws the reason away; a list's empty state is gated on `!error`, so "No invoices yet" can

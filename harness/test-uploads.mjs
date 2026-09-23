@@ -29,7 +29,8 @@ const form = () => page.evaluate(() => ({ supplier: [...document.querySelectorAl
 try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  check("dashboard: Upload photos or PDFs", (await bodyText(page)).includes("Upload photos or PDFs"));
+  // One of the three buttons under the big scan since the rebuild.
+  check("dashboard: a way in from files", (await bodyText(page)).includes("Upload a document"));
 
   await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
   const input = await page.$('input[type="file"][multiple]');

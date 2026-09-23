@@ -659,7 +659,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       aria-label="Back"
-      className="pointer-events-auto flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-black/50 text-white"
+      className="pointer-events-auto flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-black/50 text-ink-on-dark"
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -673,7 +673,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
 // is blocked, and that dead end now says so.
 function NativeCameraEscape({ onSwitch }: { onSwitch: () => void }) {
   return (
-    <button onClick={onSwitch} className="text-xs text-white/70 underline">
+    <button onClick={onSwitch} className="text-xs text-ink-on-dark/70 underline">
       Use the iPhone camera instead — it doesn&apos;t need this permission
     </button>
   );
@@ -1788,7 +1788,7 @@ export default function DocumentCapture({
     >
       {shots.length > 1 && <span className="absolute -right-1.5 -top-1.5 -z-10 h-14 w-11 rotate-6 rounded-md border-2 border-white/70 bg-neutral-700" />}
       {shots[shots.length - 1].mediaType === "application/pdf" ? (
-        <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-white">PDF</span>
+        <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-ink-on-dark">PDF</span>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img key={shots[shots.length - 1].id} src={shots[shots.length - 1].dataUrl} alt="" className="shot-in h-full w-full rounded-[4px] object-cover" />
@@ -1870,9 +1870,9 @@ export default function DocumentCapture({
           <div className="absolute left-4 z-10" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
             <BackButton onClick={close} />
           </div>
-          {pageLabel && <p className="text-sm font-medium text-white">{pageLabel}</p>}
+          {pageLabel && <p className="text-sm font-medium text-ink-on-dark">{pageLabel}</p>}
           {stack}
-          <p className="px-8 text-center text-sm text-white/70">
+          <p className="px-8 text-center text-sm text-ink-on-dark/70">
             {multi && shots.length
               ? `${shots.length} scanned. Take the next one, or tap the stack to check them.`
               : "Take a clear, well-lit photo of the whole document."}
@@ -1902,11 +1902,11 @@ export default function DocumentCapture({
               existing photo, or a PDF invoice from email. */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full rounded-lg border border-white/30 px-5 py-3 text-center text-sm font-medium text-white"
+            className="w-full rounded-lg border border-white/30 px-5 py-3 text-center text-sm font-medium text-ink-on-dark"
           >
             Upload instead
           </button>
-          <button onClick={() => switchScannerMode("inapp")} className="w-full py-1 text-center text-xs text-white/70 underline">
+          <button onClick={() => switchScannerMode("inapp")} className="w-full py-1 text-center text-xs text-ink-on-dark/70 underline">
             Use the in-app scanner instead
           </button>
           <input
@@ -1958,29 +1958,29 @@ export default function DocumentCapture({
         )}
 
         {status === "starting" && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-white">Starting camera…</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-on-dark">Starting camera…</div>
         )}
         {status === "timeout" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             <p>The camera didn&apos;t respond. This usually means access is blocked somewhere your browser won&apos;t report directly (an OS-level camera privacy setting is the most common one) — check there, or upload a photo or PDF instead.</p>
-            <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
+            <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-ink-on-dark">
               Try again
             </button>
             {iOSMode && <NativeCameraEscape onSwitch={() => switchScannerMode("native")} />}
           </div>
         )}
         {status === "denied" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             <p>Camera access was denied. You can allow it from your browser&apos;s site settings, or upload a photo or PDF instead.</p>
             {iOSMode && <p className="text-neutral-400">{SAFARI_CAMERA_TIP}</p>}
-            <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white">
+            <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-ink-on-dark">
               Try again
             </button>
             {iOSMode && <NativeCameraEscape onSwitch={() => switchScannerMode("native")} />}
           </div>
         )}
         {status === "unsupported" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             <p>This browser doesn&apos;t support camera capture here. Upload a photo or PDF instead.</p>
           </div>
         )}
@@ -1997,7 +1997,7 @@ export default function DocumentCapture({
           <div className="flex items-center gap-2">
             <BackButton onClick={close} />
             {shownFailure ? (
-              <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-white line-clamp-2">{shownFailure}</div>
+              <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-ink-on-dark line-clamp-2">{shownFailure}</div>
             ) : (
               status === "live" && (
                 // With nothing to say it's an invisible strip, still there
@@ -2005,7 +2005,7 @@ export default function DocumentCapture({
                 // no page is being found.
                 <div
                   onClick={() => setDebug((d) => !d)}
-                  className={`pointer-events-auto min-w-0 flex-1 ${pill ? "rounded-lg bg-black/50 p-2 text-center text-xs text-white line-clamp-2" : "h-10"}`}
+                  className={`pointer-events-auto min-w-0 flex-1 ${pill ? "rounded-lg bg-black/50 p-2 text-center text-xs text-ink-on-dark line-clamp-2" : "h-10"}`}
                 >
                   {pill}
                 </div>
@@ -2016,14 +2016,14 @@ export default function DocumentCapture({
                 onClick={toggleTorch}
                 aria-label="Torch"
                 aria-pressed={torchOn}
-                className={`pointer-events-auto flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${torchOn ? "bg-white text-neutral-900" : "bg-black/50 text-white"}`}
+                className={`pointer-events-auto flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${torchOn ? "bg-white text-neutral-900" : "bg-black/50 text-ink-on-dark"}`}
               >
                 <TorchIcon className="h-5 w-5" />
               </button>
             )}
           </div>
           {status === "live" && !shownFailure && cvLine && (
-            <div className="rounded-lg bg-black/60 px-3 py-1.5 text-center text-sm text-white">{cvLine}</div>
+            <div className="rounded-lg bg-black/60 px-3 py-1.5 text-center text-sm text-ink-on-dark">{cvLine}</div>
           )}
           {status === "live" && debug && (
             <div className="rounded-lg bg-black/70 px-2 py-1 text-center font-mono text-[11px] text-neutral-200">
@@ -2061,7 +2061,7 @@ export default function DocumentCapture({
                 className="w-full max-w-xs accent-white"
               />
             ) : (
-              <div className="flex overflow-hidden rounded-full bg-black/50 text-xs font-medium text-white">
+              <div className="flex overflow-hidden rounded-full bg-black/50 text-xs font-medium text-ink-on-dark">
                 {[1, 2].map((z) => (
                   <button
                     key={z}
@@ -2080,15 +2080,15 @@ export default function DocumentCapture({
               </div>
             )}
             <div className="flex gap-4">
-              <button onClick={toggleAuto} className="text-xs text-white/70 underline">
+              <button onClick={toggleAuto} className="text-xs text-ink-on-dark/70 underline">
                 Auto-capture: {autoOn ? "on" : "off"}
               </button>
-              <button onClick={toggleAutoZoom} className="text-xs text-white/70 underline">
+              <button onClick={toggleAutoZoom} className="text-xs text-ink-on-dark/70 underline">
                 Auto-zoom: {autoZoomOn ? "on" : "off"}
               </button>
             </div>
             {iOSMode && (
-              <button onClick={() => switchScannerMode("native")} className="text-xs text-white/70 underline">
+              <button onClick={() => switchScannerMode("native")} className="text-xs text-ink-on-dark/70 underline">
                 Use the native camera instead
               </button>
             )}
@@ -2107,7 +2107,7 @@ export default function DocumentCapture({
             <button
               onClick={() => fileInputRef.current?.click()}
               aria-label="Add a photo or PDF from your library"
-              className="absolute left-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
+              className="absolute left-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-ink-on-dark"
             >
               <PhotoIcon className="h-5 w-5" />
             </button>

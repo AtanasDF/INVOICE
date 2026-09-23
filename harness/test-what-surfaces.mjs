@@ -57,14 +57,22 @@ try {
   check("it all fits a phone", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
   // Once the late bill is paid it should drop off without a reload.
-  const before = flat(await bodyText(page)).includes("Wolseley");
+  // Scoped to the bills card: since the dashboard was rebuilt, a supplier's
+  // name also appears in "Who you work with", so the whole page's text would
+  // say the bill is still there when it has gone.
+  const inBills = () =>
+    page.evaluate(() => {
+      const card = document.querySelector("#bills-to-pay");
+      return card ? card.textContent : "";
+    });
+  const before = (await inBills()).includes("Wolseley");
   await page.evaluate(() => {
-    const b = [...document.querySelectorAll("button")].find((x) => /Mark as paid/i.test(x.textContent));
+    const b = [...document.querySelectorAll("#bills-to-pay button")].find((x) => /Mark as paid/i.test(x.textContent));
     if (b) b.click();
   });
   await sleep(1600);
-  const after = await bodyText(page);
-  check("marking a bill paid takes it off the list there and then", before && !after.includes("Wolseley"), flat(after).slice(0, 300));
+  const afterBills = await inBills();
+  check("marking a bill paid takes it off the list there and then", before && !afterBills.includes("Wolseley"), flat(afterBills).slice(0, 300));
   check("and it is recorded as paid, not deleted", db.tables.receipts.filter((r) => r.vendor === "Wolseley").length === 1 && db.tables.receipts.find((r) => r.vendor === "Wolseley").paid === true, JSON.stringify(db.tables.receipts.map((r) => [r.vendor, r.paid])));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

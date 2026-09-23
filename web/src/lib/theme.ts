@@ -7,19 +7,37 @@ export const THEMES = [
   { id: "sand", name: "Sand", note: "Warm, like paper", swatch: "#45403a" },
   { id: "forest", name: "Green", note: "For the outdoor trades", swatch: "#3a5342" },
   { id: "ink", name: "Navy", note: "Nearly black, but not", swatch: "#364361" },
+  { id: "dark", name: "Dark", note: "For working at night", swatch: "#17181c" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
+// What is stored: a colour, or "auto" meaning whatever the phone is set to.
+export type ThemeChoice = ThemeId | "auto";
 
 export const DEFAULT_THEME: ThemeId = "grey";
+export const DEFAULT_CHOICE: ThemeChoice = "auto";
 const KEY = "theme";
 
 export const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v);
+export const isChoice = (v: unknown): v is ThemeChoice => v === "auto" || isTheme(v);
 
-export function readTheme(): ThemeId {
+// Nobody sets their phone to dark mode and then expects to set it again in
+// every app, so the default is to follow it. Choosing a colour on purpose
+// overrides that, for good -- an explicit choice outranks a guess.
+export function readChoice(): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
-    return isTheme(v) ? v : DEFAULT_THEME;
+    return isChoice(v) ? v : DEFAULT_CHOICE;
+  } catch {
+    return DEFAULT_CHOICE;
+  }
+}
+
+export function readTheme(): ThemeId {
+  const choice = readChoice();
+  if (choice !== "auto") return choice;
+  try {
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : DEFAULT_THEME;
   } catch {
     return DEFAULT_THEME;
   }
@@ -42,18 +60,39 @@ export function subscribeTheme(fn: () => void) {
   return () => listeners.delete(fn);
 }
 
-export function saveTheme(id: ThemeId) {
-  applyTheme(id);
+export function saveTheme(choice: ThemeChoice) {
   try {
-    localStorage.setItem(KEY, id);
+    localStorage.setItem(KEY, choice);
   } catch {
     // A locked-down browser still gets the colour for this visit.
   }
+  applyTheme(readTheme());
   for (const fn of listeners) fn();
 }
 
+// Following the phone means noticing when the phone changes its mind --
+// sunset, or a switch flicked in Settings -- without a reload.
+export function watchSystemTheme(): () => void {
+  try {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      if (readChoice() !== "auto") return;
+      applyTheme(readTheme());
+      for (const fn of listeners) fn();
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  } catch {
+    return () => {};
+  }
+}
+
 // Runs before the first paint, from a script tag in the document head, so the
-// page never flashes grey on its way to the colour someone chose.
-export const THEME_BOOT = `try{var t=localStorage.getItem(${JSON.stringify(KEY)});if(t&&${JSON.stringify(
-  THEMES.filter((t) => t.id !== DEFAULT_THEME).map((t) => t.id),
-)}.indexOf(t)>-1)document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+// page never flashes the wrong colours on its way to the right ones -- which
+// matters most for dark, where the flash is a white screen in a dark room.
+export const THEME_BOOT = `try{
+var K=${JSON.stringify(KEY)},A=${JSON.stringify(THEMES.map((t) => t.id))},v=localStorage.getItem(K),t;
+if(v&&A.indexOf(v)>-1)t=v;
+else if(!v||v==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":${JSON.stringify(DEFAULT_THEME)};
+if(t&&t!==${JSON.stringify(DEFAULT_THEME)})document.documentElement.setAttribute("data-theme",t);
+}catch(e){}`.replace(/\s*\n\s*/g, "");

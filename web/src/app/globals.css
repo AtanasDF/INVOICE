@@ -32,6 +32,10 @@
   --n-950: #0a0a0a;
   --accent: #404040;
   --accent-soft: #f5f5f5;
+  /* What `bg-white` means. Cards, sheets and the drawn paper on the front
+     door all use it, so one token turns the lights off for all of them. */
+  --paper: #ffffff;
+  --ink-on-dark: #ffffff;
   /* The body rule below is unlayered, so it beats Tailwind's own utilities
      whatever their specificity: `bg-neutral-50` on <body> has never actually
      applied. Pointing these at the scale makes the page surface follow the
@@ -109,6 +113,37 @@
   --accent-soft: #eef2ff;
 }
 
+
+/* Dark, which is a different kind of change from the four above: those retint
+   the same light page, this one turns it over. The scale is inverted -- 50 is
+   the darkest and 950 the lightest -- so `bg-neutral-50` is still "the page",
+   `text-neutral-900` is still "the words", and `bg-neutral-900 text-white`
+   (every primary button in the app) becomes a light button with dark writing,
+   which is right.
+   `--paper` carries `bg-white` with it. The one place in the app that puts
+   white text on a COLOUR rather than on the neutral scale -- the red warning
+   over the camera -- uses --ink-on-dark instead, since it must stay white
+   whatever the lights are doing.
+   Colour and darkness are not yet combined: picking Dark sets aside the tint.
+   Five dark scales for five hues is a bigger job than it is worth today. */
+[data-theme="dark"] {
+  --n-50: #101114;
+  --n-100: #17181c;
+  --n-200: #232529;
+  --n-300: #32353b;
+  --n-400: #565a62;
+  --n-500: #8b9099;
+  --n-600: #b0b5bd;
+  --n-700: #ccd0d6;
+  --n-800: #e2e5e9;
+  --n-900: #f2f4f6;
+  --n-950: #ffffff;
+  --accent: #9db4ff;
+  --accent-soft: #1b2030;
+  --paper: #191b1f;
+  --background: var(--n-50);
+}
+
 @theme inline {
   --color-neutral-50: var(--n-50);
   --color-neutral-100: var(--n-100);
@@ -123,6 +158,9 @@
   --color-neutral-950: var(--n-950);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  /* So `bg-white`, `fill-white` and `border-white` follow the lights. */
+  --color-white: var(--paper);
+  --color-ink-on-dark: var(--ink-on-dark);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -141,8 +179,10 @@
 @media print {
   :root, [data-theme] {
     --n-50: #fafafa; --n-100: #f5f5f5; --n-200: #e5e5e5; --n-300: #d4d4d4;
-    --n-400: #a3a3a3; --n-500: #737373; --n-600: #525252; --n-700: #404040;
+    --n-400: #a3a3a3; --n-500: #6b6b6b; --n-600: #525252; --n-700: #404040;
     --n-800: #262626; --n-900: #171717; --n-950: #0a0a0a;
+    --paper: #ffffff;
+    --background: #ffffff;
   }
 }
 

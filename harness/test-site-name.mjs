@@ -41,7 +41,13 @@ try {
     apple: document.querySelector("meta[name='apple-mobile-web-app-title']")?.content,
     manifest: document.querySelector("link[rel='manifest']")?.getAttribute("href"),
   }));
-  check("the tab says the name", head.title === NAME, head.title);
+  // The tab LEADS with the name rather than being only the name: Google shows
+  // the title as the headline of a search result, and the front door is what
+  // every flyer points at. An exact match was how "one name everywhere" was
+  // first written down, but the rule it stands for is that the name is there
+  // and no older spelling is -- which the checks below and the file sweep
+  // still hold exactly.
+  check("the tab leads with the name", head.title.startsWith(NAME), head.title);
   check("so does the header", head.brand === NAME, head.brand);
   check("and the home-screen label", head.apple === NAME, head.apple);
   const served = await page.evaluate(async (href) => (await fetch(href)).json(), head.manifest ?? "/manifest.json");

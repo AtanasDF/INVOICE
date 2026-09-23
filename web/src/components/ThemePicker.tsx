@@ -1,21 +1,25 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { DEFAULT_THEME, THEMES, readTheme, saveTheme, subscribeTheme } from "@/lib/theme";
+import { useEffect, useSyncExternalStore } from "react";
+import { DEFAULT_CHOICE, THEMES, readChoice, saveTheme, subscribeTheme, watchSystemTheme } from "@/lib/theme";
 
 // Picking the colours. Nothing is saved to the account: it is how this phone
 // looks, so it stays on this phone, and takes effect the moment it is tapped
 // rather than behind a Save button.
 export default function ThemePicker() {
-  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => DEFAULT_THEME);
+  // The stored choice, which may be "auto" -- not the colour it resolves to.
+  // The radio has to show what was picked, or "Follow my phone" would look
+  // unselected the moment it took effect.
+  const choice = useSyncExternalStore(subscribeTheme, readChoice, () => DEFAULT_CHOICE);
+  useEffect(() => watchSystemTheme(), []);
 
   return (
     <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       <h2 className="font-semibold">How it looks</h2>
       <p className="text-sm text-neutral-600">Pick a colour. It changes straight away, and only on this device.</p>
       <div role="radiogroup" aria-label="Colour" className="grid gap-2 sm:grid-cols-2">
-        {THEMES.map((t) => {
-          const on = t.id === theme;
+        {[{ id: "auto" as const, name: "Follow my phone", note: "Light by day, dark at night", swatch: "linear-gradient(135deg,#fafafa 0 50%,#17181c 50% 100%)" }, ...THEMES].map((t) => {
+          const on = t.id === choice;
           return (
             <button
               key={t.id}

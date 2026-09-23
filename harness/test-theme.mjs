@@ -25,7 +25,13 @@ const probe = () =>
     return out;
   });
 
+// The default is now "follow my phone", so every check below would otherwise
+// depend on what the browser running it happens to prefer. Pinned to light,
+// and the dark half is tested by pinning it the other way.
+const prefers = (value) => page.emulateMediaFeatures([{ name: "prefers-color-scheme", value }]);
+
 try {
+  await prefers("light");
   await signIn(page, BASE);
   await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
   await sleep(900);
@@ -33,7 +39,7 @@ try {
   const text = await bodyText(page);
   check("Settings offers the colours in plain words", text.includes("How it looks") && text.includes("Pick a colour"), text.slice(0, 200));
   const names = await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].map((b) => b.textContent.trim().split("\n")[0]));
-  check("five colours, grey first", names.length === 5 && names[0].startsWith("Grey"), JSON.stringify(names));
+  check("the phone's own setting is offered first, then the colours", names.length === 7 && names[0].startsWith("Follow my phone") && names[1].startsWith("Grey"), JSON.stringify(names));
 
   const grey = await probe();
   check("grey is the plain one, and carries no attribute", grey.bg === "rgb(23, 23, 23)" && (await page.evaluate(() => !document.documentElement.hasAttribute("data-theme"))), JSON.stringify(grey));
@@ -68,11 +74,81 @@ try {
   await page.emulateMediaType("screen");
   check("an invoice prints in plain ink whatever the colour", printed.bg === "rgb(23, 23, 23)", JSON.stringify(printed));
 
+  // Back to the picker: the front door has no radios on it, and the checks
+  // below need one to press.
+  await signIn(page, BASE);
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await sleep(900);
+
+  // Dark is a different kind of change: it turns the page over rather than
+  // retinting it, so what `bg-white` means has to move with it.
+  await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.trim().startsWith("Dark"))?.click());
+  await sleep(400);
+  const dark = await page.evaluate(() => {
+    const el = document.createElement("div");
+    el.className = "bg-white text-neutral-900";
+    document.body.appendChild(el);
+    const c = getComputedStyle(el);
+    const out = { card: c.backgroundColor, words: c.color, body: getComputedStyle(document.body).backgroundColor };
+    el.remove();
+    return out;
+  });
+  const bright = (rgb) => { const m = rgb.match(/\d+/g).slice(0, 3).map(Number); return (m[0] + m[1] + m[2]) / 3; };
+  check("in the dark a card is dark and the words are light", bright(dark.card) < 80 && bright(dark.words) > 180, JSON.stringify(dark));
+  check("...and so is the page behind it", bright(dark.body) < 80, dark.body);
+
+  // The camera is a black viewfinder whatever the app is set to, so its own
+  // writing must not follow the lights down.
+  const onBlack = await page.evaluate(() => {
+    const el = document.createElement("div");
+    el.className = "text-ink-on-dark";
+    document.body.appendChild(el);
+    const c = getComputedStyle(el).color;
+    el.remove();
+    return c;
+  });
+  check("white text on a black overlay stays white in the dark", bright(onBlack) > 240, onBlack);
+
+  // A document is a document: it prints in ink on white paper at midnight.
+  await page.emulateMediaType("print");
+  await sleep(200);
+  const printedDark = await page.evaluate(() => {
+    const el = document.createElement("div");
+    el.className = "bg-white text-neutral-900";
+    document.body.appendChild(el);
+    const c = getComputedStyle(el);
+    const out = { card: c.backgroundColor, words: c.color };
+    el.remove();
+    return out;
+  });
+  await page.emulateMediaType("screen");
+  check("an invoice still prints black on white in the dark", bright(printedDark.card) > 240 && bright(printedDark.words) < 60, JSON.stringify(printedDark));
+
   // Rubbish in localStorage must not colour anything or throw.
   await page.evaluate(() => localStorage.setItem("theme", "'; DROP TABLE"));
   await page.reload({ waitUntil: "networkidle0" });
   await sleep(500);
   check("a nonsense stored value falls back to grey", (await page.evaluate(() => document.documentElement.getAttribute("data-theme"))) === null && (await probe()).bg === "rgb(23, 23, 23)");
+
+  // Nobody sets their phone to dark and then expects to set it again here.
+  await page.evaluate(() => localStorage.removeItem("theme"));
+  await prefers("dark");
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(600);
+  check("a phone set to dark gets a dark app without being asked", (await page.evaluate(() => document.documentElement.getAttribute("data-theme"))) === "dark");
+  check("...and it is dark before React runs, so a dark room never gets a white flash",
+    await page.evaluate(() => getComputedStyle(document.body).backgroundColor).then((c) => c.match(/\d+/g).slice(0, 3).map(Number).reduce((a, b) => a + b, 0) / 3 < 80));
+
+  // But a colour chosen on purpose outranks the phone.
+  await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.includes("Sand"))?.click()).catch(() => {});
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.includes("Sand"))?.click());
+  await sleep(400);
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(600);
+  check("a colour picked on purpose beats the phone's own setting", (await page.evaluate(() => document.documentElement.getAttribute("data-theme"))) === "sand");
+  await prefers("light");
 
   check("fits 320px", await page.setViewport({ width: 320, height: 640 }).then(() => sleep(300)).then(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)));
 } catch (e) {

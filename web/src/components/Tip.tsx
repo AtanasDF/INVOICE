@@ -20,7 +20,7 @@ export default function Tip({ id, children, dark, className = "" }: { id: string
   return (
     <div
       role="note"
-      className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm ${dark ? "bg-black/70 text-white" : "border border-neutral-200 bg-neutral-50 text-neutral-700"} ${className}`}
+      className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm ${dark ? "bg-black/70 text-ink-on-dark" : "border border-neutral-200 bg-neutral-50 text-neutral-700"} ${className}`}
     >
       <span className="min-w-0 flex-1">{children}</span>
       <button

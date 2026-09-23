@@ -54,6 +54,8 @@ try {
   await page.goto(`${BASE}/nope`, { waitUntil: "networkidle0" }).catch(() => {});
   await sleep(800);
   const t = await bodyText(page);
-  check("a mistyped page offers the way back", /Back to the dashboard/i.test(t), flat(t).slice(0, 200));
+  // Reworded 2026-09-23: offering "the dashboard" to someone who has never
+  // signed in is a dead end dressed as a way out.
+  check("a mistyped page offers the way back", /Back to the start/i.test(t), flat(t).slice(0, 200));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
