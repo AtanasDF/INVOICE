@@ -106,10 +106,12 @@ export default function AddressFields({ address, onAddress, label = "Address", s
       if (settled) setSettled("");
       return;
     }
-    // Searched even when the text matches what was last settled, unless the
-    // list for it is already on screen: deleting a letter and putting it back
-    // must bring the list back, not sit silent.
-    if (q === settled && result?.q === q) return;
+    // Nothing to search if this is the query the fields are already settled
+    // on -- typing in the town box after picking an address must not pop the
+    // list back up. Deleting a letter is not that case: it makes the query
+    // unsearchable, which clears `settled` below, so typing it back searches
+    // again.
+    if (q === settled) return;
     timer.current = setTimeout(() => void find(q), next.postcode.trim() ? POSTCODE_PAUSE_MS : STREET_PAUSE_MS);
   }
 
