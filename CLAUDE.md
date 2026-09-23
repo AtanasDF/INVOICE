@@ -65,9 +65,14 @@ can show the same thing (details in `notes/claude-notes.md`).
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
    in its header. Check the latest numbers in the folder first. Latest as of 2026-09-23:
-   **migration-036 and backup 016, both written and NOT YET RUN** (the scan limits: two
-   tables, `business_profile.plan`, and `scan_allowance` / `take_scans` /
-   `claim_scan_topup`). Applied and verified up to 035. (028 created two new tables,
+   **migration-036, backup 016, both run and verified.** The scan limits: `scan_usage`,
+   `scan_topups`, `business_profile.plan` (free/paid, default free) and `scan_limits` /
+   `scan_allowance` / `take_scans` / `claim_scan_topup`. Backup verified by content both
+   ways (0/0, 2 rows, 22 columns each side, RLS on); the functions exercised as
+   `authenticated` inside a transaction that ended in `raise exception`, and the rollback
+   confirmed to have left no rows. `anon` has execute on none of them. **The app still
+   does nothing with any of it until `SCAN_LIMITS=on` in Vercel.** Applied and verified up
+   to 036. (028 created two new tables,
    so it needed no backup; 029 added the registered name,
    company number and account kind to business_profile; 030 added clients.company_number;
    031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
