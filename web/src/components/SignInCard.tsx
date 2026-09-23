@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { saveFailed } from "@/lib/errorText";
+import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 
 // One box for signing in and one for making an account, with the choice
 // between them in plain sight (Atanas, 2026-09-22: "it should be simple
@@ -167,6 +168,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
           throw error;
         }
       } else {
+        if (isThrowawayEmail(formEmail)) throw new Error(THROWAWAY_REFUSED);
         const { data, error } = await supabase.auth.signUp({ email: formEmail, password: formPassword, options: confirmTo() });
         if (error) throw error;
         if (!data.session) {
