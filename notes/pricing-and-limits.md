@@ -93,6 +93,43 @@ Estimates, to be checked against the first real bills — no month of live billi
 - **The record is kept for ever** — amount, VAT, supplier, date. Only the picture ages out.
 - Paid, for very little money: more scans and more invoices.
 
+## Stopping abuse
+
+Atanas, 2026-09-23 02:4x: "not too many users from the same ip registered in the same ip
+for a week or more time if needed like a month", and "think of other options to protect
+from people who are abusing it".
+
+**A limit per address, with its eyes open.** One internet address is not one person: a
+building site, a café, an office, a whole block of flats and most phone networks put
+hundreds of people behind one. A hard limit of one or two accounts a week would quietly
+lock out a real crew sharing a van's hotspot, and they would never know why. So: a few
+accounts a week per address, not one, and a way back in that a human can see — a message
+that says what happened and offers to email, rather than a dead end. The count is kept per
+address with the date, and the window is a week to start, a month if the abuse is real.
+
+**Worth more than the address limit, in rough order of how much they help:**
+
+1. **A box that proves they are a person** on the sign-up form — Cloudflare Turnstile is
+   free, invisible to almost everyone, and stops scripted sign-ups outright. This is the
+   single biggest win and costs nothing.
+2. **The confirmation email already does a lot** — an account that never confirms can be
+   given nothing at all. The 300-scan welcome should start only once the email is
+   confirmed, not at sign-up.
+3. **Refuse throwaway addresses.** A list of the known temporary-mail domains, checked at
+   sign-up. Cheap, and it removes the easiest way to make a hundred accounts.
+4. **The caps themselves are the real defence** — 50 a day, 600 a month, one top-up. Even
+   a person who beats everything above gets 1,200 documents, which costs pennies.
+5. **Watch the shape of use, not just the count.** The same document scanned again and
+   again, or a burst at machine speed, is not a tradesman. Flag it for a look rather than
+   blocking automatically; the app already counts every scan through `hit_rate_limit`.
+6. **A card for the paid tier only.** Anyone who wants more than free pays, and a card is
+   the strongest identity check there is — without asking anything of honest free users.
+7. **Datacentre and VPN addresses** can be refused at sign-up. Real customers are on home
+   and mobile connections.
+
+What not to do: block by address alone, or silently. The cost of turning away a real
+tradesman is far higher than the cost of a few hundred free scans.
+
 ## Still to settle
 
 
