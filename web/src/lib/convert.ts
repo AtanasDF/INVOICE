@@ -1,3 +1,14 @@
+// The sentences below are written for the person reading them, so the page may
+// show them as they are. Everything else a conversion throws is pdf-lib's or
+// the browser's -- "Invalid PDF structure", a bare DOMException -- and saying
+// that to somebody who just dropped a file in tells them nothing about what to
+// do with it. Same rule as the reader routes' RELAYED_ERRORS.
+export const NO_CANVAS = "This browser can't change pictures.";
+export const NO_PICTURE = "That picture couldn't be made.";
+export const NO_PAGES = "This browser can't draw the pages.";
+export const UNREADABLE = "That file couldn't be read.";
+export const WRITTEN_FOR_PEOPLE: ReadonlySet<string> = new Set([NO_CANVAS, NO_PICTURE, NO_PAGES, UNREADABLE]);
+
 // Turning one kind of file into another (Atanas, 2026-09-22: "every file
 // needs to be able to be turned into every other file so the app works as a
 // file transformer too"). Everything happens on the device: nothing is
@@ -45,7 +56,7 @@ export async function readDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("That file couldn't be read."));
+    reader.onerror = () => reject(new Error(UNREADABLE));
     reader.readAsDataURL(blob);
   });
 }
@@ -56,7 +67,7 @@ async function imageAs(file: Blob, type: "image/png" | "image/jpeg" | "image/web
   canvas.width = bitmap.width;
   canvas.height = bitmap.height;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("This browser can't change pictures.");
+  if (!ctx) throw new Error(NO_CANVAS);
   // A picture with see-through parts goes onto white, or a JPEG turns it black.
   if (type !== "image/png") {
     ctx.fillStyle = "#ffffff";
@@ -65,7 +76,7 @@ async function imageAs(file: Blob, type: "image/png" | "image/jpeg" | "image/web
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close?.();
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92));
-  if (!blob) throw new Error("That picture couldn't be made.");
+  if (!blob) throw new Error(NO_PICTURE);
   return blob;
 }
 
@@ -88,7 +99,7 @@ async function pdfPagesAsImages(file: Blob, type: "image/png" | "image/jpeg"): P
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("This browser can't draw the pages.");
+    if (!ctx) throw new Error(NO_PAGES);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;

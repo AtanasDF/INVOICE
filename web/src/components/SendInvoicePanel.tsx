@@ -159,6 +159,10 @@ export function EmailForm({
   ensureViewUrl?: () => Promise<string>;
   onSent?: () => void;
 }) {
+  // `disabled={working}` lands a render too late, so two submits in one tick
+  // both reach the handler -- and this one emails a customer their invoice.
+  // Twice is not a cosmetic bug here.
+  const sending = useRef(false);
   const { user } = useAuth();
   // Follows the customer's email until the sender types their own.
   const [typedTo, setTypedTo] = useState<string | null>(null);
@@ -184,10 +188,12 @@ export function EmailForm({
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
+    if (sending.current) return;
     if (!fields.issuerName.trim()) {
       setStatus({ kind: "error", message: missingName });
       return;
     }
+    sending.current = true;
     const number = fields.number;
     try {
       setStatus({ kind: "working", step: "Making the PDF…" });
@@ -222,6 +228,8 @@ export function EmailForm({
       setStatus({ kind: "sent", to: body.to ?? to, copied: !!body.copied, number });
       onSent?.();
     } catch (err) {
+      // A send that failed is worth trying again; one that worked is not.
+      sending.current = false;
       setStatus({ kind: "error", message: saveFailed(err, "The email couldn't be sent.") });
     }
   }
@@ -243,7 +251,7 @@ export function EmailForm({
           {status.number ? `${quote ? "Quote" : "Invoice"} ${status.number} sent` : "Sent"} to {status.to}.
         </p>
         {status.copied && <p className="mt-0.5">A copy went to {accountEmail}.</p>}
-        <button type="button" onClick={() => setStatus({ kind: "idle" })} className="mt-2 text-sm font-medium underline">
+        <button type="button" onClick={() => { sending.current = false; setStatus({ kind: "idle" }); }} className="mt-2 text-sm font-medium underline">
           Send again
         </button>
       </div>

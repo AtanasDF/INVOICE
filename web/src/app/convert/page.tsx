@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import EmailFileForm from "@/components/EmailFileForm";
 import Tip from "@/components/Tip";
-import { Made, TARGETS, Target, convertFiles, kindOf, targetsFor } from "@/lib/convert";
+import { Made, TARGETS, Target, convertFiles, kindOf, targetsFor, WRITTEN_FOR_PEOPLE } from "@/lib/convert";
 import { saveBlob } from "@/lib/saveFile";
 
 const KIND_WORDS: Record<string, string> = {
@@ -45,7 +45,10 @@ export default function ConvertPage() {
     try {
       setMade(await convertFiles(files, target));
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Those files couldn't be changed. Try one at a time.");
+      // Our own sentences go through; pdf-lib's and the browser's do not.
+      const said = err instanceof Error ? err.message : "";
+      if (!WRITTEN_FOR_PEOPLE.has(said)) console.error("convert failed:", err);
+      setError(WRITTEN_FOR_PEOPLE.has(said) ? said : "Those files couldn't be changed. Try one at a time.");
     } finally {
       setBusy(null);
     }

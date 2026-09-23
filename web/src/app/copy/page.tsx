@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import { useAuth } from "@/lib/authContext";
@@ -29,6 +29,11 @@ export default function CopyDocumentPage() {
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fallbackName = `Document ${shortDate(todayISO())}`;
+  // `making` disables both buttons, but React applies that on the render after
+  // the first press, so two taps in one tick both get through: two identical
+  // PDFs in Downloads, or a second navigator.share while the sheet is already
+  // up, which throws. Same fault as the scan top-up button.
+  const busy = useRef(false);
 
   function add(more: DocPage[]) {
     // The PDF library is half a megabyte, and every page linking here
@@ -78,6 +83,16 @@ export default function CopyDocumentPage() {
   }
 
   async function save() {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await saving();
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  async function saving() {
     const m = await make();
     if (!m) return;
     const url = URL.createObjectURL(m.blob);
@@ -90,6 +105,16 @@ export default function CopyDocumentPage() {
   }
 
   async function share() {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await sharing();
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  async function sharing() {
     const m = await make();
     if (!m) return;
     const file = new File([m.blob], m.name, { type: "application/pdf" });
