@@ -29,7 +29,11 @@ export const metadata: Metadata = {
   // supports web push for a site that's been "Added to Home Screen" as a
   // standalone app, not a plain browser tab.
   appleWebApp: { capable: true, statusBarStyle: "default", title: SITE_NAME },
-  icons: { apple: "/icon-192.png" },
+  // iOS fills anything transparent in a home-screen icon with BLACK, and our
+  // 192 is 4% non-opaque at its anti-aliased edges, so it would have shown a
+  // black fringe under iOS's own rounded mask. /apple-icon.png is flattened
+  // onto the manifest's background and is 180, the size iPhones actually use.
+  icons: { icon: "/icon-192.png", apple: "/apple-icon.png" },
 };
 
 // viewportFit: "cover" lets fixed full-screen content (the document

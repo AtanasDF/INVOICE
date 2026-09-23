@@ -53,6 +53,15 @@ const hasInstallButton = () => page.evaluate(() => [...document.querySelectorAll
 try {
   const res = await page.goto(`${BASE}/manifest.json`, { waitUntil: "domcontentloaded" });
   const m = await res.json();
+  // iOS fills a transparent home-screen icon with BLACK, under its own rounded
+  // mask, so the apple icon must be fully opaque -- ours was the 192, which is
+  // 4% non-opaque at its anti-aliased edges. It must also exist at all.
+  const apple = await page.goto(`${BASE}/apple-icon.png`, { waitUntil: "domcontentloaded" });
+  check("there is an apple-touch-icon of its own", apple.status() === 200 && (apple.headers()["content-type"] ?? "").includes("png"), String(apple.status()));
+  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+  const appleHref = await page.evaluate(() => document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href") ?? null);
+  check("...and the page points iOS at it, not at the see-through one", appleHref === "/apple-icon.png", String(appleHref));
+  await page.goto(`${BASE}/manifest.json`, { waitUntil: "domcontentloaded" });
   check("the app really is installable: manifest, name, standalone, both icons",
     m.display === "standalone" && !!m.name && (m.icons ?? []).some((i) => i.sizes === "192x192") && (m.icons ?? []).some((i) => i.sizes === "512x512"),
     JSON.stringify(m).slice(0, 200));

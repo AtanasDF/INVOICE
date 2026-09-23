@@ -20,8 +20,14 @@ as they land.
 
 ## B. Things the app knows and never says
 
-6. `business_profile.plan` exists and no screen mentions free or paid (queue 6).
-7. No Apple touch icon above 192px, which is what an iPhone home screen uses (queue 15).
+6. **[decided: not now]** `business_profile.plan` exists and no screen mentions free or
+   paid. Deliberately left: nobody can buy anything, and the scan limits are off, so a
+   "Free plan" badge would advertise a paid tier that does not exist and cannot be reached.
+   It becomes worth doing the day `SCAN_LIMITS=on`, when a paid account genuinely differs.
+7. **[done]** The Apple icon was worse than "too small": it pointed at the 192, which is
+   4% non-opaque at its anti-aliased edges, and iOS fills transparency with BLACK under its
+   own rounded mask. `/apple-icon.png` is now 180 (what iPhones use), flattened onto the
+   manifest background, fully opaque. `test-get-the-app` 14.
 
 ## C. Suites that exist and never run (queue 43)
 
