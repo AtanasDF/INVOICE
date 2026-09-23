@@ -18,9 +18,12 @@ the first thing a new session reads, before `CLAUDE.md` and `SESSIONS.md`.
   optional), the top entry of `SESSIONS.md`, then `notes/tonight-list.md` (87 items,
   67 done) and `notes/claude-notes.md`.
 
-## The one thing that is open and half-finished
+## Sign-up emails: working, proven 2026-09-23 03:04
 
-**Sign-up confirmation emails.** Everything at the dashboard is set; the proof is missing.
+**Proven.** A real sign-up as `atanas@lurra.co.uk` produced the confirmation email from
+`Invoiceover <accounts@invoiceover.com>`, in our own wording, at 03:04. Resend's Emails
+list never showed it: **Resend does not log SMTP relays there**, only REST API sends. Do
+not read an empty Resend list as a failure again.
 
 - Custom SMTP is on in Supabase: `accounts@invoiceover.com`, "Invoiceover",
   `smtp.resend.com`, port **587**, username `resend`. Atanas created the Resend key
@@ -30,15 +33,13 @@ the first thing a new session reads, before `CLAUDE.md` and `SESSIONS.md`.
 - All four templates (`web/supabase/email-templates/`) are pasted into Supabase and were
   verified by reloading each page.
 - "Confirm email" was already on. URL configuration was already right.
-- **Unproven:** two password resets for `atanaschoo@gmail.com` answer 200 from `/recover`
-  (auth log `user_recovery_requested`, no error), but nothing appears in Resend's Emails
-  list. The sender address on an email that actually arrives tells the two cases apart:
-  `accounts@invoiceover.com` means it works, anything ending `supabase.io` means the key
-  did not take and a fresh one is needed. **Ask Atanas to make one new account from an
-  address he can read** — that is item 14 and the whole answer.
-- Two settings still differ from the plan: port should be **465** (item 7a) and the code
-  **6** digits lasting **86400** seconds (item 9a; it is 8 and 3600, while the emails say
-  24 hours). Both belong in one go with a fresh key, not saved blind.
+- **The 8-digit bug, fixed the same hour.** The first real email carried an 8-digit code
+  while `SignInCard` refuses anything that is not exactly 6 (`token.length !== 6`), so no
+  one could ever have typed it in. Supabase now issues **6** digits with an **86400**-second
+  expiry, matching both the app and the wording of the emails; saved and verified by
+  reloading the panel. That panel is separate from the SMTP form, so saving it is safe.
+- Port is **587**, not the 465 of item 7a. It works, so it stays: changing it means
+  re-saving the SMTP form, which could clear the key.
 
 ## Waiting on Atanas, nobody else can do these
 
