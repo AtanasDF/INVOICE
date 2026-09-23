@@ -31,13 +31,14 @@ as they land.
 
 ## C. Suites that exist and never run (queue 43)
 
-8. `test-payments` — port-pinned, errors on a screenshot in its catch.
-9. `test-deposits` — same shape.
-10. `test-free-quote`, `test-address-signed`, `test-settings-add`, `test-reminders-ui`,
-    `test-quote-requests` — try each against `$BASE`; add the green ones, and for the stale
-    ones say plainly whether they are worth rewriting or deleting.
-11. `test-quotes` is 6/8 on stale selectors — rewrite those two checks against the current
-    form rather than leaving a red suite lying around.
+8. **[done]** `test-payments` is green (6) and is in the run — it covers the very code the
+   double-payment fix touched.
+9. **[stale]** `test-deposits` times out on a 15 s wait; the screen moved under it.
+10. **[done]** `test-settings-add` (19) and `test-reminders-ui` (5) are green and added.
+    `test-free-quote` is stale. `test-address-signed` is **obsolete and safe to delete** —
+    it waits for the old address finder that no longer exists. `test-quote-requests` fails
+    on module resolution, not the UI. All reasons written into `notes/queue.md` item 43.
+11. `test-quotes` is 6/8 on stale selectors — still to do.
 
 ## D. Tidy
 

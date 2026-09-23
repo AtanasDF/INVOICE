@@ -153,8 +153,20 @@ screens moved under them:
 - `test-payments`, `test-reminders-ui`, `test-settings-add`, `test-quote-requests`,
   `test-address-signed` — not yet tried against `$BASE`.
 
-43. Work through that second list. Each one is either worth rewriting or worth deleting,
-    and right now it is neither — it is a suite that looks like coverage and is not.
+43. ~~Work through that second list~~ **done 2026-09-23, every one run against `$BASE`.**
+    Three more were green and are now in the run (**30 checks**): `test-payments` (6, and it
+    covers the very code the double-payment fix touched), `test-settings-add` (19),
+    `test-reminders-ui` (5). The remainder, each with the actual reason:
+    - `test-address-signed` — **obsolete, safe to delete.** It waits for
+      `input[placeholder="Find address: postcode, or number and street"]`, the old address
+      finder, which no longer exists; `test-address-fields` asserts its absence and covers
+      this ground. Flagged rather than deleted (hard rule 1) — say the word.
+    - `test-deposits` — stale: a 15 s wait times out, the screen moved under it.
+    - `test-free-quote` — stale: "no button: Start a quote"; the free page's chooser changed.
+    - `test-quotes` — 6/8, reading a `<select>` that is now the VAT-rate picker.
+    - `test-quote-requests` — not a UI problem at all: it imports the app's source and
+      Node can't resolve `@/lib`. It needs the `gen/` compile treatment the logic suites get.
+    - `test-quotes-ux`, `test-quotes-fixes` — written against `feature/quotes-ux`, long merged.
     The camera/clip suites (autozoom, far, bent, torch, pinch, lens, conditions,
     batch-swap) are excluded on purpose and have their own runners.
 

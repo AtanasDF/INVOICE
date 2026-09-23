@@ -48,7 +48,7 @@ SUITES=(
   # ports, and never added to it -- so 83 checks sat in the repo not running
   # for weeks (found 2026-09-23). They take $BASE like everything else; the
   # port in each is only its default.
-  test-receipts-list test-clear test-lines test-vat-snapshot
+  test-receipts-list test-clear test-lines test-vat-snapshot test-payments test-settings-add test-reminders-ui
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev
