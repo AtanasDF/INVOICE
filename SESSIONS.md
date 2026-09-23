@@ -4,6 +4,63 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-23 — The night list: colour, the front door, the dashboard, the scan limits (Opus 5)
+
+Atanas awake through most of it, steering. Everything below is on `main` and pushed.
+
+- **Sign-up emails, finished and proven.** His Resend key into Supabase SMTP, all four
+  templates pasted and verified by reloading each page, and a real sign-up at 03:04 arriving
+  from `accounts@invoiceover.com` in our own wording. **Resend does not log SMTP relays in
+  its Emails list** — an empty list there is not a failure, and an hour was lost to
+  believing it was. The first real email carried an **8-digit code while the app refuses
+  anything but six**, so nobody could have typed it in; Supabase now issues 6, and the link
+  lasts 10 minutes (he asked for 1; the email alone can take 40 seconds to arrive, so 10 was
+  the agreed floor) with the three emails that quote a time reworded to match.
+- **Colour and themes**, without touching 1,331 `neutral-*` classes: the scale became
+  variables, `@theme inline` points Tailwind's utilities at them, and a theme is a different
+  set of values. Five themes, per device, applied before first paint, invoices still print
+  in ink. The house-style rule in `CLAUDE.md` was rewritten in the same commit.
+- **The readability pass found the best bug of the night.** `text-neutral-500` on a
+  `neutral-100` card was 4.2–4.4:1 in *every* theme including plain grey — under AA, and
+  that way since long before themes existed. Green merely made it bad enough (3.66) to
+  notice. Mid-tones darkened everywhere; `test-readable.mjs` measures all five themes.
+- **The dashboard rebuilt round the scanner** to his spoken brief: one big scan, three under
+  it, who you work with in one list, three panels on one page, Check a company lower and
+  smaller. The tests caught that "give you the invoice with the next number" was unmet —
+  drafts have no number, and assigning one early would gap or repeat the sequence, so the
+  page says which number is coming instead.
+- **The front door**: six lines of explaining became three, a drawing of a receipt, an
+  invoice and a phone, and the sign-in box moved *above* the reading on a phone.
+- **Get the app**, flyer tracking (`?from=carlisle-dhl`, carried onto the account as user
+  metadata, no table needed), privacy and terms, search metadata, robots, sitemap, a sharing
+  picture, a real 404 and a `global-error` for when the layout itself throws.
+- **The scan limits**: the design written first, `backup-016` + `migration-036` **written and
+  not run**, the counting wired into all three reader routes behind `SCAN_LIMITS` (unset, so
+  it does nothing), and the wall with its once-a-month top-up. A retry after a failed read
+  costs nothing; copying and converting cost nothing at all.
+- **Protection**: the throwaway-inbox refusal (with a suite that mostly proves who must
+  *not* be caught), and Turnstile behind `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Wiring it to
+  sign-up alone would have locked everyone out of sign-in and password reset the day he
+  switched it on, so all three flows carry the token. **The weekly cap per address was
+  argued against rather than built**: a depot is dozens of drivers on one wifi in one week,
+  which is the plan working and the abuse pattern at once.
+- **106 fake documents in 24 unrelated designs** to print, crumple and scan, plus
+  `check-scans.mjs`, which reports what the reader got *wrong* rather than how many passed.
+  The first hundred were rightly rejected as "more or less the same" — they were one design
+  a hundred times.
+- **Housekeeping**: 1.5 GB of iCloud duplicates cleared; a move off the synced Desktop was
+  started and stopped at his word with nothing lost, and waits on a handover file that now
+  exists (`notes/handover.md`).
+
+**Open, and his:** run 036 with me watching (no Postgres on this Mac, so its SQL has never
+been parsed); Turnstile and Companies House keys; a trading name and address for the legal
+pages; whether to leave, reopen or write around the "free invoice template UK" question;
+print and scan the pile.
+
+**Open, and mine** (`notes/queue.md`, 35 items): an allowance readout before the wall
+arrives, dark mode done properly, offline caching, the ageing-photos job, and four small
+things the dashboard rebuild itself created.
+
 ## 2026-09-21 — Migrations 031–034 through the Supabase SQL editor, then the landscape scanner (Opus 5, then Fable 5.1 from the first commit)
 
 Atanas at the Mac, signed in to Supabase in Chrome; Remote Control on so he can steer

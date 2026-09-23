@@ -103,3 +103,21 @@ Copy the shape of `test-first-week.mjs` (the end-to-end walk) or `test-money-edg
   credit note on a CIS invoice takes less off the balance than its face value because part
   of it was being kept back anyway. Both times the code was right and the expectation was
   wrong.
+
+## Added 2026-09-23
+
+| Suite | What it holds to |
+|---|---|
+| `test-theme` | A theme changes ordinary `neutral-*` classes, survives a reload with no flash of grey, reaches the front door, and never reaches a printed invoice. |
+| `test-readable` | Contrast in all five themes on the front door and the dashboard, every box labelled, a visible focus ring, nothing too small to tap. It found `neutral-500` on `neutral-100` failing AA in every theme. |
+| `test-dashboard` | The scanner at the top, the three buttons under it, one list of customers and suppliers, a name starting their invoice, three panels remembered per device, Check a company lower and smaller. |
+| `test-first-page` | The front door: three lines not six, a picture, and the sign-in box above the reading on a phone. |
+| `test-get-the-app` | Install steps that match the phone. Headless Chrome offers an install of its own accord, so the cases are staged through `navigator` — **not** request interception, which the harness uses for Supabase and which blanks the app if taken over. |
+| `test-privacy-terms` | Both readable signed out, linked everywhere, saying the two things people would be angry to learn later, and never printed. |
+| `test-came-from` | A flyer's tag kept on the device, first one winning, cleaned of anything that is not letters, digits or dashes, and carried onto the account at sign-up. |
+| `test-scan-limit-text` | What someone is told at the wall, and that with `SCAN_LIMITS` unset nothing is ever refused. |
+| `test-throwaway-email` | Mostly who must **not** be caught: tempest-joinery, temperance-ltd, notmailinator. |
+| `test-no-sideways` | Nothing scrolls sideways at any width from 1440 down to 320 — from the first feedback anyone outside ever sent. |
+
+`check-scans.mjs` is not a suite: it marks a real scanning session against
+`test-documents/expected.json` and prints what was misread.
