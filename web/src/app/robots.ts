@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "./layout";
+import { SITE_URL } from "@/lib/siteUrl";
 
 // Only the front door and the two legal pages are public; everything else
 // needs an account, and the customer links (/i/, /q/, /r/) are private by

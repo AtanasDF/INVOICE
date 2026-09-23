@@ -3,10 +3,7 @@ import "./globals.css";
 import AppShell from "./AppShell";
 import { SITE_NAME } from "@/lib/siteName";
 import { THEME_BOOT } from "@/lib/theme";
-
-// Where the site lives, for the absolute addresses that sharing and search
-// need. Overridable so a preview does not advertise itself as production.
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://invoice-omega-rust.vercel.app";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

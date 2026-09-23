@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "./layout";
+import { SITE_URL } from "@/lib/siteUrl";
 
 // Three pages, because three pages is all that is public. A sitemap listing
 // pages that bounce a stranger to the sign-in would only teach a crawler that

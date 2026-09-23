@@ -23,7 +23,6 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
-import AddAnything from "@/components/AddAnything";
 import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
 import UploadFilesButton from "@/components/UploadFilesButton";
@@ -462,7 +461,10 @@ function Dashboard() {
           </p>
         )}
 
-        <AddAnything />
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <Link href="/receipts/new" className="font-medium text-neutral-700 underline">Add a receipt by hand</Link>
+          <Link href="/quotes/new" className="font-medium text-neutral-700 underline">Make a quote</Link>
+        </div>
       </section>
 
       {/* Three panels, one page. */}
@@ -510,18 +512,6 @@ function Dashboard() {
         </Link>
       </div>
       )}
-
-      <div className="flex flex-wrap gap-4">
-        <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-          <FolderIcon /> Browse your file library &rarr;
-        </Link>
-        <Link href="/recurring" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-          <RepeatIcon /> Recurring expenses &rarr;
-        </Link>
-        <Link href="/recurring/invoices" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-          <RepeatIcon /> Recurring invoices &rarr;
-        </Link>
-      </div>
 
       {bills.length > 0 && (
         <div id="bills-to-pay" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
@@ -681,10 +671,21 @@ function Dashboard() {
       <GetTheApp />
 
       {/* Lower and smaller, as he asked: useful, but not what the page is for. */}
-      <section aria-label="Other tools" className="space-y-2 border-t pt-5">
-        <Link href="/check-company" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-          <SearchIcon /> Check a company &rarr;
-        </Link>
+      <section aria-label="Other tools" className="border-t pt-5">
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <Link href="/check-company" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
+            <SearchIcon /> Check a company &rarr;
+          </Link>
+          <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
+            <FolderIcon /> Your file library &rarr;
+          </Link>
+          <Link href="/recurring" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
+            <RepeatIcon /> Recurring expenses &rarr;
+          </Link>
+          <Link href="/recurring/invoices" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
+            <RepeatIcon /> Recurring invoices &rarr;
+          </Link>
+        </div>
       </section>
     </div>
   );
