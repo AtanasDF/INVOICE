@@ -59,12 +59,13 @@ Estimates, to be checked against the first real bills — no month of live billi
 
 ## Settled 2026-09-23 02:2x
 
-- **Scans: 300 a day for a new account at the start, then 50 a day for everyone.** His
+- **Scans: 300 a day for a new account at the start, then 50 a day for everyone.** (Numbers
+  finalised below.) His
   words: "300 a day at first, but then is it a rational idea to do 50 a day for everyone?"
   It is rational. The cost is the average and the average will be two or three; 50 is a
   wall that only an abuser meets. Keep a quiet overall ceiling underneath it so one person
   cannot run 1,500 documents a month through as a free reader — a cap nobody honest ever
-  sees.
+  sees. Settled at 600 a month, with one top-up.
 - **One email, at the moment of deletion, carrying everything that is going.** Not per
   document and not a weekly digest: the photos that are ageing out are gathered into one
   PDF and sent once, then removed. "How to email only when you once when you deleting the
@@ -77,11 +78,24 @@ Estimates, to be checked against the first real bills — no month of live billi
 - **Promotion is a conversation he wants to have** — an Instagram page was his first
   thought, "and other solutions". Not decided, not started.
 
+## The free tier, decided 2026-09-23 02:3x
+
+- **300 scans** in the first few days of a new account.
+- Then **50 a day**, and **600 a month** — his own numbers, raised from 400 because "we are
+  generous enough".
+- **One self-serve top-up.** Someone who reaches the 600 sees a button, clicks it, and gets
+  another 600 for that month. Once a month, and once only: "just so he knows, but we are
+  generous enough". The point is that the wall exists and is visible, and that nobody is
+  ever stopped dead the first time they meet it. The most a free account can cost is
+  therefore 1,200 documents in a month, which is pennies.
+- **Photos kept three months at most**, then emailed in one PDF and deleted, and shortened
+  further when the bill needs it. Not twelve: "we don't need to keep 12 months".
+- **The record is kept for ever** — amount, VAT, supplier, date. Only the picture ages out.
+- Paid, for very little money: more scans and more invoices.
+
 ## Still to settle
 
 
-- The first retention figure to start from, before it is shortened.
-- The overall monthly ceiling that sits under the 50-a-day cap.
 - How it is promoted, and what the advertising share of the £100 buys.
 - Apple requires in-app purchase for anything digital and in-app account deletion; both
   fight the current rules. Decide before wrapping for the stores, not after.
