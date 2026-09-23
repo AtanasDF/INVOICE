@@ -121,3 +121,28 @@ Copy the shape of `test-first-week.mjs` (the end-to-end walk) or `test-money-edg
 
 `check-scans.mjs` is not a suite: it marks a real scanning session against
 `test-documents/expected.json` and prints what was misread.
+
+
+## A suite that "CRASHED" at JOBS=4 is usually the machine, not the app
+
+`run-all.sh` runs four browsers at once. On a loaded Mac that produces two
+failures that look alarming and mean nothing:
+
+- `Attempted to use detached Frame '<hex>'` — Chrome tore the frame down while a
+  suite was still talking to it.
+- `Waiting failed: 20000ms exceeded` — a `waitForFunction` that would have
+  passed with the CPU to itself.
+
+On 2026-09-23 three suites came back not-green this way (`test-save-as` 1/3,
+`test-convert` 3/6, `test-address-fields` 3/3 then crashed). Run on their own
+they were **20/20, 15/15 and 25/25**. Nothing was wrong.
+
+So: before believing a failure, re-run that suite by itself —
+
+```
+BASE=http://localhost:3000 node test-convert.mjs
+```
+
+and only then go looking. `JOBS=1` does the whole run serially if several are
+flaking at once. A genuine failure names a check; these name a frame or a
+timeout and take the whole suite down with them.

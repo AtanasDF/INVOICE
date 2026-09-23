@@ -45,6 +45,10 @@ can show the same thing (details in `notes/claude-notes.md`).
   `large.mjpeg`, which nine suites need; `gen-torch.py` the two torch clips; `gen-uploads.py` and
   `gen-multi.py` the upload suites' files, made by `run-all.sh` when missing). `harness/README.md` has the
   rest. Run it from a scratchpad copy if you don't want profile directories in the tree.
+  **A suite that "CRASHED" with `Attempted to use detached Frame` or `Waiting failed:
+  20000ms exceeded` is the four-at-a-time load, not the app: re-run that one suite on its
+  own before believing it** (2026-09-23: three came back not-green that way and were
+  20/20, 15/15 and 25/25 alone). `harness/README.md` has the detail.
 - `notes/claude-notes.md` — standing facts and preferences behind the rules (who Atanas
   is, verified DB state, decisions, references, queued work). Update it when a fact changes.
 - `web/supabase/` — `schema.sql`, numbered migrations, numbered backup files. All hand-run
