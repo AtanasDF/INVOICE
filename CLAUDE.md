@@ -64,8 +64,10 @@ can show the same thing (details in `notes/claude-notes.md`).
    `add column if not exists`, guarded `do $$ ... $$` blocks for constraints/policies,
    `create or replace function`, explicit grants). A migration that only creates a
    function or table, or only redefines an FK's ON DELETE, needs no backup and must say so
-   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-21:
-   migration-035, backup 015. Applied and verified up to 035 (028 created two new tables,
+   in its header. Check the latest numbers in the folder first. Latest as of 2026-09-23:
+   **migration-036 and backup 016, both written and NOT YET RUN** (the scan limits: two
+   tables, `business_profile.plan`, and `scan_allowance` / `take_scans` /
+   `claim_scan_topup`). Applied and verified up to 035. (028 created two new tables,
    so it needed no backup; 029 added the registered name,
    company number and account kind to business_profile; 030 added clients.company_number;
    031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
