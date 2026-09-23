@@ -9,13 +9,16 @@ them all."
 to be photographed and read by the scanner, and a document that could be mistaken for a
 real one has no place in an accounting app's test folder.
 
-## The ambiguity, named rather than guessed
+## Settled: at least 100, and a failure is the point
 
-"Every single invoice and every single receipt you find in the world" cannot be built and
-would not help if it were. What makes the scanner fail is not the *number* of documents but
-the *kinds* of difficulty. A useful set is perhaps **50 sheets chosen so that each one
-breaks something different**, and it can grow whenever a real document defeats the reader.
-To agree with him before building.
+"I want to scan at least 100 different documents and see how that goes. If a scan doesn't
+go through we are learning from it."
+
+So: **100 sheets minimum**, chosen so that each one is hard in a different way, and the set
+grows whenever a real document defeats the reader. The run is not marked out of 100 — a
+document the reader cannot manage is the most valuable sheet in the pile, because it names
+a weakness nobody knew about. Every failure gets written down with *what* it got wrong, not
+just that it failed, and that list is what the next scanner work is built from.
 
 ## The kinds that actually break a reader
 

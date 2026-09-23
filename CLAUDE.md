@@ -324,6 +324,12 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
   `["string","null"]` type (use `nullableEnum`, an anyOf). Emulating null with "" made Opus 5
   write tool-call syntax into empty fields. `effort` per call: template and contact reads
   run `low`, `/api/scan` `medium`. Scan routes allow `maxDuration = 300`.
+  **Only fill in what the reading is sure of** (Atanas, 2026-09-23: "tell them honestly and
+  add only what is sure for"). A field the reader is not certain about is left empty and
+  said out loud, never filled with a good guess: a wrong total or a wrong date that looks
+  confident goes into the accounting record unchallenged, while an empty box gets looked at.
+  This is why ambiguous dates are confirmed in the UI rather than resolved quietly, and the
+  same rule governs every field added later.
   Dates are parsed day-first server-side from the printed string
   (`src/lib/documentDate.ts`); ambiguous ones must be confirmed in the UI.
 - `POST /api/scan` requires the signed-in user's Supabase bearer token; `engine` is

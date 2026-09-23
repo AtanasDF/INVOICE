@@ -1,5 +1,11 @@
 # Getting people to the app
 
+**The delivery drivers are the customer the app is built for first** (Atanas, 2026-09-23:
+"the depot is our customers for sure and it's made for them first"). That is a product
+decision, not only a marketing one: when a choice has to be made about wording, defaults or
+what goes on a screen, it is made for a self-employed driver with a glovebox full of fuel
+and parking receipts — not for an accountant, and not for a limited company.
+
 Atanas, 2026-09-23 03:3x, his plan in his own words. Nothing here is built or booked.
 
 ## The depots — his brother
@@ -25,7 +31,7 @@ dearer per person than the depots, and to a crowd with no common problem — wor
 ## What a flyer actually needs
 
 - A **QR code**, which is the "barcode to scan" he means. It opens the website.
-- **A different code per place**, so the address it opens says where it came from
+- **A different code per place** (agreed 2026-09-23: "we can do the different code too"), so the address it opens says where it came from
   (`invoiceover.com/?from=carlisle-dhl`). Without that he is paying for flyers with no idea
   which depot worked. This is the cheapest thing on the whole list and the easiest to
   forget.
@@ -46,8 +52,9 @@ Guard it: the reward lands only once the invited person has **confirmed their em
 actually scanned something**, never at sign-up. Otherwise it is a machine for making fake
 accounts, and it would undo the protections in `notes/pricing-and-limits.md`.
 
-To settle: what the bonus is (a month of paid? a few hundred scans?), and whether there is
-a cap per person.
+**Agreed 2026-09-23:** the reward lands only after the invited person confirms their email
+*and* scans something. Still to settle: what the bonus is (a month of paid? a few hundred
+scans?), and whether there is a cap per person.
 
 ## The order he wants
 
