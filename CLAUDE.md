@@ -115,7 +115,16 @@ not the diff. Match the existing conventions: page header `h1.text-2xl.font-bold
 `p.mt-1.text-neutral-600`; cards `rounded-xl border bg-white p-5 text-neutral-900 shadow-sm`;
 primary button `rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white`;
 labels `text-xs text-neutral-500` above the control; badges `rounded-full px-2 py-0.5
-text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI is neutral greys only. Three conventions worth knowing: a failed load uses
+text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI uses the neutral scale, which is **no longer grey by choice**: since
+2026-09-23 the scale is a set of variables (`--n-50`..`--n-950` in `globals.css`) that a
+theme redefines, so `bg-neutral-900` is the theme's darkest and `text-neutral-600` its
+mid-tone. Keep using `neutral-*` and everything follows a theme for free; reach for
+`accent` only where a highlight is genuinely wanted. Never hard-code a hex in a component.
+The five themes are in `src/lib/theme.ts`, the choice lives in localStorage (per device,
+not per account), `THEME_BOOT` sets it in `<head>` before the first paint, and a printed
+invoice is forced back to plain ink. **Dark mode is not built**: it needs `bg-white` and
+`text-white` turned into surface and ink tokens first, or white text lands on white
+buttons. Three conventions worth knowing: a failed load uses
 `loadFailed()` and a failed save `saveFailed()` (both in `src/lib/errorText.ts`) — never
 `err instanceof Error ? err.message : "..."`, which is never true for a Supabase error and
 throws the reason away; a list's empty state is gated on `!error`, so "No invoices yet" can

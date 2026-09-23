@@ -1,0 +1,41 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
+import { DEFAULT_THEME, THEMES, readTheme, saveTheme, subscribeTheme } from "@/lib/theme";
+
+// Picking the colours. Nothing is saved to the account: it is how this phone
+// looks, so it stays on this phone, and takes effect the moment it is tapped
+// rather than behind a Save button.
+export default function ThemePicker() {
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => DEFAULT_THEME);
+
+  return (
+    <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <h2 className="font-semibold">How it looks</h2>
+      <p className="text-sm text-neutral-600">Pick a colour. It changes straight away, and only on this device.</p>
+      <div role="radiogroup" aria-label="Colour" className="grid gap-2 sm:grid-cols-2">
+        {THEMES.map((t) => {
+          const on = t.id === theme;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => saveTheme(t.id)}
+              className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left ${on ? "border-neutral-900 bg-neutral-50" : "hover:bg-neutral-50"}`}
+            >
+              <span aria-hidden className="size-7 shrink-0 rounded-full border" style={{ background: t.swatch }} />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{t.name}</span>
+                <span className="block text-xs text-neutral-500">{t.note}</span>
+              </span>
+              {on && <span className="ml-auto text-xs font-medium text-neutral-500">On</span>}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-neutral-500">Invoices always print in plain ink, whichever colour you pick.</p>
+    </div>
+  );
+}

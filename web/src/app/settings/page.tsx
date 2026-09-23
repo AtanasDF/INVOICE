@@ -30,6 +30,7 @@ import { inlineImage } from "@/lib/receiptImages";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import CompanyNumberInput from "@/components/CompanyNumberInput";
 import AddressFields from "@/components/AddressFields";
+import ThemePicker from "@/components/ThemePicker";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -898,6 +899,8 @@ export default function SettingsPage() {
           )}
         </div>
       </form>
+
+      <ThemePicker />
 
       <div className={CARD}>
         <div>

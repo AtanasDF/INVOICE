@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell from "./AppShell";
 import { SITE_NAME } from "@/lib/siteName";
+import { THEME_BOOT } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: SITE_NAME,
@@ -32,6 +33,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Before the first paint, or the page flashes grey on its way to
+            the colour this device chose. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body className="min-h-screen bg-neutral-50 text-neutral-900">
         <div className="flex min-h-screen flex-col">
           <AppShell>{children}</AppShell>

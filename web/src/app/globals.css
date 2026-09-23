@@ -1,15 +1,141 @@
 @import "tailwindcss";
 
+/* Colour, and a theme people can choose (Atanas, 2026-09-23: "we need to make
+   the app a bit more colourful... options to change the themes, depends how you
+   like it. Nothing too special.").
+
+   The app had 1,331 `neutral-*` classes in it. Rewriting them all would have been
+   a huge diff with a real chance of missing one and leaving a grey patch, so
+   instead the *meaning* of neutral is what changes: the scale is a set of
+   variables, `@theme inline` points Tailwind's neutral utilities at them, and a
+   theme is nothing but a different set of values. Every existing class follows
+   without being touched.
+
+   Tinted neutrals rather than bright colour, which is what "nothing too special"
+   asks for: the page still reads as paper, the dark end carries the hue, and the
+   primary button (bg-neutral-900) picks up the theme by itself.
+
+   Dark mode is deliberately NOT here. It needs `bg-white` and `text-white` to
+   become surface and ink tokens, and flipping those blindly would put white text
+   on white buttons. It is its own job, with its own tests. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --n-50: #fafafa;
+  --n-100: #f5f5f5;
+  --n-200: #e5e5e5;
+  --n-300: #d4d4d4;
+  --n-400: #a3a3a3;
+  --n-500: #737373;
+  --n-600: #525252;
+  --n-700: #404040;
+  --n-800: #262626;
+  --n-900: #171717;
+  --n-950: #0a0a0a;
+  --accent: #404040;
+  --accent-soft: #f5f5f5;
+  /* The body rule below is unlayered, so it beats Tailwind's own utilities
+     whatever their specificity: `bg-neutral-50` on <body> has never actually
+     applied. Pointing these at the scale makes the page surface follow the
+     theme, and incidentally gives the body the colour that class always
+     intended. */
+  --background: var(--n-50);
+  --foreground: var(--n-900);
+}
+
+/* Cool and businesslike. */
+[data-theme="slate"] {
+  --n-50: #f8fafc;
+  --n-100: #f1f5f9;
+  --n-200: #e2e8f0;
+  --n-300: #cbd5e1;
+  --n-400: #94a3b8;
+  --n-500: #64748b;
+  --n-600: #475569;
+  --n-700: #334155;
+  --n-800: #1e293b;
+  --n-900: #0f1d33;
+  --n-950: #020617;
+  --accent: #1d4ed8;
+  --accent-soft: #eff6ff;
+}
+
+/* Warm, the colour of a paper invoice. */
+[data-theme="sand"] {
+  --n-50: #fbfaf8;
+  --n-100: #f5f3ef;
+  --n-200: #e9e5dd;
+  --n-300: #d8d2c6;
+  --n-400: #aaa294;
+  --n-500: #7a7264;
+  --n-600: #59524a;
+  --n-700: #45403a;
+  --n-800: #2a2621;
+  --n-900: #1b1814;
+  --n-950: #0d0b09;
+  --accent: #a16207;
+  --accent-soft: #fefce8;
+}
+
+/* Green, for the outdoor trades. */
+[data-theme="forest"] {
+  --n-50: #f6faf7;
+  --n-100: #eef5f0;
+  --n-200: #dde9e1;
+  --n-300: #c4d6ca;
+  --n-400: #93ae9d;
+  --n-500: #64866f;
+  --n-600: #4a6a54;
+  --n-700: #3a5342;
+  --n-800: #24362a;
+  --n-900: #15251a;
+  --n-950: #0a1410;
+  --accent: #15803d;
+  --accent-soft: #f0fdf4;
+}
+
+/* Deep navy, the nearest thing to black that is not black. */
+[data-theme="ink"] {
+  --n-50: #f7f9fc;
+  --n-100: #eef2f9;
+  --n-200: #dde4f0;
+  --n-300: #c3cfe4;
+  --n-400: #90a1c0;
+  --n-500: #5f739b;
+  --n-600: #46577c;
+  --n-700: #364361;
+  --n-800: #212c42;
+  --n-900: #131c2e;
+  --n-950: #090f19;
+  --accent: #4338ca;
+  --accent-soft: #eef2ff;
 }
 
 @theme inline {
+  --color-neutral-50: var(--n-50);
+  --color-neutral-100: var(--n-100);
+  --color-neutral-200: var(--n-200);
+  --color-neutral-300: var(--n-300);
+  --color-neutral-400: var(--n-400);
+  --color-neutral-500: var(--n-500);
+  --color-neutral-600: var(--n-600);
+  --color-neutral-700: var(--n-700);
+  --color-neutral-800: var(--n-800);
+  --color-neutral-900: var(--n-900);
+  --color-neutral-950: var(--n-950);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* A printed invoice is not themed: it is a document, and it prints in ink. */
+@media print {
+  :root, [data-theme] {
+    --n-50: #fafafa; --n-100: #f5f5f5; --n-200: #e5e5e5; --n-300: #d4d4d4;
+    --n-400: #a3a3a3; --n-500: #737373; --n-600: #525252; --n-700: #404040;
+    --n-800: #262626; --n-900: #171717; --n-950: #0a0a0a;
+  }
 }
 
 body {
