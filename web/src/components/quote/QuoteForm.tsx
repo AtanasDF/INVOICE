@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState } from "react";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
@@ -42,6 +44,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
 }) {
   const [v, setV] = useState<QuoteFormValue>(initial.items.length ? initial : { ...initial, items: [{ ...BLANK_LINE }] });
   const anyone = () => clients.some((c) => !c.archived);
+  const picked = clients.find((c) => c.id === v.clientId) ?? null;
   const [adding, setAdding] = useState<NewCustomerStart | null>(() => newCustomer ?? (anyone() || clients.some((c) => c.id === initial.clientId) ? null : NO_ONE));
   // Which line is being priced up against what it usually costs.
   const [finding, setFinding] = useState<number | null>(null);
@@ -85,6 +88,22 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           setError(null);
         }}
       />
+      {/* Atanas, 2026-09-23: "so people can check companies before they send
+          the quotation". Right here is the moment -- somebody is about to put
+          their prices in front of a company they may know nothing about. When
+          the contact was picked off the register we know exactly which company
+          to open (migration-030); otherwise it opens the search. */}
+      {picked && (
+        <p className="text-xs text-neutral-500">
+          <Link
+            href={picked.companyNumber ? `/check-company?number=${encodeURIComponent(picked.companyNumber)}` : "/check-company"}
+            className="font-medium text-neutral-700 underline"
+          >
+            Check {picked.name} on the Companies House register
+          </Link>{" "}
+          &mdash; free, before you send your prices.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-neutral-500">Quote number</label>

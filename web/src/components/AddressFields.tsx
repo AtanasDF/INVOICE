@@ -16,11 +16,13 @@ const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 // the box is one search, not two.
 const queryOf = (p: AddressParts) => (normalisePostcode(p.postcode) ?? p.postcode.trim()) || [p.line1, p.town].map((s) => s.trim()).filter(Boolean).join(", ");
 // Atanas, 2026-09-22: a postcode should list its addresses, and an address
-// give its postcode, without anyone having to find a button. A whole
-// postcode searches by itself after a short pause or on leaving the box; a
-// number and street after a slightly longer one. Find stays for a retry.
-const POSTCODE_PAUSE_MS = 700;
-const STREET_PAUSE_MS = 900;
+// give its postcode, without anyone having to find a button. 2026-09-23, the
+// rest of it: there is no button at all now ("the system should automatically
+// search once the user input anything"), and every edit searches -- including
+// deleting a letter, which used to leave the old list sitting there looking
+// current while it described text nobody could see any more.
+const POSTCODE_PAUSE_MS = 500;
+const STREET_PAUSE_MS = 700;
 const autoReady = (p: AddressParts) => (p.postcode.trim() ? !!normalisePostcode(p.postcode) : looksLikeStreet(p.line1));
 
 // A UK address in its own fields, searched by whatever is filled in: a
@@ -85,11 +87,30 @@ export default function AddressFields({ address, onAddress, label = "Address", s
     onAddress(text);
     if (timer.current) clearTimeout(timer.current);
     const q = queryOf(next);
-    if (q === settled) return;
-    if (autoReady(next)) timer.current = setTimeout(() => void find(q), next.postcode.trim() ? POSTCODE_PAUSE_MS : STREET_PAUSE_MS);
-    // Not searchable yet (half a postcode, say): typing it whole again
-    // searches again.
-    else if (settled) setSettled("");
+    // The list answers a question that has just changed, so it goes now
+    // rather than when the next answer arrives. Deleting a letter used to
+    // leave the old matches on screen, reading as though they were still
+    // what had been found.
+    if (result && result.q !== q) {
+      setResult(null);
+      setError(null);
+    }
+    // An answer still in flight is for the old text: drop it when it lands.
+    if (asked.current !== q) {
+      asked.current = null;
+      setSearching(false);
+    }
+    if (!autoReady(next)) {
+      // Half a postcode, or a street too short to search. Typing more (or
+      // deleting back to something searchable) picks it up again.
+      if (settled) setSettled("");
+      return;
+    }
+    // Searched even when the text matches what was last settled, unless the
+    // list for it is already on screen: deleting a letter and putting it back
+    // must bring the list back, not sit silent.
+    if (q === settled && result?.q === q) return;
+    timer.current = setTimeout(() => void find(q), next.postcode.trim() ? POSTCODE_PAUSE_MS : STREET_PAUSE_MS);
   }
 
   // Only what the pick actually carries is written, so a postcode-only pick
@@ -223,19 +244,18 @@ export default function AddressFields({ address, onAddress, label = "Address", s
           onKeyDown={onEnter}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void find()}
-          disabled={query.length < 3 || searching || fetching}
-          className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-40"
-        >
-          {searching ? "Looking…" : "Find address"}
-        </button>
-        <span className="text-xs text-neutral-500">
-          {parts.postcode.trim() ? "Lists the addresses at that postcode." : "A postcode lists its addresses; a number and street finds its postcode."}
-        </span>
-      </div>
+      {/* No Find button (Atanas, 2026-09-23: "it shouldn't be there as the
+          system should automatically search once the user input anything").
+          The only thing left here is the line saying what typing will do. */}
+      {/* A span, not a p: the results note below is the block's own p.text-xs
+          and things read it by that. */}
+      <span className="block text-xs text-neutral-500">
+        {searching
+          ? "Searching…"
+          : parts.postcode.trim()
+            ? "Lists the addresses at that postcode."
+            : "A postcode lists its addresses; a number and street finds its postcode."}
+      </span>
       {result && (
         <div className="overflow-hidden rounded-lg border bg-white text-neutral-900">
           {items.length > 0 && (
@@ -252,9 +272,20 @@ export default function AddressFields({ address, onAddress, label = "Address", s
           )}
           <div className="flex items-center justify-between gap-2 border-t bg-neutral-50 px-3 py-1.5">
             <p className="text-xs text-neutral-600">{note}</p>
-            <button type="button" onClick={() => setResult(null)} className="shrink-0 text-xs font-medium text-neutral-700">
-              Close
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              {/* Taking the Find button away must not leave somebody stuck
+                  when the lookup is simply down: that is the only moment a
+                  retry is worth offering, so it is offered there and nowhere
+                  else. */}
+              {result.busy && !searching && (
+                <button type="button" onClick={() => void find(result.q)} className="text-xs font-medium text-neutral-700 underline">
+                  Try again
+                </button>
+              )}
+              <button type="button" onClick={() => setResult(null)} className="text-xs font-medium text-neutral-700">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

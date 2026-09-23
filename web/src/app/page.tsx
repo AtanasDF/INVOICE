@@ -17,7 +17,7 @@ import {
   recurringExpensesStore,
 } from "@/lib/storage";
 import { isOverdue } from "@/lib/invoiceStatus";
-import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon } from "@/components/icons";
+import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
@@ -437,17 +437,30 @@ function Dashboard() {
           </Link>
         )}
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           <Link href="/free-invoice?start=photo" className={TILE}>
             <DocumentIcon className="h-6 w-6" />
             <span>Create an invoice</span>
+          </Link>
+          <Link href="/quotes/new" className={TILE}>
+            <TagIcon className="h-6 w-6" />
+            <span>Write a quote</span>
+          </Link>
+          {/* Next to the quote on purpose (Atanas, 2026-09-23: "so people can
+              check companies before they send the quotation"). The moment to
+              find out who you are dealing with is before you price the job,
+              not after they have your prices. It was down in "Other tools",
+              which is nowhere near that moment. */}
+          <Link href="/check-company" className={TILE}>
+            <SearchIcon className="h-6 w-6" />
+            <span>Check a company</span>
           </Link>
           <Link href="/copy" className={TILE}>
             <CopyIcon className="h-6 w-6" />
             <span>Copy a document</span>
           </Link>
-          <UploadFilesButton href="/scan" label="Upload a document" buttonClassName={`${TILE} w-full`} />
         </div>
+        <UploadFilesButton href="/scan" label="Upload a document" buttonClassName={`${TILE} min-h-0 w-full flex-row py-2.5`} />
 
         <p className="text-sm text-neutral-600">
           Photograph an old invoice and the next one is filled in for you, or{" "}
@@ -673,9 +686,6 @@ function Dashboard() {
       {/* Lower and smaller, as he asked: useful, but not what the page is for. */}
       <section aria-label="Other tools" className="border-t pt-5">
         <div className="flex flex-wrap gap-x-5 gap-y-2">
-          <Link href="/check-company" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-            <SearchIcon /> Check a company &rarr;
-          </Link>
           <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
             <FolderIcon /> Your file library &rarr;
           </Link>

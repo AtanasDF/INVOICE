@@ -18,12 +18,21 @@ const type = (i, label, text) => page.evaluate((i, label, text) => {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("blur", { bubbles: true }));
 }, i, label, text);
+// Typed without leaving the box, so nothing but the automatic search can
+// explain what happens next.
+const typeOnly = (i, label, text) => page.evaluate((i, label, text) => {
+  const el = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector(`input[aria-label="${label}"]`);
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, text);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}, i, label, text);
+const optionCount = (i) => page.evaluate((i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelectorAll('[role="option"]').length, i);
 // The note under the list is the block's own 12px paragraph (it was 11px
 // before the contrast floor of 2026-09-22).
 const noteIn = (i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("p.text-xs");
+// There is no Find button any more (Atanas, 2026-09-23): typing searches by
+// itself, so this only waits for the search typing already started.
 const findIn = async (i) => {
-  await page.evaluate((i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("button").click(), i);
-  await page.waitForFunction((i) => { const n = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("p.text-xs"); return n && !/Searching/.test(n.textContent) && !/Fill in a postcode|Lists the addresses/.test(n.textContent); }, { timeout: 20000 }, i);
+  await page.waitForFunction((i) => { const n = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("p.text-xs"); return n && !/Searching/.test(n.textContent) && !/Fill in a postcode|Lists the addresses|A postcode lists its addresses/.test(n.textContent); }, { timeout: 25000 }, i);
   await sleep(200);
   return page.evaluate((i) => {
     const block = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2");
@@ -47,6 +56,9 @@ try {
   await sleep(400);
   check("address fields on both addresses", (await blocks()).length === 2, String((await blocks()).length));
   check("no separate find box or address textarea any more", !(await page.$('input[placeholder="Find address: postcode, or number and street"]')) && (await page.$$('textarea[aria-label]')).length === 0);
+  // Atanas, 2026-09-23: "this 'find address' shouldn't be there as the system
+  // should automatically search once the user input anything".
+  check("and no Find address button either", !(await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => /Find address|Looking/i.test(b.textContent)))));
 
   // The bug: a street typed in, then a postcode, must keep both.
   await type(0, "House number and street", "Unit 4, Mill Lane");
@@ -59,6 +71,21 @@ try {
   let f = await fields(0);
   check("street typed above is kept", f.line1 === "Unit 4, Mill Lane", JSON.stringify(f));
   check("town and postcode filled in", f.town === "London" && f.postcode === "EC1A 1BB", JSON.stringify(f));
+
+  // Atanas, 2026-09-23: "when you delete what you wrote whatever the system
+  // recognised is still there... if you write few letters and the system
+  // recognises something, when you delete a letter system should
+  // automatically recognise that and update the list it gave you without you
+  // having to click in it".
+  await typeOnly(0, "Postcode", "M1 1AE");
+  await findIn(0);
+  check("typing a postcode searches on its own, with nothing pressed", (await optionCount(0)) >= 1, String(await optionCount(0)));
+  await typeOnly(0, "Postcode", "M1 1A");
+  await sleep(700);
+  check("deleting a letter takes the old list away at once", (await optionCount(0)) === 0, String(await optionCount(0)));
+  await typeOnly(0, "Postcode", "M1 1AE");
+  await findIn(0);
+  check("...and typing it back brings the list again by itself", (await optionCount(0)) >= 1, String(await optionCount(0)));
 
   // A second postcode replaces town and postcode, still keeping the street.
   await type(0, "Postcode", "M1 1AE");
