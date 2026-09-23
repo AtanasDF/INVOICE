@@ -86,7 +86,8 @@ page. Ask him: which screen, and a phone or a trackpad?
 
 ## Waiting on him
 
-26. **[his]** Turnstile keys — five minutes, and the people-check goes live.
+26. ~~**[his]** Turnstile keys~~ **done 2026-09-23: live and verified in a real browser.**
+    Invisible to honest people — he signed in from a private window and saw nothing at all.
 27. **[his]** Companies House key — the company lookup and the company check are dead without it.
 28. **[his]** A trading name and address for the privacy and terms pages. Required before
     advertising, and not something to invent.

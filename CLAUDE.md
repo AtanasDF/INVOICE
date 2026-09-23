@@ -458,10 +458,19 @@ Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 `INBOX_WEBHOOK_SECRET` (added 2026-09-21 — it had never been set; the Worker was first
 deployed the same evening), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `FEEDBACK_TO` (added
 2026-09-22: where `/api/feedback` emails every piece of feedback, from
-`feedback@invoiceover.com`, Reply-to the sender; an address, not a secret). `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (not set: the people-check on sign-up renders nothing and
-sends no token without it, so every sign-in flow behaves exactly as before. Atanas makes a
-Turnstile widget in Cloudflare, the **site key** goes here and the **secret** into Supabase
-under Authentication → Bot and Abuse Protection, which is what actually does the checking).
+`feedback@invoiceover.com`, Reply-to the sender; an address, not a secret). `NEXT_PUBLIC_TURNSTILE_SITE_KEY` **set 2026-09-23 and live** (`0x4AAAAAAFBLTDPz0_yLgc3w`, a
+public site key, stored in Vercel as config not a secret). The matching secret is in
+Supabase under Authentication → Attack Protection, provider **Turnstile**, and
+**Enable Captcha protection is ON**. Widget "Invoiceover sign-up", Managed mode, hostname
+`invoice-omega-rust.vercel.app` — add `invoiceover.com` to the widget before moving the
+app there, or sign-in breaks the moment the domain changes.
+**The order matters:** the site key must be deployed BEFORE the Supabase switch goes on. With
+the check on and no token being sent, every sign-in, sign-up and password reset fails.
+**A warning for whoever tests this next:** the built-in browser pane cannot solve a Turnstile
+challenge — it renders, then sits pending for ever with no error. That is the test browser,
+not the app. An hour was lost to diagnosing a hostname problem that did not exist; the
+Cloudflare API showed the config had been right all along, and a real Chrome solved it
+first time. Verify this one in a real browser, or not at all.
 `SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
 **do nothing** until it is `on`, which must wait for migration-036 to be run).
 `RESEND_API_BASE` is only for the harness's stand-in. `vercel env ls
