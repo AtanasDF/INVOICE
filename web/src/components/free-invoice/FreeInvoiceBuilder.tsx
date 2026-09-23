@@ -68,9 +68,13 @@ export default function FreeInvoiceBuilder() {
   // Not over a draft in progress, not for a stranger (the chooser asks them
   // to sign in), and not on the iPhone's own-camera path, which only opens
   // from a tap, so the chooser's button is still the way in there.
-  const [capturing, setCapturing] = useState(
-    () => !draft && !!user && !(isIOS && readScannerMode() === "native") && new URLSearchParams(window.location.search).get("start") === "photo"
-  );
+  // Both read the address before the effect below strips ?start= from it.
+  const openedForThem = () => !draft && !!user && !(isIOS && readScannerMode() === "native") && new URLSearchParams(window.location.search).get("start") === "photo";
+  const [capturing, setCapturing] = useState(openedForThem);
+  // Whether the camera was opened for them or by them: only the first case
+  // may close itself when the camera turns out to be blocked.
+  const [autoOpened] = useState(openedForThem);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
   useEffect(() => {
     if (window.location.search.includes("start=")) window.history.replaceState(null, "", "/free-invoice");
   }, []);
@@ -226,6 +230,12 @@ export default function FreeInvoiceBuilder() {
       <DocumentCapture
         onCapture={addPage}
         onClose={() => setCapturing(false)}
+        // The camera we opened for them, refused. They pressed "Create an
+        // invoice", not "open the camera", so the shortcut failing must not
+        // leave them on a black screen hunting for a back arrow: get out of
+        // the way, show the invoice, and say why. Only when we opened it --
+        // somebody who tapped the camera themselves can press Try again.
+        onUnavailable={autoOpened ? () => { setCapturing(false); setCameraBlocked(true); } : undefined}
         pageNumber={pages.length + 1}
       />
     );
@@ -324,6 +334,19 @@ export default function FreeInvoiceBuilder() {
           Tip: photograph an invoice you&apos;ve sent before, even a handwritten one, and the next one is made for you:
           same details, number moved on, dated today.
         </Tip>
+      )}
+
+      {/* The camera we opened on their behalf could not be used. Said here,
+          on the page they were actually after, rather than left as a black
+          screen with a back arrow on it. */}
+      {cameraBlocked && stage === "start" && (
+        <div role="status" className="rounded-xl border bg-neutral-50 p-4 text-neutral-900">
+          <p className="text-base font-medium">The camera didn&apos;t open.</p>
+          <p className="mt-1 text-base text-neutral-700">
+            It&apos;s blocked for this site in your browser&apos;s settings. You can still type the invoice
+            in below, or upload a photo of an old one &mdash; neither needs the camera.
+          </p>
+        </div>
       )}
 
       {stage === "start" && (

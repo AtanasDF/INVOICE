@@ -683,6 +683,7 @@ export default function DocumentCapture({
   onCapture,
   onBatch,
   onClose,
+  onUnavailable,
   pageNumber,
   failureMessage,
   purpose = "read",
@@ -692,12 +693,19 @@ export default function DocumentCapture({
   // reviewed stack arrives here grouped into documents.
   onBatch?: (docs: CapturedFile[][]) => void;
   onClose: () => void;
+  // The camera cannot be used at all -- refused, or not supported here. A
+  // page that opened the camera by itself uses this to get out of the way
+  // and show what the person actually asked for; a page where they tapped
+  // the camera on purpose leaves it to them.
+  onUnavailable?: (why: "denied" | "unsupported") => void;
   pageNumber?: number;
   failureMessage?: string;
   // "copy": photos for one file (Copy a document); the review says so.
   purpose?: "read" | "copy";
 }) {
   const multi = !!onBatch;
+  const onUnavailableRef = useRef(onUnavailable);
+  onUnavailableRef.current = onUnavailable;
   const videoRef = useRef<HTMLVideoElement>(null);
   const liveAreaRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -1049,6 +1057,7 @@ export default function DocumentCapture({
       }
       if (!opened.ok) {
         setStatus(opened.reason);
+        if (opened.reason === "denied" || opened.reason === "unsupported") onUnavailableRef.current?.(opened.reason);
         return;
       }
 
@@ -1116,6 +1125,7 @@ export default function DocumentCapture({
       } catch {
         if (cancelled) return;
         setStatus("denied");
+        onUnavailableRef.current?.("denied");
       }
     }
 

@@ -64,5 +64,18 @@ try {
   const text = await page.evaluate(() => document.body.innerText);
   check("after allowing it, the scanner is not still saying blocked", !/blocked|Don.t Allow/i.test(text.slice(0, 600)), text.replace(/\s+/g, " ").slice(0, 300));
   check("and the page didn't fall over on any of it", !text.includes("Application error"), text.slice(0, 200));
+
+  // The dashboard's "Create an invoice" opens the camera on arrival. With the
+  // camera blocked, that used to leave a person on a black screen saying
+  // "Camera access was denied", with Try again, Upload, and an unlabelled back
+  // arrow -- and no way to do the thing the button had promised. They pressed
+  // "Create an invoice", not "open the camera".
+  await page.goto(`${BASE}/free-invoice?start=photo`, { waitUntil: "networkidle0" });
+  await sleep(3000);
+  const after = await page.evaluate(() => document.body.innerText);
+  check("a blocked camera does not strand anyone on the camera screen", !/Camera access was denied/.test(after), after.replace(/\s+/g, " ").slice(0, 200));
+  check("...it says the camera didn't open, in words", /camera didn.t open/i.test(after), after.replace(/\s+/g, " ").slice(0, 300));
+  check("...and offers the invoice they actually asked for", /Type it in/.test(after), after.replace(/\s+/g, " ").slice(0, 300));
+  check("...with the photo route still there for when they unblock it", /Take a photo of an old invoice/.test(after), after.replace(/\s+/g, " ").slice(0, 300));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
