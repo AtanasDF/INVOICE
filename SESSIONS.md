@@ -697,6 +697,29 @@ the editor, the as-role ones inside a transaction ending in `raise exception`.
   transcriber (Speech framework, wrapped as an app so macOS can ask for permission) is
   built in the scratchpad and waits for recordings copied to a plain folder.
 
+- **01:00-01:30, sign-up emails switched on at the dashboard** (items 6, 7, 9, with him
+  at the Mac). URL configuration was already right (Site URL the live Vercel host,
+  redirects for it and localhost). He created a Resend key "Supabase auth" and pasted it
+  himself into Supabase's SMTP password box — the key value was never read, typed or
+  printed here, and when the dashboard offered to reveal it the auto-mode classifier
+  refused, correctly. Custom SMTP on: accounts@invoiceover.com, "Invoiceover",
+  smtp.resend.com, 587, username resend. The four templates
+  (`web/supabase/email-templates/`) were pasted into Supabase through the Monaco model
+  and **verified by reloading each page**: confirm sign-up, reset password, change email
+  address, magic link, subjects and bodies all ours. "Confirm email" turned out to be
+  **already on** (Sign In / Providers → User Signups), so the missing piece was only the
+  sending.
+- **Not proven yet.** Two password resets for atanaschoo@gmail.com return 200 from
+  `/recover` (auth log: `user_recovery_requested`, no error), but nothing reaches Resend's
+  Emails list. Either Resend's dashboard does not log SMTP sends, or the key did not take
+  and GoTrue fell back to Supabase's own sender. The sender address on the email that
+  arrives tells them apart, so item 14 (a real sign-up from an address he can read) is the
+  next step. Two settings still stand against the plan: item 7a asks for port **465**
+  (587 is set) and item 9a for a **6**-digit code lasting **86400** seconds (8 and 3600 are
+  set), and the templates say "24 hours". Left alone tonight rather than saved blind: the
+  SMTP form's password box reads empty by design, so saving the form again risks clearing
+  a key that cannot be read back.
+
 **Open, for Atanas** (`notes/tonight.md`): fix the GO OUTDOORS date on his own account
 (2012 → 2026); the business details in Settings, whenever he likes; yes or no to the
 front-page picture (notes/front-page-picture/); the Supabase steps for sign-up emails
