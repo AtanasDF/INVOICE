@@ -157,3 +157,9 @@ screens moved under them:
     and right now it is neither — it is a suite that looks like coverage and is not.
     The camera/clip suites (autozoom, far, bent, torch, pinch, lens, conditions,
     batch-swap) are excluded on purpose and have their own runners.
+
+44. **[his]** Royal Mail addresses, so a postcode lists real house numbers. Not a bug and
+    not fixable in code: OpenStreetMap simply does not hold most UK house numbers, and PAF
+    is the only complete list. The whole code path is already written and tested behind
+    `IDEAL_POSTCODES_API_KEY`. Recommended: the free 50-credit trial (no card), then £9 for
+    200 if it earns it. Costs and evidence in `notes/house-numbers-decision.md`.
