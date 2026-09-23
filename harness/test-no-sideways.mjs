@@ -39,6 +39,14 @@ const PAGES = [
   ["/copy", "copy a document"],
   ["/privacy", "privacy"],
   ["/terms", "terms"],
+  // The ones that draw a document at its real size, which is where a fixed
+  // A4 width would show up first.
+  ["/free-invoice", "the free invoice page"],
+  ["/invoices/i1", "an invoice"],
+  ["/mileage", "mileage"],
+  ["/receipts/review", "needs review"],
+  ["/quotes/requests", "quote requests"],
+  ["/recurring", "recurring expenses"],
 ];
 
 const db = makeDb();

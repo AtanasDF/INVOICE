@@ -29,6 +29,13 @@ privacy-terms, came-from, scan-limit-text, throwaway-email, readable.
 3. `SESSIONS.md` entry for tonight, kept current rather than written at the end.
 4. `harness/README.md` — nine new suites are not in it.
 
+## Waiting on one question to him
+
+**Radoslav's bug.** The first feedback from anyone outside, and it is still open because it
+could not be reproduced. Horizontal overflow was ruled out by measurement across 21 pages
+and every width from 1440 to 320 (`test-no-sideways.mjs`), so it is a gesture, not the
+page. Ask him: which screen, and a phone or a trackpad?
+
 ## The app itself
 
 5. **Nothing shows what allowance is left.** The design has "38 of 50 today" and nothing
