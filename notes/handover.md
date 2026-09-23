@@ -14,6 +14,8 @@ the first thing a new session reads, before `CLAUDE.md` and `SESSIONS.md`.
   the Desktop.
 - **Branch and commit:** `main`, clean and pushed. Last commit `508d86f`.
 - **Live:** https://invoice-omega-rust.vercel.app — Vercel deploys every push to `main`.
+- **Launch is about 14 October 2026** — `notes/launch-plan.md` is the three-week plan and
+  tomorrow's list. The limits system is the one thing that cannot slip.
 - **Read next, in this order:** `CLAUDE.md` (the rules — read it fully, it is not
   optional), the top entry of `SESSIONS.md`, then `notes/tonight-list.md` (87 items,
   67 done) and `notes/claude-notes.md`.
@@ -37,7 +39,10 @@ not read an empty Resend list as a failure again.
   while `SignInCard` refuses anything that is not exactly 6 (`token.length !== 6`), so no
   one could ever have typed it in. Supabase now issues **6** digits with an **86400**-second
   expiry, matching both the app and the wording of the emails; saved and verified by
-  reloading the panel. That panel is separate from the SMTP form, so saving it is safe.
+  reloading the panel. At his ask the expiry then came down to **600 seconds (10 minutes)**
+  and the three emails that mentioned a time were reworded to match, in the repo and in
+  Supabase. He first asked for one minute; the email itself can take 20-40 seconds to
+  arrive, so that would have cost real sign-ups — 10 minutes was the agreed floor. That panel is separate from the SMTP form, so saving it is safe.
 - Port is **587**, not the 465 of item 7a. It works, so it stays: changing it means
   re-saving the SMTP form, which could clear the key.
 
