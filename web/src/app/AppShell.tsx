@@ -225,6 +225,9 @@ function Gate({ children }: { children: React.ReactNode }) {
     pathname === "/" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
+    // Shown by the service worker when there is no signal, which is exactly
+    // when the sign-in check cannot be made.
+    pathname === "/offline" ||
     pathname.startsWith("/i/") ||
     pathname.startsWith("/q/") ||
     pathname.startsWith("/r/");
