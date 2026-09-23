@@ -37,6 +37,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/pdfPages.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/vatFromRate.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/addressLookup.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/feedbackEmail.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/feedbackEmail.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/scanLimit.ts"
   ]
 }

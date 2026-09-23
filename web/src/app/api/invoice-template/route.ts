@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
 import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { extractInvoiceTemplate } from "@/lib/invoiceTemplate";
@@ -91,8 +92,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Scanning is busy right now. Try again in a little while." }, { status: 429 });
   }
 
+  const refusal = await allowScans(token, 1);
+  if (refusal) {
+    return NextResponse.json({ error: refusalText(refusal), limit: refusal }, { status: 429 });
+  }
+
   try {
     const template = await extractInvoiceTemplate(pages, engine);
+    // One document read, so one document spent -- and only once it has been
+    // read, so a failure costs nothing.
+    await spendScans(token, 1);
     return NextResponse.json({ template, engine });
   } catch (err) {
     const message = err instanceof Error ? err.message : "";

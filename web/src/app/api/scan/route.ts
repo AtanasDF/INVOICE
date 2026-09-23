@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
 import { SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
@@ -89,9 +90,22 @@ export async function POST(req: Request) {
     pages.push(parsed);
   }
 
+  // Asked before the reader runs, so someone already over their allowance is
+  // told straight away rather than after a slow read they cannot keep. One
+  // photograph can hold more than one document, so what is checked is at least
+  // one -- the real number is only known once it has been read, and is spent
+  // afterwards.
+  const refusal = await allowScans(token, 1);
+  if (refusal) {
+    return NextResponse.json({ error: refusalText(refusal), limit: refusal }, { status: 429 });
+  }
+
   try {
     // `result` is the first document, for callers that read one (invoices/new).
     const documents = await extractDocuments(pages, categories, engine);
+    // Only what actually came back, and only now: a read that throws never
+    // reaches this line, so a failure costs nobody anything.
+    await spendScans(token, documents.length);
     return NextResponse.json({ result: documents[0], documents });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error while scanning.";

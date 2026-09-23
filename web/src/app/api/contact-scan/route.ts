@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
 import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
 import { extractContacts } from "@/lib/contactExtraction";
@@ -50,8 +51,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "That file is too large (10MB max)." }, { status: 400 });
   }
 
+  const refusal = await allowScans(token, 1);
+  if (refusal) {
+    return NextResponse.json({ error: refusalText(refusal), limit: refusal }, { status: 429 });
+  }
+
   try {
     const contacts = await extractContacts([page], engine);
+    // One document read, so one document spent -- and only once it has been
+    // read, so a failure costs nothing.
+    await spendScans(token, 1);
     return NextResponse.json({ contacts });
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
