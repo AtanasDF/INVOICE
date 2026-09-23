@@ -28,6 +28,7 @@ import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components
 import { useCompanyLookup } from "@/lib/companyConfigured";
 import { saveFailed } from "@/lib/errorText";
 import ScanLimitNotice from "@/components/ScanLimitNotice";
+import ScansLeft from "@/components/ScansLeft";
 import { topUpOffered } from "@/lib/scanAllowance";
 import { todayISO } from "@/lib/today";
 import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
@@ -1192,6 +1193,9 @@ export default function ScanPage() {
         {doc?.look && <p className="mb-1 text-xs font-medium text-neutral-700">Needs a look: {doc.look}.</p>}
         {uploadNote && <p className="mb-1 text-xs text-amber-700">{uploadNote}</p>}
         <p role="status" className="sr-only">{uploadNote ?? ""}</p>
+        {/* Says nothing until there is little left, so a generous allowance
+            never feels like a meter running. */}
+        <ScansLeft />
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (
