@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { saveFailed } from "@/lib/errorText";
 import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 import { readSource } from "@/lib/source";
+import Turnstile, { turnstileOn } from "@/components/Turnstile";
 
 // One box for signing in and one for making an account, with the choice
 // between them in plain sight (Atanas, 2026-09-22: "it should be simple
@@ -72,6 +73,10 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
   const [pendingEmail, setPendingEmail] = useState("");
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [code, setCode] = useState("");
+  // Proof that a person is at the other end, when the check is switched on.
+  // A token is good for one attempt, so the widget is reset after each.
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaRound, setCaptchaRound] = useState(0);
 
   // A confirmation or reset link that has expired lands back here with the
   // reason in the address; say it in plain words rather than show nothing.
@@ -154,12 +159,12 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
     setBusy(true);
     try {
       if (mode === "forgot") {
-        const { error } = await supabase.auth.resetPasswordForEmail(formEmail, { redirectTo: `${window.location.origin}/reset-password` });
+        const { error } = await supabase.auth.resetPasswordForEmail(formEmail, { redirectTo: `${window.location.origin}/reset-password`, ...(captchaToken ? { captchaToken } : {}) });
         if (error) throw error;
         setInfo("If that email has an account, a link to make a new password is on its way.");
       } else if (mode === "signin") {
         setUnconfirmed(false);
-        const { error } = await supabase.auth.signInWithPassword({ email: formEmail, password: formPassword });
+        const { error } = await supabase.auth.signInWithPassword({ email: formEmail, password: formPassword, ...(captchaToken ? { options: { captchaToken } } : {}) });
         if (error) {
           if (/not confirmed/i.test(error.message)) {
             setPendingEmail(formEmail);
@@ -177,7 +182,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         const { data, error } = await supabase.auth.signUp({
           email: formEmail,
           password: formPassword,
-          options: { ...confirmTo(), ...(cameFrom ? { data: { came_from: cameFrom } } : {}) },
+          options: { ...confirmTo(), ...(cameFrom ? { data: { came_from: cameFrom } } : {}), ...(captchaToken ? { captchaToken } : {}) },
         });
         if (error) throw error;
         if (!data.session) {
@@ -189,6 +194,9 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       setError(saveFailed(err, "Something went wrong."));
     } finally {
       setBusy(false);
+      // Spent either way: a token is good for one attempt, so a second try
+      // needs a fresh one.
+      if (turnstileOn()) setCaptchaRound((n) => n + 1);
     }
   }
 
@@ -256,6 +264,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
           </div>
           {error && <p role="alert" className="text-base text-red-600">{error}</p>}
           {info && <p className="text-base text-neutral-700">{info}</p>}
+          <Turnstile onToken={setCaptchaToken} resetKey={captchaRound} />
           <button disabled={busy} className={bigButton}>
             {busy ? "Please wait…" : "Send me a link"}
           </button>
@@ -338,6 +347,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         )}
         {info && <p className="text-base text-neutral-700">{info}</p>}
         <p role="status" className="sr-only">{info ?? ""}</p>
+        <Turnstile onToken={setCaptchaToken} resetKey={captchaRound} />
         <button disabled={busy} className={bigButton}>
           {busy ? "Please wait…" : newAccount ? "Make my account" : "Sign me in"}
         </button>

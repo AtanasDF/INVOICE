@@ -448,7 +448,11 @@ Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 `INBOX_WEBHOOK_SECRET` (added 2026-09-21 — it had never been set; the Worker was first
 deployed the same evening), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. `FEEDBACK_TO` (added
 2026-09-22: where `/api/feedback` emails every piece of feedback, from
-`feedback@invoiceover.com`, Reply-to the sender; an address, not a secret). `SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
+`feedback@invoiceover.com`, Reply-to the sender; an address, not a secret). `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (not set: the people-check on sign-up renders nothing and
+sends no token without it, so every sign-in flow behaves exactly as before. Atanas makes a
+Turnstile widget in Cloudflare, the **site key** goes here and the **secret** into Supabase
+under Authentication → Bot and Abuse Protection, which is what actually does the checking).
+`SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
 **do nothing** until it is `on`, which must wait for migration-036 to be run).
 `RESEND_API_BASE` is only for the harness's stand-in. `vercel env ls
 production` from `web/` lists the names without values.
