@@ -24,7 +24,7 @@
   --n-200: #e5e5e5;
   --n-300: #d4d4d4;
   --n-400: #a3a3a3;
-  --n-500: #737373;
+  --n-500: #6b6b6b;
   --n-600: #525252;
   --n-700: #404040;
   --n-800: #262626;
@@ -48,7 +48,7 @@
   --n-200: #e2e8f0;
   --n-300: #cbd5e1;
   --n-400: #94a3b8;
-  --n-500: #64748b;
+  --n-500: #5c6b81;
   --n-600: #475569;
   --n-700: #334155;
   --n-800: #1e293b;
@@ -65,7 +65,7 @@
   --n-200: #e9e5dd;
   --n-300: #d8d2c6;
   --n-400: #aaa294;
-  --n-500: #7a7264;
+  --n-500: #6f685b;
   --n-600: #59524a;
   --n-700: #45403a;
   --n-800: #2a2621;
@@ -82,7 +82,7 @@
   --n-200: #dde9e1;
   --n-300: #c4d6ca;
   --n-400: #93ae9d;
-  --n-500: #64866f;
+  --n-500: #54725e;
   --n-600: #4a6a54;
   --n-700: #3a5342;
   --n-800: #24362a;
@@ -99,7 +99,7 @@
   --n-200: #dde4f0;
   --n-300: #c3cfe4;
   --n-400: #90a1c0;
-  --n-500: #5f739b;
+  --n-500: #586a8f;
   --n-600: #46577c;
   --n-700: #364361;
   --n-800: #212c42;
@@ -128,6 +128,14 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* The mid-tone is darker than Tailwind's own neutral-500, and than a first
+   guess at each tint, because `text-neutral-500` on a `neutral-100` card was
+   below 4.5:1 in EVERY theme -- including plain grey, which means it had been
+   that way since long before there were themes at all. Measured, not guessed:
+   harness/test-readable.mjs checks every theme on the two pages a stranger and
+   a new account actually meet, and it found this. Anything added to this scale
+   gets measured the same way. */
 
 /* A printed invoice is not themed: it is a document, and it prints in ink. */
 @media print {
