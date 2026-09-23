@@ -1,13 +1,20 @@
 {
+  "id": "/",
   "name": "Invoiceover",
   "short_name": "Invoiceover",
-  "description": "Invoices, receipts and expense tracking for the self-employed",
+  "description": "Invoices, receipts and expenses for the self-employed. Photograph a bill and it reads itself.",
+  "lang": "en-GB",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["business", "finance", "productivity"],
   "background_color": "#fafafa",
   "theme_color": "#171717",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
