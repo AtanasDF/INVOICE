@@ -31,6 +31,7 @@ import CompanyNameInput from "@/components/CompanyNameInput";
 import CompanyNumberInput from "@/components/CompanyNumberInput";
 import AddressFields from "@/components/AddressFields";
 import ThemePicker from "@/components/ThemePicker";
+import GetTheApp from "@/components/GetTheApp";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -901,6 +902,8 @@ export default function SettingsPage() {
       </form>
 
       <ThemePicker />
+
+      <GetTheApp />
 
       <div className={CARD}>
         <div>

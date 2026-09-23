@@ -28,6 +28,7 @@ import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import People from "@/components/dashboard/People";
+import GetTheApp from "@/components/GetTheApp";
 import TaxSoFar from "@/components/TaxSoFar";
 import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
@@ -675,6 +676,9 @@ function Dashboard() {
           )}
         </section>
       )}
+
+      {/* Shows itself only to someone who has not installed it yet. */}
+      <GetTheApp />
 
       {/* Lower and smaller, as he asked: useful, but not what the page is for. */}
       <section aria-label="Other tools" className="space-y-2 border-t pt-5">
