@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
-import { SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
+import { SCAN_ENGINES, type ScanEngine, RELAYED_ERRORS } from "@/lib/extractors";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocuments, parseDataUrl } from "@/lib/scanExtraction";
 import { allow, release } from "@/lib/rateLimit";
 
@@ -120,7 +120,9 @@ export async function POST(req: Request) {
     await spendScans(token, documents.length);
     return NextResponse.json({ result: documents[0], documents });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error while scanning.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const message = err instanceof Error ? err.message : "";
+    if (RELAYED_ERRORS.has(message)) return NextResponse.json({ error: message }, { status: 502 });
+    console.error("scan extraction failed:", message || String(err));
+    return NextResponse.json({ error: "Couldn't read that document. Try again, or type it in by hand." }, { status: 502 });
   }
 }

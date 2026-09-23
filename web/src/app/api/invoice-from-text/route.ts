@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED } from "@/lib/extractors";
+import { RELAYED_ERRORS } from "@/lib/extractors";
 import { invoiceFromText } from "@/lib/invoiceFromText";
 import { allow } from "@/lib/rateLimit";
 
@@ -9,7 +9,6 @@ export const maxDuration = 120;
 
 const MAX_CHARS = 2000;
 const PER_HOUR = 60;
-const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 
 export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";

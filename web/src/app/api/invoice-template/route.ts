@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
-import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
+import { SCAN_ENGINES, type ScanEngine, RELAYED_ERRORS } from "@/lib/extractors";
 import { extractInvoiceTemplate } from "@/lib/invoiceTemplate";
 import { allowShared } from "@/lib/rateLimit";
 import { ALLOWED_TYPES, parseDataUrl } from "@/lib/scanExtraction";
@@ -16,7 +16,6 @@ const MAX_TOTAL_CHARS = 3_500_000;
 const HOUR = 60 * 60 * 1000;
 const USER_PER_HOUR = 60;
 const GLOBAL_PER_HOUR = 200;
-const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 
 // Signed-in only since 2026-09-22 (Atanas: "everyone should have to sign
 // in in order to be able to scan"): every read costs him money and comes

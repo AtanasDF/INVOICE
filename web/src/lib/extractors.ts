@@ -37,6 +37,14 @@ export const CUT_OFF = "The reading was cut off before the document was finished
 export const NOT_STRUCTURED = "The model didn't return structured data. Try again.";
 export const ENGINE_BUSY = "The scanner is busy right now. Try again in a minute.";
 
+// The three above are sentences somebody wrote for the person reading them, so
+// a route may pass them straight on. Anything else a read throws is the SDK's:
+// an Anthropic 529 arrives as `529 {"type":"error","error":{"type":
+// "overloaded_error",...}}`, and a missing key arrives as "GEMINI_API_KEY is
+// not set" -- true, our fault, and nobody's business but ours. Neither belongs
+// in front of somebody holding a phone over a receipt.
+export const RELAYED_ERRORS: ReadonlySet<string> = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
+
 export async function extractStructured<T>(opts: ExtractStructuredOptions): Promise<T> {
   return opts.engine === "gemini" ? extractWithGemini<T>(opts) : extractWithClaude<T>(opts);
 }

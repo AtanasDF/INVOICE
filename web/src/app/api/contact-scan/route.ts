@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
-import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED, SCAN_ENGINES, type ScanEngine } from "@/lib/extractors";
+import { SCAN_ENGINES, type ScanEngine, RELAYED_ERRORS } from "@/lib/extractors";
 import { extractContacts } from "@/lib/contactExtraction";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, parseDataUrl } from "@/lib/scanExtraction";
 import { allow, release } from "@/lib/rateLimit";
@@ -11,7 +11,6 @@ const HOUR = 60 * 60 * 1000;
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const RELAYED_ERRORS = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 
 export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
