@@ -4,9 +4,29 @@ import AppShell from "./AppShell";
 import { SITE_NAME } from "@/lib/siteName";
 import { THEME_BOOT } from "@/lib/theme";
 
+// Where the site lives, for the absolute addresses that sharing and search
+// need. Overridable so a preview does not advertise itself as production.
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://invoice-omega-rust.vercel.app";
+
 export const metadata: Metadata = {
-  title: SITE_NAME,
-  description: "Invoices, receipts and expense tracking for the self-employed",
+  metadataBase: new URL(SITE_URL),
+  // Every other page sets its own and gets the name added.
+  title: { default: `${SITE_NAME} — invoices and receipts for the self-employed`, template: `%s` },
+  description:
+    "Free invoicing and expenses for the self-employed. Make an invoice, photograph a receipt and see what you're owed — on your phone.",
+  applicationName: SITE_NAME,
+  keywords: ["invoice", "invoicing", "self-employed", "sole trader", "receipts", "expenses", "Self Assessment", "UK"],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_GB",
+    url: "/",
+    title: `${SITE_NAME} — invoices and receipts for the self-employed`,
+    description: "Make an invoice, photograph a receipt, see what you're owed. Free, on your phone.",
+  },
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true },
   manifest: "/manifest.json",
   // Needed for push notifications to work on iPhone at all -- Safari only
   // supports web push for a site that's been "Added to Home Screen" as a
