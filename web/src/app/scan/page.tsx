@@ -14,6 +14,7 @@ import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { findDuplicate, sameNumber, sameSupplier } from "@/lib/duplicates";
 import { dropUploadMarker, leftOutNote, takeScanCapture, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
+import Link from "next/link";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import CaptureButton from "@/components/CaptureButton";
 import PagesStrip, { Capture } from "@/components/scan/PagesStrip";
@@ -395,6 +396,12 @@ export default function ScanPage() {
   const [pages, setPages] = useState<CapturedFile[]>([]);
   // Files picked on another page arrive without the camera opening.
   const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() ? null : { kind: "first" }));
+  // The camera on this page opens on arrival, so a person with it blocked
+  // used to land on a black "Camera access was denied" screen with no way to
+  // scan at all -- from the biggest button in the app. Only the camera we
+  // opened ourselves closes itself; a deliberate tap keeps Try again.
+  const [autoOpened] = useState(() => !uploadMarked());
+  const [cameraBlocked, setCameraBlocked] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   // A refusal is not a failure -- it carries what to offer next, which a
@@ -1058,6 +1065,7 @@ export default function ScanPage() {
         onCapture={capture.kind === "first" ? undefined : (file) => onCaptured(file, capture)}
         onBatch={capture.kind === "first" ? startBatch : undefined}
         onClose={onCaptureClosed}
+        onUnavailable={autoOpened && capture.kind === "first" && !pages.length ? () => { setCapture(null); setCameraBlocked(true); } : undefined}
         pageNumber={capture.kind === "add" ? pages.length + 1 : capture.kind === "retake" ? capture.index + 1 : undefined}
         failureMessage={capture.kind === "retake" ? capture.failureMessage : undefined}
       />
@@ -1208,6 +1216,28 @@ export default function ScanPage() {
         {/* Says nothing until there is little left, so a generous allowance
             never feels like a meter running. */}
         <ScansLeft />
+        {cameraBlocked && (
+          <div role="status" className="mb-3 rounded-xl border bg-neutral-50 p-4 text-neutral-900">
+            <p className="text-base font-medium">The camera didn&apos;t open.</p>
+            <p className="mt-1 text-base text-neutral-700">
+              It&apos;s blocked for this site in your browser&apos;s settings. You can still upload a photo or
+              PDF of the document, or type the receipt in yourself.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <UploadFilesButton
+                onFiles={(files, failed) => { setCameraBlocked(false); readUploads(files.map((f) => [f]), leftOutNote(failed, files.length + failed)); }}
+                label="Upload a photo or PDF"
+                buttonClassName="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+              />
+              <Link href="/receipts/new" className="text-sm font-medium text-neutral-700 underline">
+                Add a receipt by hand
+              </Link>
+              <button type="button" onClick={() => { setCameraBlocked(false); setCapture({ kind: "first" }); }} className="text-sm font-medium text-neutral-700 underline">
+                Try the camera again
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (

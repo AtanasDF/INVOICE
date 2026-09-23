@@ -10,9 +10,10 @@ as they land.
 
 1. **[done]** Dashboard "Create an invoice" with the camera blocked stranded people on a
    black screen. Now drops to the invoice and says why. `test-camera-refusal` 9.
-2. Walk "Scan a receipt" the same way, camera blocked — the big button on the dashboard.
-3. Walk "Copy a document" the same way.
-4. Walk "+ Add → Scan it" the same way.
+2. **[done]** `/scan` had the same trap and it mattered more — it is the biggest button in
+   the app. Now says so and offers upload, by hand, or try again.
+3. **[done, nothing to fix]** `/copy` never had it: its camera opens only on a tap.
+4. **[done, nothing to fix]** "+ Add → Scan it" goes to `/scan`, so item 2 covers it.
 5. A signed-in person finishing a Free-page invoice: does it end at a **saved** invoice in
    their records, or only a PDF? (queue item 7's real question)
 

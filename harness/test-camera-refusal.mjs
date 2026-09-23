@@ -61,8 +61,17 @@ try {
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "domcontentloaded" });
   await page.goto(`${BASE}/scan`, { waitUntil: "networkidle0" });
   await sleep(2500);
+  const asked = await gumCalls();
   const text = await page.evaluate(() => document.body.innerText);
-  check("after allowing it, the scanner is not still saying blocked", !/blocked|Don.t Allow/i.test(text.slice(0, 600)), text.replace(/\s+/g, " ").slice(0, 300));
+  // The bug this suite exists for is the app holding its OWN no: refusing
+  // before the browser is asked, so changing the phone setting can never help.
+  // The evidence is that the browser is asked again, not the wording -- a
+  // headless Chrome has no camera to give, so some "it didn't open" message is
+  // correct here either way. Grepping for the word "blocked" only ever passed
+  // because the old wording happened not to use it, and it broke the moment
+  // the app started saying, honestly, that the camera is blocked for the site.
+  check("after allowing it, the app asks the browser rather than refusing itself", asked >= 1, String(asked));
+  check("...and it no longer shows the tip about a refusal it is holding", !/Don.t Allow/i.test(text.slice(0, 600)), text.replace(/\s+/g, " ").slice(0, 300));
   check("and the page didn't fall over on any of it", !text.includes("Application error"), text.slice(0, 200));
 
   // The dashboard's "Create an invoice" opens the camera on arrival. With the
@@ -77,5 +86,21 @@ try {
   check("...it says the camera didn't open, in words", /camera didn.t open/i.test(after), after.replace(/\s+/g, " ").slice(0, 300));
   check("...and offers the invoice they actually asked for", /Type it in/.test(after), after.replace(/\s+/g, " ").slice(0, 300));
   check("...with the photo route still there for when they unblock it", /Take a photo of an old invoice/.test(after), after.replace(/\s+/g, " ").slice(0, 300));
+
+  // /scan is the biggest button in the app and opens the camera on arrival,
+  // so the same trap was there and mattered more.
+  await page.goto(`${BASE}/scan`, { waitUntil: "networkidle0" });
+  await sleep(3000);
+  const scan = await page.evaluate(() => document.body.innerText);
+  check("a blocked camera does not strand anyone on /scan either", !/Camera access was denied/.test(scan), scan.replace(/\s+/g, " ").slice(0, 200));
+  check("...it says so and offers the upload", /camera didn.t open/i.test(scan) && /Upload a photo or PDF/.test(scan), scan.replace(/\s+/g, " ").slice(0, 300));
+  check("...and typing the receipt in by hand", /Add a receipt by hand/.test(scan), scan.replace(/\s+/g, " ").slice(0, 300));
+  check("...and trying the camera again once it is unblocked", /Try the camera again/.test(scan), scan.replace(/\s+/g, " ").slice(0, 300));
+
+  // Copy a document never had it: the camera there opens only on a tap.
+  await page.goto(`${BASE}/copy`, { waitUntil: "networkidle0" });
+  await sleep(2000);
+  const copy = await page.evaluate(() => document.body.innerText);
+  check("Copy a document was never affected, and still isn't", !/Camera access was denied/.test(copy) && /Copy a document/.test(copy), copy.replace(/\s+/g, " ").slice(0, 200));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
