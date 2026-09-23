@@ -121,5 +121,7 @@ page. Ask him: which screen, and a phone or a trackpad?
 38. ~~A refusal outlived what it described~~, hiding the next genuine failure and its
     Try again. Cleared wherever a new read starts.
 39. ~~A granted top-up led nowhere~~ — "Read it now" added.
-40. Still worth doing: the same four questions asked of `/copy`, `/convert` and the
-    quote-request reply pages, none of which were pressed at this hour.
+40. ~~The same questions asked of `/copy` and `/convert`~~ **done**: `/convert` was
+    relaying pdf-lib's words, and `/copy`'s Save/Share and the invoice send were guarded
+    only by `disabled`. Still unpressed: the quote-request reply pages (`/r/<token>`) and
+    `/i/`, `/q/` — the three a customer sees, where nobody signed in is watching.

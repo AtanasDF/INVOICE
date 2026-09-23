@@ -96,10 +96,21 @@ real bugs** — three of them in code written the same night, one of them live:
 4. **A top-up that led nowhere**: granted the 600, with no way to read the refused document
    short of guessing the page wanted reloading.
 
+Then the same two questions asked of everything else that shows an error or does something
+once: `/convert` was relaying pdf-lib's words alongside its own, and `/copy`'s Save and
+Share and the **invoice send** were guarded only by `disabled` — and emailing a customer
+their invoice twice is not a cosmetic bug. All four reader routes now share one
+`RELAYED_ERRORS` set instead of three copies and one route with none.
+
 Also `test-break-it` (23), for the cases nobody builds for: the three dashboard panels on an
 account with nothing in it, a page printed under dark/forest/ink coming out on white paper
 without resetting the phone's colour, and 500 invoices — not a stress test, a busy year.
 Those three passed as they were.
+
+**Ended at 116 suites, 2,063 checks, 0 failures.** Three suites first came back not-green
+and were not: `Attempted to use detached Frame` and `Waiting failed: 20000ms exceeded` are
+the four-at-a-time load, and alone they were 20/20, 15/15 and 25/25. That tell is now in
+`harness/README.md` and `CLAUDE.md`, because it reads far worse than it is.
 
 **Open, and his:** a trading name and address for the legal pages; business details in
 Settings on Hidefield; one real scan on the live site to prove the counting; whether to
