@@ -296,7 +296,19 @@ grant execute on function take_scans(integer) to authenticated;
 grant execute on function scan_limits() to authenticated;
 
 -- ---------------------------------------------------------------------------
--- VERIFY (run after, and read the answers rather than assuming)
+-- RUN AND VERIFIED 2026-09-23. What was actually checked, as the signed-in
+-- role and inside transactions that ended in `raise exception`:
+--   allowance before      50 a day, 600 a month, top-up available
+--   take_scans(3)         allowed, usedToday 3, usedThisMonth 3
+--   claim_scan_topup()    granted once, then {"granted": false, "already"}
+--   another account       reads 0 of this account's scan_usage rows
+--   the owner             reads its own
+--   a direct insert       REFUSED for authenticated -- a row people could write
+--                         themselves would make the limit decorative
+--   anon                  0 table grants, execute on none of the functions
+--   after rollback        scan_usage and scan_topups both empty
+--
+-- VERIFY (re-run any of these; read the answers rather than assuming)
 -- ---------------------------------------------------------------------------
 -- select column_name, data_type, column_default, is_nullable
 --   from information_schema.columns where table_name = 'business_profile' and column_name = 'plan';
