@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import PriceForm, { draftFrom, readDraft } from "@/components/quoteRequest/PriceForm";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { LinePrice, RequestItem, cellFor, formatPence, quantityText, supplierTotal } from "@/lib/quoteCompare";
@@ -57,6 +57,10 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
   const [draft, setDraft] = useState(() => draftFrom(data.items));
   const [name, setName] = useState("");
   const [sending, setSending] = useState(false);
+  // `disabled={sending}` lands a render too late, so two taps in one tick both
+  // post. The database takes one answer only and refuses the second, and the
+  // page then showed that refusal beside the prices it had just sent.
+  const submitting = useRef(false);
   const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<({ status: "replied" | "declined" } & Sent) | null>(null);
@@ -70,6 +74,8 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
       if (!read.ok) return setError(read.error);
       if (!Object.values(read.prices).some((p) => p.price !== null)) return setError("Nothing is priced. If you can't supply any of it, tap \"We can't quote for this\".");
     }
+    if (submitting.current) return;
+    submitting.current = true;
     setSending(true);
     try {
       const body = decline
@@ -89,6 +95,8 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
       setDeclining(false);
       window.scrollTo({ top: 0 });
     } catch (err) {
+      // A send that failed is worth another try; one that worked is not.
+      submitting.current = false;
       setError(saveFailed(err, "That didn't work. Try again."));
     } finally {
       setSending(false);

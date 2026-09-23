@@ -109,8 +109,21 @@ try {
   await page.$eval("#pf-valid", (el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); }, day(30));
   await typeInto("#pf-note", "Two days' lead time.");
   await typeInto("#qr-name", "Sam Jones");
-  await press("Send prices");
+  // Pressed twice, which is what a supplier on a depot phone does. `disabled`
+  // lands a render too late, so both post; the database takes one answer only
+  // and refuses the second, and the page then showed that refusal -- "it may
+  // have been answered already, closed or passed its date. Please contact the
+  // sender." -- beside the prices it had just sent.
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Send prices" && !x.disabled);
+    b?.click();
+    b?.click();
+  });
   await page.waitForFunction(() => document.body.innerText.includes("Thank you: your prices have gone to Harness Plastering Ltd."), { timeout: 30000 }).catch(() => {});
+  await sleep(1500);
+  const twice = await page.evaluate(() => document.body.innerText);
+  check("sending prices twice at once does not tell them to contact the sender", !/contact the sender/i.test(twice), twice.slice(0, 400));
+  check("...and shows no failure beside the thank-you", !/didn't work|can't take prices/i.test(twice), twice.slice(0, 400));
   p = { text: await page.evaluate(() => document.body.innerText) };
   check("Send prices thanks them, naming the sender", p.text.includes("Thank you: your prices have gone to Harness Plastering Ltd."), p.text.slice(0, 400));
   check("...and shows what they sent", /8\.95|268\.50/.test(p.text) && p.text.includes("Can't supply"), p.text.slice(0, 600));

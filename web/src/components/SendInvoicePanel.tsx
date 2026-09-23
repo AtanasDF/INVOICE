@@ -8,7 +8,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import SaveAsMenu from "@/components/SaveAsMenu";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
-import { saveFailed } from "@/lib/errorText";
+import { saveFailed, PDF_FAILED } from "@/lib/errorText";
 
 type Status =
   | { kind: "idle" }
@@ -81,7 +81,7 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
       }
     } catch (err) {
       setShareState("error");
-      setShareError(saveFailed(err, "Couldn't make the PDF."));
+      { console.error("PDF failed:", err); setShareError(PDF_FAILED); }
     }
   }
 
@@ -91,7 +91,7 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
       const pdf = await currentPdf();
       pdf.save(filename);
     } catch (err) {
-      setShareError(saveFailed(err, "Couldn't make the PDF."));
+      { console.error("PDF failed:", err); setShareError(PDF_FAILED); }
     }
   }
 

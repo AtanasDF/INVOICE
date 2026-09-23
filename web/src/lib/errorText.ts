@@ -36,3 +36,10 @@ export function loadFailed(err: unknown, what: string, advice = "Check your conn
   console.error(`Couldn't load ${what}`, err);
   return `Couldn't load ${what}. ${advice}`;
 }
+
+// Neither invoicePdf.ts nor documentPdf.ts throws a sentence written for a
+// person, so anything they throw is pdf-lib's or the browser's. Two of the
+// three places this is shown are pages a CUSTOMER sees, where nobody signed in
+// is watching and a stray "Invalid PDF structure" would be the whole of what
+// they are told.
+export const PDF_FAILED = "Couldn't make the PDF. Try again, or use Print instead.";

@@ -7,7 +7,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import SaveAsMenu from "@/components/SaveAsMenu";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicQuote } from "@/lib/publicQuote";
-import { saveFailed } from "@/lib/errorText";
+import { saveFailed, PDF_FAILED } from "@/lib/errorText";
 import { SITE_NAME } from "@/lib/siteName";
 
 type Answer = "accepted" | "declined";
@@ -20,6 +20,12 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
   const [confirming, setConfirming] = useState<Answer | null>(null);
   const [name, setName] = useState("");
   const [sending, setSending] = useState(false);
+  // `disabled={sending}` lands a render too late, so two taps in one tick both
+  // post. The database rightly refuses the second, and the page then showed
+  // that refusal -- "it may have been answered already... contact the sender"
+  // -- beside the acceptance it had just made. A customer told to ring up a
+  // moment after accepting.
+  const answering = useRef(false);
   const [answered, setAnswered] = useState<Answer | null>(data.response?.answer ?? null);
   const [error, setError] = useState<string | null>(null);
   // The owner's own copy of the link (#o): they see what the customer sees,
@@ -54,13 +60,15 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       const pdf = await renderInvoicePdf(sheetRef.current);
       pdf.save(pdfFilenameFor(q.number, "quote"));
     } catch (err) {
-      setError(saveFailed(err, "Couldn't make the PDF."));
+      { console.error("PDF failed:", err); setError(PDF_FAILED); }
     } finally {
       setMaking(false);
     }
   }
 
   async function answer(response: Answer) {
+    if (answering.current) return;
+    answering.current = true;
     setSending(true);
     setError(null);
     try {
@@ -74,6 +82,8 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       setAnswered(response);
       setConfirming(null);
     } catch (err) {
+      // An answer that failed is worth another try; one that worked is not.
+      answering.current = false;
       setError(saveFailed(err, "That didn't work. Try again."));
     } finally {
       setSending(false);

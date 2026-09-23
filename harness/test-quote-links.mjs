@@ -93,8 +93,22 @@ try {
   await clickBtn(cust, "Accept quote");
   await sleep(300);
   await cust.evaluate(() => { const i = document.getElementById("responder-name"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, "Jane Smith"); i.dispatchEvent(new Event("input", { bubbles: true })); });
-  await clickBtn(cust, "Yes, accept the quote");
+  // Pressed twice, which is what a customer on a slow phone does. The button
+  // is disabled while it sends, but React applies that on the render AFTER the
+  // first press, so both go. The database answers the second one 409 -- quite
+  // right -- and the page then showed that refusal beside the acceptance: "it
+  // may have been answered already, withdrawn or expired. Please contact the
+  // sender." Told to ring up, a moment after accepting.
+  await cust.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Yes, accept the quote");
+    b.click();
+    b.click();
+  });
   await cust.waitForFunction(() => document.body.innerText.includes("You accepted this quote"), { timeout: 90000 });
+  await sleep(1500);
+  const afterDouble = await bodyText(cust);
+  check("accepting twice at once does not tell the customer to contact the sender", !/contact the sender/i.test(afterDouble), afterDouble.slice(0, 400));
+  check("...and shows no failure beside the acceptance", !/didn't work|can't be answered/i.test(afterDouble), afterDouble.slice(0, 400));
   const q1 = db.tables.quotes.find((q) => q.id === Q1);
   check("accepting sets the quote accepted and records the name", q1.status === "accepted" && l1.response === "accepted" && l1.responder_name === "Jane Smith", JSON.stringify({ s: q1.status, l1 }));
   await cust.reload({ waitUntil: "networkidle0" });

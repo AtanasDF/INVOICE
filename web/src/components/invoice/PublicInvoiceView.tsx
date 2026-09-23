@@ -6,7 +6,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import SaveAsMenu from "@/components/SaveAsMenu";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicInvoice } from "@/lib/publicInvoice";
-import { saveFailed } from "@/lib/errorText";
+import { saveFailed, PDF_FAILED } from "@/lib/errorText";
 import { SITE_NAME } from "@/lib/siteName";
 
 // The customer's view of an invoice they were sent a link to: the invoice
@@ -40,7 +40,7 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
       const pdf = await renderInvoicePdf(sheetRef.current);
       pdf.save(pdfFilenameFor(data.invoice.number));
     } catch (err) {
-      setError(saveFailed(err, "Couldn't make the PDF."));
+      { console.error("PDF failed:", err); setError(PDF_FAILED); }
     } finally {
       setMaking(false);
     }
