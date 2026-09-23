@@ -31,8 +31,14 @@ captured word-for-word.
 10. `?from=carlisle-dhl` remembered and carried into the account, so depot flyers can be told
     from London ones.
 11. Privacy policy and terms, plainly written, linked from the front door.
-12. Search: title, description, a sharing picture, and wording that can rank for "free
-    invoice template UK".
+12. Search: title, description, a sharing picture. **Done — but the "free invoice template
+    UK" half cannot be done as things stand, and was not faked.** Ranking needs a page a
+    stranger can use, and since "nothing works before you register" the only public pages
+    are the front door, privacy and terms. Three ways out, his choice: leave it and lean on
+    the flyers; let strangers type an invoice again purely to have something to rank
+    (reverses his rule); or write a public article — "How to invoice when you're
+    self-employed" — that ranks and ends at the sign-up, which keeps the rule intact and is
+    the recommendation.
 13. `robots.txt` and a sitemap: public pages found, private ones not.
 14. A real 404 and a real error page, in the app's own words.
 
