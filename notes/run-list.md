@@ -14,8 +14,9 @@ as they land.
    the app. Now says so and offers upload, by hand, or try again.
 3. **[done, nothing to fix]** `/copy` never had it: its camera opens only on a tap.
 4. **[done, nothing to fix]** "+ Add → Scan it" goes to `/scan`, so item 2 covers it.
-5. A signed-in person finishing a Free-page invoice: does it end at a **saved** invoice in
-   their records, or only a PDF? (queue item 7's real question)
+5. **[done]** It did end somewhere — "Keep a copy in the app" carried the draft to
+   `/invoices/new` — but it sat fifth and read as an optional extra. Signed in, saving into
+   their own records is now the first, primary action. `test-free-draft` 16.
 
 ## B. Things the app knows and never says
 

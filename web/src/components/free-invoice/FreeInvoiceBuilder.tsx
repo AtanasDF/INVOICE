@@ -245,7 +245,19 @@ export default function FreeInvoiceBuilder() {
 
   const actions = (
     <>
-      <button type="button" onClick={goToSend} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+      {/* Signed in, this is the one that matters and it used to sit fifth,
+          worded as an optional extra. The dashboard's "Create an invoice"
+          lands people here, and an invoice that is printed or sent but never
+          recorded is outside the accounting record: nothing chases it when it
+          goes unpaid, and it counts towards neither the VAT return nor the tax
+          card. A stranger still gets the old wording, which asks them to sign
+          in first. */}
+      {user ? (
+        <button type="button" onClick={saveToAccount} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+          Save to my {quote ? "quotes" : "invoices"}
+        </button>
+      ) : null}
+      <button type="button" onClick={goToSend} className={user ? "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700" : "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"}>
         Send or share
       </button>
       <button type="button" onClick={print} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
@@ -255,9 +267,11 @@ export default function FreeInvoiceBuilder() {
       <button type="button" onClick={startNext} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
         {quote ? "Next quote" : "Next invoice"}
       </button>
-      <button type="button" onClick={saveToAccount} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-        Keep a copy in the app
-      </button>
+      {!user && (
+        <button type="button" onClick={saveToAccount} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+          Keep a copy in the app
+        </button>
+      )}
       <button type="button" onClick={startOver} className="px-2 py-2 text-sm font-medium text-neutral-600">
         Start over
       </button>
@@ -291,7 +305,7 @@ export default function FreeInvoiceBuilder() {
             </button>
           ))}
           <button type="button" onClick={() => { setMoreOpen(false); startNext(); }} className={`${menuItem} border-t`}>{quote ? "Next quote" : "Next invoice"}</button>
-          <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>Keep a copy in the app</button>
+          <button type="button" onClick={() => { setMoreOpen(false); saveToAccount(); }} className={`${menuItem} border-t`}>{user ? `Save to my ${quote ? "quotes" : "invoices"}` : "Keep a copy in the app"}</button>
           <button type="button" onClick={() => { setMoreOpen(false); startOver(); }} className={`${menuItem} border-t text-neutral-600`}>Start over</button>
         </div>
       )}

@@ -90,5 +90,22 @@ try {
   // Nothing about a stranger's invoice should reach the server unasked.
   const sent = db.log.filter((l) => !l.key.startsWith("GET"));
   check("nothing is written to anyone's database without an account", sent.length === 0, JSON.stringify(sent.map((s) => s.key)));
+
+  // Queue item 7: the dashboard's "Create an invoice" lands a SIGNED-IN person
+  // on this page, and an invoice printed or sent but never recorded is outside
+  // the accounting record -- nothing chases it, and it counts towards neither
+  // the VAT return nor the tax card. Saving into their records used to sit
+  // fifth, worded "Keep a copy in the app", as though it were an extra.
+  await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
+  await sleep(1200);
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Type it in/i.test(b.textContent))?.click());
+  await sleep(1200);
+  const acts = await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => (b.textContent || "").trim()).filter(Boolean));
+  const saveIdx = acts.findIndex((a) => /Save to my invoices/i.test(a));
+  const sendIdx = acts.findIndex((a) => /Send or share/i.test(a));
+  check("signed in, saving into their own records is offered", saveIdx >= 0, JSON.stringify(acts.slice(0, 10)));
+  check("...before sending or sharing it", saveIdx >= 0 && sendIdx >= 0 && saveIdx < sendIdx, JSON.stringify({ saveIdx, sendIdx }));
+  check("...and not worded as an optional extra", !acts.some((a) => /Keep a copy in the app/i.test(a)), JSON.stringify(acts.slice(0, 10)));
+
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
