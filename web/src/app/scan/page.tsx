@@ -27,6 +27,8 @@ import ContactField, { type Usage } from "@/components/ContactField";
 import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components/RegisterBits";
 import { useCompanyLookup } from "@/lib/companyConfigured";
 import { saveFailed } from "@/lib/errorText";
+import ScanLimitNotice from "@/components/ScanLimitNotice";
+import { topUpOffered } from "@/lib/scanAllowance";
 import { todayISO } from "@/lib/today";
 import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
 import Tip from "@/components/Tip";
@@ -394,6 +396,9 @@ export default function ScanPage() {
   const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() ? null : { kind: "first" }));
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  // A refusal is not a failure -- it carries what to offer next, which a
+  // string cannot. Kept beside the message so the wall can show its button.
+  const [refusal, setRefusal] = useState<unknown>(null);
   const [engine, setEngine] = useState<ScanEngine>(readEngine);
   // The Claude / Gemini choice is for whoever has already made one on this
   // device; everyone else just gets the document read.
@@ -616,7 +621,10 @@ export default function ScanPage() {
           if (latest()) onRead(id, parts);
         },
         (err) => {
-          if (latest()) onReadFailed(id, saveFailed(err, "Scanning failed."));
+          if (latest()) {
+            if (topUpOffered(err)) setRefusal(err);
+            onReadFailed(id, saveFailed(err, "Scanning failed."));
+          }
         }
       );
     readsRef.current.set(id, read);
@@ -1113,7 +1121,17 @@ export default function ScanPage() {
     />
   );
 
-  const errorBanner = scanError && (
+  // Meeting a limit is shown its own way: nothing broke, and there is
+  // something to do about it.
+  const errorBanner = refusal ? (
+    <ScanLimitNotice
+      error={refusal}
+      onTopUp={() => {
+        setRefusal(null);
+        setScanError(null);
+      }}
+    />
+  ) : scanError && (
     <div className="rounded-lg border border-red-200 bg-red-50 p-3">
       <p role="alert" className="text-sm text-red-600">{scanError}</p>
       <div className="mt-2 flex flex-wrap gap-2">

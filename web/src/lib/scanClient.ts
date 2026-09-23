@@ -50,8 +50,14 @@ export async function extractPages(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ images: batch.map((p) => p.dataUrl), categories, engine }),
     });
-    const json = (await res.json().catch(() => ({}))) as { result?: ScanResult; documents?: ScanResult[]; error?: string };
-    if (!res.ok || !json.result) throw new Error(json.error || `Scanning failed (${res.status}).`);
+    const json = (await res.json().catch(() => ({}))) as { result?: ScanResult; documents?: ScanResult[]; error?: string; limit?: { reason: string; topUpAvailable?: boolean } };
+    if (!res.ok || !json.result) {
+      const err = new Error(json.error || `Scanning failed (${res.status}).`);
+      // A refusal is not a failure: it carries what to offer next, and the
+      // page shows a button rather than just the sentence.
+      if (json.limit) (err as Error & { limit?: unknown }).limit = json.limit;
+      throw err;
+    }
     found.push(json.documents?.length ? json.documents : [json.result]);
   }
   if (found.every((docs) => docs.length === 1)) return [mergeScanResults(found.map((docs) => docs[0]))];
