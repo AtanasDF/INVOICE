@@ -130,7 +130,8 @@ Two hours of apparent stuckness were my own: a waiter written as
 `until ! pgrep -f run-all.sh` never exits, because its own command line contains
 `run-all.sh` and pgrep matches the waiter. Wait on the log file instead.
 
-**Ended at 116 suites, 2,063 checks, 0 failures.** Three suites first came back not-green
+**Ended at 120 suites, 2,150 checks, 0 failures** — four suites and 83 checks more than it
+started with, because they had been in the repo all along and never in the run. Three suites first came back not-green
 and were not: `Attempted to use detached Frame` and `Waiting failed: 20000ms exceeded` are
 the four-at-a-time load, and alone they were 20/20, 15/15 and 25/25. That tell is now in
 `harness/README.md` and `CLAUDE.md`, because it reads far worse than it is.
