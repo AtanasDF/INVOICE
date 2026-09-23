@@ -75,7 +75,12 @@ can show the same thing (details in `notes/claude-notes.md`).
    to **037** (invite a friend: `invite_codes`, `invite_claims`, `scan_bonuses`, and
    `my_invite_code` / `claim_invite` / `reward_invite_if_due`, with `take_scans` and
    `scan_allowance` redefined to count bonuses; 037 needed no backup, altering no existing
-   table, and says so in its header). (028 created two new tables,
+   table, and says so in its header). **037 first shipped a hole worth remembering:**
+   `reward_invite_if_due` was callable by `authenticated`, because Supabase grants execute
+   on a new function by default and the revoke only named `public, anon` — which would have
+   let anybody pay themselves the bonus without scanning anything. `revoke all ... from
+   public, anon, authenticated`, then verified in both directions. Name `authenticated`
+   explicitly in every revoke. (028 created two new tables,
    so it needed no backup; 029 added the registered name,
    company number and account kind to business_profile; 030 added clients.company_number;
    031, run 2026-09-21, revoked the default anon/authenticated grants on all 24
@@ -453,6 +458,46 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
   median of the last 3 detections; a page missed for up to 2 ticks keeps its outline and
   count; a tick whose own reading is off the median never fires the shot. A curled page's
   curved sides are not flattened (a 4-point warp).
+
+## Letting old photographs go
+
+The **only** thing in this project that removes anything, so it is built to refuse.
+`/api/photos/age` (cron-only) emails an owner their old receipt photographs as one PDF and
+then clears the pictures; the record — supplier, date, amount, VAT — is never touched and
+stays for ever. Two switches: `PHOTO_AGEING=on` makes it run and report what it *would*
+do, and only `PHOTO_AGEING_DELETE=on` lets a single file go. Nothing is removed that Resend
+has not accepted, a photograph that cannot even be read is left alone, and a paid account
+keeps everything. Neither switch is set; `notes/ageing-photos-design.md` has the order.
+
+Every rule about what may go lives in `src/lib/photoAgeing.ts`, not in the handler, so
+`harness/test-photo-ageing.mjs` (40 checks) holds the real ones. **A photograph needs two
+dates past the cutoff, not one** — the date printed on the document *and* the day the
+receipt was added. The first dry run against the real database found exactly one row old
+enough to go: a receipt dated 2012-09-18, which is a recent scan whose date the reader
+misread. One misread year, or one evening spent uploading a year of old paperwork, must not
+cost somebody their pictures. A row with no record of when it arrived is kept.
+
+Where a photograph has gone the app says so — "Emailed to you" on the receipt row, a line
+on the File library counting them — because a tile that simply vanishes reads as a lost
+receipt.
+
+## When somebody meets a wall, or a check
+
+A refusal is not a failure, and the wording is the whole of it. Three things were got wrong
+and are now pinned by suites, so don't undo them:
+
+- **Never show Cloudflare's or Postgres's words to a person.** The people-check refusal
+  ("captcha protection: request disallowed (missing-input-response)") was live on the front
+  door. `src/lib/peopleCheck.ts` turns it into "The check that you're a person hadn't
+  finished. Give it a second and press the button again." The check is invisible and lands a
+  beat after the page, so anybody quick meets it; the word *captcha* never appears
+  (`test-people-check`).
+- **A button that does something once needs a ref, not `disabled`.** React applies
+  `disabled` on the render *after* the first press, and both handlers close over the same
+  state, so two presses in one tick both go through (`ScanLimitNotice`).
+- **A refusal must not outlive the thing it describes, and must lead somewhere.** Clear it
+  wherever a new attempt starts, and when a top-up is granted, offer the way on — the usual
+  "Try again" lives in the error box the refusal is standing in (`/scan`, `test-scan-wall`).
 
 ## Environment variables
 

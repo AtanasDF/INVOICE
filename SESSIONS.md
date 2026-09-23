@@ -52,14 +52,63 @@ Atanas awake through most of it, steering. Everything below is on `main` and pus
   started and stopped at his word with nothing lost, and waits on a handover file that now
   exists (`notes/handover.md`).
 
-**Open, and his:** run 036 with me watching (no Postgres on this Mac, so its SQL has never
-been parsed); Turnstile and Companies House keys; a trading name and address for the legal
-pages; whether to leave, reopen or write around the "free invoice template UK" question;
-print and scan the pile.
+### Later the same day — the keys went in, then an hour spent trying to break it
 
-**Open, and mine** (`notes/queue.md`, 35 items): an allowance readout before the wall
-arrives, dark mode done properly, offline caching, the ageing-photos job, and four small
-things the dashboard rebuild itself created.
+- **migration-036 and migration-037 run and verified** in the SQL editor with him watching:
+  the scan limits (`scan_usage`, `scan_topups`, `business_profile.plan`) and invite-a-friend
+  (`invite_codes`, `invite_claims`, `scan_bonuses`). Backups verified by content both ways,
+  every function exercised as `authenticated` inside a transaction ending in `raise
+  exception`. **037 first shipped a hole**: `reward_invite_if_due` was callable by
+  `authenticated`, because Supabase grants execute by default and the revoke only named
+  `public, anon` — anyone could have paid themselves without scanning. Revoked and
+  re-verified both ways before it was called done.
+- **Turnstile is live** and he signed in from a private window without seeing anything at
+  all, which is the point. **An hour was lost first to a hostname problem that did not
+  exist**: the built-in browser pane cannot solve a Turnstile challenge — it renders, hangs
+  for ever, and reports no error. The config had been right the whole time; a real Chrome
+  solved it first try. That is written into `CLAUDE.md` so nobody repeats it.
+- **Companies House is live**, verified against real Greggs plc data.
+- **Invite-a-friend is built and switched off** (`NEXT_PUBLIC_INVITES` unset). Nothing pays
+  at sign-up; the bonus only lands when the invited person actually reads a document, which
+  is what stops it being a machine for making accounts.
+- **Letting old photographs go** — the only thing in this project that removes anything, so
+  it has two switches, and its rules were lifted out of the route into
+  `src/lib/photoAgeing.ts` where the harness can argue with them (40 checks). **The first
+  dry run against the real database earned its keep**: the one row old enough to go was
+  dated 2012-09-18, a date the reader had misread. A photograph now needs the printed date
+  *and* the day it was added to be past the cutoff, which also covers somebody uploading a
+  year of paperwork in one evening. Re-run: 0 of 7 would go. Nothing is armed.
+
+**The last hour was spent pressing buttons rather than writing features, and it found four
+real bugs** — three of them in code written the same night, one of them live:
+
+1. **The front door was printing `captcha protection: request disallowed
+   (missing-input-response)`.** The people-check is invisible and finishes a beat after the
+   page, so anyone quick meets it. It was live on the site. Now plain English, in
+   `src/lib/peopleCheck.ts`, where the harness holds the real strings.
+2. **The top-up button, pressed twice**, asked the database twice — and since the claim is
+   once a month, the second answer overwrote "that's another 600, carry on" with "you have
+   already had the extra". Somebody granted something was told they were refused it.
+3. **A refusal that outlived what it described.** It was set in one place and cleared in
+   none, so after meeting the wall once, the next document that genuinely failed showed the
+   old message about the limit — and the Try again button lives in the box that notice was
+   standing in.
+4. **A top-up that led nowhere**: granted the 600, with no way to read the refused document
+   short of guessing the page wanted reloading.
+
+Also `test-break-it` (23), for the cases nobody builds for: the three dashboard panels on an
+account with nothing in it, a page printed under dark/forest/ink coming out on white paper
+without resetting the phone's colour, and 500 invoices — not a stress test, a busy year.
+Those three passed as they were.
+
+**Open, and his:** a trading name and address for the legal pages; business details in
+Settings on Hidefield; one real scan on the live site to prove the counting; whether to
+leave, reopen or write around the "free invoice template UK" question; print and scan the
+pile of 106; whether the app should move off the iCloud Desktop.
+
+**Open, and mine** (`notes/queue.md`): offline caching, and the three switch-on steps for
+the ageing job in `notes/ageing-photos-design.md` — read a dry-run report first, then the
+cron, then the deleting flag.
 
 ## 2026-09-21 — Migrations 031–034 through the Supabase SQL editor, then the landscape scanner (Opus 5, then Fable 5.1 from the first commit)
 

@@ -1,3 +1,31 @@
+# Handover
+
+**Top of the file, 2026-09-23, end of the long night.** What is live, what is built and
+switched off, and what is waiting on Atanas.
+
+**Live and working:** sign-up emails (Resend SMTP into Supabase, six-digit codes, 10-minute
+links) · colour themes and dark mode, following the phone by default · the dashboard rebuilt
+round the scanner · the front door · Turnstile, invisible, verified in a real Chrome ·
+Companies House lookups, verified against real data · flyer tracking · privacy and terms ·
+offline page, 404, global-error.
+
+**Built, tested, and deliberately doing nothing** until an environment variable says so:
+- `SCAN_LIMITS` — the scan limits and the once-a-month top-up (migration-036 is applied).
+- `NEXT_PUBLIC_INVITES` — invite a friend (migration-037 is applied).
+- `PHOTO_AGEING` / `PHOTO_AGEING_DELETE` — letting old photographs go. Two switches on
+  purpose; read a dry-run report before arming the second. `notes/ageing-photos-design.md`.
+
+**Waiting on Atanas:** a trading name and address for the legal pages · business details in
+Settings on Hidefield · one real scan on the live site to prove the counting · print and
+scan the 106 documents on his Desktop · whether the project moves off the iCloud Desktop.
+
+**Two things not to relearn the hard way.** Resend does not log SMTP relays in its Emails
+list, so an empty list there is not a failure. And the built-in browser pane cannot solve a
+Turnstile challenge — it renders and hangs with no error; test that one in a real Chrome or
+not at all. Each cost about an hour.
+
+---
+
 # Start here — handover for a new chat, account or machine
 
 Written 2026-09-23 01:5x. Update the top block whenever it stops being true; this file is

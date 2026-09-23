@@ -67,17 +67,22 @@ page. Ask him: which screen, and a phone or a trackpad?
 
 ## Money and cost
 
-16. The ageing-photos job: one email carrying everything that is going, then the photos go.
+16. ~~The ageing-photos job~~ **built, tested and not armed** (2026-09-23). Two switches,
+    40 checks, the rules in `src/lib/photoAgeing.ts`. The first dry run against the real
+    database changed the rule: two dates must be past the cutoff, not one. Switch-on order
+    is in `notes/ageing-photos-design.md`.
 17. ~~A weight budget~~ **holding**: `test-weight` is 8/8 in the full run, so tonight's
     additions have not pushed the pages over the ceiling.
 18. (folded into 17)
-19. Invite a friend — waits for 036. **[his]** to run 036 first.
+19. ~~Invite a friend~~ **built and switched off** (2026-09-23): 037 run and verified,
+    `NEXT_PUBLIC_INVITES` unset, so it deploys changing nothing.
 
 ## Correctness
 
 20. `migration-036` has never been parsed by a database. No Postgres on this Mac; the first
     real check is running it. **[his]**, with me watching.
-21. A browser suite for the wall, the day 036 is live.
+21. ~~A browser suite for the wall~~ **done**: `test-scan-wall`, 18 checks, which found
+    three real bugs of its own (see the 2026-09-23 entry in `SESSIONS.md`).
 22. ~~The two unused exports~~ **removed**.
 23. ~~`test-weight`~~ green.
 24. ~~The hourly burst guard vs the new limits~~ **fixed**: 600 an hour shared by everybody
@@ -105,3 +110,16 @@ page. Ask him: which screen, and a phone or a trackpad?
 34. The app stores — 4 to 8 weeks of their own, and Apple's in-app-purchase and
     account-deletion rules need settling first.
 35. The paywall itself, when there is something to charge for.
+
+## Found by pressing the buttons (2026-09-23, all fixed)
+
+36. ~~The front door printed `captcha protection: request disallowed
+    (missing-input-response)`~~ — **live on the site until it was fixed.** Now
+    `src/lib/peopleCheck.ts`, `test-people-check`.
+37. ~~The top-up button pressed twice claimed twice~~, and told somebody they had already
+    had what they had just been given. A ref, not `disabled`.
+38. ~~A refusal outlived what it described~~, hiding the next genuine failure and its
+    Try again. Cleared wherever a new read starts.
+39. ~~A granted top-up led nowhere~~ — "Read it now" added.
+40. Still worth doing: the same four questions asked of `/copy`, `/convert` and the
+    quote-request reply pages, none of which were pressed at this hour.
