@@ -62,6 +62,36 @@ export function handle(db, method, path, search, headers, body) {
   // Mirrors assign_invoice_number (migration-012, redefined in 024): takes
   // the account's next number, advances the counter and flips the draft to
   // sent, all in one transaction -- so a clash rolls the counter back.
+  // The scan limits (migration-036). The real arithmetic lives in the database
+  // and is exercised in SQL; what the app needs from a mock is an allowance it
+  // can be handed, so the wall and the readout can be walked without a real
+  // account ever hitting a real limit. A suite sets db.allowance to whatever
+  // case it wants to see.
+  if (path === "/rest/v1/rpc/scan_allowance") {
+    const a = db.allowance ?? null;
+    if (!a) return { status: 404, json: { message: "function scan_allowance does not exist", code: "PGRST202" } };
+    return { status: 200, json: a };
+  }
+  if (path === "/rest/v1/rpc/take_scans") {
+    const a = db.allowance;
+    if (!a) return { status: 404, json: { message: "function take_scans does not exist", code: "PGRST202" } };
+    const n = body?.p_count ?? 1;
+    a.usedToday += n;
+    a.usedThisMonth += n;
+    return { status: 200, json: { allowed: true, usedToday: a.usedToday } };
+  }
+  if (path === "/rest/v1/rpc/claim_scan_topup") {
+    const a = db.allowance;
+    if (!a) return { status: 404, json: { message: "function claim_scan_topup does not exist", code: "PGRST202" } };
+    // Unique on (user, month) in the real thing: a second press is refused
+    // politely rather than silently granting another 600.
+    if (a.topUpUsed) return { status: 200, json: { granted: false, reason: "already" } };
+    a.topUpUsed = true;
+    a.topUpAvailable = false;
+    a.monthLimit = (a.monthLimit ?? 600) + 600;
+    return { status: 200, json: { granted: true } };
+  }
+
   if (path === "/rest/v1/rpc/assign_invoice_number") {
     const profile = (db.tables.business_profile ?? [])[0];
     // Postgres: `invoice_prefix || (invoice_next_number - 1)::text` is
