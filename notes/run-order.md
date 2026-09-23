@@ -66,8 +66,18 @@ captured word-for-word.
 21. The human-check on sign-up, behind a flag, doing nothing until his Cloudflare keys exist.
 22. The sign-up limit per internet address: a few a week, never a dead end.
 23. Invite a friend: both sides rewarded, nothing paid until the invited person confirms
-    their email and scans something.
+    their email and scans something. **Held back on purpose:** the reward is scans, so it
+    needs migration-036 applied and `SCAN_LIMITS` on before any of it can be true, and it
+    needs a migration-037 of its own. Building the screens now would mean rebuilding them
+    the day 036 lands. The design is settled in `notes/promotion.md`; the build waits.
 24. A test suite for the throwaway-address list that shipped earlier.
+
+## Resequenced 2026-09-23 06:3x
+
+He is printing the 106 test documents in the morning, which makes item 29 — the checker
+that marks a scan against the answer key — the one with a deadline, so it moved ahead of
+the rest. Item 27 moved up with it: tonight's colour change is the likeliest thing to have
+broken contrast, and it should be checked before anyone sees it.
 
 ## Part five — the quiet ones
 
