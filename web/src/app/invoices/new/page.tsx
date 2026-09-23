@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
 import { VAT_RATES, VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
-import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
+import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { CameraIcon } from "@/components/icons";
@@ -173,6 +173,13 @@ export default function NewInvoicePage() {
       setClients(c);
       setPastInvoices(inv);
       setProfile(biz);
+      // Arriving from a name on the dashboard: that customer is already
+      // chosen, so the invoice starts where the tap meant it to. Read off
+      // the address rather than through useSearchParams, which would drag a
+      // Suspense boundary around a page that needs none. An id that is not a
+      // live customer is ignored rather than guessed at.
+      const wanted = new URLSearchParams(window.location.search).get("client");
+      if (wanted && c.some((x) => x.id === wanted && !x.archived)) setClientId(wanted);
       return { clients: c, pastInvoices: inv, vatRegistered: biz.vatRegistered };
     });
     listsRef.current = load;
@@ -640,7 +647,20 @@ export default function NewInvoicePage() {
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">New invoice</h1>
+        <div>
+          <h1 className="text-2xl font-bold">New invoice</h1>
+          {/* What the number will be (Atanas, 2026-09-23: "it should give you
+              the invoice with the next number in order as it is in the
+              system"). It is only a preview: the real number is handed out by
+              assign_invoice_number when the invoice is actually issued, so two
+              drafts open at once cannot both claim it and the sequence never
+              gaps or repeats. */}
+          {profile && (
+            <p className="mt-1 text-sm text-neutral-600">
+              Will be <span className="font-medium text-neutral-900">{suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber)}</span> when you send it
+            </p>
+          )}
+        </div>
         <CaptureButton
           onOpen={() => setCapture("attach")}
           onCapture={onDocumentCaptured}

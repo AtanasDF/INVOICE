@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { money } from "@/lib/money";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Client,
   businessProfileStore,
   clientsStore,
   creditNotesStore,
@@ -26,6 +27,7 @@ import AddAnything from "@/components/AddAnything";
 import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
 import UploadFilesButton from "@/components/UploadFilesButton";
+import People from "@/components/dashboard/People";
 import TaxSoFar from "@/components/TaxSoFar";
 import { TaxEstimate, estimateTax } from "@/lib/taxEstimate";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
@@ -35,12 +37,15 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 
-// The four things people come here to do, the free tools among them, in
-// one row (Atanas, 2026-09-22: the free tools belong inside the app, not
-// off to one side). The first is the camera, which on the iPhone's own
-// camera path has to be the file input itself.
-const TILE = "flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md";
-const TILE_DARK = "flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-xl bg-neutral-900 p-3 text-center text-sm font-medium text-white shadow-sm transition hover:bg-neutral-800";
+// The dashboard is a scanner (Atanas, 2026-09-23: "the scanner is going to
+// play the role of the first page"). One big button for the commonest thing
+// there is -- photographing a receipt or a bill -- and three smaller ones
+// under it for the other three ways paper gets into the app. Everything else
+// on the page comes after that, because everything else is looking rather
+// than doing.
+const TILE = "flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md";
+const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800";
+const TAB = "flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-medium";
 
 function ScanIcon() {
   return (
@@ -50,6 +55,46 @@ function ScanIcon() {
     </svg>
   );
 }
+
+// Three panels on one page (Atanas: "three rectangles... when you click the
+// first one"). The choice is kept on the device: someone whose day is receipts
+// should not have to find that panel again every morning.
+type DashTab = "work" | "bills" | "sent";
+const TABS: { id: DashTab; label: string }[] = [
+  { id: "work", label: "Invoices & customers" },
+  { id: "bills", label: "Receipts & bills" },
+  { id: "sent", label: "Invoices sent" },
+];
+const TAB_KEY = "dashboard-tab";
+const isTab = (v: unknown): v is DashTab => TABS.some((t) => t.id === v);
+// localStorage is outside React, so it is subscribed to rather than copied
+// into state in an effect -- which would both trip the lint rule and, worse,
+// render the wrong panel for one frame after every load.
+const tabListeners = new Set<() => void>();
+const subscribeTab = (fn: () => void) => {
+  tabListeners.add(fn);
+  return () => tabListeners.delete(fn);
+};
+function storedTab(): DashTab {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    return isTab(v) ? v : "work";
+  } catch {
+    return "work";
+  }
+}
+function rememberTab(id: DashTab) {
+  try {
+    localStorage.setItem(TAB_KEY, id);
+  } catch {
+    // A locked-down browser just starts on the first panel each time.
+  }
+  for (const fn of tabListeners) fn();
+}
+
+// Newest first, and only what is worth showing on a dashboard: the rest is
+// one tap away on the page that is built for it.
+const recent = <T extends { date: string }>(rows: T[], n = 8) => [...rows].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, n);
 
 function daysBetween(from: string, to: string): number {
   return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
@@ -92,6 +137,17 @@ function Dashboard() {
   const [bills, setBills] = useState<Receipt[]>([]);
   const [billCredits, setBillCredits] = useState<Map<string, number>>(new Map());
   const [supplierNames, setSupplierNames] = useState<Map<string, string>>(new Map());
+  const [contacts, setContacts] = useState<Client[]>([]);
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [allReceipts, setAllReceipts] = useState<Receipt[]>([]);
+  // Worked out where the VAT setting is to hand, not in the render: an issued
+  // invoice is totalled under the setting it was issued under, never the
+  // account's current one.
+  const [invoiceTotals, setInvoiceTotals] = useState<Map<string, number>>(new Map());
+  const [invoiceCounts, setInvoiceCounts] = useState<Map<string, number>>(new Map());
+  // Which of the three panels is showing. Remembered, because someone who
+  // lives in their receipts should not have to find that panel every morning.
+  const tab = useSyncExternalStore(subscribeTab, storedTab, () => "work" as DashTab);
   const [billsBannerDismissed, setBillsBannerDismissed] = useState(false);
   const [billsError, setBillsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +271,16 @@ function Dashboard() {
       }
       setBillCredits(credits);
       setSupplierNames(new Map(clients.map((c) => [c.id, c.name])));
+      setContacts(clients);
+      setAllInvoices(invoices);
+      setAllReceipts(receipts);
+      setInvoiceTotals(new Map(invoices.map((inv) => [inv.id, invoiceCharge(inv, invoiceVat(inv, profile.vatRegistered)).total])));
+      const counts = new Map<string, number>();
+      for (const inv of invoices) {
+        if (!inv.clientId || inv.status === "draft") continue;
+        counts.set(inv.clientId, (counts.get(inv.clientId) ?? 0) + 1);
+      }
+      setInvoiceCounts(counts);
     }
     load();
     return () => {
@@ -301,14 +367,12 @@ function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="mt-1 text-neutral-600">
-          Scan receipts, make invoices and see what&apos;s owed to you at a glance.
-        </p>
+        <p className="mt-1 text-neutral-600">Photograph the paper, and the rest fills itself in.</p>
       </div>
 
       <Tip id="dashboard-welcome">
-        New here? Tap <strong>Scan a receipt</strong> to photograph receipts and supplier invoices (several in a row is
-        fine), or <strong>Make an invoice</strong>. Clients, suppliers and expenses fill in as you go.
+        Point the camera at a receipt, a bill or an old invoice. Anything you photograph is read for you &mdash;
+        customers, suppliers and expenses appear as you go.
       </Tip>
 
       {showOverdueBanner && !bannerDismissed && (
@@ -353,50 +417,67 @@ function Dashboard() {
         </div>
       )}
 
-      <section aria-label="What would you like to do?" className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {isIOS && readScannerMode() === "native" ? (
-            <label aria-disabled={scanHandoffBusy} className={`${TILE_DARK} cursor-pointer`}>
-              <ScanIcon />
-              <span>{scanHandoffBusy ? "Preparing…" : "Scan a receipt"}</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={onIOSScanCapture}
-                disabled={scanHandoffBusy}
-                className="hidden"
-              />
-            </label>
-          ) : (
-            <Link href="/scan" className={TILE_DARK}>
-              <ScanIcon />
-              <span>Scan a receipt</span>
-            </Link>
-          )}
-          <Link href="/invoices/new" className={TILE}>
-            <DocumentIcon className="h-8 w-8" />
-            <span>Make an invoice</span>
+      {/* The scanner, which is what this page is for. One big button for the
+          commonest thing anyone does, and three under it for the other ways
+          paper gets in. On the iPhone's own-camera path the big button has to
+          be the file input itself, or it takes two taps to open the camera. */}
+      <section aria-label="Scan something" className="space-y-3">
+        {isIOS && readScannerMode() === "native" ? (
+          <label aria-disabled={scanHandoffBusy} className={`${BIG_SCAN} cursor-pointer`}>
+            <ScanIcon />
+            <span>{scanHandoffBusy ? "Preparing…" : "Scan a receipt or bill"}</span>
+            <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
+            <input type="file" accept="image/*" capture="environment" onChange={onIOSScanCapture} disabled={scanHandoffBusy} className="hidden" />
+          </label>
+        ) : (
+          <Link href="/scan" className={BIG_SCAN}>
+            <ScanIcon />
+            <span>Scan a receipt or bill</span>
+            <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
+          </Link>
+        )}
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <Link href="/free-invoice?start=photo" className={TILE}>
+            <DocumentIcon className="h-6 w-6" />
+            <span>Create an invoice</span>
           </Link>
           <Link href="/copy" className={TILE}>
-            <CopyIcon className="h-8 w-8" />
+            <CopyIcon className="h-6 w-6" />
             <span>Copy a document</span>
           </Link>
-          <Link href="/check-company" className={TILE}>
-            <SearchIcon className="h-8 w-8" />
-            <span>Check a company</span>
-          </Link>
+          <UploadFilesButton href="/scan" label="Upload a document" buttonClassName={`${TILE} w-full`} />
         </div>
-        {/* One button for anything else: a quote, a receipt by hand, files. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <AddAnything />
-          <UploadFilesButton
-            href="/scan"
-            label="Upload photos or PDFs"
-            buttonClassName="flex items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md"
-          />
-        </div>
+
+        <p className="text-sm text-neutral-600">
+          Photograph an old invoice and the next one is filled in for you, or{" "}
+          <Link href="/invoices/new" className="font-medium text-neutral-800 underline">write one by hand</Link>.
+        </p>
+
+        {!hasAnything && (
+          <p className="rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-700">
+            Just starting? Scan a few invoices you have already sent and the numbering carries on from yours. A handful
+            is plenty &mdash; you do not need to go back through the year.
+          </p>
+        )}
+
+        <AddAnything />
       </section>
+
+      {/* Three panels, one page. */}
+      <div role="tablist" aria-label="What to look at" className="flex gap-1 rounded-xl border bg-white p-1 shadow-sm">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => rememberTab(t.id)}
+            className={`${TAB} ${tab === t.id ? "bg-neutral-900 text-white" : "text-neutral-700 hover:bg-neutral-50"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       {!hasAnything && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
@@ -407,6 +488,10 @@ function Dashboard() {
           </p>
         </div>
       )}
+
+      {tab === "work" && (
+      <>
+      <People contacts={contacts} invoiceCounts={invoiceCounts} />
 
       {hasAnything && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -529,6 +614,74 @@ function Dashboard() {
         </Link>
       </div>
       )}
+      </>
+      )}
+
+      {tab === "bills" && (
+        <section aria-label="Receipts and bills" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Receipts and bills you have scanned</h2>
+            <Link href="/receipts" className="text-sm font-medium text-neutral-700 underline">See all</Link>
+          </div>
+          {allReceipts.length === 0 ? (
+            <p className="text-sm text-neutral-600">Nothing scanned yet. The big button at the top is the way in.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recent(allReceipts).map((r) => (
+                <li key={r.id}>
+                  <Link href={`/receipts/${r.id}`} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                    <span className="min-w-0 wrap-anywhere">
+                      {supplierNames.get(r.clientId) || r.vendor || "Unknown supplier"}
+                      <span className="block text-xs text-neutral-500">
+                        {shortDate(r.date)}
+                        {r.documentType === "invoice" && (r.paid ? " · bill, paid" : " · bill, to pay")}
+                        {r.documentType === "credit_note" && " · credit note"}
+                        {r.needsReview && " · waiting on review"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-medium">{money(r.amount + r.vatAmount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {tab === "sent" && (
+        <section aria-label="Invoices sent" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Invoices you have sent</h2>
+            <Link href="/invoices" className="text-sm font-medium text-neutral-700 underline">See all</Link>
+          </div>
+          {allInvoices.length === 0 ? (
+            <p className="text-sm text-neutral-600">None yet. Photograph an old invoice, or write one by hand.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recent(allInvoices).map((inv) => (
+                <li key={inv.id}>
+                  <Link href={`/invoices/${inv.id}`} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                    <span className="min-w-0 wrap-anywhere">
+                      {supplierNames.get(inv.clientId ?? "") || "No customer"}
+                      <span className="block text-xs text-neutral-500">
+                        {inv.number ? `#${inv.number}` : "Draft"} · {shortDate(inv.date)} · {inv.status}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-medium">{money(invoiceTotals.get(inv.id) ?? 0)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* Lower and smaller, as he asked: useful, but not what the page is for. */}
+      <section aria-label="Other tools" className="space-y-2 border-t pt-5">
+        <Link href="/check-company" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
+          <SearchIcon /> Check a company &rarr;
+        </Link>
+      </section>
     </div>
   );
 }
