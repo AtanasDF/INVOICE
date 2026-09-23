@@ -82,3 +82,18 @@ It is deployed and inert. Three deliberate steps, in this order, none of them do
 `PHOTO_AGEING_DAYS` defaults to 92 (three months, as agreed) and can be raised while
 storage allows it. Atanas's rule stands: photographs for three months at most, dropping
 only when it is actually needed, and **the records for ever**.
+
+
+## The first dry run against the real database (2026-09-23, read-only)
+
+7 receipts exist in total. Under the rule as first written, **one would have gone**: a
+receipt dated **2012-09-18**, which is not a 2012 receipt at all -- it is a recent scan
+whose date the reader misread. The rule was right and the outcome was wrong.
+
+So a photograph now needs **two** dates past the cutoff: the one printed on the document
+*and* the day the receipt was added. That also covers the honest case of somebody
+catching up on a year of paperwork in one evening -- nothing they upload tonight can be
+emailed away tomorrow. A row with no record of when it arrived is kept.
+
+Re-run with that rule: **0 of 7 would go, at 92 days and at 365.** The job has nothing to
+do today, which is exactly the state to switch it on in.

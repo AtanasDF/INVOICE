@@ -70,7 +70,7 @@ export async function GET(req: Request) {
     // Only what still has a photograph, is old enough, and has been checked.
     const { data, error } = await admin
       .from("receipts")
-      .select("id,user_id,date,vendor,amount,image_data_url,details,needs_review")
+      .select("id,user_id,date,created_at,vendor,amount,image_data_url,details,needs_review")
       .lt("date", cutoff)
       .not("image_data_url", "is", null)
       .or("needs_review.is.null,needs_review.eq.false")

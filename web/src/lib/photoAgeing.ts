@@ -10,6 +10,7 @@ export type AgeableRow = {
   id: string;
   user_id: string;
   date: string;
+  created_at?: string | null;
   image_data_url: string | null;
   details: Record<string, unknown> | null;
   needs_review?: boolean | null;
@@ -19,7 +20,17 @@ export type Skip = { id: string; reason: string };
 
 export const agedAlready = (r: AgeableRow) => !!(r.details as { photoAgedAt?: string } | null)?.photoAgedAt;
 
+const added = (r: AgeableRow): string | null => (r.created_at ? r.created_at.slice(0, 10) : null);
+
 // A row is a candidate only on every count at once.
+//
+// TWO DATES, BOTH OLD. The printed date alone is not enough, and the first dry
+// run against the real database proved it: the one row old enough to go was
+// dated 2012, a date a scan had misread. Emailing that photograph away the
+// morning after it was taken would have been correct by the rule and wrong by
+// every other measure. A person catching up on a year of paperwork in one
+// evening is the same case. So the day it was ADDED must be past the cutoff
+// too, and a row with no added date is kept.
 export function sortOut(rows: AgeableRow[], cutoff: string): { candidates: AgeableRow[]; skipped: Skip[] } {
   const candidates: AgeableRow[] = [];
   const skipped: Skip[] = [];
@@ -28,6 +39,8 @@ export function sortOut(rows: AgeableRow[], cutoff: string): { candidates: Ageab
     else if (agedAlready(r)) skipped.push({ id: r.id, reason: "already emailed and cleared" });
     else if (r.needs_review) skipped.push({ id: r.id, reason: "still waiting to be checked" });
     else if (!r.date || r.date >= cutoff) skipped.push({ id: r.id, reason: "not old enough" });
+    else if (!added(r)) skipped.push({ id: r.id, reason: "no record of when it was added" });
+    else if (added(r)! >= cutoff) skipped.push({ id: r.id, reason: "added recently, whatever the printed date says" });
     else candidates.push(r);
   }
   // Oldest first: if a run only gets through some of them, the ones a person

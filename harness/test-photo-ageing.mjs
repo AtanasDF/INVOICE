@@ -13,7 +13,9 @@ import { readFileSync } from "node:fs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
-const row = (o) => ({ id: o.id, user_id: o.user ?? "u1", date: o.date, image_data_url: o.photo === undefined ? "storage:u1/a/1.jpg" : o.photo, details: o.details ?? null, needs_review: o.review ?? false });
+// `added` defaults to long ago, so a test that says nothing about it is asking
+// about the printed date alone.
+const row = (o) => ({ id: o.id, user_id: o.user ?? "u1", date: o.date, created_at: o.added === undefined ? "2020-01-01T09:00:00Z" : o.added, image_data_url: o.photo === undefined ? "storage:u1/a/1.jpg" : o.photo, details: o.details ?? null, needs_review: o.review ?? false });
 
 // --- how old is old enough ---
 check("92 days back from a date is worked out on the date, not the clock", cutoffFor("2026-09-23", 92) === "2026-06-23", cutoffFor("2026-09-23", 92));
@@ -52,6 +54,17 @@ const shuffled = sortOut([row({ id: "b", date: "2026-02-02" }), row({ id: "a", d
 check("...whatever order they came back in", JSON.stringify(shuffled) === '["a","b","c"]', JSON.stringify(shuffled));
 const sameDay = sortOut([row({ id: "z", date: "2026-01-01" }), row({ id: "a", date: "2026-01-01" })], CUT).candidates.map((r) => r.id);
 check("two on the same day come out in a settled order, so two runs agree", JSON.stringify(sameDay) === '["a","z"]', JSON.stringify(sameDay));
+
+// --- two dates, both old (found by the first dry run against the real rows,
+// where the only thing old enough to go was a receipt a scan had dated 2012) ---
+const misread = sortOut([row({ id: "misread", date: "2012-09-18", added: "2026-09-22T10:00:00Z" })], CUT);
+check("a receipt the scanner dated 2012 but which arrived last week is kept", misread.candidates.length === 0 && /added recently/.test(misread.skipped[0].reason), JSON.stringify(misread.skipped));
+const catchup = sortOut([row({ id: "catchup", date: "2025-04-01", added: "2026-09-01T10:00:00Z" })], CUT);
+check("a year of old paperwork uploaded in one evening is kept too", catchup.candidates.length === 0, JSON.stringify(catchup.skipped));
+const bothOld = sortOut([row({ id: "both", date: "2026-01-05", added: "2026-01-06T10:00:00Z" })], CUT);
+check("old on the document and old on the account: that one may go", bothOld.candidates.length === 1);
+const noAdded = sortOut([row({ id: "unknown", date: "2026-01-05", added: null })], CUT);
+check("no record of when it arrived means it is kept, not assumed old", noAdded.candidates.length === 0 && /no record of when it was added/.test(noAdded.skipped[0].reason), JSON.stringify(noAdded.skipped));
 
 // --- whose they are ---
 const mixed = sortOut([row({ id: "m1", user: "mine", date: "2026-01-01" }), row({ id: "y1", user: "yours", date: "2026-01-02" })], CUT).candidates;
