@@ -107,6 +107,15 @@ account with nothing in it, a page printed under dark/forest/ink coming out on w
 without resetting the phone's colour, and 500 invoices — not a stress test, a busy year.
 Those three passed as they were.
 
+Then the three pages a **customer** sees, which had been named as not done rather than
+quietly skipped. Accepting a quote twice — an ordinary thing on a depot phone — posted
+twice, and the page showed the database's refusal *beside* the acceptance: "This quote
+can't be answered any more... Please contact the sender." Told to ring up, a moment after
+accepting. The supplier's "Send prices" did the same. Both guarded, and both pinned by
+checks **proved to fail first** (18/20 and 28/30 with the guards removed and rebuilt).
+Their routes, by contrast, are the best-worded code in the project — every refusal a
+written sentence. The one gap was the PDF button, relaying pdf-lib's words to a customer.
+
 **Ended at 116 suites, 2,063 checks, 0 failures.** Three suites first came back not-green
 and were not: `Attempted to use detached Frame` and `Waiting failed: 20000ms exceeded` are
 the four-at-a-time load, and alone they were 20/20, 15/15 and 25/25. That tell is now in

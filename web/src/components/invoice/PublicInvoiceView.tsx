@@ -6,7 +6,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import SaveAsMenu from "@/components/SaveAsMenu";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicInvoice } from "@/lib/publicInvoice";
-import { saveFailed, PDF_FAILED } from "@/lib/errorText";
+import { PDF_FAILED } from "@/lib/errorText";
 import { SITE_NAME } from "@/lib/siteName";
 
 // The customer's view of an invoice they were sent a link to: the invoice

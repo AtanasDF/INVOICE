@@ -123,5 +123,37 @@ page. Ask him: which screen, and a phone or a trackpad?
 39. ~~A granted top-up led nowhere~~ — "Read it now" added.
 40. ~~The same questions asked of `/copy` and `/convert`~~ **done**: `/convert` was
     relaying pdf-lib's words, and `/copy`'s Save/Share and the invoice send were guarded
-    only by `disabled`. Still unpressed: the quote-request reply pages (`/r/<token>`) and
-    `/i/`, `/q/` — the three a customer sees, where nobody signed in is watching.
+    only by `disabled`.
+41. ~~The three pages a customer sees (`/i/`, `/q/`, `/r/`)~~ **done**: accepting a quote
+    twice, and sending prices twice, each showed the database's refusal beside the success
+    — "please contact the sender", a moment after it worked. Both guarded, both pinned by
+    checks proved to fail first. The PDF button on all four of its pages was relaying
+    pdf-lib's words; one `PDF_FAILED` constant now. `/i/` needed nothing else: Download and
+    Print change no state.
+42. Nothing else in the app now presses a once-only action behind `disabled` alone. If a
+    new one is added, the four questions are in `CLAUDE.md` under "When somebody meets a
+    wall, or a check".
+
+
+## Suites that were in the repo and never ran (found 2026-09-23)
+
+`run-all.sh` lists its suites by hand, and 14 harness-shaped suites had never been added.
+They were written before run-all.sh existed, each against a hand-built server on its own
+port (3100, 3200, 3301, 3500...). All of them take `$BASE`; the port is only the default.
+
+**Added to the run** (83 checks, all green, free coverage that was simply switched off):
+`test-receipts-list` (50), `test-clear` (22), `test-lines` (7), `test-vat-snapshot` (4).
+
+**Stale, and left out deliberately** — they need rewriting, not resurrecting, because the
+screens moved under them:
+- `test-quotes` 6/8 — reads a `<select>` that is now the VAT-rate picker; the quotes form
+  was rebuilt around `CompanyNameInput` after this was written. **Not an app bug.**
+- `test-quotes-ux`, `test-quotes-fixes` — written against `feature/quotes-ux`, long merged.
+- `test-deposits`, `test-free-quote` — error out before their first check.
+- `test-payments`, `test-reminders-ui`, `test-settings-add`, `test-quote-requests`,
+  `test-address-signed` — not yet tried against `$BASE`.
+
+43. Work through that second list. Each one is either worth rewriting or worth deleting,
+    and right now it is neither — it is a suite that looks like coverage and is not.
+    The camera/clip suites (autozoom, far, bent, torch, pinch, lens, conditions,
+    batch-swap) are excluded on purpose and have their own runners.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { amount, money } from "@/lib/money";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoiceLink, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoiceLinkUrl, invoiceLinksStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
@@ -64,6 +64,13 @@ export default function InvoiceViewPage() {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod | "">("bank");
   const [paySaving, setPaySaving] = useState(false);
+  // Both of these write a payment row into a real accounting record, and both
+  // used to guard on the state alone -- which the second of two presses in one
+  // tick reads before React has re-rendered, so both got through, both read
+  // the same balance as still owing, and both recorded it. An invoice paid
+  // twice. State cannot guard this; a ref set before the await can.
+  const payingNow = useRef(false);
+  const settlingNow = useRef(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
@@ -224,10 +231,11 @@ export default function InvoiceViewPage() {
 
   async function addPayment(e: React.FormEvent) {
     e.preventDefault();
-    if (!invoice || paySaving) return;
+    if (!invoice || paySaving || payingNow.current) return;
     const amount = Math.round(parseAmount(payAmount) * 100) / 100;
     if (!payDate) return setPayError("Enter the date it was received.");
     if (!(amount > 0)) return setPayError("Enter the amount received.");
+    payingNow.current = true;
     setPaySaving(true);
     setPayError(null);
     setStatusError(null);
@@ -246,6 +254,7 @@ export default function InvoiceViewPage() {
     } catch (err) {
       setPayError(saveFailed(err, "Could not record the payment."));
     } finally {
+      payingNow.current = false;
       setPaySaving(false);
     }
     if (!saved) return;
@@ -261,7 +270,8 @@ export default function InvoiceViewPage() {
   // part-paid by hand before payments existed has an unknown balance, so it's
   // just marked paid rather than inventing a payment for the full amount.
   async function markPaidInFull() {
-    if (!invoice || statusSaving) return;
+    if (!invoice || statusSaving || settlingNow.current) return;
+    settlingNow.current = true;
     setStatusError(null);
     setStatusSaving(true);
     try {
@@ -291,6 +301,7 @@ export default function InvoiceViewPage() {
     } catch (err) {
       setStatusError(saveFailed(err, "Could not mark it paid."));
     } finally {
+      settlingNow.current = false;
       setStatusSaving(false);
     }
   }
