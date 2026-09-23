@@ -52,6 +52,17 @@ Doing these early is what buys the testing week.
 - **The throwaway-address list** is already done and live (2026-09-23, `throwawayEmail.ts`);
   it only needs its own test suite.
 - **The front-page picture** (item 28) — waiting on his yes.
+- **"Get the app" — how anyone actually installs it.** The app is already installable: a
+  manifest, both icons, a service worker and `display: standalone` are all in `web/public`
+  and linked from `layout.tsx`, so on a home screen it has its own icon, opens full-screen
+  and can push. **Nothing in the app says so**, which means most people will use it in a
+  browser tab and forget it. Needed: a short "Get the app" screen that knows which phone it
+  is looking at — iPhone gets the Share → Add to Home Screen steps with a picture, Android
+  and desktop get a real Install button wired to `beforeinstallprompt` (nothing listens for
+  that event today), and anyone already running it standalone is shown nothing at all. Half
+  a day, no dependencies, and it is the difference between an icon on the home screen and a
+  forgotten tab. This is also the honest answer to "how is it downloaded" before the stores
+  exist.
 - **A privacy policy and terms page.** Needed before any advertising, easy to forget, and
   nothing else depends on it.
 
