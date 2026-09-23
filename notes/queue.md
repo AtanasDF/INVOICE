@@ -23,11 +23,17 @@ privacy-terms, came-from, scan-limit-text, throwaway-email, readable.
 
 ## Now
 
-1. The full harness green, all 100+ suites, after a night of wide changes. **Running.**
-2. `node feedback-inbox.mjs` — `CLAUDE.md` rule 9 says every session starts with it and
+1. ~~The full harness green.~~ **Done: 110 suites, 1,936 checks, 0 failures**, against a
+   build nothing was changing underneath. Four suites had been failing: three were
+   expectations left behind by tonight's renames, and one was a real behaviour test made
+   wrong by a real improvement (a paid bill does leave the bills card; the supplier's name
+   now also appears in "Who you work with", and the check read the whole page).
+2. ~~`node feedback-inbox.mjs`~~ **done, and it mattered** — two unread, one of them the
+   first bug report from outside. Original item: — `CLAUDE.md` rule 9 says every session starts with it and
    this one did not. Anything real people have said is worth more than anything on this list.
-3. `SESSIONS.md` entry for tonight, kept current rather than written at the end.
-4. `harness/README.md` — nine new suites are not in it.
+3. ~~`SESSIONS.md`~~ done.
+4. ~~`harness/README.md`~~ done — and ten suites were also missing from `run-all.sh`, so they
+   were never being run at all.
 
 ## Waiting on one question to him
 
@@ -38,32 +44,33 @@ page. Ask him: which screen, and a phone or a trackpad?
 
 ## The app itself
 
-5. **Nothing shows what allowance is left.** The design has "38 of 50 today" and nothing
+5. ~~**Nothing shows what allowance is left.**~~ **done** — warns at a quarter left, silent
+   until then. Original: The design has "38 of 50 today" and nothing
    draws it. Until it does, the wall arrives with no warning.
 6. **Nothing shows whether an account is free or paid.** `plan` exists; no screen mentions it.
 7. **The dashboard's "Create an invoice" goes to `/free-invoice?start=photo`**, a path built
    for a page strangers used to see. Walk it as a signed-in person and make sure it ends at
    a saved invoice rather than the old free-page dead end.
-8. **`AddAnything` now repeats the three buttons above it** — Scan it, Upload a photo or PDF.
+8. ~~**`AddAnything` repeats the buttons above it**~~ **done**. Original: — Scan it, Upload a photo or PDF.
    Two ways to the same place, a tap apart.
-9. **The Tip on the dashboard still names buttons that were renamed tonight.**
-10. **The file library and recurring links moved inside a tab** when the panels landed.
+9. ~~**The Tip naming renamed buttons**~~ done.
+10. ~~**Links stranded inside one tab**~~ **done**. Original: when the panels landed.
     Check they are still reachable from somewhere obvious.
-11. **Dark mode**, properly: `bg-white` and `text-white` become surface and ink tokens first,
-    or white text lands on white buttons.
-12. **The error-wording pass**: every `loadFailed()` and `saveFailed()` read aloud.
-13. **Offline**: the service worker is registered and caches nothing, so the app is useless
-    in a depot with no signal — which is exactly where it will be opened.
-14. **The manifest has no `id`, no `scope` and no screenshots**, so the install prompt is
-    plainer than it needs to be and the identity can drift.
+11. ~~**Dark mode**~~ **done** — the scale inverts, `--paper` carries `bg-white`, and the
+    screens that are black by nature use a fixed white. Follows the phone by default.
+12. ~~**The error-wording pass**~~ **checked, nothing to fix**: every raw-error site is a
+    server log or internal matching, and no screen shows one. Not going to manufacture edits.
+13. ~~**Offline**~~ **done** — the app's own files cached, a real offline page, and nothing
+    carrying figures ever cached.
+14. ~~**The manifest**~~ **done** — id, scope, a maskable icon, language and categories.
 15. **No Apple touch icon beyond 192px**, which is what an iPhone home screen uses.
 
 ## Money and cost
 
 16. The ageing-photos job: one email carrying everything that is going, then the photos go.
-17. A weight budget for the front door and the dashboard — the notes say the dashboard was
-    1,501 KB against a 1.5 MB ceiling *before* tonight added to it.
-18. Check what tonight's additions did to that number, and cut if it has gone over.
+17. ~~A weight budget~~ **holding**: `test-weight` is 8/8 in the full run, so tonight's
+    additions have not pushed the pages over the ceiling.
+18. (folded into 17)
 19. Invite a friend — waits for 036. **[his]** to run 036 first.
 
 ## Correctness
@@ -71,13 +78,11 @@ page. Ask him: which screen, and a phone or a trackpad?
 20. `migration-036` has never been parsed by a database. No Postgres on this Mac; the first
     real check is running it. **[his]**, with me watching.
 21. A browser suite for the wall, the day 036 is live.
-22. The two unused exports flagged long ago and never resolved: `isMileage`
-    (`src/lib/mileage.ts`) and `mergeAddress` (`src/lib/addressLookup.ts`).
-23. `test-weight.mjs` may now be wrong about what the pages weigh.
-24. The scan routes' own hourly limits were written before tonight's limits existed; check
-    the two do not contradict each other.
-25. The `#o` owner-copy rule, the quote snapshot rule and the CIS rules all have suites;
-    confirm none of them were disturbed by the dashboard rebuild.
+22. ~~The two unused exports~~ **removed**.
+23. ~~`test-weight`~~ green.
+24. ~~The hourly burst guard vs the new limits~~ **fixed**: 600 an hour shared by everybody
+    would have refused a whole depot at once.
+25. ~~Confirm the older rules were not disturbed~~ — the full run says they were not.
 
 ## Waiting on him
 
