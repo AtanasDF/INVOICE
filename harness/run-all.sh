@@ -43,7 +43,7 @@ SUITES=(
   test-period-income test-sign-out test-quiet-failures test-midnight test-credit-rollback test-price-words test-answer-clash test-quote-not-invoice test-exact-customer test-register-outage test-lost-pages
   test-rotated-pages test-fit-320 test-two-users test-stored-photos test-announced test-big-slow test-odd-files test-exif-rotation test-weight
   test-inbox-worker test-inbox-ingest test-quote-vat-snapshot test-settings-save test-vat-rate-scan test-feedback test-feedback-page test-first-page test-sign-up test-plain-dates test-neutral test-plain-words test-multi-docs test-company test-copy-document test-send-document test-logo test-public-logo test-site-name test-source-text test-address-stubbed test-public-request test-links test-quote-links test-save-as test-convert
-  test-theme test-readable test-dashboard test-get-the-app test-privacy-terms test-came-from test-scan-limit-text test-throwaway-email test-no-sideways test-scans-left
+  test-theme test-readable test-dashboard test-get-the-app test-privacy-terms test-came-from test-scan-limit-text test-throwaway-email test-no-sideways test-scans-left test-scan-wall
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev

@@ -1128,7 +1128,10 @@ export default function ScanPage() {
     <ScanLimitNotice
       error={refusal}
       onTopUp={() => {
-        setRefusal(null);
+        // Only the error goes, so scanning can carry on. The notice stays put,
+        // now showing that the extra 600 was granted: clearing it here unmounted
+        // the very message that says it worked, so the panel simply vanished
+        // and nobody could tell whether pressing the button had done anything.
         setScanError(null);
       }}
     />
