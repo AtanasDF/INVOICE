@@ -673,6 +673,7 @@ export default function ScanPage() {
     updateDoc(d.id, { error: null, look: null });
     setScanning(true);
     setScanError(null);
+    setRefusal(null);
     setDuplicate(null);
     readDoc(d, lists?.cats ?? categories);
   }
@@ -699,6 +700,7 @@ export default function ScanPage() {
     updateDoc(d.id, change);
     setScanning(true);
     setScanError(null);
+    setRefusal(null);
     // A warning about the previous reading doesn't describe the next one.
     setDuplicate(null);
     readDoc({ ...d, ...change }, categories);
@@ -720,6 +722,12 @@ export default function ScanPage() {
       look: null,
     }));
     setSummary(null);
+    // A refusal describes the read that met it, and nothing after. It used to
+    // be set in one place and cleared in none, so once somebody hit the wall
+    // on this page the notice owned the error slot for the rest of the page's
+    // life -- and the next document that genuinely failed showed the old
+    // message about the limit, with no Try again anywhere.
+    setRefusal(null);
     setWalk({ docs: entries, current: entries[0].id });
     const limit = limiter(READ_CONCURRENCY);
     entries.forEach((e) => readDoc(e, cats, limit));
@@ -1134,6 +1142,7 @@ export default function ScanPage() {
         // and nobody could tell whether pressing the button had done anything.
         setScanError(null);
       }}
+      onCarryOn={retry}
     />
   ) : scanError && (
     <div className="rounded-lg border border-red-200 bg-red-50 p-3">

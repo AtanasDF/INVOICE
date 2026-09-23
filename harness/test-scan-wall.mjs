@@ -109,6 +109,35 @@ try {
   check("pressing it grants the extra and says so", /another 600 for this month\. Carry on\.|That's another 600/i.test(t), t.slice(0, 500));
   check("...and the button goes once it has been used", !(await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => /Give me another 600/i.test(b.textContent)))));
 
+  // Having topped up, the document that was refused still needs reading. The
+  // "Try again" button lives in the red failure box, and the refusal notice
+  // stands in that same slot -- so without something here, the only way to use
+  // the 600 just granted is to work out for yourself that the page must be
+  // reloaded.
+  const canRetry = await page.evaluate(() =>
+    [...document.querySelectorAll("button")].some((b) => /Try again|Read it now|Read it again/i.test(b.textContent)));
+  check("after topping up there is a way to read the refused document", canRetry, await bodyText(page).then((x) => x.slice(0, 400)));
+
+  // --- a real failure AFTER the wall has been met ---
+  // The refusal is kept in its own piece of state so it can be shown its own
+  // way. It is set in exactly one place and was cleared in none, so once
+  // somebody met the wall on this page, the limit notice owned the error slot
+  // for the rest of the page's life: top up, carry on, and the next document
+  // that genuinely fails shows the old message about the limit instead of what
+  // went wrong -- and the "Try again" button lives in the red box that never
+  // appears.
+  await page.evaluateOnNewDocument(() => {
+    const real = window.fetch;
+    window.fetch = async (input, init) => {
+      const url = typeof input === "string" ? input : input?.url ?? "";
+      if (url.includes("/api/scan")) return new Response(JSON.stringify({ error: "Something went wrong reading that." }), { status: 500, headers: { "Content-Type": "application/json" } });
+      return real(input, init);
+    };
+  });
+  t = await scanOnce();
+  check("a genuine failure after the wall is shown as a failure", /Try again/i.test(t), t.slice(0, 500));
+  check("...and not as the old message about the limit", !/another 600 for this month/i.test(t), t.slice(0, 500));
+
   // --- and once the extra is spent too ---
   await refuseScans("month", false);
   t = await scanOnce();

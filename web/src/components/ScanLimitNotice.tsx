@@ -9,7 +9,7 @@ import { claimTopUp, topUpOffered } from "@/lib/scanAllowance";
 //
 // Renders nothing for an ordinary error, so a page can hand it every error it
 // has and let it decide.
-export default function ScanLimitNotice({ error, onTopUp }: { error: unknown; onTopUp?: () => void }) {
+export default function ScanLimitNotice({ error, onTopUp, onCarryOn }: { error: unknown; onTopUp?: () => void; onCarryOn?: () => void }) {
   const [state, setState] = useState<"idle" | "asking" | "done" | "failed" | "already">("idle");
   // Two presses in one tick both reach this handler: `disabled` only lands on
   // the render after the first press, and both closures read the same `state`.
@@ -40,7 +40,18 @@ export default function ScanLimitNotice({ error, onTopUp }: { error: unknown; on
       <p className="text-base">{message}</p>
 
       {state === "done" ? (
-        <p className="text-base font-medium">That&apos;s another 600 for this month. Carry on.</p>
+        <>
+          <p className="text-base font-medium">That&apos;s another 600 for this month.</p>
+          {/* The document that was refused still needs reading, and the usual
+              "Try again" sits in the red failure box this notice is standing
+              in. Without this, the only way to spend the 600 just granted is
+              to work out for yourself that the page wants reloading. */}
+          {onCarryOn && (
+            <button type="button" onClick={onCarryOn} className="w-full rounded-lg bg-neutral-900 px-4 py-3 text-base font-bold text-white">
+              Read it now
+            </button>
+          )}
+        </>
       ) : state === "already" ? (
         <p className="text-base">You have already had the extra 600 this month. It starts again on the 1st.</p>
       ) : (
