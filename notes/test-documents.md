@@ -85,3 +85,15 @@ and it is the cheapest possible way to find out what breaks before a real trades
 `harness/shot-preview.mjs` crops any document out of the pile to a PNG
 (`node shot-preview.mjs <outdir> D-009 D-011 ...`), which is how the designs were checked
 without printing anything.
+
+## Marking the results
+
+`node check-scans.mjs scanned.json` compares what the reader made of each sheet against
+`expected.json` and prints **what it got wrong**, not just that it failed — with a tally by
+field and by design, because one document failing is an anecdote and six of one design
+failing is the next piece of work. `--md` writes it as a table to keep.
+
+It is deliberately forgiving where being strict would bury the real failures: "Travis
+Perkins Ltd" matches "Travis Perkins", `£1,234.50` matches `1234.5`, and a date in any
+order is compared as a day rather than as text. A sheet whose id is not in the key is
+reported rather than ignored, and everything not yet tried is listed.
