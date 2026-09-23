@@ -39,9 +39,21 @@ just that it failed, and that list is what the next scanner work is built from.
 - **A statement, not an invoice** — which the reader should *refuse* to file as a bill
 - **Dates that fight** — 03/04/2026 (day-first, UK), a US-style date, a date with no year
 
-## Built 2026-09-23 — 102 documents
+## Built 2026-09-23 — 106 documents in 24 designs
 
-`harness/gen-test-documents.mjs` makes them: `documents.pdf` (60 A4 pages, print it),
+**The first attempt was rightly rejected** ("these are more or less the same"): a hundred
+documents that were all one document underneath, same header, same table, same totals
+block. Real paper differs in *layout* far more than in wording, so the generator was rebuilt
+the other way round — a library of visually unrelated designs first, content poured in
+second. The 24: coloured band, logo mark left, circle mark right, bare minimal, boxed form,
+zebra stripes, continental (Dutch and German, IBAN and BIC), dot matrix on tractor feed with
+sprocket holes, carbon copy in blue on yellow, handwriting on a lined pad, handwriting on
+squared paper, green-bar ledger, till roll with barcode, wide till roll with a QR block,
+card terminal slip, printed email, diagonal PAID/OVERDUE/COPY stamp, landscape gridlines,
+formal letterhead, grey photocopy at an angle, fax with the transmission line, three-column,
+spreadsheet gridlines, booking confirmation, A6 docket.
+
+`harness/gen-test-documents.mjs` makes them: `documents.pdf` (71 A4 pages, print it),
 `expected.json` (what a correct reading looks like, keyed by the id printed at the foot of
 every sheet) and `index.md` (the table of what each one is and what makes it hard). The PDF
 and its HTML are gitignored — they regenerate in seconds — while the key and the index are
@@ -69,3 +81,7 @@ the set can be regrown.
 Everything the scanner does today has been proven against clips made by the same hand that
 wrote the scanner. A printed pile, photographed on a real phone, is the first honest test —
 and it is the cheapest possible way to find out what breaks before a real tradesman does.
+
+`harness/shot-preview.mjs` crops any document out of the pile to a PNG
+(`node shot-preview.mjs <outdir> D-009 D-011 ...`), which is how the designs were checked
+without printing anything.
