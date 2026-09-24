@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { money } from "@/lib/money";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
   Client,
@@ -337,6 +337,48 @@ function Dashboard() {
     if (!loading && !loadError) showOnAppIcon(overdueInvoices.length + dueRecurringCount + billsDueSoon);
   }, [loading, loadError, overdueInvoices.length, dueRecurringCount, billsDueSoon]);
 
+  // Several invoices settled by one transfer, recorded together. Each is a
+  // payment of whatever is still owed on it -- the same thing "Mark as paid"
+  // does on the invoice itself -- so the invoice works out its own status from
+  // its payments, exactly as it does everywhere else. Nothing is marked until
+  // the button is pressed, and a failure says which one and leaves the rest.
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const payingRef = useRef(false);
+
+  async function markPickedPaid() {
+    if (payingRef.current) return;
+    payingRef.current = true;
+    setPaying(true);
+    setPayError(null);
+    const chosen = awaitingPayment.filter((o) => picked.has(o.invoice.id));
+    const failed: string[] = [];
+    for (const o of chosen) {
+      try {
+        await paymentsStore.add({ invoiceId: o.invoice.id, date: today, amount: o.amountDue, method: null, note: "Marked as paid" });
+        await invoicesStore.update(o.invoice.id, { status: "paid" });
+      } catch {
+        failed.push(`#${o.invoice.number}`);
+      }
+    }
+    payingRef.current = false;
+    setPaying(false);
+    // What went through leaves the list; anything that did not stays, with its
+    // number named, so nobody has to work out which of five it was.
+    const done = new Set(chosen.filter((o) => !failed.includes(`#${o.invoice.number}`)).map((o) => o.invoice.id));
+    setOutstandingInvoices((prev) => prev.filter((o) => !done.has(o.invoice.id)));
+    setAllInvoices((prev) => prev.map((i) => (done.has(i.id) ? { ...i, status: "paid" as const } : i)));
+    if (failed.length) {
+      setPayError(`Could not record ${failed.join(", ")}. The others went through.`);
+      setPicked((prev) => new Set([...prev].filter((id) => !done.has(id))));
+    } else {
+      setPicking(false);
+      setPicked(new Set());
+    }
+  }
+
   async function markBillPaid(bill: Receipt) {
     setBillsError(null);
     setBills((prev) => prev.filter((b) => b.id !== bill.id));
@@ -625,30 +667,96 @@ function Dashboard() {
         </div>
       )}
 
+      {/* Marking several at once (Atanas, 2026-09-24: "it should let you mark a
+          few of them... pay this company only, pay that company only"). Money
+          usually arrives in a lump: one customer settles three invoices with a
+          single transfer, and ticking them one at a time on three separate
+          pages is the wrong shape for that. Nothing is marked until the button
+          is pressed, and the button says how many and how much. */}
       {hasAnything && (
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <h2 className="font-semibold">Awaiting payment</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Awaiting payment</h2>
+          {awaitingPayment.length > 1 && (
+            <button
+              type="button"
+              onClick={() => { setPicking((v) => !v); setPicked(new Set()); setPayError(null); }}
+              className="text-sm font-medium text-neutral-700 underline"
+            >
+              {picking ? "Done" : "Mark several paid"}
+            </button>
+          )}
+        </div>
+        {payError && <p role="alert" className="mt-2 text-sm text-red-600">{payError}</p>}
         {awaitingPayment.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">Nothing outstanding right now.</p>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+            {picking && (
+              <div className="flex flex-wrap gap-2 pb-1">
+                <button type="button" onClick={() => setPicked(new Set(awaitingPayment.map((o) => o.invoice.id)))} className="rounded-lg border px-2 py-1 text-xs font-medium text-neutral-700">
+                  All of them
+                </button>
+                {[...new Set(awaitingPayment.map((o) => o.clientName))].slice(0, 4).map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setPicked(new Set(awaitingPayment.filter((o) => o.clientName === name).map((o) => o.invoice.id)))}
+                    className="rounded-lg border px-2 py-1 text-xs font-medium text-neutral-700"
+                  >
+                    All from {name}
+                  </button>
+                ))}
+              </div>
+            )}
             {awaitingPayment.map((o) => {
               const overdue = isOverdue(o.invoice.status, o.invoice.dueDate, today);
-              return (
-                <Link
-                  key={o.invoice.id}
-                  href={`/invoices/${o.invoice.id}`}
-                  className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0"
-                >
+              const row = (
+                <>
                   <span className="min-w-0 wrap-anywhere">
                     #{o.invoice.number} · {o.clientName}
                     {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · due {shortDate(o.invoice.dueDate)}</span>}
                   </span>
                   <span className="shrink-0 font-medium">{money(o.amountDue)}</span>
+                </>
+              );
+              return picking ? (
+                <label key={o.invoice.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                  <input
+                    type="checkbox"
+                    className="size-5 shrink-0"
+                    checked={picked.has(o.invoice.id)}
+                    onChange={(e) => setPicked((prev) => {
+                      const next = new Set(prev);
+                      if (e.target.checked) next.add(o.invoice.id); else next.delete(o.invoice.id);
+                      return next;
+                    })}
+                  />
+                  {row}
+                </label>
+              ) : (
+                <Link
+                  key={o.invoice.id}
+                  href={`/invoices/${o.invoice.id}`}
+                  className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0"
+                >
+                  {row}
                 </Link>
               );
             })}
           </div>
+        )}
+        {picking && picked.size > 0 && (
+          <button
+            type="button"
+            disabled={paying}
+            onClick={markPickedPaid}
+            className="mt-3 w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {paying
+              ? "Recording…"
+              : `Mark ${picked.size} paid · ${money(awaitingPayment.filter((o) => picked.has(o.invoice.id)).reduce((t, o) => t + o.amountDue, 0))}`}
+          </button>
         )}
         {outstandingInvoices.length > awaitingPayment.length && (
           <Link href="/invoices?status=to_receive" className="mt-3 inline-block text-sm font-medium text-neutral-700 underline">
