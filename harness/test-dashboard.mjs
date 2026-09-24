@@ -29,6 +29,14 @@ db.tables.receipts.push(
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-dashboard" });
 
+// All three panels are in the page at once now, so they can slide between each
+// other. The one on screen is the one that is not inert -- the others are
+// translated out of view, hidden from a screen reader, and inert so nothing in
+// them can be tabbed into. Reading document.body would read all three.
+const shownPanel = () => page.evaluate(() => {
+  const live = [...document.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hasAttribute("inert"));
+  return live ? live.innerText : "";
+});
 const tabs = () => page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].map((t) => ({ label: t.textContent.trim(), on: t.getAttribute("aria-selected") === "true" })));
 const clickTab = (label) => page.evaluate((l) => [...document.querySelectorAll('[role="tab"]')].find((t) => t.textContent.includes(l))?.click(), label);
 
@@ -71,7 +79,10 @@ try {
   // Searching finds someone who is not in the first few.
   await page.type("#people-search", "quiet");
   await sleep(300);
-  const found = await page.evaluate(() => [...document.querySelectorAll("main ul a")].map((a) => a.textContent.trim().split("\n")[0]));
+  const found = await page.evaluate(() => {
+    const live = [...document.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hasAttribute("inert"));
+    return [...live.querySelectorAll("ul a")].map((a) => a.textContent.trim().split("\n")[0]);
+  });
   check("searching finds a quiet customer", found.length === 1 && found[0].includes("Quietest"), JSON.stringify(found));
   // A controlled input ignores a plain value assignment: React reads its own
   // tracker, so the native setter has to be called for the change to register.
@@ -102,13 +113,13 @@ try {
 
   await clickTab("Receipts & bills");
   await sleep(400);
-  const bills = await bodyText(page);
+  const bills = await shownPanel();
   check("the second panel shows what has been scanned", bills.includes("Receipts and bills you have scanned") && bills.includes("Travis Perkins") && bills.includes("BP Kingstown"), bills.slice(0, 600));
   check("...and the people panel is not also on screen", !bills.includes("Who you work with"), bills.slice(0, 300));
 
   await clickTab("Invoices sent");
   await sleep(400);
-  const sent = await bodyText(page);
+  const sent = await shownPanel();
   check("the third panel shows invoices sent, newest first", sent.includes("Invoices you have sent") && sent.indexOf("INV-042") < sent.indexOf("INV-041"), sent.slice(0, 600));
 
   // The choice is remembered: someone who lives in their receipts should not
@@ -135,6 +146,53 @@ try {
   await page.setViewport({ width: 320, height: 680 });
   await sleep(400);
   check("fits 320px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+
+  // --- sliding between the panels with a finger (Atanas, 2026-09-24) ---
+  // Only the strip moves: the header, the scanner and the tabs stay put. A
+  // drag that is mostly up and down must never steal the page's own scroll.
+  const swipe = async (fromX, toX, y = 400) => {
+    await page.evaluate(({ fromX, toX, y }) => {
+      const track = document.querySelector('[role="tabpanel"]').parentElement.parentElement;
+      const ev = (type, x) => track.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerType: "touch", pointerId: 1 }));
+      ev("pointerdown", fromX);
+      for (let x = fromX; Math.abs(x - toX) > 8; x += (toX - fromX) / 8) ev("pointermove", x);
+      ev("pointermove", toX);
+      ev("pointerup", toX);
+    }, { fromX, toX, y });
+    await sleep(600);
+  };
+
+  await clickTab("Invoices & customers");
+  await sleep(500);
+  const before = (await tabs()).findIndex((t) => t.on);
+  await swipe(320, 60);
+  const afterLeft = (await tabs()).findIndex((t) => t.on);
+  check("sliding right to left moves to the next panel", afterLeft === before + 1, JSON.stringify({ before, afterLeft }));
+
+  await swipe(60, 320);
+  check("sliding back the other way returns to the one before", (await tabs()).findIndex((t) => t.on) === before, JSON.stringify(await tabs()));
+
+  // Past the end it must stay where it is rather than falling off.
+  await swipe(60, 320);
+  check("sliding past the first panel stays on the first", (await tabs()).findIndex((t) => t.on) === 0, JSON.stringify(await tabs()));
+
+  // A mostly-vertical drag is a scroll, not a swipe.
+  const atStart = (await tabs()).findIndex((t) => t.on);
+  await page.evaluate(() => {
+    const track = document.querySelector('[role="tabpanel"]').parentElement.parentElement;
+    const ev = (type, x, y) => track.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerType: "touch", pointerId: 2 }));
+    ev("pointerdown", 200, 300);
+    for (let d = 0; d <= 120; d += 20) ev("pointermove", 200 - d / 4, 300 + d);
+    ev("pointerup", 170, 420);
+  });
+  await sleep(500);
+  check("a drag that is mostly up and down does not change panel", (await tabs()).findIndex((t) => t.on) === atStart, JSON.stringify(await tabs()));
+
+  // The panels off screen must be unreachable, not merely out of sight.
+  const hidden = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="tabpanel"]')].filter((p) => p.hasAttribute("inert")).length);
+  check("the two panels you are not looking at are inert and hidden", hidden === 2, String(hidden));
+
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

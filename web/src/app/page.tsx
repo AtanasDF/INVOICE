@@ -17,6 +17,7 @@ import {
   recurringExpensesStore,
 } from "@/lib/storage";
 import { isOverdue } from "@/lib/invoiceStatus";
+import SwipePanels from "@/components/SwipePanels";
 import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
@@ -486,6 +487,8 @@ function Dashboard() {
           <button
             key={t.id}
             role="tab"
+            id={`dashtab-${t.id}`}
+            aria-controls={`panel-${t.id}`}
             aria-selected={tab === t.id}
             onClick={() => rememberTab(t.id)}
             className={`${TAB} ${tab === t.id ? "bg-neutral-900 text-white" : "text-neutral-700 hover:bg-neutral-50"}`}
@@ -505,7 +508,15 @@ function Dashboard() {
         </div>
       )}
 
-      {tab === "work" && (
+      {/* One track, three panels: sliding between them with a finger is how a
+          phone moves, and only this strip moves -- the header, the scanner and
+          the tabs above stay exactly where they are. */}
+      <SwipePanels
+        index={TABS.findIndex((t) => t.id === tab)}
+        onIndex={(i) => rememberTab(TABS[i].id)}
+        labelledBy="dashtab"
+        panels={[
+          { id: "work", node: (<>
       <>
       <People contacts={contacts} invoiceCounts={invoiceCounts} />
 
@@ -619,9 +630,8 @@ function Dashboard() {
       </div>
       )}
       </>
-      )}
-
-      {tab === "bills" && (
+          </>) },
+          { id: "bills", node: (<>
         <section aria-label="Receipts and bills" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Receipts and bills you have scanned</h2>
@@ -650,9 +660,8 @@ function Dashboard() {
             </ul>
           )}
         </section>
-      )}
-
-      {tab === "sent" && (
+          </>) },
+          { id: "sent", node: (<>
         <section aria-label="Invoices sent" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Invoices you have sent</h2>
@@ -678,7 +687,9 @@ function Dashboard() {
             </ul>
           )}
         </section>
-      )}
+          </>) },
+        ]}
+      />
 
       {/* Shows itself only to someone who has not installed it yet. */}
       <GetTheApp />

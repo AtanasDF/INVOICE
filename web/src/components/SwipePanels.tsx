@@ -29,6 +29,11 @@ export default function SwipePanels({ panels, index, onIndex, labelledBy }: {
   onIndex: (next: number) => void;
   labelledBy?: string;
 }) {
+  // The authority on how far the finger has moved is a ref, not state. State
+  // lags a render behind, and a fast flick -- or any events arriving faster
+  // than React re-renders -- reaches pointerup while `drag` is still 0, so the
+  // panel never changed. The ref decides; the state only draws.
+  const dragRef = useRef(0);
   const [drag, setDrag] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [height, setHeight] = useState<number | null>(null);
@@ -71,17 +76,25 @@ export default function SwipePanels({ panels, index, onIndex, labelledBy }: {
     }
     // Pulling past either end gives, rather than stopping dead.
     const atEnd = (dx > 0 && index === 0) || (dx < 0 && index === panels.length - 1);
-    setDrag(atEnd ? dx / 3 : dx);
+    dragRef.current = atEnd ? dx / 3 : dx;
+    setDrag(dragRef.current);
   }
 
   function up() {
     const s = start.current;
+    const moved = dragRef.current;
     start.current = null;
-    if (!s?.claimed) return;
+    dragRef.current = 0;
+    if (!s?.claimed) {
+      setDragging(false);
+      setDrag(0);
+      return;
+    }
     const width = frame.current?.clientWidth ?? 1;
-    // A quarter of the way across, or a flick that went further than that.
-    const moved = Math.abs(drag) > width * 0.25;
-    if (moved) onIndex(Math.min(panels.length - 1, Math.max(0, index + (drag < 0 ? 1 : -1))));
+    // A quarter of the way across is enough; it does not have to reach the far side.
+    if (Math.abs(moved) > width * 0.25) {
+      onIndex(Math.min(panels.length - 1, Math.max(0, index + (moved < 0 ? 1 : -1))));
+    }
     setDragging(false);
     setDrag(0);
   }
