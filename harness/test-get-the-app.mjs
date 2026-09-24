@@ -56,11 +56,16 @@ try {
   // iOS fills a transparent home-screen icon with BLACK, under its own rounded
   // mask, so the apple icon must be fully opaque -- ours was the 192, which is
   // 4% non-opaque at its anti-aliased edges. It must also exist at all.
-  const apple = await page.goto(`${BASE}/apple-icon.png`, { waitUntil: "domcontentloaded" });
-  check("there is an apple-touch-icon of its own", apple.status() === 200 && (apple.headers()["content-type"] ?? "").includes("png"), String(apple.status()));
+  // Fetched rather than navigated to: three navigations in a row to read one
+  // header made this flake under the four-at-a-time run while passing alone.
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   const appleHref = await page.evaluate(() => document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href") ?? null);
-  check("...and the page points iOS at it, not at the see-through one", appleHref === "/apple-icon.png", String(appleHref));
+  check("the page points iOS at an apple-touch-icon of its own", appleHref === "/apple-icon.png", String(appleHref));
+  const appleRes = await page.evaluate(async (href) => {
+    const r = await fetch(href, { cache: "no-store" });
+    return { status: r.status, type: r.headers.get("content-type") ?? "" };
+  }, appleHref ?? "/apple-icon.png");
+  check("...and it is really there, as a PNG", appleRes.status === 200 && appleRes.type.includes("png"), JSON.stringify(appleRes));
   await page.goto(`${BASE}/manifest.json`, { waitUntil: "domcontentloaded" });
   check("the app really is installable: manifest, name, standalone, both icons",
     m.display === "standalone" && !!m.name && (m.icons ?? []).some((i) => i.sizes === "192x192") && (m.icons ?? []).some((i) => i.sizes === "512x512"),
