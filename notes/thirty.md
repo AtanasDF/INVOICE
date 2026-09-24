@@ -8,15 +8,15 @@ pressed the buttons on. Ordered by what would embarrass us most if a real person
 
 ## A. Things known to be wrong right now
 
-1. **Errors never say which field they belong to.** `aria-invalid` is used **0 times**
+1. **[done]** **Errors never say which field they belong to.** `aria-invalid` is used **0 times**
    across 190 inputs, `aria-describedby` once, while `role="alert"` is used 79 times. A
    screen reader hears the words and never learns which box to fix. Biggest real failure.
-2. **Icon-only buttons are 18 × 23 px** — under WCAG's 24 px floor. Cold hands, small target.
+2. **[done]** **Controls too small to hit** — six pages, all failing, all fixed. — under WCAG's 24 px floor. Cold hands, small target.
 3. **`autocomplete` is on ~20 of 190 inputs**, and nine of those are `"off"` — so phones
    cannot fill in a name, an address or a postcode.
-4. **Dark mode has never been contrast-tested.** `test-readable` covers five themes; there
+4. **[done]** **Dark mode has never been contrast-tested.** `test-readable` covers five themes; there
    are six.
-5. **Two comments now say the opposite of the truth** — `globals.css` and
+5. **[done]** **Two comments now say the opposite of the truth** — `globals.css` and
    `test-dark-mode.mjs` both still claim the app is light-only.
 6. **No page for a single receipt.** Tapping one on the dashboard or in the library lands on
    the whole list. `?open=<id>` that scrolls to and highlights it is the small fix.
@@ -56,6 +56,24 @@ Does any state outlive what it describes? Is there a way on after success **and*
 
 ## F. Proving the tests themselves
 
-29. **The mutation run**: break eight real things, see which suites notice. Anything that
+29. **[done]** **The mutation run** — all eight caught; one suite was checking its own fiction and is fixed. **The mutations reached `main` twice**; both routes closed. `29. **The mutation run**: break eight real things, see which suites notice. Anything that
     stays green is a hole. *(Running now.)*
 30. Whatever the mutation run finds — that is the list I actually trust.
+
+
+---
+
+## Done so far (2026-09-24, kept as it went)
+
+**1, 2, 4, 5, 29** and the two extra things the work turned up:
+
+- The scan page opened a camera **over a document already waiting to be read** — a
+  regression from the camera-blocked notice earlier the same night, found by the mutation
+  run of all things.
+- `test-scan-wall` was checking wording **it supplied to its own stand-in**. Eighteen green
+  checks, none of them about the app. It takes the words from the app's own code now.
+
+**Still to go:** 3 (autocomplete on 190 inputs), 6 (no page for a single receipt), 7
+(client vs customer), 8 (unique page titles), 9–13 (the suites that never run), 14–22 (the
+four questions on nine screens), 23–25 (empty, overloaded, broken), 26–28 (money in
+combination).
