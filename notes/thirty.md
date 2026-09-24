@@ -34,10 +34,18 @@ pressed the buttons on. Ordered by what would embarrass us most if a real person
    and run-all.sh saw a suite with no result), and it drove the dashboard's Add sheet, removed
    on 2026-09-23 — the same suite asserts its absence fifty lines earlier. What it then found
    was real: with the camera blocked on an iPhone, the scan page gave no way to scan at all.
-10. `test-deposits` — a 15 s wait times out; the screen moved under it.
-11. `test-free-quote` — "no button: Start a quote"; the chooser changed.
-12. `test-quote-requests` — imports fixed; settle the 120 s wait on a quiet machine.
-13. `test-quotes-ux` and `test-quotes-fixes` — written against a branch long merged.
+10. **[done]** `test-deposits` — 17/17. One line: the customer used to be a `<select>` and is
+    a CustomerPicker radiogroup now, so clientId stayed empty and every save stopped at
+    "Pick who the quote is for" long before a deposit rule was reached.
+11. **[done]** `test-free-quote` — 13/13, two checks more than it had. It signed in half way
+    down, which was fine while /free-invoice was public; the quote number moved behind "Add
+    more details"; and the import offers a prefilled new-customer panel, not an "Add as a
+    client" button.
+12. **[done]** `test-quote-requests` — 82/82. The only suite that needs the **server** pointed
+    at its mock, not just the browser: the send route checks the token server-side. It starts
+    its own dev server on 3305 now and is in DEV_SERVER. Four more faults underneath.
+13. **[done]** `test-quotes-ux` — 48/48 (the picker heading, the address block, and the "Use
+    <postcode> as typed" row). `test-quotes-fixes` was already 11/11 and needed nothing.
 
 ## C. The four questions, on every screen never asked them
 
@@ -72,7 +80,9 @@ Does any state outlive what it describes? Is there a way on after success **and*
 
 ## Done so far (2026-09-24, kept as it went)
 
-**1, 2, 3, 4, 5, 6, 7, 8, 9, 29** and the extra things the work turned up:
+**1–13, 26, 27, 28 and 29** — everything except the four questions on nine screens
+(14–22) and the empty/overloaded/broken sweep (23–25). Plus the extra things the work
+turned up:
 
 - The scan page opened a camera **over a document already waiting to be read** — a
   regression from the camera-blocked notice earlier the same night, found by the mutation
@@ -89,5 +99,5 @@ Does any state outlive what it describes? Is there a way on after success **and*
   catch block) and `test-company-picker` (33 checks after a renamed button). Both classes
   are the same lesson as the mutations reaching main: read the content, not the summary.
 
-**Still to go:** 10–13 (the four remaining suites that never run), 14–22 (the four questions
-on nine screens), 23–25 (empty, overloaded, broken), 26–28 (money in combination).
+**Still to go:** 14–22 (the four questions on nine screens), 23–25 (empty, overloaded,
+broken).
