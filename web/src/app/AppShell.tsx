@@ -170,8 +170,12 @@ function Header() {
         <Link href="/" className="text-lg font-semibold">
           {SITE_NAME}
         </Link>
+        {/* The signed-in header wraps: at twice the text size somebody has
+            chosen on their phone, "Menu" and "Sign out" together are wider
+            than a 390px screen, and a header that runs off the side takes
+            the way out of the app with it. */}
         {user ? (
-          <nav className="flex items-center gap-x-4 text-sm font-medium text-neutral-600">
+          <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
             <div className="hidden items-center gap-x-4 sm:flex">
               <NavLink href="/">Home</NavLink>
               {GROUPS.map((g) => (

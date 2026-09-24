@@ -781,9 +781,12 @@ export default function SettingsPage() {
             {categories.length === 0 && <p className="text-sm text-neutral-500">No categories — add at least one below.</p>}
           </div>
 
-          <div className="flex gap-2 border-t pt-3">
+          {/* Wraps and the box may shrink: at a large text size the
+              placeholder held the input at its natural width and pushed
+              Add off the side. */}
+          <div className="flex flex-wrap gap-2 border-t pt-3">
             <input
-              className="flex-1 rounded-lg border px-3 py-2 text-sm"
+              className="w-full min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm sm:w-auto"
               placeholder="Add a category (e.g. Childcare)"
               aria-label="New category"
               value={newCategory}

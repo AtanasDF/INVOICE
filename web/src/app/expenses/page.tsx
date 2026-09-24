@@ -179,7 +179,9 @@ export default function ExpensesPage() {
         </div>
       <Tip id="expenses-how">How it works: every receipt and bill you save adds itself up here, by category and by month.</Tip>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border text-sm">
+          {/* The row already wrapped; the control inside it did not, so at
+              a large text size Week/Month/Year/Custom ran off together. */}
+          <div className="flex flex-wrap rounded-lg border text-sm">
             <button
               onClick={() => setPeriodMode("week")}
               className={`px-3 py-1.5 ${periodMode === "week" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}

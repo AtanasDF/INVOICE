@@ -218,6 +218,17 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## Bigger pieces
 
+- [ ] **Make the screens work at twice the text size** (started 2026-09-24). Not one of the
+  twelve apps in `competitor-research.md` respects the size somebody has already chosen on
+  their phone, so this is a differentiator -- and for a brief that says "three old kids
+  should be able to do that", ignoring that setting is the plainest failure there is. The
+  Dynamic Type rule is WRITTEN and commented out in `globals.css`; `harness/test-big-text.mjs`
+  measures the state and is deliberately out of `run-all.sh` because it fails. What breaks at
+  32px root: the dashboard panels, the invoice table, the receipt action rows, the expenses
+  picker. Already fixed: the header, the expenses period control, the Settings category row.
+  The rule and the suite go live together, in one commit, when they all pass.
+
+
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item. Deferred on
   purpose: CLAUDE.md says it is worth doing only with an iPhone to test on, and a caching
   service worker shipped untested against real Safari is a way to lose captures, not keep

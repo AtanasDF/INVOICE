@@ -198,6 +198,46 @@
   }
 }
 
+/* The size a person has ALREADY chosen on their phone.
+   Not one of the twelve apps in notes/competitor-research.md claims to
+   respect it -- Xero's accessibility statement covers only its website,
+   Zoho's VPAT explicitly excludes the mobile apps, and the rest publish
+   nothing. For an app whose brief is that "three old kids should be able
+   to do that", ignoring the setting somebody already turned up is the
+   plainest failure there is.
+
+   -apple-system-body is the only way a web page can read iOS's Dynamic
+   Type: it is a font shorthand carrying the size the phone is set to.
+   Taking just its size onto the root element makes every rem in the app
+   follow it, and Tailwind sizes type and spacing in rem -- so the whole
+   layout grows together rather than text overflowing boxes that stayed
+   put.
+
+   Not clamped, and it cannot be: -apple-system-body is a font shorthand,
+   not a length, so it will not go inside a clamp(). iOS's accessibility
+   sizes reach 53px, so the layouts have to cope rather than be protected
+   -- which is the right way round anyway. test-big-text holds them to it
+   by setting the root size directly, because Chrome has no Dynamic Type
+   and this @supports block never applies there. The mechanism is Safari's
+   and can only be confirmed on the phone; what it DOES to the app is
+   tested here.
+
+   NOT TURNED ON YET, and deliberately. Switching it on was the easy half;
+   test-big-text then showed what happens at twice the size -- the
+   dashboard panels, the invoice table, the receipt action rows and the
+   expenses picker all run off the side of a 390px screen. Shipping it in
+   that state would make the app WORSE for exactly the people who turned
+   the size up. The rule goes live in the same commit as the layouts, and
+   test-big-text joins run-all.sh then. Three of the overflows are already
+   fixed (the header, the expenses control, the Settings category row).
+@supports (font: -apple-system-body) {
+  :root {
+    font: -apple-system-body;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+*/
+
 body {
   background: var(--background);
   color: var(--foreground);
