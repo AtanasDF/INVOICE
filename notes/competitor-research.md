@@ -98,14 +98,14 @@ accountants but will still give accountants reports."*
    to today**. Xero's is the strongest mobile friction-reducer found; **Tide charges £5.99+VAT
    a month for it, Square paywalls templates at £20/mo**, and most do not have it on mobile
    at all. Very low effort.
-2. **A GOV.UK wording pass** over every error and empty state — free, externally written,
+2. [BUILT 2026-09-24, `test-govuk-words`] **A GOV.UK wording pass** over every error and empty state — free, externally written,
    and **no competitor follows it**.
 3. **Show which field the reader doubted** — the market-wide hole above.
-4. **Respect the device's text size**, and publish an accessibility statement that names our
+4. [TEXT SIZE BUILT 2026-09-24, `test-big-text`] **Respect the device's text size**, and publish an accessibility statement that names our
    own failures, in Starling's candid style.
-5. **Validate VAT numbers against HMRC** (Dext-only today), and **ask before remembering** a
+5. [HALF BUILT 2026-09-24: the check digits ship, the HMRC lookup waits on credentials — `test-vat-number`, `test-vat-lookup`] **Validate VAT numbers against HMRC** (Dext-only today), and **ask before remembering** a
    supplier's category — AutoEntry's explicit prompt beats Dext's silent learning.
-6. **Put the statutory late-payment terms on every B2B invoice** by default.
+6. [BUILT 2026-09-24, `test-late-payment`] **Put the statutory late-payment terms on every B2B invoice** by default.
 7. **Pay by bank** on the `/i/` page (Stripe: £0.50–£10,000, **no chargebacks**) against
    Square's 2.5% and no bank rail at all.
 8. **The VAT reverse charge** for construction.

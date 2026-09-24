@@ -4,6 +4,52 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-24 (later) — The text size people already chose, the words for when it goes wrong, and checking a VAT number (Opus 5)
+
+Three pieces, each finished and on `main`.
+
+**1. Dynamic Type is live.** The `@supports (font: -apple-system-body)` rule had been
+written and commented out for a day because `test-big-text` showed what happened at twice
+the size. The last overflow took the longest and is worth remembering: the issued invoice
+measured 426px against a 390px screen, and **every element sticking out past the viewport
+was a table cell** — all inside the scroll box, all behaving. The list was useless. Listing
+instead every element whose **own content is wider than itself** (`scrollWidth >
+clientWidth`, `overflow-x: visible`) named both culprits in one go: the send-it form's
+"Send me a copy (your@email.address)" label, and the invoice sheet's heading block, which
+puts the business name beside "Invoice INV-000001" on a row that cannot wrap. Plus the
+receipts action row (four labels on one line) and the bill detail line, which was truncated
+on purpose for compact cards and cut the category off at a large size — `line-clamp-2` keeps
+the 156px limit and still shows it. 22/22, and the suite is in `run-all.sh`.
+
+**2. A GOV.UK wording pass** over every error and empty state. Most of the app was already
+there; what it found was a screen that had missed every earlier sweep — **reset-password**,
+which is the screen people reach when they are already stuck: "invalid or has expired",
+"Passwords don't match", "Request a new one". Also "Please sign in again" in six places
+(says what to do, not what happened), two different sentences for one mistake, "Could not"
+and "Couldn't" both, "Please wait…" on three buttons, and three empty states that named
+what was missing and stopped. `test-govuk-words` scans the source rather than clicking,
+because an error that only shows on a dead connection cannot be reached by clicking. **What
+the owner sends a CUSTOMER is exempt by name**: "Please find attached invoice 41" is how
+that email is written.
+
+**3. Checking a VAT number**, in two halves. The half that needs nobody ships today: a UK
+VAT number carries its own check digits, so a typo is caught on the device — 159 of every
+162 single-digit slips, every transposition, measured against two real VAT numbers the
+companies print themselves rather than against numbers made up with the same algorithm. The
+half that needs HMRC is behind `HMRC_CLIENT_ID`/`HMRC_CLIENT_SECRET`, the same shape as the
+Companies House key, with a stand-in HMRC in `test-vat-lookup`. VIES cannot stand in for it:
+GB numbers left VIES after Brexit.
+
+**A near-miss worth recording:** I wrote a new suite called `test-plain-words.mjs` without
+checking whether that name was taken. It was — a suite about the words a *stranger* must
+not meet on the front door — and I overwrote it. It came back from git and mine is now
+`test-govuk-words.mjs`, with a note at the top of each pointing at the other. **Check
+whether a file exists before writing one.** The only reason this was caught at all was
+reading `git diff run-all.sh` and wondering why a name I had just added was already there.
+
+**Left for Atanas:** register an application on HMRC's Developer Hub with the `read:vat`
+scope and put the two values in Vercel; the boxes work without it.
+
 ## 2026-09-24 — His brief, built: sliding panels, the file library, and four bugs of my own (Opus 5)
 
 Atanas dictated a long brief over the evening and then said to get on with it. Everything
