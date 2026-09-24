@@ -52,16 +52,36 @@ pressed the buttons on. Ordered by what would embarrass us most if a real person
 *Does a machine's words reach a person? Is a once-only action guarded only by `disabled`?
 Does any state outlive what it describes? Is there a way on after success **and** failure?*
 
-14. Needs review 15. Clients & suppliers, including the merge 16. VAT return
-17. Mileage 18. Expenses 19. Recurring invoices and expenses 20. Customer statement
-21. Quote requests, the owner's side 22. Settings
+14–22. **[done]** All four asked of all nine, and **four real bugs came out of it**:
+
+- **Postgres's own words reached people on twelve screens.** Found by refusing the write
+  and reading what a person is actually told: the mileage page said "mock failure on POST
+  receipts". `errorText()` passes the raw message through; every call site whose error can
+  come from the database now uses `saveFailed()`. (`test-write-fails`, 26 checks, seven
+  screens: told in words you can read, what you typed still there, button works again,
+  nothing recorded.)
+- **Four buttons that write money could be pressed twice.** Make it now, Log it, Save the
+  trip, Merge into — all guarded only by `disabled`, which React applies a render too late.
+  Refs now, released on every path. (`test-double-press`, 6 checks; proved by taking a
+  guard out and getting two drafts from one press.)
+- **A refusal about the third bill was printed at the top of the page**, naming no receipt
+  and, on a phone, not on screen at all — so the button read as dead. It sits on its own
+  row now and clears when you type in that row. (`test-refusal-place`, 8 checks.)
+- **Five screens said nothing when the thing worked.** A row vanishing is silent to a
+  screen reader (4.1.3), and each of these makes a record elsewhere you were left with no
+  way to reach. `role="status"` on all five, each naming where the thing went.
+  (`test-said-so`, 11 checks.)
 
 ## D. Empty, overloaded, broken
 
-23. Every one of those screens with **nothing** in the account.
-24. Every one with **500 records**.
-25. Every one with a **failed database read** — the empty state must never stand in for a
-    failure.
+23. **[done]** Already held by `test-empty-account`: 21 paths, 135 checks.
+24. **[done]** `test-big-account` held 500 invoices, 2000 receipts and 300 contacts but
+    opened only six screens. It opens fifteen now — 400 quotes, 300 documents waiting
+    (each a form on screen), 300 mileage trips, 120 of each recurring kind, the file
+    library over 2600 documents, quote requests, a statement, Settings. All under a
+    second. The mileage total is asserted to the mile, not "roughly right".
+25. **[done]** Also `test-empty-account`: a failed read on 13 paths, with the empty state
+    never standing in for a failure.
 
 ## E. Money, which has to be right
 
@@ -80,9 +100,7 @@ Does any state outlive what it describes? Is there a way on after success **and*
 
 ## Done so far (2026-09-24, kept as it went)
 
-**1–13, 26, 27, 28 and 29** — everything except the four questions on nine screens
-(14–22) and the empty/overloaded/broken sweep (23–25). Plus the extra things the work
-turned up:
+**All thirty.** Plus the extra things the work turned up:
 
 - The scan page opened a camera **over a document already waiting to be read** — a
   regression from the camera-blocked notice earlier the same night, found by the mutation
@@ -99,5 +117,5 @@ turned up:
   catch block) and `test-company-picker` (33 checks after a renamed button). Both classes
   are the same lesson as the mutations reaching main: read the content, not the summary.
 
-**Still to go:** 14–22 (the four questions on nine screens), 23–25 (empty, overloaded,
-broken).
+**All thirty are done.** Four real bugs came out of 14–22, which is where they were
+expected to be: the questions are worth more than the list.
