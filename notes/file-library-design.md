@@ -224,3 +224,24 @@ record is corrected, and it cannot drift from the record it describes.
   answer and a real piece of work — worth confirming that is what he means before building
   a one-at-a-time list.
 - **By supplier or client** means the filter needs the contact list too, not just dates.
+
+---
+
+# Settled: one rectangle, with a switch (2026-09-24)
+
+*"do one rectangular with the switch photos and files. That would be nicer. Just make it...
+it's going to be bigger... Open your files and it's gonna open like a little library as
+well that you'll be able to scroll through the files and choose one."*
+
+So, decided:
+
+- **One rectangle**, not two. It sits under the upload tile.
+- **A switch across the top: Photos | Files.** Same control as the Receipts · Invoices ·
+  Quotes switch, so there is one kind of switch in the app, not two.
+- **Bigger than the tiles around it**, as he asked twice — the pictures have to be big
+  enough to recognise at a glance, which is the whole point of looking at pictures.
+- **Tapping the title opens the full library**, which scrolls, and carries the same date
+  roller, the same custom period, and "all".
+
+That also avoids the mistake removed from the dashboard this morning: two rectangles doing
+similar jobs, one above the other.
