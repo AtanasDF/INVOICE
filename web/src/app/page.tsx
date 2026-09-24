@@ -18,6 +18,8 @@ import {
 } from "@/lib/storage";
 import { isOverdue } from "@/lib/invoiceStatus";
 import SwipePanels from "@/components/SwipePanels";
+import UploadPanel from "@/components/UploadPanel";
+import { inboxAddress } from "@/lib/inboxToken";
 import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
@@ -26,7 +28,6 @@ import { loadOpenCV } from "@/lib/opencv";
 import { useAuth } from "@/lib/authContext";
 import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
-import UploadFilesButton from "@/components/UploadFilesButton";
 import People from "@/components/dashboard/People";
 import GetTheApp from "@/components/GetTheApp";
 import TaxSoFar from "@/components/TaxSoFar";
@@ -129,6 +130,7 @@ function Dashboard() {
   const [outstandingInvoices, setOutstandingInvoices] = useState<{ invoice: Invoice; amountDue: number; clientName: string }[]>([]);
   const [monthTotal, setMonthTotal] = useState(0);
   const [tax, setTax] = useState<TaxEstimate | null>(null);
+  const [inbox, setInbox] = useState<string | null>(null);
   const [monthVat, setMonthVat] = useState(0);
   const [showOverdueBanner, setShowOverdueBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -241,6 +243,7 @@ function Dashboard() {
       // nobody's confirmed yet shouldn't silently skew these totals
       // before it's actually been checked.
       const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth && !r.needsReview);
+      setInbox(profile.inboxToken ? inboxAddress(profile.inboxToken) : null);
       setTax(estimateTax({ invoices, creditNotes, receipts, vatRegistered: profile.vatRegistered, today }));
       setMonthTotal(monthReceipts.reduce((s, r) => s + r.amount, 0));
       setMonthVat(monthReceipts.reduce((s, r) => s + r.vatAmount, 0));
@@ -461,7 +464,7 @@ function Dashboard() {
             <span>Copy a document</span>
           </Link>
         </div>
-        <UploadFilesButton href="/scan" label="Upload a document" buttonClassName={`${TILE} min-h-0 w-full flex-row py-2.5`} />
+        <UploadPanel href="/scan" inboxAddress={inbox} />
 
         <p className="text-sm text-neutral-600">
           Photograph an old invoice and the next one is filled in for you, or{" "}
