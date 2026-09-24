@@ -621,12 +621,10 @@ function Dashboard() {
             <ul className="space-y-2">
               {recent(allReceipts).map((r) => (
                 <li key={r.id}>
-                  {/* /receipts/<id> does not exist -- there is no page for a
-                      single receipt -- so this was a 404 waiting for anyone who
-                      tapped a scanned receipt here. It only showed up when this
-                      panel became the first one and Next started prefetching
-                      the links, which then never finished. */}
-                  <Link href="/receipts" className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                  {/* There is no page for a single receipt: /receipts/<id>
+                      was a 404 waiting for anyone who tapped one here. The list
+                      takes ?open=<id> and brings that row to you instead. */}
+                  <Link href={`/receipts?open=${r.id}`} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
                     <span className="min-w-0 wrap-anywhere">
                       {supplierNames.get(r.clientId) || r.vendor || "Unknown supplier"}
                       <span className="block text-xs text-neutral-500">

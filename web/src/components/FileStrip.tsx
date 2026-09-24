@@ -35,7 +35,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
   const all = useMemo<Doc[]>(() => {
     const fromReceipts = receipts.map((r) => ({
       id: `r-${r.id}`,
-      href: "/receipts",
+      href: `/receipts?open=${r.id}`,
       date: r.date,
       title: r.vendor || "Receipt",
       note: money(r.amount ?? 0),

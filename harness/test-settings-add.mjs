@@ -317,7 +317,12 @@ try {
     await b4.close();
   }
 } catch (e) {
-  console.log("ERROR", e.message, "| on", await page.url().catch(() => "?"));
+  // page.url() is synchronous: the .catch() that used to be here threw inside
+  // the handler, so the real error was lost and the tally below never printed
+  // -- run-all.sh saw a suite with no result at all.
+  let where = "?";
+  try { where = page.url(); } catch {}
+  console.log("ERROR", e.message, "| on", where);
   await shot(page, "settings-add-error").catch(() => {});
   await browser.close().catch(() => {});
 }

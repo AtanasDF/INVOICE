@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileStore, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, withCurrent, withUsed } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
@@ -119,7 +120,7 @@ function matchesBillFilter(r: Receipt, filter: BillFilter, today: string): boole
   return filter === "overdue" ? days < 0 : days >= 0 && days <= 7;
 }
 
-export default function ReceiptsPage() {
+function ReceiptsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [pageCounts, setPageCounts] = useState<Map<string, number>>(new Map());
@@ -149,6 +150,15 @@ export default function ReceiptsPage() {
   const [editFxError, setEditFxError] = useState<string | null>(null);
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // ?open=<id>: which row somebody arrived here to look at. Read through the
+  // router, not window.location: on a tap the page renders before the address
+  // bar changes. Held in state so it survives the address being tidied below.
+  const params = useSearchParams();
+  const router = useRouter();
+  const [wanted] = useState(() => params.get("open"));
+  const [faded, setFaded] = useState(false);
+  const highlight = faded ? null : wanted;
 
   useEffect(() => {
     Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get(), receiptPagesStore.counts()])
@@ -202,6 +212,25 @@ export default function ReceiptsPage() {
     }
     return map;
   }, [receipts]);
+
+  // Say so rather than land silently on the top of the list: the row may have
+  // been merged into another, or the link may be older than the record.
+  const openMissing = !loading && !!wanted && !receipts.some((r) => r.id === wanted);
+
+  // Tapping a receipt on the dashboard or in the file library used to land on
+  // this list with no way to tell which of them was meant -- on a long list,
+  // indistinguishable from the link being broken. There is no page for a single
+  // receipt, so the list brings the right row to you instead.
+  useEffect(() => {
+    if (loading || !wanted) return;
+    if (window.location.search) router.replace("/receipts");
+    const smooth = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const frame = requestAnimationFrame(() =>
+      document.getElementById(`receipt-${wanted}`)?.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" })
+    );
+    const t = setTimeout(() => setFaded(true), 4000);
+    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+  }, [loading, wanted, router]);
 
   async function removeReceipt(r: Receipt) {
     const what = [r.vendor, money(r.amount + r.vatAmount)].filter(Boolean).join(", ");
@@ -543,6 +572,12 @@ export default function ReceiptsPage() {
         )}
       </details>
 
+      {openMissing && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          That receipt isn&apos;t here any more. It may have been merged into another one. Everything you do have is below.
+        </p>
+      )}
+
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
@@ -565,9 +600,9 @@ export default function ReceiptsPage() {
             const extraPages = pageCounts.get(r.id) ?? 0;
             const details = detailLines(r);
             const supplierName = clients.find((c) => c.id === r.clientId)?.name;
-            const detailsOpen = openDetails.has(r.id);
+            const detailsOpen = openDetails.has(r.id) || r.id === highlight;
             return editingId === r.id && editDraft ? (
-              <div key={r.id} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <div key={r.id} id={`receipt-${r.id}`} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${type.className}`}>{type.label}</span>
                 <select
                   aria-label="Supplier"
@@ -676,7 +711,7 @@ export default function ReceiptsPage() {
                 </div>
               </div>
             ) : (
-            <div key={r.id} className="rounded-xl border bg-white p-3 text-neutral-900 shadow-sm">
+            <div key={r.id} id={`receipt-${r.id}`} className={`rounded-xl border bg-white p-3 text-neutral-900 shadow-sm${highlight === r.id ? " ring-2 ring-neutral-900" : ""}`}>
               <div className="flex gap-3">
                 {r.imageDataUrl ? (
                   isPdfDataUrl(r.imageDataUrl) ? (
@@ -802,6 +837,14 @@ export default function ReceiptsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+      <ReceiptsPage />
+    </Suspense>
   );
 }
 
