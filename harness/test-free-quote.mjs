@@ -21,19 +21,31 @@ const setByLabel = (label, value, tag = "input") => page.evaluate((l, v, t) => {
 try {
   const cdp = await page.createCDPSession();
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
+  // launchSignedIn only opens the browser; signIn is what puts the session
+  // in place, and this suite did that half way down. That was fine while
+  // /free-invoice was public -- it stopped being so on 2026-09-22 ("nothing
+  // should work before the user register"), so everything above that point
+  // had been running against /login, and the button it could not find was
+  // never the point.
+  await signIn(page, BASE);
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
-  // Clear the draft and the tips, NOT the whole of localStorage: the
-  // Supabase session lives there too, and /free-invoice has not been a
-  // public page since 2026-09-22 ("nothing should work before the user
-  // register"), so wiping it redirected this suite to /login and the
-  // button it then could not find was never the point.
+  // Clear the draft and the tips, NOT the whole of localStorage: the session
+  // lives there too.
   await page.evaluate(() => {
     for (const k of ["free-invoice-draft", "free-invoice-signature"]) localStorage.removeItem(k);
     for (const t of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + t, "3");
   });
   await page.reload({ waitUntil: "networkidle0" });
   await clickText(page, "Start a quote");
-  await sleep(500);
+  // Wait for the editor rather than guessing at it: a fixed 500ms was enough
+  // when this was written and is not now, and what it read instead was an
+  // empty page, failing every check for a reason that is not the app's.
+  await page.waitForFunction(() => document.body.innerText.includes("Customer name"), { timeout: 15000 });
+  // The quote number and the valid-until date moved behind "Add more
+  // details" after this was written. They are still there; they are just
+  // no longer the first thing anybody is asked for.
+  await clickText(page, "Add more details");
+  await page.waitForFunction(() => document.body.innerText.includes("Quote number"), { timeout: 15000 });
   let t = await bodyText(page);
   check("editor in quote mode: no payment terms, CIS or bank details", t.includes("Quote number") && t.includes("Valid until") && !t.includes("Payment terms") && !t.includes("CIS subcontractor") && !t.includes("Payment details") && t.includes("Free quote"), t.slice(0, 400));
   await setByLabel("Business name", "Harness Ltd");
@@ -51,7 +63,18 @@ try {
   let file = null;
   for (let i = 0; i < 40 && !file; i++) { await sleep(250); file = fs.readdirSync(DL).find((f) => f.endsWith(".pdf")); }
   check("PDF is named as a quote", file === "Quote-Q-007.pdf", file);
-  check("send panel talks about a quote", (await bodyText(page)).includes("This quote stays as it is"));
+  // It used to check the signed-out wording ("This quote stays as it is").
+  // Nobody signed out can reach this page any more, so what matters is that
+  // the panel a signed-in person sees names a quote, not an invoice.
+  const sendPanel = (await bodyText(page)).replace(/\s+/g, " ");
+  const draftMessage = await page.evaluate(() => document.querySelector("#send-by-email textarea")?.placeholder ?? "");
+  check("send panel talks about a quote, not an invoice",
+    /Send quote/.test(sendPanel) && !/Send invoice/.test(sendPanel) &&
+    // The quote/invoice difference in this panel: a quote carries no bank
+    // details, so the line about them must not appear.
+    /goes as a PDF\./.test(sendPanel) && !/payment details in the email/.test(sendPanel) &&
+    /Please find attached quote/.test(draftMessage),
+    JSON.stringify({ draftMessage, tail: sendPanel.slice(-400) }));
 
   await clickText(page, "Edit");
   await sleep(300);
@@ -70,17 +93,38 @@ try {
   const saved = await page.evaluate(() => localStorage.getItem("free-invoice-draft"));
   check("draft kept as a quote", JSON.parse(saved).docType === "quote");
   await page.goto(`${BASE}/quotes/new?import=1`, { waitUntil: "networkidle0" });
-  await page.waitForFunction(() => document.body.innerText.includes("isn't one of your customers yet"), { timeout: 20000 });
-  await clickText(page, "Add Acme Kitchens Ltd as a client");
-  await page.waitForFunction(() => !document.body.innerText.includes("isn't one of your customers yet"), { timeout: 10000 });
-  const client = db.tables.clients[0];
-  check("customer added as a client (company, from the Ltd)", client?.name === "Acme Kitchens Ltd" && client.is_company === true, JSON.stringify(client));
-  const num = await page.evaluate(() => [...document.querySelectorAll("input")].find((i) => i.previousElementSibling?.textContent === "Quote number")?.value);
-  check("form prefilled with the quote's number", num === "Q-007", num);
+  // The import used to offer "Add <name> as a client" and create the contact
+  // on the spot. Quotes are written through CustomerPicker now: a name that
+  // is nobody yet opens the new-customer panel prefilled, and the contact is
+  // created when the quote is saved. Same outcome, one screen fewer.
+  await page.waitForFunction(() => document.body.innerText.includes("New customer"), { timeout: 20000 });
+  const field = (label) => page.evaluate((l) => [...document.querySelectorAll("input")].find((i) => (i.previousElementSibling?.textContent ?? "") === l)?.value ?? null, label);
+  // "Company name" rather than a person's name is the Ltd being read off the
+  // end of it, which is what the old check meant by "company, from the Ltd".
+  check("the customer comes across, on the company form because of the Ltd",
+    (await field("Company name")) === "Acme Kitchens Ltd", JSON.stringify({ company: await field("Company name") }));
+  check("form prefilled with the quote's number", (await field("Quote number")) === "Q-007", await field("Quote number"));
+  check("and with its line, priced", (await page.evaluate(() =>
+    [...document.querySelectorAll("input")].some((i) => i.value === "Fit kitchen") &&
+    [...document.querySelectorAll("input")].some((i) => i.value === "2400"))));
+  // Saving with the new-customer panel still open must not quietly do
+  // nothing -- the half-typed contact would be lost and the button would
+  // look broken.
+  await clickText(page, "Save quote");
+  await sleep(1200);
+  const refused = await page.evaluate(() => [...document.querySelectorAll('[role="alert"]')].map((e) => e.textContent.trim()));
+  check("saving before the new customer is added says so, and saves nothing",
+    refused.some((m) => /Finish adding the new customer/.test(m)) && db.tables.quotes.length === 0,
+    JSON.stringify({ refused, quotes: db.tables.quotes.length }));
+
+  await clickText(page, "Add customer");
+  await page.waitForFunction(() => ![...document.querySelectorAll('[role="alert"]')].some((e) => /Finish adding the new customer/.test(e.textContent)), { timeout: 10000 });
   await clickText(page, "Save quote");
   await page.waitForFunction(() => /\/quotes\/[0-9a-f-]{36}$/.test(location.pathname), { timeout: 15000 });
+  const client = db.tables.clients[0];
+  check("adding the customer creates it as a company", client?.name === "Acme Kitchens Ltd" && client.is_company === true, JSON.stringify(client));
   const q = db.tables.quotes[0];
-  check("quote saved with its line and client", q?.number === "Q-007" && q.items.length === 1 && q.items[0].unitPrice === 2400 && q.client_id === client.id, JSON.stringify(q));
+  check("quote saved with its line and customer", q?.number === "Q-007" && q.items.length === 1 && q.items[0].unitPrice === 2400 && q.client_id === client.id, JSON.stringify(q));
   check("Free page draft cleared after saving", (await page.evaluate(() => localStorage.getItem("free-invoice-draft"))) === null);
 } catch (e) {
   console.log("ERROR", e.message);

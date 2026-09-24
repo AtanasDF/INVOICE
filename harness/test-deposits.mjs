@@ -19,13 +19,30 @@ const setField = (page, selector, value, index = 0) =>
     el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
   }, selector, value, index);
 const waitText = (page, t, timeout = 15000) => page.waitForFunction((x) => document.body.innerText.includes(x), { timeout }, t);
+const pickCustomer = async (page, name) => {
+  const ok = await page.evaluate((n) => {
+    const b = [...document.querySelectorAll('[role="radio"]')].find((x) => x.textContent.includes(n));
+    if (b) b.click();
+    return !!b;
+  }, name);
+  if (!ok) throw new Error("no customer to pick: " + name);
+  await page.waitForFunction((n) => {
+    const el = [...document.querySelectorAll("div")].find((d) => d.previousElementSibling?.textContent === "For");
+    return document.body.innerText.includes(n);
+  }, { timeout: 10000 }, name);
+};
 
 const { browser, page } = await launchSignedIn(db, { base: BASE });
 try {
   await signIn(page, BASE);
   await page.goto(BASE + "/quotes/new", { waitUntil: "networkidle0" });
   await waitText(page, "Quote number");
-  await setField(page, "select", C1, 0);
+  // The customer used to be a <select>; quotes are written through
+  // CustomerPicker now, a radiogroup of the people you work with. Setting a
+  // select that no longer exists left clientId empty, so every save stopped
+  // at "Pick who the quote is for" and none of the deposit rules below were
+  // ever reached.
+  await pickCustomer(page, "Jane Customer");
   await setField(page, 'input[placeholder="What the work or item is"]', "Rewire kitchen", 0);
   await setField(page, 'input[aria-label="Unit price"]', "1000", 0);
   await setField(page, 'select[aria-label="Deposit"]', "percent");
@@ -112,7 +129,13 @@ try {
   check("stuck deposit claim can be released", db.tables.quotes.find((x) => x.id === Q3).deposit_claimed === false);
   check("no deletes", db.log.every((l) => !l.key.startsWith("DELETE")));
 } catch (e) {
-  console.log("ERROR", e.message);
+  // Where, not just what: a bare "Waiting failed: 15000ms exceeded" tells
+  // whoever reads the run nothing about which screen moved under it.
+  let where = "?";
+  try { where = page.url(); } catch {}
+  const at = (e.stack ?? "").split("\n").find((l) => l.includes("test-deposits.mjs")) ?? "";
+  console.log("ERROR", e.message, "| on", where, "|", at.trim());
+  try { console.log("PAGE", (await bodyText(page)).replace(/\s+/g, " ").slice(0, 400)); } catch {}
   await shot(page, "deposit-error");
 } finally {
   await browser.close();
