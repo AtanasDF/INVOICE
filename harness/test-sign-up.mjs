@@ -90,6 +90,16 @@ try {
   await press("Done");
   await sleep(300);
   check("a code that isn't six digits is caught before asking", (await bodyText(page)).includes("The code is the six numbers in the email.") && calls.filter((c) => c.what === "verify").length === 1);
+  // And it is tied to the code box, not merely announced beside it: a
+  // screen reader otherwise reads the words out with no way to reach the
+  // field they are about (harness/test-error-on-the-field.mjs).
+  const tiedCode = await page.evaluate(() => {
+    const box = document.querySelector('input[inputmode="numeric"], #code, input[name="code"]');
+    if (!box) return { missing: true };
+    const ids = (box.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+    return { invalid: box.getAttribute("aria-invalid"), says: ids.map((i) => document.getElementById(i)?.textContent?.trim() ?? "") };
+  });
+  check("and the code box itself carries it", tiedCode.invalid === "true" && tiedCode.says.some((t) => /six numbers/.test(t)), JSON.stringify(tiedCode));
 
   await press("I've done it, sign me in");
   await sleep(200);

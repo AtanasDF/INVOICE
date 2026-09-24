@@ -29,6 +29,8 @@ export default function CompanyNameInput({
   id,
   labelledBy,
   disabled,
+  invalid,
+  describedBy,
 }: {
   mine?: boolean;
   value: string;
@@ -43,6 +45,10 @@ export default function CompanyNameInput({
   id?: string;
   labelledBy?: string;
   disabled?: boolean;
+  // A refusal about THIS box, tied to it: a screen reader otherwise reads
+  // the words out and gives no way to reach the field they are about.
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const listId = useId();
   const on = useCompanyLookup();
@@ -89,6 +95,8 @@ export default function CompanyNameInput({
         autoComplete={mine ? "organization" : "off"}
         aria-labelledby={labelledBy}
         aria-label={id || labelledBy ? undefined : placeholder}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -133,12 +141,14 @@ export default function CompanyNameInput({
         // A name that stays when the placeholder goes: the plain one, not the
         // "Type to find it on Companies House" hint.
         aria-label={id || labelledBy ? undefined : placeholder}
+        aria-invalid={invalid || undefined}
         value={value}
         autoComplete="off"
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={shown}
         aria-controls={shown ? listId : undefined}
+        aria-describedby={describedBy}
         aria-activedescendant={shown && active >= 0 ? `${listId}-${active}` : undefined}
         onChange={(e) => {
           onChange(e.target.value);

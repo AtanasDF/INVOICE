@@ -72,6 +72,22 @@ try {
   t = await tiedTo(page, "#m-miles");
   check("a trip with no miles is tied to the miles box", t.invalid === "true" && t.describes.some((d) => /mile/i.test(d)), JSON.stringify(t));
 
+  // And the rule that keeps it honest: a page-level failure is NOT tied to
+  // a box, because it is not about one. Tying "Couldn't load your invoices"
+  // to some input would be a lie told in an accessible way.
+  // Same tab: the mocked database is installed on THIS page's request
+  // interception, and a second tab has none -- which is why the first
+  // version of this check saw no message at all and called it a pass
+  // waiting to happen.
+  db.fail["GET invoices"] = 5;
+  await page.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" }).catch(() => {});
+  await sleep(1500);
+  const loose = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="alert"]')].map((a) => ({ text: (a.textContent ?? "").trim(), tied: !!a.id && !!document.querySelector(`[aria-describedby~="${a.id}"]`) }))
+  );
+  check("the page says it couldn't load", loose.some((l) => /couldn't load/i.test(l.text)), JSON.stringify(loose));
+  check("a failed page load is not pinned to some box", loose.length > 0 && loose.every((l) => !l.tied), JSON.stringify(loose));
+
   // Two different passwords, on the account screen.
   await page.evaluate(() => window.localStorage.clear());
   await page.goto(`${BASE}/login?new=1`, { waitUntil: "networkidle0" });
@@ -88,17 +104,5 @@ try {
   t = await tiedTo(page, "#password-again");
   check("two different passwords are tied to the second box", t.invalid === "true" && t.describes.some((d) => /not the same/i.test(d)), JSON.stringify(t));
 
-  // And the rule that keeps it honest: a page-level failure is NOT tied to
-  // a box, because it is not about one.
-  const page2 = await browser.newPage();
-  await page2.setRequestInterception(true);
-  page2.on("request", (r) => (/\/rest\/v1\/invoices/.test(r.url()) ? r.abort() : r.continue()));
-  await page2.goto(`${BASE}/invoices`, { waitUntil: "domcontentloaded" }).catch(() => {});
-  await sleep(1200);
-  const loose = await page2.evaluate(() =>
-    [...document.querySelectorAll('[role="alert"]')].map((a) => ({ text: (a.textContent ?? "").trim(), tied: !!a.id && !!document.querySelector(`[aria-describedby~="${a.id}"]`) }))
-  );
-  check("a failed page load is not pinned to some box", loose.length > 0 && loose.every((l) => !l.tied), JSON.stringify(loose));
-  await page2.close();
 } catch (e) { console.log("ERROR", e.message); results.push(false); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

@@ -18,7 +18,7 @@ statement we write must say which is which.
 
 | | Fault | The evidence from our own code | WCAG |
 |---|---|---|---|
-| **1** | **Errors are not tied to the field they are about** | `aria-invalid`: **0 uses**. `aria-describedby`: **1**. But `role="alert"`: **79** | 3.3.1, 1.3.1 |
+| **1** | ~~**Errors are not tied to the field they are about**~~ — **fixed 2026-09-24** for every refusal that names one field (total, name, miles, the second password, the six-number code). A page-level failure stays untied on purpose: "Couldn't load your invoices" is not about a box. `harness/test-error-on-the-field.mjs` holds both halves. | was `aria-invalid`: 0, `aria-describedby`: 1, `role="alert"`: 79 | 3.3.1, 1.3.1 |
 | **2** | **`autocomplete` is nearly absent** | ~20 attributes across **190 inputs**, and 9 of those are `"off"` | 1.3.5 |
 | **3** | **Controls without a name** | 120 `<label>` / 56 `htmlFor` against **190 inputs** | 3.3.2, 4.1.2 |
 | **4** | **Icon-only buttons are too small to hit** | `p-1` icon button measures **18.2 × 23 px** — under the 24 px floor | **2.5.8 fail** |

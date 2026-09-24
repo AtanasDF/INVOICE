@@ -14,6 +14,10 @@ import { peopleCheckProblem } from "@/lib/peopleCheck";
 // saying new registration, sign up... make it simple for babies and for
 // old people too"). Bigger type, a label over every box, the password
 // typed twice when the account is new, and nothing else on the screen.
+// Named so the box it is about can carry it: see
+// harness/test-error-on-the-field.mjs.
+const WRONG_CODE = "The code is the six numbers in the email.";
+
 function PasswordField({
   value,
   onChange,
@@ -22,6 +26,8 @@ function PasswordField({
   name = "password",
   label = "Password",
   hint,
+  invalid,
+  describedBy,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -30,6 +36,8 @@ function PasswordField({
   name?: string;
   label?: string;
   hint?: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -45,6 +53,8 @@ function PasswordField({
           type={show ? "text" : "password"}
           required
           minLength={6}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           autoComplete={autoComplete}
           className="w-full rounded-lg border px-3 py-3 pr-12 text-base"
           value={value}
@@ -110,7 +120,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
     e.preventDefault();
     const token = code.replace(/\D/g, "");
     if (token.length !== 6) {
-      setError("The code is the six numbers in the email.");
+      setError(WRONG_CODE);
       return;
     }
     setBusy(true);
@@ -237,6 +247,8 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
               maxLength={8}
               className="min-w-0 flex-1 rounded-lg border px-3 py-3 text-lg tracking-widest"
               value={code}
+              aria-invalid={error === WRONG_CODE || undefined}
+              aria-describedby={error === WRONG_CODE ? "code-error" : undefined}
               onChange={(e) => setCode(e.target.value)}
             />
             <button disabled={busy} className="rounded-lg border px-4 py-3 text-base font-medium text-neutral-700 disabled:opacity-50">
@@ -244,7 +256,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
             </button>
           </div>
         </form>
-        {error && <p role="alert" className="text-base text-red-600">{error}</p>}
+        {error && <p id="code-error" role="alert" className="text-base text-red-600">{error}</p>}
         {info && <p className="text-base text-neutral-700">{info}</p>}
         <p role="status" className="sr-only">{info ?? ""}</p>
         <p className="text-base text-neutral-600">Nothing after a minute? Look in the junk folder, or send it again.</p>
@@ -346,13 +358,15 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
             value={again}
             onChange={setAgain}
             autoComplete="new-password"
+            invalid={error === PASSWORDS_DIFFER}
+            describedBy={error === PASSWORDS_DIFFER ? "signin-error" : undefined}
             id="password-again"
             name="again"
             label="Type the password again"
             hint="So we know there's no typing mistake."
           />
         )}
-        {error && <p role="alert" className="text-base text-red-600">{error}</p>}
+        {error && <p id="signin-error" role="alert" className="text-base text-red-600">{error}</p>}
         {unconfirmed && (
           <button type="button" onClick={resend} disabled={busy} className="rounded-lg border px-4 py-2.5 text-base font-medium text-neutral-700 disabled:opacity-50">
             Send the email again

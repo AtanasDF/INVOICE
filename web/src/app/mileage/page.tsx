@@ -30,6 +30,10 @@ const todayIso = () => todayISO();
 
 // Business miles at HMRC's rates. Each trip is saved as an ordinary expense,
 // so it shows in the expense totals and the tax estimate like any other.
+// Named so the miles box can carry the refusal itself; see
+// harness/test-error-on-the-field.mjs.
+const NO_MILES = "How many miles was it?";
+
 export default function MileagePage() {
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
   const [date, setDate] = useState(todayIso);
@@ -101,7 +105,7 @@ export default function MileagePage() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!milesNum) return setError("How many miles was it?");
+    if (!milesNum) return setError(NO_MILES);
     if (savingTrip.current) return;
     savingTrip.current = true;
     setSaving(true);
@@ -186,7 +190,16 @@ export default function MileagePage() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-28">
             <label className="text-xs text-neutral-500" htmlFor="m-miles">Miles</label>
-            <input id="m-miles" className={INPUT} inputMode="decimal" placeholder="0" value={miles} onChange={(e) => setMiles(e.target.value)} />
+            <input
+              id="m-miles"
+              aria-invalid={error === NO_MILES || undefined}
+              aria-describedby={error === NO_MILES ? "m-error" : undefined}
+              className={INPUT}
+              inputMode="decimal"
+              placeholder="0"
+              value={miles}
+              onChange={(e) => setMiles(e.target.value)}
+            />
           </div>
           <button type="button" onClick={measure} disabled={measuring} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
             {measuring ? "Working it out…" : "Work it out"}
@@ -216,7 +229,7 @@ export default function MileagePage() {
             )}
           </p>
         )}
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p id="m-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {saved && (
           <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
             {saved} <Link href="/expenses" className="font-medium underline">See your expenses</Link>

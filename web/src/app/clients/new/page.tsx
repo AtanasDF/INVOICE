@@ -33,6 +33,11 @@ async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   return body.contacts;
 }
 
+// Named so the box it is about can say so: `aria-invalid` on the name input
+// and `aria-describedby` pointing here. A refusal announced beside the boxes
+// tells a screen reader WHAT is wrong and never WHICH.
+const NO_NAME = "Enter a name before saving.";
+
 export default function NewClientPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -140,7 +145,7 @@ export default function NewClientPage() {
 
   async function addClient(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return setError("Enter a name before saving.");
+    if (!name.trim()) return setError(NO_NAME);
     setError(null);
     setSaving(true);
     try {
@@ -227,6 +232,9 @@ export default function NewClientPage() {
         </div>
         {isCompany ? (
           <CompanyNameInput
+            id="new-contact-name"
+            invalid={error === NO_NAME}
+            describedBy={error === NO_NAME ? "new-contact-error" : undefined}
             className="w-full rounded-lg border px-3 py-2"
             placeholder="Company name"
             lookupPlaceholder="Company name (type to search Companies House)"
@@ -242,6 +250,9 @@ export default function NewClientPage() {
           />
         ) : (
           <input aria-label="Full name"
+            id="new-contact-name"
+            aria-invalid={error === NO_NAME || undefined}
+            aria-describedby={error === NO_NAME ? "new-contact-error" : undefined}
             className="w-full rounded-lg border px-3 py-2"
             placeholder="Full name"
             value={name}
@@ -280,7 +291,7 @@ export default function NewClientPage() {
             Send automatic payment reminders to this customer
           </label>
         )}
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p id="new-contact-error" role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {saving ? "Saving…" : `Save ${kind === "client" ? "customer" : "supplier"}`}
