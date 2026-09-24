@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
 import { ShareButtons, useDocumentPdf } from "@/components/SendInvoicePanel";
 import StatementDocument from "@/components/StatementDocument";
+import Tip from "@/components/Tip";
 import { buildStatement, statementText } from "@/lib/statement";
 import { shortDate } from "@/lib/quoteStatus";
 import { loadFailed } from "@/lib/errorText";
@@ -67,6 +68,7 @@ export default function StatementPage() {
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      <Tip id="statement-how">How it works: everything this customer has been invoiced, what they have paid, and what is still owed &mdash; ready to print or send when somebody asks &ldquo;what do I owe you?&rdquo;.</Tip>
 
       {statement && client && (
         <>

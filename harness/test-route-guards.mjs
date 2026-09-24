@@ -39,6 +39,7 @@ const CRON_ONLY = [
   ["/api/notifications/check", "pushes notifications"],
   ["/api/recurring-invoices/generate", "creates invoices"],
   ["/api/photos/age", "emails old photographs away and clears them"],
+  ["/api/notifications/weekly", "pushes everybody their Monday summary"],
 ];
 
 // Open by design, and safe: they read public data or answer a private

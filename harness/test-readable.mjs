@@ -7,7 +7,7 @@
 // account actually meet.
 //
 // WCAG AA: 4.5:1 for ordinary text, 3:1 for large text (18.66px bold, or 24px).
-import { makeDb, launchSignedIn, signIn, sleep, UID } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, newId, day, UID } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -21,6 +21,14 @@ const THEMES = ["grey", "slate", "sand", "forest", "ink", "dark"];
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], recurring_expenses: [], invoice_payments: [] });
 db.tables.business_profile.push({ user_id: UID, business_name: "Nasko Plastering", vat_registered: false, invoice_prefix: "INV-", invoice_next_number: 1 });
+// One late invoice and one late bill, so the money screen has its red and
+// amber badges to measure. Without them it renders empty and the check
+// would pass on a page with no colour on it at all.
+const C = newId();
+db.tables.clients.push({ id: C, user_id: UID, name: "Acme Kitchens Ltd", email: "a@b.c", address: "", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
+db.tables.invoices.push({ id: newId(), user_id: UID, client_id: C, date: day(-40), number: "INV-000001", items: [{ description: "Work", quantity: 1, unitPrice: 800, vatRate: "standard" }], notes: "", due_date: day(-12), payment_terms: "", status: "sent", tags: [], vat_registered: false, cis_rate: null });
+db.tables.invoices.push({ id: newId(), user_id: UID, client_id: C, date: day(-5), number: "INV-000002", items: [{ description: "Work", quantity: 1, unitPrice: 300, vatRate: "standard" }], notes: "", due_date: day(3), payment_terms: "", status: "sent", tags: [], vat_registered: false, cis_rate: null });
+db.tables.receipts.push({ id: newId(), user_id: UID, client_id: null, date: day(-20), vendor: "Jewson", category: "Supplies", amount: 200, vat_amount: 40, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "invoice", invoice_number: "J-1", due_date: day(-4), paid: false, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-readable" });
 
 // Measured in the browser, on what is actually painted -- the only honest way,
@@ -115,6 +123,21 @@ try {
     const bad = await page.evaluate(CONTRAST);
     check(`the dashboard is readable in ${t}`, bad.length === 0, JSON.stringify(bad.slice(0, 4)));
   }
+
+  // --- the money screen, which is where the RED and AMBER live ---
+  // A "30 days late" badge is red on a red-tinted background, and a coloured
+  // pair that holds up on white is exactly the kind that fails once the
+  // scale inverts. The dashboard has no such badges, so this was untested.
+  await page.goto(`${BASE}/money`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.body.innerText.includes("Owed to you"), { timeout: 20000 }).catch(() => {});
+  await sleep(700);
+  for (const t of THEMES) {
+    await setTheme(t);
+    const bad = await page.evaluate(CONTRAST);
+    check(`the money screen is readable in ${t}`, bad.length === 0, JSON.stringify(bad.slice(0, 4)));
+  }
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(900);
 
   const headings = await page.evaluate(() => ({
     h1: document.querySelectorAll("main h1").length,

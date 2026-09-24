@@ -130,6 +130,8 @@ try {
   check(`quote requests (${qr}ms)`, qr < 25000, `${qr}ms`);
   const st = await timed(`/clients/${billable[0].id}/statement`, "Statement");
   check(`a statement for a customer with many invoices (${st}ms)`, st < 25000, `${st}ms`);
+  const mo = await timed("/money", "Owed to you");
+  check(`the money screen with 500 invoices and every bill (${mo}ms)`, mo < 25000, `${mo}ms`);
   const se = await timed("/settings", "Business name");
   check(`settings with 300 contacts behind it (${se}ms)`, se < 25000, `${se}ms`);
 

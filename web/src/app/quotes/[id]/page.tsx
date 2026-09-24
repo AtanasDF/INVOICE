@@ -8,6 +8,7 @@ import QuoteForm, { QuoteFormValue } from "@/components/quote/QuoteForm";
 import QuoteSendCard from "@/components/quote/QuoteSendCard";
 import { customerContact, customerKind } from "@/components/quote/CustomerPicker";
 import { longDate } from "@/components/invoice/InvoiceDocument";
+import Tip from "@/components/Tip";
 import { greetingName } from "@/lib/customerText";
 import { BusinessProfile, Client, Invoice, Quote, QuoteLink, QuoteStatus, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, quoteLinkUrl, quoteLinksStore, quotesStore } from "@/lib/storage";
 import { computeInvoiceTotals } from "@/lib/vat";
@@ -416,6 +417,7 @@ export default function QuotePage() {
           </div>
         </div>
       </div>
+      <Tip id="quote-page-how">How it works: send it, and the customer gets a link they can accept or decline. Once accepted, &ldquo;Turn into invoice&rdquo; copies the lines across &mdash; a deposit goes out as its own invoice first, and comes off the final one.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600 print:hidden">{error}</p>}
 

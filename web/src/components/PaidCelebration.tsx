@@ -10,7 +10,12 @@ type Paid = { amount: number; from?: string | null; number?: string | null };
 const EVENT = "invoicer:paid";
 const SHOW_MS = 2600;
 const PIECES = Array.from({ length: 28 }, (_, i) => i);
-const COLOURS = ["#171717", "#525252", "#a3a3a3", "#d4d4d4", "#16a34a"];
+// Classes, not hexes, and mid-tones rather than the ends of the scale. The
+// confetti falls over a 40%-paper scrim: near-black pieces vanished against
+// a dark page and near-white ones against a light one, so half of it was
+// always missing. A theme's mid-tones read against both, and the green is
+// fixed because green reads on either and this is a celebration.
+const COLOURS = ["bg-neutral-400", "bg-neutral-500", "bg-neutral-600", "bg-green-600", "bg-neutral-500"];
 
 // Getting paid is the best moment in a sole trader's week, so marking an
 // invoice paid shows it for a moment, from whichever page it was done on.
@@ -55,11 +60,10 @@ export default function PaidCelebration() {
         {PIECES.map((i) => (
           <span
             key={`${paid.key}-${i}`}
-            className="confetti"
+            className={`confetti ${COLOURS[i % COLOURS.length]}`}
             style={
               {
                 left: `${(i * 37) % 100}%`,
-                background: COLOURS[i % COLOURS.length],
                 animationDelay: `${(i % 7) * 60}ms`,
                 animationDuration: `${1400 + ((i * 53) % 700)}ms`,
                 "--drift": `${((i * 29) % 120) - 60}px`,
@@ -71,8 +75,11 @@ export default function PaidCelebration() {
       </div>
       <div onClick={() => setPaid(null)} className="paid-pop pointer-events-auto relative mx-6 w-full max-w-xs rounded-2xl border bg-white p-6 text-center text-neutral-900 shadow-xl">
         <svg aria-hidden viewBox="0 0 52 52" className="mx-auto h-16 w-16">
-          <circle cx="26" cy="26" r="24" fill="#dcfce7" />
-          <path className="paid-tick" d="M15 27l7 7 15-16" fill="none" stroke="#15803d" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Classes, not hexes: the same green pair every badge in the app
+              uses, and it reads on a light card or a dark one because the
+              circle carries its own background. */}
+          <circle cx="26" cy="26" r="24" className="fill-green-100" />
+          <path className="paid-tick stroke-green-700" d="M15 27l7 7 15-16" fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <p className="mt-3 text-2xl font-bold">Paid</p>
         <p className="mt-1 text-sm text-neutral-600">

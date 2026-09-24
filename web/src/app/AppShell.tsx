@@ -209,6 +209,21 @@ function Gate({ children }: { children: React.ReactNode }) {
     rememberSource(window.location.search);
     rememberInvite(window.location.search);
   }, [pathname]);
+
+  // The service worker, for everybody -- not only for whoever turned on
+  // notifications. It was registered by enablePush() and nowhere else, so
+  // the offline page, which is a built feature, reached only the handful of
+  // people who had been into Settings and switched push on. Everyone else
+  // got the browser's own "no internet" page in a van with no signal.
+  //
+  // It caches nothing but the app's own content-hashed files and the
+  // offline page; every screen is fetched fresh, because what a screen
+  // shows is somebody's money. Failing is fine and silent: it is an
+  // improvement on top of a working app, not a part of it.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
   const router = useRouter();
   const isLoginPage = pathname === "/login";
   // A password-reset email link logs the visitor in via a recovery

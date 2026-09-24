@@ -30,6 +30,7 @@ const PAGES = [
   ["/quotes", "Quotes"],
   ["/expenses", "Expenses"],
   ["/vat", "VAT"],
+  ["/money", "Money"],
   ["/mileage", "Mileage"],
   ["/recurring", "Recurring expenses"],
   ["/files", "File library"],

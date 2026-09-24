@@ -41,6 +41,12 @@
      door all use it, so one token turns the lights off for all of them. */
   --paper: #ffffff;
   --ink-on-dark: #ffffff;
+  /* Real paper, and never themed: a surface whose contents are going to be
+     PRINTED. The signature pad is the case -- what you draw there is saved
+     as an image and put on an invoice, which is white whatever the app
+     looks like, so drawing near-black ink on a dark pad would have been
+     invisible while you signed and correct on the document. */
+  --sheet: #ffffff;
   /* The body rule below is unlayered, so it beats Tailwind's own utilities
      whatever their specificity: `bg-neutral-50` on <body> has never actually
      applied. Pointing these at the scale makes the page surface follow the
@@ -166,6 +172,7 @@
   /* So `bg-white`, `fill-white` and `border-white` follow the lights. */
   --color-white: var(--paper);
   --color-ink-on-dark: var(--ink-on-dark);
+  --color-sheet: var(--sheet);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

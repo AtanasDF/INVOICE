@@ -25,7 +25,7 @@ const WIDTH = Number(process.env.WIDTH ?? 375);
 // A profile per width, so the 320 and 375 runs can go at once.
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: WIDTH, profile: `profile-fit-sweep-${WIDTH}` });
 page.on("dialog", (d) => d.dismiss());
-const pages = ["/mileage", "/vat", "/quotes/requests", "/check-company", "/", "/invoices", `/invoices/${DRAFT.id}`, `/invoices/${SENT.id}`, `/invoices/${PAID.id}`, `/invoices/${CIS.id}`, "/invoices/new", "/receipts", "/receipts/new", "/quotes", `/quotes/${Q.id}`, "/quotes/new", "/clients", "/clients?tab=supplier", "/clients/new", "/expenses", "/recurring", "/recurring/invoices", "/settings", "/files", "/feedback", "/free-invoice"];
+const pages = ["/mileage", "/vat", "/money", "/quotes/requests", "/check-company", "/", "/invoices", `/invoices/${DRAFT.id}`, `/invoices/${SENT.id}`, `/invoices/${PAID.id}`, `/invoices/${CIS.id}`, "/invoices/new", "/receipts", "/receipts/new", "/quotes", `/quotes/${Q.id}`, "/quotes/new", "/clients", "/clients?tab=supplier", "/clients/new", "/expenses", "/recurring", "/recurring/invoices", "/settings", "/files", "/feedback", "/free-invoice"];
 try {
   await signIn(page, BASE);
   for (const p of pages) try {

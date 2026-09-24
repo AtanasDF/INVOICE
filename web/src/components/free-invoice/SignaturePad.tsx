@@ -195,7 +195,11 @@ export default function SignaturePad({ value, onChange }: { value: string | null
   if (!showPad && value) {
     return (
       <div className="space-y-2">
-        <div className="flex h-24 items-center justify-center rounded-lg border bg-white p-2">
+        {/* bg-sheet, not bg-white: what is drawn here is saved as an image
+            and printed on an invoice, so the pad is paper regardless of the
+            theme. Near-black ink on a dark pad would be invisible while you
+            signed and correct on the document. */}
+        <div className="flex h-24 items-center justify-center rounded-lg border bg-sheet p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Your signature" className="max-h-full max-w-full object-contain" />
         </div>
@@ -225,7 +229,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
           onPointerMove={move}
           onPointerUp={up}
           onPointerCancel={up}
-          className="h-36 w-full touch-none rounded-lg border bg-white"
+          className="h-36 w-full touch-none rounded-lg border bg-sheet"
           aria-label="Sign here"
         />
         {!dirty && <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-neutral-400">Sign here with your finger</p>}
