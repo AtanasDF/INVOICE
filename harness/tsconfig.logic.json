@@ -43,6 +43,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/photoAgeing.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/peopleCheck.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/quoteRequestEmail.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/siteName.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/siteName.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/quoteDeposit.ts"
   ]
 }
