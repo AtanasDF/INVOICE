@@ -34,18 +34,23 @@ When one of these starts, move it out of here and into the session log.
 
 ## Queued surprises (2026-09-20) — the next five, when there's time
 
-1. **Getting started checklist.** A new account is asked for what the app needs to be
+**Built 2026-09-24, out of this list:** the getting started checklist (1), one money
+screen (2, now `/money`), saved prices (3) and the Monday morning summary (5). Jobs (4)
+is the one left: it is the biggest of the five and wants a conversation about what a job
+holds before it is built.
+
+1. **[done 2026-09-24]** **Getting started checklist.** A new account is asked for what the app needs to be
    useful — business details, VAT setting, where invoice numbers start, bank details for
    the footer, first client — as a short list that ticks itself off. Atanas is starting a
    company from scratch, so this is worth doing properly once.
-2. **One money screen.** Everything owed to him and everything he owes on a single page,
+2. **[done 2026-09-24]** **One money screen.** Everything owed to him and everything he owes on a single page,
    in the order it matters: overdue first, then due this week, then the rest. One tap to
    chase or to mark paid.
-3. **Saved prices.** The things he charges for, with his usual price, so a quote or an
+3. **[done 2026-09-24]** **Saved prices.** The things he charges for, with his usual price, so a quote or an
    invoice is a few taps: pick, set the quantity, done. Learns from what he has already
    invoiced rather than asking him to type a price list.
 4. **Jobs.** A job or site holds its quote, its invoices, its receipts and its photos
    together, so a whole job can be looked at (and its profit seen) in one place.
-5. **Monday morning summary.** One push on a Monday: what came in last week, what's
+5. **[done 2026-09-24]** **Monday morning summary.** One push on a Monday: what came in last week, what's
    overdue, what's due this week, whose quote is waiting. Short enough to read on the way
    to a job.
