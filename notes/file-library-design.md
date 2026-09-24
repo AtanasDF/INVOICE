@@ -85,3 +85,85 @@ finished.
 
 - **Paste** (⌘V a screenshot or PDF) — good on a laptop, meaningless on a phone.
 - **Scan** — there is already a big scan button directly above; a fourth route would repeat it.
+
+---
+
+# His answers, and what I recommend (2026-09-24, part two)
+
+## The four open questions, answered
+
+1. **Where the strip lives** — *"close to upload document, so it looks nice. Upload
+   document and then you see your documents."* So: on the dashboard, directly under the
+   upload tile. Upload, then see what you have uploaded. Settled.
+2. **What it shows** — *"you should be able to switch from invoices and quotes to
+   receipts... maybe a little buttons on top."* Settled: a switch, and he asked for a
+   suggestion on its shape (below).
+3. **The roller on a laptop** — *"should just switch from the sections smoothly rather than
+   swiping it."* So the roller is not a touch-only control: on a laptop it moves between
+   year / month / day by click and by arrow key, with the same easing. Settled.
+4. **Empty days** — *"do whatever you think is best... look better, easier and fancier."*
+   **Recommendation: roll past every day, like a real dial, but mark the ones that have
+   something.** A dial that skips is disorienting — you lose the sense of where you are in
+   the month — and it makes "nothing on the 4th" impossible to see, which is itself an
+   answer somebody may be looking for. A small dot under the days that have documents gives
+   the skipping benefit without the lying.
+
+## The switch between receipts and invoices — recommended shape
+
+A **segmented control** of two or three, sitting between the title and the roller:
+`Receipts · Invoices · Quotes` — or `Receipts · Invoices & quotes` if three is a crowd on a
+phone. Same shape as the dashboard's three panels, so it is a control he has already
+learnt, and it reads left to right in the order people look for things. Not a dropdown: a
+dropdown hides the options and costs a tap to find out what they are.
+
+## The upload tile, settled
+
+- **Photos · Files · Email it in.** Three buttons, as asked.
+- **"Email it in"** — he likes it and says he does not fully understand it yet. Worth being
+  plain in the UI, then: it is *his own private email address*; anything sent or forwarded
+  to it lands in Needs review. The screen has to say that in one line, because he is the
+  friendliest possible reader and it did not land.
+- **A link / URL — dropped**, agreed. Server-side fetching of a typed URL is a
+  request-forgery hole for a case that barely happens.
+
+## Paste, drag and drop — his asks, and the honest answer
+
+He asked for: paste, screenshots, and dragging photos onto the app — *"on iPhone you can
+drag photos and put them on the file. That should work. Maybe on Samsung as well. That
+should work on every phone."*
+
+**Recommendation: build both, and add no buttons.** Paste and drag are *ways in*, not
+choices to be offered — the whole tile becomes a drop zone, and the page listens for a
+paste. His "three buttons" stays exactly three, and two more routes appear for free. One
+quiet line under the buttons says so.
+
+Honest about where each actually works:
+
+| | Works | Does not |
+|---|---|---|
+| **Paste (⌘V / Ctrl+V)** | Every desktop browser: screenshots, copied images, PDFs | A phone keyboard has no paste onto a page; on iOS it needs a tap and a permission prompt |
+| **Drag and drop** | Every desktop browser. iPad, properly | **iPhone Safari is unreliable** — the OS supports app-to-app dragging, the browser rarely receives it |
+
+So **"that should work on every phone" cannot be promised**, and I would rather say so now
+than have him find it on his own phone. What *does* work on every phone is the Photos
+button, which is one tap, and email-it-in, which is one share.
+
+**Screenshots** are the real win in his reasoning: *"if you cannot download it, you can copy
+it from the website and paste it there. Or you can screenshot it."* A screenshot then goes
+in through Photos on a phone and through paste on a laptop. Both covered.
+
+## Free text — recommended: not now, and the reason
+
+He talked himself round it and ended *"I don't know. Is it a good idea?"*
+
+**No — and screenshots are why.** The case he described is a receipt on a website he cannot
+download. A screenshot of it is *better evidence* than its text: it keeps the layout, the
+totals and the supplier's name where HMRC expects them, and it goes through the reader we
+already have. Pasted text throws that away and needs a second, text-only reading path to
+maintain.
+
+There is already a text route where text is genuinely the input — `/api/invoice-from-text`,
+which writes an invoice from a description. That is a different job.
+
+Worth revisiting if people actually ask for it. Not worth a fourth door now — which is what
+the Add sheet was taken off the dashboard for this morning.
