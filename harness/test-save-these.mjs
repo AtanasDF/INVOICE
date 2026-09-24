@@ -10,6 +10,11 @@
 import fs from "fs";
 import zlib from "zlib";
 import { makeDb, launchSignedIn, signIn, sleep, newId, day } from "./mockdb.mjs";
+// The app's own copy: pdf-lib compresses its object streams, so counting
+// pages by grepping the bytes for "/Type /Page" finds nothing at all -- and
+// a check that always answers zero is worse than no check.
+const { PDFDocument } = await import("/Users/nasko/Desktop/INVOICE/web/node_modules/pdf-lib/cjs/index.js");
+const pageCount = async (bytes) => (await PDFDocument.load(bytes, { updateMetadata: false })).getPageCount();
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const DL = new URL("./downloads/", import.meta.url).pathname;
 fs.mkdirSync(DL, { recursive: true });
@@ -75,7 +80,7 @@ const receipt = (o) => {
 // Two from Jewson on the SAME DAY: two files would be called the same thing
 // inside the zip, which is the ordinary case and not an edge.
 receipt({ clientId: JEWSON, date: "2026-03-04", vendor: "Jewson", image: PNG });
-receipt({ clientId: JEWSON, date: "2026-03-04", vendor: "Jewson", image: JPG });
+receipt({ clientId: JEWSON, date: "2026-03-04", vendor: "Jewson", image: PNG });
 receipt({ clientId: TRAVIS, date: "2026-03-11", vendor: "Travis Perkins", image: PNG });
 // One with no supplier linked, so it has to fall back to the printed name.
 receipt({ date: "2026-03-20", vendor: "Screwfix", image: JPG });
@@ -120,12 +125,14 @@ try {
   check("every entry's checksum is right, so the zip really opens",
     zip.every((e) => zlib.crc32(e.bytes) === e.crc && e.bytes.length === e.size),
     JSON.stringify(zip.map((e) => [e.name, e.size, zlib.crc32(e.bytes) === e.crc])));
-  check("the two from one supplier on one day are told apart",
-    new Set(zip.map((e) => e.name)).size === 4 && zip.some((e) => /\(2\)/.test(e.name)),
+  // Two receipts from one supplier on one day, both photographs: they would
+  // be called exactly the same thing, and a zip cannot hold two of those.
+  check("two from one supplier on one day are told apart",
+    new Set(zip.map((e) => e.name)).size === 4 && zip.some((e) => /\(2\)\.png$/.test(e.name)),
     JSON.stringify(zip.map((e) => e.name)));
   check("each is named by date then supplier", zip.every((e) => /^2026-03-\d\d /.test(e.name)), JSON.stringify(zip.map((e) => e.name)));
   check("a receipt with no supplier linked uses the name printed on it", zip.some((e) => /Screwfix/.test(e.name)), JSON.stringify(zip.map((e) => e.name)));
-  check("the real file types are kept", zip.filter((e) => e.name.endsWith(".png")).length === 2 && zip.filter((e) => e.name.endsWith(".jpg")).length === 2, JSON.stringify(zip.map((e) => e.name)));
+  check("the real file types are kept", zip.filter((e) => e.name.endsWith(".png")).length === 3 && zip.filter((e) => e.name.endsWith(".jpg")).length === 1, JSON.stringify(zip.map((e) => e.name)));
 
   // ── One PDF ──
   for (const f of fs.readdirSync(DL)) fs.unlinkSync(DL + f);
@@ -136,7 +143,7 @@ try {
   check("one PDF is saved for the period", pdfName === "2026-03.pdf", String(pdfName));
   const pdf = fs.readFileSync(DL + pdfName);
   check("and it is a PDF", pdf.subarray(0, 5).toString() === "%PDF-", pdf.subarray(0, 12).toString());
-  const pages = (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+  const pages = await pageCount(pdf);
   check("with a page for each document", pages === 4, `${pages} pages`);
 
   // ── One PDF per supplier ──
@@ -152,7 +159,7 @@ try {
   check("each really is a PDF", per.every((e) => e.bytes.subarray(0, 5).toString() === "%PDF-"), JSON.stringify(per.map((e) => e.bytes.subarray(0, 5).toString())));
   check("and the checksums hold up", per.every((e) => zlib.crc32(e.bytes) === e.crc), "a PDF inside the zip is corrupt");
   const jewsonPdf = per.find((e) => e.name === "Jewson.pdf");
-  const jewsonPages = (jewsonPdf.bytes.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+  const jewsonPages = await pageCount(jewsonPdf.bytes);
   check("the supplier with two receipts gets two pages", jewsonPages === 2, `${jewsonPages} pages`);
 
   check("nothing was deleted from the records", db.tables.receipts.length === 5, String(db.tables.receipts.length));
