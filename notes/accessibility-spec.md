@@ -121,3 +121,61 @@ VoiceOver on — which is the same lesson as "an hour of pressing buttons finds 
 7. Fix two stale comments that now say the opposite of the truth: `globals.css` ("Dark mode
    is deliberately NOT here") and `test-dark-mode.mjs` ("light-only by design"), both
    written before dark mode landed on 2026-09-23.
+
+---
+
+## Corrections and additions from the second pass (2026-09-24)
+
+**One correction to what I wrote above.** Apple's 44 × 44 pt is the HIG's *default* control
+size; the HIG's stated **minimum for iOS is 28 × 28 pt**. The familiar "Apple says 44" comes
+from `developer.apple.com/design/tips/`. Cite the right one or be contradicted. Android's
+**48 dp** is consistent across two of their own sources and is the stricter number.
+
+**A real bug in our framework, checkable today.** Next's App Router announcer
+(`app-router-announcer.tsx`, read rather than taken from the docs — the docs describe the
+*Pages* Router and disagree):
+
+- It reads `document.title`, falls back to the first `<h1>`, and otherwise announces an
+  empty string. **There is no pathname fallback**, unlike the Pages Router.
+- It announces **only when the value changed**. So moving between two pages that share a
+  `<title>` says **nothing at all**.
+- It sets `aria-live="assertive"` **and** `role="alert"` together — the exact pairing MDN
+  documents as causing **double-speaking on iOS VoiceOver**, where 70.6% of screen-reader
+  users are.
+
+→ **Work item: assert every route has a unique `<title>`.** Purely mechanical, catches the
+silence, and we have the crawl to do it.
+
+**Live regions, sharpened.** Keep to one polite and one assertive region. Never put both
+`aria-live` and `role="alert"` on the same node. Compose the whole message and insert it in
+one go, or a reader may speak it in fragments. And TalkBack's politeness handling *inverted*
+between versions 13 and 16 — treat the polite/assertive distinction as unreliable on
+Android rather than load-bearing.
+
+**Numbers worth holding ourselves to, from W3C's COGA notes** — which are advice, not
+conformance ("Following this guidance is not required for conformance to WCAG"):
+- **Five or fewer main choices** on a screen.
+- Break up any paragraph over **50 words**; one point per sentence.
+- Check wording against the **1,500 commonest words**; explain or remove every acronym —
+  which for us means CIS, VAT, net, gross and reverse charge.
+- **"They must not rely on memory from prior steps."**
+
+**GOV.UK on negative contractions**, and the reason is the interesting part: *"Many users
+find negative contractions hard to read, or misread them as the opposite of what they
+say."* So `cannot`, not `can't`. Cheapest possible check — exact string match.
+
+**Ambiguous dates are mechanically detectable**: match `\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}`
+and flag where **both** of the first two parts are ≤ 12, since a 13 disambiguates itself.
+That bears directly on `documentDate.ts`, where we already parse day-first.
+
+**And the login criterion we pass by accident.** 3.3.8 (AA) forbids a cognitive-function
+test at sign-in unless a mechanism helps. An ordinary password field passes *only* because
+the browser's password manager is that mechanism — so **blocking paste or autofill would
+turn our sign-in into a Level AA failure.** Our six-digit code passes because
+`autocomplete="one-time-code"` is already set. Do not remove it, and never block paste.
+
+**Where the evidence is thinner than people claim**, recorded so we don't overstate it:
+there is **no published user testing** of single-page-app route announcement with VoiceOver
+or TalkBack; the low-literacy research everyone cites is from **2005** and desktop-era; and
+NN/g's own 2025 work walks back its 2014 line that icons are inherently ambiguous, for
+learned conventions like the hamburger.
