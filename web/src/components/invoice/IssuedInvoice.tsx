@@ -2,6 +2,7 @@
 
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { money } from "@/lib/money";
+import { latePaymentLine, showsLatePaymentTerms } from "@/lib/latePayment";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 import { VAT_RATE_LABELS } from "@/lib/vat";
@@ -160,6 +161,15 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
           <p className="font-semibold">How to pay</p>
           <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
         </div>
+      )}
+
+      {/* What the law already entitles him to if a business customer pays
+          late, said on the invoice rather than only in a chasing email five
+          weeks afterwards. Only for a business customer -- the Act does not
+          cover a private individual -- and only when he has asked for it,
+          the same switch the final reminder uses. */}
+      {showsLatePaymentTerms(client?.isCompany, profile?.reminderLatePaymentInterest) && (
+        <p className="mt-4 text-xs text-neutral-500">{latePaymentLine(totals.total)}</p>
       )}
 
       {/* A limited company has to state its registered name and number on

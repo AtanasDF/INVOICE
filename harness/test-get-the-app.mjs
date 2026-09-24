@@ -51,8 +51,13 @@ const fireOffer = (throws = false) =>
 const hasInstallButton = () => page.evaluate(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Install it"));
 
 try {
-  const res = await page.goto(`${BASE}/manifest.json`, { waitUntil: "domcontentloaded" });
-  const m = await res.json();
+  // Fetched, not navigated to. Since 2026-09-24 a service worker is
+  // registered for everybody rather than only for whoever turned on
+  // notifications, and it takes navigations -- so goto() on a JSON file
+  // came back with no response at all and this suite died on its first
+  // line. It is a file; read it like one.
+  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+  const m = await page.evaluate(async (url) => (await fetch(url, { cache: "no-store" })).json(), `${BASE}/manifest.json`);
   // iOS fills a transparent home-screen icon with BLACK, under its own rounded
   // mask, so the apple icon must be fully opaque -- ours was the 192, which is
   // 4% non-opaque at its anti-aliased edges. It must also exist at all.

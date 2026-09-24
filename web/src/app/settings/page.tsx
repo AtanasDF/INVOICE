@@ -824,7 +824,8 @@ export default function SettingsPage() {
             <h2 className="font-semibold">Payment reminders</h2>
             <p className="mt-1 text-sm text-neutral-600">
               Up to five reminders go out for an unpaid invoice: 3 days before it&apos;s due, on the day, then 7, 14 and 30
-              days after, each a little firmer. They go to clients with reminders switched on under Clients.
+              days after, each a little firmer. They go to customers with reminders switched on under Customers &amp;
+              suppliers.
             </p>
             <details className="mt-2 text-sm text-neutral-600">
               <summary className="cursor-pointer font-medium text-neutral-700">How it works</summary>
@@ -859,13 +860,16 @@ export default function SettingsPage() {
           <label className="flex items-start gap-2 border-t pt-3 text-sm">
             <input className="mt-1 accent-neutral-900" type="checkbox" checked={latePaymentInterest} onChange={(e) => setLatePaymentInterest(e.target.checked)} />
             <span>
-              In the final notice to a business client, say you can claim late-payment interest
+              Tell business customers you can claim late-payment interest
               <span className="block text-xs text-neutral-500">
                 Under the Late Payment of Commercial Debts (Interest) Act 1998 a business can claim 8% a year above
-                the Bank of England base rate, plus £40, £70 or £100 compensation depending on the amount. It
-                doesn&apos;t apply to private individuals: only clients marked Company get it, so check private
-                customers are marked Individual under Clients. Leave this off if your own terms set a late-payment
-                interest rate, since that replaces the statutory one.
+                the Bank of England base rate, plus £40, £70 or £100 compensation depending on the amount. With this
+                on, a line saying so prints at the foot of an invoice to a business customer, and the final reminder
+                says it too &mdash; on the invoice is where it does the work, since that is what somebody reads when
+                deciding which invoice to pay this week. It doesn&apos;t apply to private individuals: only customers
+                marked Company get it, so check private customers are marked Individual under Customers &amp;
+                suppliers. Leave this off if your own terms set a late-payment interest rate, since that replaces
+                the statutory one.
               </span>
             </span>
           </label>
@@ -1025,9 +1029,9 @@ export default function SettingsPage() {
         <div className="border-t pt-3">
           <p className="text-xs text-neutral-500">Take it all with you</p>
           <p className="mt-1 text-sm text-neutral-600">
-            Download everything you&apos;ve stored — clients, receipts, invoices, payments, credit notes, quotes, price
+            Download everything you&apos;ve stored — customers, receipts, invoices, payments, credit notes, quotes, price
             requests to suppliers, recurring expenses and invoices, the reminders sent and feedback — as one file, with
-            the photos and documents inside it. For a spreadsheet or an accountant, the invoices, receipts and clients pages
+            the photos and documents inside it. For a spreadsheet or an accountant, the invoices, receipts and customers pages
             each have &quot;Download for a spreadsheet&quot;.
           </p>
           {exportError && <p role="alert" className="mt-2 text-sm text-red-600">{exportError}</p>}

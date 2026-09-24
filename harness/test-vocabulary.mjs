@@ -53,6 +53,7 @@ const PAGES = [
   ["/quotes/new", "Write a quote"],
   ["/recurring/invoices", "Recurring invoices"],
   ["/receipts", "Receipts & bills"],
+  ["/settings", "Settings"],
   [`/clients/${C}/statement`, "Statement"],
 ];
 

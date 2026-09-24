@@ -50,6 +50,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/moneyScreen.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/savedPrices.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/weeklySummary.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/jobs.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/jobs.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/latePayment.ts"
   ]
 }
