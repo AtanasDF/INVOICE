@@ -64,7 +64,13 @@ const MUTATIONS = [
 
 const cmd = process.argv[2] ?? "list";
 if (cmd === "revert") {
-  execSync("git checkout -- web/src", { cwd: REPO });
+  // `git checkout -- <path>` restores from the INDEX, not from HEAD. If the
+  // mutated files were ever staged -- which one `git add -A` does -- it
+  // faithfully restores the mutations and reports success. That is exactly how
+  // they reached main a second time, minutes after being taken off it. So the
+  // index is reset first, and HEAD is named explicitly.
+  execSync("git reset -q -- web/src", { cwd: REPO });
+  execSync("git checkout HEAD -- web/src", { cwd: REPO });
   if (existsSync(MARKER)) unlinkSync(MARKER);
   const dirty = execSync("git status --porcelain web/src", { cwd: REPO }).toString().trim();
   console.log(dirty ? "STILL DIRTY:\n" + dirty : "web/src is back to clean.");

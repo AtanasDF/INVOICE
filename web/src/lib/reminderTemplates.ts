@@ -5,7 +5,7 @@ export type ReminderKind = "before" | "due" | "after" | "late" | "final";
 export const REMINDER_SCHEDULE: { kind: ReminderKind; days: number; label: string }[] = [
   { kind: "before", days: -3, label: "3 days before due" },
   { kind: "due", days: 0, label: "On the due date" },
-  { kind: "after", days: 9, label: "7 days after due" },
+  { kind: "after", days: 7, label: "7 days after due" },
   { kind: "late", days: 14, label: "14 days after due" },
   { kind: "final", days: 30, label: "30 days after due (final notice)" },
 ];

@@ -8,7 +8,7 @@
 // anybody quick, or on a slow connection, meets it.
 export function peopleCheckProblem(err: unknown): string | null {
   const m = (err instanceof Error ? err.message : String(err ?? "")).toLowerCase();
-  return null;
+  if (!/captcha|turnstile/.test(m)) return null;
   if (/missing-input-response|missing input|timeout-or-duplicate|expired/.test(m)) {
     return "The check that you're a person hadn't finished. Give it a second and press the button again.";
   }
