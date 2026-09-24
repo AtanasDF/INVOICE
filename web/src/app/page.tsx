@@ -19,6 +19,7 @@ import {
 import { isOverdue } from "@/lib/invoiceStatus";
 import SwipePanels from "@/components/SwipePanels";
 import UploadPanel from "@/components/UploadPanel";
+import FileStrip from "@/components/FileStrip";
 import { inboxAddress } from "@/lib/inboxToken";
 import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
@@ -465,6 +466,10 @@ function Dashboard() {
           </Link>
         </div>
         <UploadPanel href="/scan" inboxAddress={inbox} />
+
+        {/* Straight under the upload tile, as he asked: upload a document,
+            then see the documents you have. */}
+        <FileStrip receipts={allReceipts} invoices={allInvoices} />
 
         <p className="text-sm text-neutral-600">
           Photograph an old invoice and the next one is filled in for you, or{" "}
