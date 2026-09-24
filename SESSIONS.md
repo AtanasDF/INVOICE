@@ -82,6 +82,49 @@ anybody can act on from a phone — and offered no way to scan at all, from the 
 in the app. It now gives the exact iOS route and offers the iPhone's own camera, which asks
 this site for no permission and therefore still works.
 
+### The four questions, and four real bugs
+
+The thirty list is finished. Items 14–22 were the part worth doing: asking four questions
+of nine screens that had never been asked them.
+
+1. **Postgres's own words were reaching people on twelve screens.** Found by refusing the
+   database write and reading what a person is actually told — the mileage page said
+   *"mock failure on POST receipts"*. `errorText()` passes the raw message straight through
+   and exists for errors the app wrote itself; `saveFailed()` does that too **and** turns
+   the database's codes into plain English. Twelve call sites moved over. The four left
+   alone are a distance lookup and three API reads, where "couldn't reach your records"
+   would be the wrong thing to say.
+2. **Four buttons that write to the accounting record could be pressed twice** — Make it
+   now, Log it, Save the trip, Merge into — all guarded by `disabled`, which React applies
+   a render too late. Refs now, released on every path including the early return in the
+   catch. Proved by taking one guard out: one press, two drafts.
+3. **A refusal about the third bill was printed at the top of the page.** It named no
+   receipt, and on a phone with that row scrolled into view it was not on screen at all,
+   so the button read as dead. It lives on its row now and clears when you type there.
+4. **Five screens said nothing when the thing worked.** A row vanishing is clear to look at
+   and silent to a screen reader (4.1.3), and each of these makes a record elsewhere you
+   were then left with no way to reach. `role="status"` on all five, each naming where the
+   thing went — the draft invoice links to itself by id.
+
+Also: **the dashboard's upload tile had no file input in the document at all** (built in
+JavaScript on the tap, never appended), and **a bad `/r/` link said it "could not be
+found"**, which tells somebody guessing tokens which of their guesses existed.
+
+**All four suites that had never run to the end now run** — 160 checks that were in the
+repo executing none of themselves. `test-quote-requests` was talking to the real Supabase,
+because it is the one suite that needs the *server* pointed at its mock. `test-free-quote`
+had been a signed-out visitor bounced to /login since /free-invoice stopped being public.
+
+`test-big-account` held 500 invoices and opened six screens; it opens fifteen now.
+
+Five new suites: `test-double-press`, `test-write-fails`, `test-refusal-place`,
+`test-said-so`, `test-open-receipt`, `test-vocabulary`, `test-money-combined`,
+`test-vat-boundaries`.
+
+**A habit that earned its keep three times tonight:** check the content, never the summary.
+Twice a command reported success and had not done the thing; once my own `grep` said a
+restore was incomplete when the file was fine (this shell's grep needs `-E` for `\|`).
+
 ## 2026-09-23 — The night list: colour, the front door, the dashboard, the scan limits (Opus 5)
 
 Atanas awake through most of it, steering. Everything below is on `main` and pushed.
