@@ -40,6 +40,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { logoSrc, prepareLogo, uploadLogo } from "@/lib/logo";
+import VatNumberInput from "@/components/VatNumberInput";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -664,21 +665,16 @@ export default function SettingsPage() {
             </div>
           </fieldset>
           <div>
-            <label className="text-xs text-neutral-500" htmlFor="vat-number">VAT number</label>
-            <input
+            <VatNumberInput
               id="vat-number"
+              label="VAT number"
               className="w-full rounded-lg border px-3 py-2 disabled:bg-neutral-50 disabled:text-neutral-400"
-              placeholder="GB123456789"
-              aria-describedby="vat-number-note"
               value={vatNumber}
+              onChange={setVatNumber}
               disabled={!vatRegistered}
-              onChange={(e) => setVatNumber(e.target.value)}
+              business={businessName}
+              hint="As it appears on your VAT certificate."
             />
-            <p id="vat-number-note" className="mt-1 text-xs text-neutral-600">
-              {vatNumber.trim() && !/^(GB)?\s*\d{3}\s*\d{4}\s*\d{2}(\s*\d{3})?$/i.test(vatNumber.trim())
-                ? "A UK VAT number is GB and nine digits, like GB123456789. Check it against your VAT certificate."
-                : "As it appears on your VAT certificate."}
-            </p>
           </div>
         </div>
         )}

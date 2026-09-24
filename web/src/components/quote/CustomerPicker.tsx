@@ -6,6 +6,7 @@ import CompanyNameInput from "@/components/CompanyNameInput";
 import { INPUT } from "@/components/free-invoice/fields";
 import { Client, clientsStore } from "@/lib/storage";
 import { saveFailed } from "@/lib/errorText";
+import VatNumberInput from "@/components/VatNumberInput";
 
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
 // Past this many, a search box goes above the list.
@@ -260,8 +261,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
           </div>
           {isCompany && (
             <div>
-              <label className="text-xs text-neutral-500" htmlFor={`${id}-vat`}>VAT number (optional)</label>
-              <input id={`${id}-vat`} className={INPUT} autoComplete="off" placeholder="GB123456789" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
+              <VatNumberInput id={`${id}-vat`} label="VAT number (optional)" className={INPUT} value={vatNumber} onChange={setVatNumber} business={name} />
             </div>
           )}
           <AddressFields

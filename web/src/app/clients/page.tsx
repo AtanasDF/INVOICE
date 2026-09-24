@@ -20,6 +20,7 @@ import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import VatNumberInput from "@/components/VatNumberInput";
 
 // What this customer was actually billed: gross, incl. VAT, less any CIS
 // the contractor keeps back -- the "Amount due" figure on the invoice
@@ -363,7 +364,9 @@ export default function ClientsPage() {
                     />
                     <AddressFields address={draft.address} onAddress={(address) => setDraft({ ...draft, address })} />
                     <div className="grid grid-cols-2 gap-3">
-                      <input aria-label="VAT number" className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={draft.vatNumber} onChange={(e) => setDraft({ ...draft, vatNumber: e.target.value })} />
+                      <div>
+                        <VatNumberInput id="edit-vat" label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={draft.vatNumber} onChange={(v) => setDraft({ ...draft, vatNumber: v })} business={draft.name} />
+                      </div>
                       <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
                       <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
                       <input aria-label="Payment terms" className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms" value={draft.paymentTerms} onChange={(e) => setDraft({ ...draft, paymentTerms: e.target.value })} />

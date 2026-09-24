@@ -18,6 +18,7 @@ import UploadFilesButton from "@/components/UploadFilesButton";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 import { saveFailed, SIGNED_OUT } from "@/lib/errorText";
+import VatNumberInput from "@/components/VatNumberInput";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -264,7 +265,9 @@ export default function NewClientPage() {
         <details className="rounded-lg border p-3" open>
           <summary className="cursor-pointer text-sm font-medium text-neutral-600">More details (optional)</summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <input aria-label="VAT number" className="rounded-lg border px-3 py-2 text-sm" placeholder="VAT number" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} />
+            <div>
+              <VatNumberInput id="new-contact-vat" label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={vatNumber} onChange={setVatNumber} business={name} />
+            </div>
             <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
             <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input aria-label="Payment terms" className="rounded-lg border px-3 py-2 text-sm" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />

@@ -577,6 +577,17 @@ from Companies House's own enumerations, plus prepared web/social searches (neve
 scraped). Without the key that page says so and offers Companies House's own search.
 `COMPANIES_HOUSE_API_BASE` is optional and only points the lookups at the sandbox or a
 test stand-in; it defaults to the live API.
+`HMRC_CLIENT_ID` / `HMRC_CLIENT_SECRET` (**not set**) switch on checking a VAT number
+against HMRC's "Check a UK VAT number" API (`/api/vat-check`, `VatNumberInput`): Settings,
+the new and edit contact forms, and the quote customer picker. The API is
+application-restricted, so it needs an application registered on HMRC's Developer Hub with
+the `read:vat` scope; the route swaps the two for a four-hour server token itself. VIES
+cannot stand in for it: GB numbers left VIES after Brexit and only Northern Ireland's XI
+numbers are still there. **Without the credentials the boxes still catch a typo** — a UK
+VAT number carries its own check digits (`src/lib/vatNumber.ts`, mod 97 and mod 97-55, both
+in circulation), which catches 159 of every 162 single-digit slips and every transposition,
+and nothing is said about HMRC at all. `HMRC_API_BASE` points the route at a stand-in
+(`harness/test-vat-lookup.mjs`) and defaults to the live API.
 UK address lookup (`/api/address-search`, behind `AddressFields`, the block of address
 fields used everywhere an address is typed) is
 free by default: postcodes.io (postcode check, place, post town from the built-up area)
