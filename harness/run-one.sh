@@ -42,6 +42,18 @@ fails=$(print -r -- "$out" | grep -c '^FAIL')
 # 2026-09-22 (their upload fixtures had gone), one of them for 31 of its 48
 # checks. An ERROR line is a crash, whatever the summary says.
 errors=$(print -r -- "$out" | grep -c '^ERROR')
+# How many checks the file CONTAINS, against how many ran. A suite that stops
+# half way reports passed == total, because the checks after the stop were
+# never counted -- test-payments read {"passed":6,"total":6} while dying at
+# check 7 of 13, and only the ERROR line gave it away. A suite that stops
+# without printing one would still slip through, so the two numbers are
+# compared. Loops and conditionals make ran > sites perfectly normal, so this
+# only ever says something when far FEWER ran than exist, and it is a note
+# rather than a failure: it points at a suite worth opening, it does not judge.
+sites=$(grep -c '^\s*check(' "$t.mjs")
+ran=$(print -r -- "$summary" | grep -o '"total":[0-9]*' | cut -d: -f2)
+short=""
+[ -n "$ran" ] && [ -n "$sites" ] && [ "$sites" -gt 0 ] && [ "$ran" -lt "$sites" ] && short=" -- only $ran of $sites check sites reached"
 {
   if [ -z "$summary" ]; then
     print -r -- "== $t CRASHED -- no summary line (suite did not finish)$stopped"
@@ -50,7 +62,7 @@ errors=$(print -r -- "$out" | grep -c '^ERROR')
     print -r -- "== $t $summary CRASHED after its last check"
     print -r -- "$out" | grep '^ERROR' | head -2
   else
-    print -r -- "== $t $summary $fails fails$stopped"
+    print -r -- "== $t $summary $fails fails$stopped$short"
   fi
   print -r -- "$out" | grep '^FAIL' | head -5
 } > "$OUT/$t.txt"
