@@ -15,9 +15,14 @@
    asks for: the page still reads as paper, the dark end carries the hue, and the
    primary button (bg-neutral-900) picks up the theme by itself.
 
-   Dark mode is deliberately NOT here. It needs `bg-white` and `text-white` to
-   become surface and ink tokens, and flipping those blindly would put white text
-   on white buttons. It is its own job, with its own tests. */
+   Dark mode WAS deliberately not here, and that stopped being true on
+   2026-09-23 -- the comment outlived the fact by a day, which is worse than no
+   comment, because the next person believes it. It is here now, further down,
+   and the job it was waiting for was done: `bg-white` became `--paper` and
+   `text-white` became a token that inverts with the scale. The one trap it
+   warned about was real -- white text on a white button -- which is why the
+   screens that are black by nature use `text-ink-on-dark`, always white,
+   never inverted. */
 :root {
   --n-50: #fafafa;
   --n-100: #f5f5f5;
