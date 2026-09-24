@@ -223,10 +223,17 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   their phone, so this is a differentiator -- and for a brief that says "three old kids
   should be able to do that", ignoring that setting is the plainest failure there is. The
   Dynamic Type rule is WRITTEN and commented out in `globals.css`; `harness/test-big-text.mjs`
-  measures the state and is deliberately out of `run-all.sh` because it fails. What breaks at
-  32px root: the dashboard panels, the invoice table, the receipt action rows, the expenses
-  picker. Already fixed: the header, the expenses period control, the Settings category row.
-  The rule and the suite go live together, in one commit, when they all pass.
+  measures the state and is deliberately out of `run-all.sh`. **21 of its 22 checks now
+  pass** (it was 9). The pattern behind most of the fixes is one rule: a flex item will not
+  shrink below its own content unless it is told to, so `flex-1` buttons, segmented controls
+  and date boxes all pushed their rows off the side once the type grew. min-w-0 and
+  flex-wrap, mostly. Fixed: the header, the dashboard panel tabs and upload tile, the Add
+  rows on invoices/customers/receipts, the customers tab control, the expenses period control
+  and its date boxes, the Settings category row, the invoice heading and reminder rows, and
+  two lines that truncated a customer's name and a bill's category instead of wrapping.
+  **What is left: the issued invoice, 36px over a 390px screen.** Its line-items table is in
+  a scroll box and behaves; something else on that page measures 426px and has not been
+  found. The rule and the suite go live together, in one commit, when it is.
 
 
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item. Deferred on
