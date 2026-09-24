@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Tip from "@/components/Tip";
 import { money } from "@/lib/money";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, withCurrent } from "@/lib/categories";
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
@@ -39,6 +39,10 @@ export default function RecurringExpensesPage() {
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [saving, setSaving] = useState(false);
   const [loggingId, setLoggingId] = useState<string | null>(null);
+  // A ref, not the `disabled` state: React applies `disabled` on the render
+  // AFTER the first press, and both handlers close over the same state, so two
+  // presses in one tick both go through -- and this one writes the same expense into the record twice.
+  const logging = useRef(false);
 
   useEffect(() => {
     Promise.all([recurringExpensesStore.all(), clientsStore.all(), businessProfileStore.get()])
@@ -112,6 +116,8 @@ export default function RecurringExpensesPage() {
   async function logNow(item: RecurringExpense) {
     if (loggingId) return;
     setError(null);
+    if (logging.current) return;
+    logging.current = true;
     setLoggingId(item.id);
     try {
       await receiptsStore.add({
@@ -135,6 +141,7 @@ export default function RecurringExpensesPage() {
       });
     } catch (err) {
       setError(saveFailed(err, "Could not log this expense."));
+      logging.current = false;
       setLoggingId(null);
       return;
     }
@@ -147,6 +154,7 @@ export default function RecurringExpensesPage() {
     } catch (err) {
       setError(saveFailed(err, "The expense is logged, but the reminder didn't move on -- it'll ask again next time you open this page. Don't log it twice."));
     } finally {
+      logging.current = false;
       setLoggingId(null);
     }
   }

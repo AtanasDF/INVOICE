@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { money } from "@/lib/money";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   BusinessProfile,
   Client,
@@ -40,6 +40,10 @@ export default function RecurringInvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  // A ref, not the `disabled` state: React applies `disabled` on the render
+  // AFTER the first press, and both handlers close over the same state, so two
+  // presses in one tick both go through -- and this one makes a second draft invoice to the same customer.
+  const generating = useRef(false);
 
   const [clientId, setClientId] = useState("");
   const [lineItems, setLineItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
@@ -124,6 +128,8 @@ export default function RecurringInvoicesPage() {
   // real invoice number or counter advance yet -- same as any other
   // draft, that happens when it's marked sent.
   async function generateNow(item: RecurringInvoice) {
+    if (generating.current) return;
+    generating.current = true;
     setError(null);
     setGeneratingId(item.id);
     try {
@@ -140,6 +146,7 @@ export default function RecurringInvoicesPage() {
       });
     } catch (err) {
       setError(saveFailed(err, "Could not generate this invoice."));
+      generating.current = false;
       setGeneratingId(null);
       return;
     }
@@ -154,6 +161,7 @@ export default function RecurringInvoicesPage() {
     } catch (err) {
       setError(saveFailed(err, "The draft invoice is made, but the reminder didn't move on -- it'll ask again next time you open this page. Don't make it twice."));
     } finally {
+      generating.current = false;
       setGeneratingId(null);
     }
   }

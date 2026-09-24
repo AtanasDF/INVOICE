@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { money } from "@/lib/money";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Receipt, receiptsStore } from "@/lib/storage";
 import {
   MILEAGE_CATEGORY,
@@ -39,6 +39,10 @@ export default function MileagePage() {
   const [vehicle, setVehicle] = useState<Vehicle>("car");
   const [purpose, setPurpose] = useState("");
   const [saving, setSaving] = useState(false);
+  // A ref, not the `disabled` state: React applies `disabled` on the render
+  // AFTER the first press, and both handlers close over the same state, so two
+  // presses in one tick both go through -- and this one claims the same trip twice.
+  const savingTrip = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [measuring, setMeasuring] = useState(false);
   const [measured, setMeasured] = useState<string | null>(null);
@@ -95,6 +99,8 @@ export default function MileagePage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!milesNum) return setError("How many miles was it?");
+    if (savingTrip.current) return;
+    savingTrip.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -130,6 +136,7 @@ export default function MileagePage() {
     } catch (err) {
       setError(errorText(err, "Couldn't save that trip."));
     } finally {
+      savingTrip.current = false;
       setSaving(false);
     }
   }

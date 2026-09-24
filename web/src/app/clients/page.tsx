@@ -5,7 +5,7 @@ import { money } from "@/lib/money";
 import { DuplicatePair, duplicatePairs, pairKey, readIgnoredDuplicates, writeIgnoredDuplicates } from "@/lib/duplicateContacts";
 import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
@@ -89,6 +89,10 @@ export default function ClientsPage() {
   const [vatRegistered, setVatRegistered] = useState(false);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [merging, setMerging] = useState<string | null>(null);
+  // A ref, not the `disabled` state: React applies `disabled` on the render
+  // AFTER the first press, and both handlers close over the same state, so two
+  // presses in one tick both go through -- and this one runs the merge a second time.
+  const mergingPair = useRef(false);
   const [merged, setMerged] = useState<string | null>(null);
   // Pairs put aside stay aside on this device.
   const [ignored, setIgnored] = useState<string[]>(() => readIgnoredDuplicates());
@@ -136,6 +140,8 @@ export default function ClientsPage() {
     ] as const;
     const what = counts.filter(([n]) => n > 0).map(([n, word]) => `${n} ${word}${n === 1 ? "" : "s"}`).join(", ");
     if (!window.confirm(`Move everything from "${pair.duplicate.name}"${what ? ` (${what})` : ""} to "${pair.keep.name}" and archive the duplicate?`)) return;
+    if (mergingPair.current) return;
+    mergingPair.current = true;
     setMerging(pair.duplicate.id);
     setError(null);
     try {
@@ -150,6 +156,7 @@ export default function ClientsPage() {
     } catch (err) {
       setError(errorText(err, "Couldn't merge those two."));
     } finally {
+      mergingPair.current = false;
       setMerging(null);
     }
   }
