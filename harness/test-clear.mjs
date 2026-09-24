@@ -29,7 +29,7 @@ try {
   await typeInto('input[placeholder="Full name"]', "Jane Smith");
   await typeInto('input[aria-label="House number and street"]', "1 High St");
   await typeInto('input[aria-label="Postcode"]', "BS1 4DJ");
-  await typeInto('input[placeholder="VAT number"]', "GB123");
+  await typeInto("#new-contact-vat", "GB123");
   check("client: on once typed", (await clearState()) === "enabled");
   answer = false;
   await clickClear();

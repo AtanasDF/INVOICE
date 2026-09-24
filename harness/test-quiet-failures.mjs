@@ -104,7 +104,7 @@ try {
   });
   await sleep(2500);
   const afterPhoto = await bodyText(page);
-  check("an unreadable photo says so instead of attaching nothing in silence", /Could not read this photo/i.test(afterPhoto), afterPhoto.replace(/\s+/g, " ").slice(0, 300));
+  check("an unreadable photo says so instead of attaching nothing in silence", /Couldn't read that photo/i.test(afterPhoto), afterPhoto.replace(/\s+/g, " ").slice(0, 300));
 
   // --- the invoice counter ---------------------------------------------
   await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });

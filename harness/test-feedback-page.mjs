@@ -58,7 +58,7 @@ try {
   await send();
   await sleep(600);
   text = await bodyText(page);
-  check("a failed send says so in plain words and keeps the text", /Could not send feedback\. Try again in a minute\./.test(text) && (await page.$eval("textarea", (e) => e.value)) === "Second try", text.slice(0, 300));
+  check("a failed send says so in plain words and keeps the text", /Couldn't send feedback\. Try again in a minute\./.test(text) && (await page.$eval("textarea", (e) => e.value)) === "Second try", text.slice(0, 300));
   check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 } catch (e) {
   console.log("ERROR", e.message);
