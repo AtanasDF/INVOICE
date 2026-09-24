@@ -17,7 +17,11 @@ offline page, 404, global-error.
 
 **Waiting on Atanas:** a trading name and address for the legal pages · business details in
 Settings on Hidefield · one real scan on the live site to prove the counting · print and
-scan the 106 documents on his Desktop · whether the project moves off the iCloud Desktop.
+scan the 106 documents on his Desktop (`Test documents - PRINT THIS.pdf`, 74 pages; the
+answer key is `harness/expected.json`, so the readings can be scored rather than eyeballed)
+· whether the project moves off the iCloud Desktop · **the 47 stale duplicate suites in
+`harness/`** (see below) · optionally an Ideal Postcodes key, whose free trial is 50
+credits, if Royal Mail's full address file is wanted over the free lookup.
 
 **Two things not to relearn the hard way.** Resend does not log SMTP relays in its Emails
 list, so an empty list there is not a failure. And the built-in browser pane cannot solve a
