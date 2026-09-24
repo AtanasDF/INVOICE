@@ -36,9 +36,12 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   const labourShown = Math.max(0, labourNet(invoice.items)) * billedShare;
   return (
     <>
-      <div className="flex items-start justify-between">
+      {/* flex-wrap and min-w-0: at a large text size the two blocks together
+          are wider than a phone, and without these the whole sheet scrolled
+          sideways rather than the second block dropping under the first. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4">
         {(profile?.businessName || logo) && (
-          <div>
+          <div className="min-w-0 wrap-anywhere">
             {logo?.startsWith("data:image/") && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logo} alt="" className="mb-2 max-h-16 max-w-[12rem] object-contain object-left" />
@@ -48,7 +51,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
             {vatRegistered && profile?.vatNumber && <p className="text-sm text-neutral-600">VAT: {profile.vatNumber}</p>}
           </div>
         )}
-        <div className="text-right">
+        <div className="min-w-0 text-right">
           <h1 className="wrap-anywhere text-2xl font-bold">Invoice {invoice.number}</h1>
           <p className="text-sm text-neutral-500">Date: {longDate(invoice.date)}</p>
           {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}

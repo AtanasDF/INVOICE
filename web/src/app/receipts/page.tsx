@@ -755,13 +755,11 @@ function ReceiptsPage() {
                       </a>
                     )}
                   </div>
-                  {/* Truncated on purpose: this list is held to compact cards
-                      so more of them fit on a screen, and letting this line wrap
-                      made every card 162px against a 156px limit. It costs the
-                      end of the line at a large text size, which is the one
-                      thing still unresolved between "compact" and "readable" --
-                      see the large-text item in notes/backlog.md. */}
-                  <div className="mt-1 truncate text-xs text-neutral-500">
+                  {/* Two lines, not one: held to compact cards, this line was
+                      truncated, which at a large text size cut the category off
+                      the end. It fits on one line at an ordinary size, so the
+                      second line only appears where it is needed. */}
+                  <div className="mt-1 line-clamp-2 text-xs text-neutral-500">
                     {[r.invoiceNumber, longDate(r.date), r.category].filter(Boolean).join(" · ")}
                   </div>
                 </div>
@@ -770,10 +768,11 @@ function ReceiptsPage() {
                 <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
                   Details {detailsOpen ? "▴" : "▾"}
                 </button>
-                {/* No flex-wrap: these actions sit on one line by design and
-                    the list is held to compact cards. Letting them wrap added
-                    6px to every card in the list. */}
-                <div className="flex items-center gap-3">
+                {/* gap-x only: they sit on one line at an ordinary text size
+                    and the list is held to compact cards, but at twice the
+                    size four labels are wider than a phone, and a button that
+                    is off the side of the screen cannot be pressed. */}
+                <div className="flex flex-wrap items-center gap-x-3">
                   {isInvoice && !r.paid && !r.needsReview && (
                     <button onClick={() => markPaid(r)} className="font-medium text-neutral-700 underline">Mark as paid</button>
                   )}

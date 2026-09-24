@@ -286,11 +286,11 @@ export function EmailForm({
       </div>
       {accountEmail && (
         <label className="flex items-center gap-2 text-sm text-neutral-700">
-          <input type="checkbox" checked={copyToSelf} onChange={(e) => setCopyToSelf(e.target.checked)} />
-          Send me a copy ({accountEmail})
+          <input type="checkbox" className="shrink-0" checked={copyToSelf} onChange={(e) => setCopyToSelf(e.target.checked)} />
+          <span className="wrap-anywhere">Send me a copy ({accountEmail})</span>
         </label>
       )}
-      <p className="text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}.</p>
+      <p className="wrap-anywhere text-xs text-neutral-500">Replies go to {accountEmail || "your account email"}.</p>
       {status.kind === "error" && <p role="alert" className="text-sm text-red-600">{status.message}</p>}
       <button type="submit" disabled={working} className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto">
         {working ? status.step : `Send ${word}`}

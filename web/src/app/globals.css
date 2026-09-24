@@ -222,21 +222,26 @@
    and can only be confirmed on the phone; what it DOES to the app is
    tested here.
 
-   NOT TURNED ON YET, and deliberately. Switching it on was the easy half;
-   test-big-text then showed what happens at twice the size -- the
-   dashboard panels, the invoice table, the receipt action rows and the
-   expenses picker all run off the side of a 390px screen. Shipping it in
-   that state would make the app WORSE for exactly the people who turned
-   the size up. The rule goes live in the same commit as the layouts, and
-   test-big-text joins run-all.sh then. Three of the overflows are already
-   fixed (the header, the expenses control, the Settings category row).
+   Switching it on was the easy half. test-big-text then showed what
+   happens at twice the size, and it was held back until every one of them
+   was fixed: the dashboard panels, the invoice table, the receipt action
+   rows, the expenses picker, the header, the Settings category row, the
+   invoice sheet's own heading block and the send-it form. Shipping it
+   before that would have made the app worse for exactly the people who
+   turned the size up. Live since 2026-09-24, in the same commit as the
+   last of the layouts; test-big-text is in run-all.sh from the same
+   commit and is what keeps it honest.
+
+   The shorthand also resets line-height to normal, which is not what
+   Tailwind's preflight sets on <html>; both it and the font family are
+   put back straight after. */
 @supports (font: -apple-system-body) {
   :root {
     font: -apple-system-body;
     font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.5;
   }
 }
-*/
 
 body {
   background: var(--background);

@@ -7,19 +7,15 @@
 // that", ignoring a setting somebody already changed is the plainest
 // failure there is.
 //
-// NOT IN run-all.sh: 21 of its 22 pass. What is left is the issued
-// invoice, 36px over a 390px screen -- the table is in a scroll box and
-// behaves; something else on that page is 426px wide and has not been
-// found yet. The Dynamic Type rule in globals.css stays commented out
-// until it is, and then both go live together.
-//
-// Was: fails on purpose. It is the target for work
-// that is not done: at twice the text size the dashboard panels, the
-// invoice table, the receipt action rows and the expenses picker all run
-// off the side of a 390px screen. The Dynamic Type rule in globals.css is
-// commented out until they do not -- turning it on first would make the
-// app worse for exactly the people who turned the size up. When these all
-// pass, the rule goes live and this joins the run, in one commit.
+// In run-all.sh since 2026-09-24, when the last overflow was found and the
+// Dynamic Type rule in globals.css went live in the same commit. The one
+// that hid longest was NOT the invoice table -- that is in a scroll box and
+// behaves. It was the send-it form's "Send me a copy (your@email)" label and
+// the sheet's own heading block, both of which put two things on one line
+// that will not fit on a phone at twice the size. What found them was
+// listing every element whose own content is wider than itself, rather than
+// every element sticking out past the viewport: the second list is all
+// table cells, every time, and they are not the problem.
 //
 // globals.css takes the size from -apple-system-body, which is Safari-only,
 // so Chrome never runs that rule and this suite cannot test the MECHANISM.

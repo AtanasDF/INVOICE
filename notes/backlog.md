@@ -218,22 +218,29 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## Bigger pieces
 
-- [ ] **Make the screens work at twice the text size** (started 2026-09-24). Not one of the
+- [x] **Make the screens work at twice the text size** (2026-09-24, done). Not one of the
   twelve apps in `competitor-research.md` respects the size somebody has already chosen on
   their phone, so this is a differentiator -- and for a brief that says "three old kids
   should be able to do that", ignoring that setting is the plainest failure there is. The
-  Dynamic Type rule is WRITTEN and commented out in `globals.css`; `harness/test-big-text.mjs`
-  measures the state and is deliberately out of `run-all.sh`. **21 of its 22 checks now
-  pass** (it was 9). The pattern behind most of the fixes is one rule: a flex item will not
+  Dynamic Type rule is LIVE in `globals.css` and `harness/test-big-text.mjs` is in
+  `run-all.sh`, both from the same commit. **22 of 22** (it was 9). The pattern behind most
+  of the fixes is one rule: a flex item will not
   shrink below its own content unless it is told to, so `flex-1` buttons, segmented controls
   and date boxes all pushed their rows off the side once the type grew. min-w-0 and
   flex-wrap, mostly. Fixed: the header, the dashboard panel tabs and upload tile, the Add
   rows on invoices/customers/receipts, the customers tab control, the expenses period control
   and its date boxes, the Settings category row, the invoice heading and reminder rows, and
   two lines that truncated a customer's name and a bill's category instead of wrapping.
-  **What is left: the issued invoice, 36px over a 390px screen.** Its line-items table is in
-  a scroll box and behaves; something else on that page measures 426px and has not been
-  found. The rule and the suite go live together, in one commit, when it is.
+  The last one took finding. The issued invoice measured 426px against a 390px screen, and
+  every element sticking out past the viewport was a table cell -- all inside the scroll box,
+  all behaving. Listing instead every element whose **own content is wider than itself**
+  named it in one go: the send-it form's "Send me a copy (your@email.address)" label, and the
+  invoice sheet's heading block, which puts the business name and "Invoice INV-000001"
+  side by side on a row that cannot wrap. Both fixed, plus the receipts action row (four
+  labels on one line) and the bill detail line, which was truncated on purpose for compact
+  cards and cut the category off at a large size -- `line-clamp-2` keeps the cards at 156px
+  and still shows it. **That method -- scrollWidth > clientWidth on the element itself --
+  is the one to reach for next time**; the viewport list is all table cells, every time.
 
 
 - [ ] 28. Offline scan queue (service worker) — the one "not built" item. Deferred on

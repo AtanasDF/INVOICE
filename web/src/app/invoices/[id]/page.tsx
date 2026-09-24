@@ -878,7 +878,7 @@ export default function InvoiceViewPage() {
       )}
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold">Payments</h2>
           {amountDue > 0 && (
             <button
