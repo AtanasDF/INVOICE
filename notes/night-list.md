@@ -11,7 +11,28 @@ Rule for the night: **a green suite must have earned it.**
 
 ---
 
-## A. The checks that lie (highest value — do first)
+## A0. What Atanas asked for on the night of the 24th (built first)
+
+These came after the list below was written. They are features, not repairs, and they go
+first because he asked for them. Briefs in `notes/file-library-design.md`.
+
+0.1 **Swipe between the three dashboard panels.** Only the strip moves; header, scanner
+    and tabs stay put. Follows the finger, gives at the ends, never steals vertical
+    scrolling, as tall as the panel you are on. *(Component written, not yet wired.)*
+0.2 **Smooth movement everywhere else** — press feedback on buttons and tiles, a soft
+    transition between pages. Both must honour "reduce motion", which the app currently
+    respects in **zero** places (`notes/accessibility-spec.md`).
+0.3 **The file library, rebuilt**: title that opens the full library, a year/month/day
+    roller under it, a button for a period of his own, and the documents themselves in a
+    strip that slides sideways — about five on screen, big enough to recognise. Tap one to
+    open it. Sits directly under the upload tile.
+0.4 **A segmented switch** on that strip: Receipts · Invoices · Quotes.
+0.5 **The upload tile, three buttons**: Photos · Files · **Email it in** — the last already
+    built and currently buried in Settings, so it costs nothing but wiring and wording.
+0.6 **Paste and drag-and-drop**, adding no buttons: the tile becomes a drop zone and the
+    page listens for a paste. Solid on a laptop and on iPad; **not promised on iPhone**.
+
+## A. The checks that lie
 
 Two vacuous checks turned up by accident tonight. With ~2,250 checks, there will be more,
 and a check that cannot fail is worse than no check: it buys false confidence.
