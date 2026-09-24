@@ -25,6 +25,7 @@ const GROUPS: Group[] = [
     links: [
       ["/invoices", "Invoices"],
       ["/quotes", "Quotes"],
+      ["/money", "Money"],
       ["/clients", "Customers & suppliers"],
       ["/recurring/invoices", "Recurring invoices"],
     ],
