@@ -32,6 +32,36 @@ for (let i = 0; i < 500; i++) {
 for (let i = 0; i < 2000; i++) {
   db.tables.receipts.push({ id: newId(), user_id: "x", client_id: i % 3 === 0 ? clients[(i % 60) * 5].id : null, date: day(-600 + Math.floor(i / 4)), vendor: `Merchant ${i % 40}`, category: ["Supplies", "Fuel", "Equipment", "Meals"][i % 4], amount: 10 + (i % 90), vat_amount: Math.round((10 + (i % 90)) * 0.2 * 100) / 100, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: i % 7 === 0 ? "invoice" : "receipt", invoice_number: `R-${i}`, due_date: i % 7 === 0 ? day(-3 + (i % 20)) : null, paid: i % 7 !== 0, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
 }
+// The nine screens the busy account never reached. Each one either totals
+// across everything it holds or renders a row per record, which is where a
+// list that opens fine with three of something stops opening at all.
+Object.assign(db.tables, { quotes: db.tables.quotes ?? [], quote_requests: [], quote_request_suppliers: [], receipt_pages: [] });
+
+// 300 mileage trips inside this tax year: the claim crosses HMRC's
+// 10,000-mile threshold, so the page has to add every one of them up and
+// split the rate, not just list them.
+let trips = 0;
+for (let i = 0; i < 300; i++) {
+  const miles = 40 + (i % 60);
+  trips += miles;
+  db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: day(-Math.floor(i / 2)), vendor: "Mileage", category: "Mileage", amount: Math.round(miles * 0.45 * 100) / 100, vat_amount: 0, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: { mileage: { miles, from: "BS1 4DJ", to: "BA1 1AA", vehicle: "car", rate: 0.45, purpose: `Job ${i}` } }, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+}
+
+// 300 documents waiting to be checked, every one of them a form on screen.
+for (let i = 0; i < 300; i++) {
+  db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: day(-i % 90), vendor: `Waiting ${String(i).padStart(3, "0")}`, category: "Supplies", amount: 20 + i, vat_amount: 4, image_data_url: null, notes: "", starred: false, needs_review: true, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+}
+
+for (let i = 0; i < 400; i++) {
+  const c = billable[i % billable.length];
+  db.tables.quotes.push({ id: newId(), user_id: "x", client_id: c.id, number: `Q-${2000 + i}`, date: day(-300 + i), valid_until: day(-270 + i), items: [{ description: `Quoted job ${i}`, quantity: 1, unitPrice: 200 + (i % 50) * 5, vatRate: "standard" }], notes: "", status: ["draft", "sent", "accepted", "declined"][i % 4], invoice_id: null, deposit_percent: null, deposit_amount: null, deposit_invoice_id: null, deposit_claimed: false, vat_registered: true });
+}
+
+for (let i = 0; i < 120; i++) {
+  db.tables.recurring_expenses.push({ id: newId(), user_id: "x", client_id: null, description: `Standing cost ${i}`, category: "Supplies", amount: 20 + i, vat_amount: 4, next_due_date: day(30 + i), active: i % 5 !== 0 });
+  db.tables.recurring_invoices.push({ id: newId(), user_id: "x", client_id: billable[i % billable.length].id, description: `Monthly ${i}`, items: [{ description: "Retainer", quantity: 1, unitPrice: 150, vatRate: "standard" }], notes: "", payment_terms: "14 days", next_due_date: day(30 + i), active: i % 5 !== 0 });
+}
+
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-big-account" });
 const timed = async (path, waitFor) => {
   const t = Date.now();
@@ -79,5 +109,51 @@ try {
   const filtered = Date.now() - t0;
   check(`filtering 2000 receipts answers quickly (${filtered}ms)`, filtered < 6000, `${filtered}ms`);
   check("no crash on any page", !(await bodyText(page)).includes("Application error"));
+
+  // ── The nine screens the busy account never reached ──
+  const q = await timed("/quotes", "Q-2");
+  check(`400 quotes list (${q}ms)`, q < 25000, `${q}ms`);
+  // The supplier's name is in an input's value on this page, not in the
+  // page's text: wait for a row's own button instead.
+  const rv = await timed("/receipts/review", "Looks good");
+  check(`300 documents waiting to be checked, each a form (${rv}ms)`, rv < 30000, `${rv}ms`);
+  const ml = await timed("/mileage", "Mileage");
+  check(`300 trips totalled (${ml}ms)`, ml < 25000, `${ml}ms`);
+  const re = await timed("/recurring", "Standing cost");
+  check(`120 recurring expenses (${re}ms)`, re < 25000, `${re}ms`);
+  // The row shows the customer, not the schedule's own description.
+  const ri = await timed("/recurring/invoices", "Customer 0");
+  check(`120 recurring invoices (${ri}ms)`, ri < 25000, `${ri}ms`);
+  const fl = await timed("/files", "File library");
+  check(`the file library over 2600 documents (${fl}ms)`, fl < 30000, `${fl}ms`);
+  const qr = await timed("/quotes/requests", "From suppliers");
+  check(`quote requests (${qr}ms)`, qr < 25000, `${qr}ms`);
+  const st = await timed(`/clients/${billable[0].id}/statement`, "Statement");
+  check(`a statement for a customer with many invoices (${st}ms)`, st < 25000, `${st}ms`);
+  const se = await timed("/settings", "Business name");
+  check(`settings with 300 contacts behind it (${se}ms)`, se < 25000, `${se}ms`);
+
+  // The mileage total is a calculation over every trip, not a list: HMRC
+  // pays 45p for the first 10,000 miles of the tax year and 25p after, so
+  // an account this size is the first one where the split matters at all.
+  await page.goto(`${BASE}/mileage`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.body.innerText.includes("Mileage"), { timeout: 60000 });
+  // The running total only appears once a trip is being typed -- it is part
+  // of "here is what this one is worth", not a standing figure.
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll("input")].find((i) => (i.getAttribute("aria-label") ?? i.previousElementSibling?.textContent ?? "") === "Miles");
+    if (!el) throw new Error("no Miles box");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "50");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForFunction(() => /miles claimed this tax year/.test(document.body.innerText), { timeout: 30000 });
+  const mileageText = await bodyText(page);
+  const claimed = Number((mileageText.match(/([\d,]+) miles claimed this tax year/) ?? [])[1]?.replace(/,/g, "") ?? -1);
+  // Every trip above was made within the last five months, so all of them
+  // fall in this tax year and the figure is exact -- not "roughly right".
+  // The trip being typed is not counted, which is the point of "already".
+  check("the miles claimed this year is every trip, to the mile", claimed === trips, `${claimed} shown, ${trips} made`);
+  check("and it says what is left at the higher rate", /left at the higher rate/.test(mileageText) || claimed >= 10000, mileageText.slice(0, 200));
+  check("nothing on these screens is broken", !/NaN|\[object Object\]|Application error/.test(mileageText), mileageText.slice(0, 200));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
