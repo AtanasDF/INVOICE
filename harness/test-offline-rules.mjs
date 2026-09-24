@@ -47,20 +47,46 @@ try {
   check("a service worker is registered on a signed-in page", registered, String(registered));
 
   if (registered) {
-    // Wait for it to take control, then pull the plug.
+    // Ready is not the same as in control: a worker only controls pages
+    // loaded AFTER it activates, so without this reload the next navigation
+    // is an ordinary one and the worker never sees it.
     await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload({ waitUntil: "networkidle0" });
     await sleep(800);
+    const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
+    check("and it is in control of the page, not merely registered", controlled, String(controlled));
     const cdp = await page.createCDPSession();
     await cdp.send("Network.enable");
-    await cdp.send("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
-    await page.goto(`${BASE}/money`, { waitUntil: "domcontentloaded" }).catch(() => {});
-    await sleep(1200);
+    // Chrome's own HTTP cache answers a navigation even with the network
+    // emulated away, so without this the page came back and the suite
+    // called it a pass. Off, the only two ways to render anything are the
+    // network and the service worker -- which is the point.
+    await page.setCacheEnabled(false);
+    const OFF = { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 };
+    await cdp.send("Network.emulateNetworkConditions", OFF);
+    // The worker has its own network context: emulating offline on the page
+    // leaves the worker's own fetch() working, so it fetched the real page
+    // and handed it back, and the suite called that "offline". Taking the
+    // network away from the page alone tests nothing about a service worker.
+    const swTarget = browser.targets().find((t) => t.type() === "service_worker");
+    check("the worker is a target of its own, so its network can be taken away too", !!swTarget, "no service_worker target");
+    if (swTarget) {
+      const swCdp = await swTarget.createCDPSession();
+      await swCdp.send("Network.enable");
+      await swCdp.send("Network.emulateNetworkConditions", OFF);
+    }
+    // A page this profile has NEVER opened: /money is in Chrome's own HTTP
+    // cache by now, so navigating back to it offline proves nothing -- it
+    // came back from the cache and the suite called that a pass.
+    await page.goto(`${BASE}/vat`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    await sleep(1500);
     const offlineText = await page.evaluate(() => document.body.innerText);
     check("with no signal, a page says so rather than showing an old one",
-      !/Owed to you/.test(offlineText), offlineText.replace(/\s+/g, " ").slice(0, 200));
+      !/Box 1|VAT return/i.test(offlineText), offlineText.replace(/\s+/g, " ").slice(0, 200));
     check("and what it says is for a person, not a browser error",
       /offline|no signal|connection|internet/i.test(offlineText), offlineText.replace(/\s+/g, " ").slice(0, 200));
     await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    await page.setCacheEnabled(true);
   }
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

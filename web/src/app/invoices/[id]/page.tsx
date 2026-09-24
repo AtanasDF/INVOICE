@@ -737,12 +737,12 @@ export default function InvoiceViewPage() {
             {invoiceStatusLabel(invoice.status, overdue)}
           </span>
           {!paid && (
-            <button onClick={markPaidInFull} disabled={statusSaving || paySaving} className="rounded-lg border px-3 py-1 text-sm font-medium text-neutral-700 disabled:opacity-50">
+            <button onClick={markPaidInFull} disabled={statusSaving || paySaving} className="min-h-8 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50">
               Mark as paid
             </button>
           )}
           {invoice.status !== "sent" && payments.length === 0 && (
-            <button onClick={() => changeStatus("sent")} disabled={statusSaving} className="rounded-lg border px-3 py-1 text-sm font-medium text-neutral-700 disabled:opacity-50">
+            <button onClick={() => changeStatus("sent")} disabled={statusSaving} className="min-h-8 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50">
               Mark as unpaid
             </button>
           )}

@@ -114,7 +114,9 @@ try {
     ["/files", "receipts", "No scanned or uploaded documents yet"],
     ["/expenses", "receipts", "Total excl. VAT"],
     ["/vat", "invoices", "Box 1"],
-    ["/money", "invoices", "Owed to you"],
+    // The sentence the page shows when there is genuinely nothing -- not
+    // the section heading, which is there either way.
+    ["/money", "invoices", "Nothing outstanding"],
     ["/recurring", "recurring_expenses", "No recurring expenses set up yet"],
     ["/recurring/invoices", "recurring_invoices", "No recurring invoices set up yet"],
     ["/settings", "business_profile", "Business name"],

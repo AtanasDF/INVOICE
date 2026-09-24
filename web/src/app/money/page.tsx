@@ -121,9 +121,13 @@ export default function MoneyPage() {
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {done && <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{done}</p>}
 
+      {/* Nothing is shown when the read failed. "Owed to you £0.00" on a
+          page that could not load is a figure that is not true, which is
+          the same sin as an empty state standing in for a failure -- worse,
+          because a zero looks like an answer. */}
       {loading ? (
         <p className="text-sm text-neutral-500">Loading&hellip;</p>
-      ) : (
+      ) : error ? null : (
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[

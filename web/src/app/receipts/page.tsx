@@ -755,10 +755,13 @@ function ReceiptsPage() {
                       </a>
                     )}
                   </div>
-                  {/* Wraps rather than truncates: this line carries the bill
-                      number, the date and the category, and losing the end of it
-                      to an ellipsis loses the category. */}
-                  <div className="mt-1 text-xs text-neutral-500 wrap-anywhere">
+                  {/* Truncated on purpose: this list is held to compact cards
+                      so more of them fit on a screen, and letting this line wrap
+                      made every card 162px against a 156px limit. It costs the
+                      end of the line at a large text size, which is the one
+                      thing still unresolved between "compact" and "readable" --
+                      see the large-text item in notes/backlog.md. */}
+                  <div className="mt-1 truncate text-xs text-neutral-500">
                     {[r.invoiceNumber, longDate(r.date), r.category].filter(Boolean).join(" · ")}
                   </div>
                 </div>
@@ -767,7 +770,10 @@ function ReceiptsPage() {
                 <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
                   Details {detailsOpen ? "▴" : "▾"}
                 </button>
-                <div className="flex flex-wrap items-center gap-3">
+                {/* No flex-wrap: these actions sit on one line by design and
+                    the list is held to compact cards. Letting them wrap added
+                    6px to every card in the list. */}
+                <div className="flex items-center gap-3">
                   {isInvoice && !r.paid && !r.needsReview && (
                     <button onClick={() => markPaid(r)} className="font-medium text-neutral-700 underline">Mark as paid</button>
                   )}

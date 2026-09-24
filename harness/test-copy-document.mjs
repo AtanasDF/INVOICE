@@ -65,7 +65,16 @@ try {
   await sleep(700);
   let text = await bodyText(page);
   check("a stranger is sent to sign in, and gets no camera", new URL(page.url()).pathname === "/login" && !(await page.$('input[type="file"]')), page.url());
-  check("...and the front door says what the app is for", (await page.goto(`${BASE}/`, { waitUntil: "networkidle0" })) && (await sleep(500)) === undefined && /Invoices, receipts and what you&#x27;re owed|Invoices, receipts and what you're owed/.test(await bodyText(page)), (await bodyText(page)).slice(0, 160));
+  // Wait for the headline rather than sleeping at it: the front door sits
+  // behind the sign-in check and shows nothing until that has answered, so
+  // a fixed 500ms was a race that anything slowing the first paint could
+  // lose.
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  const frontDoor = await page
+    .waitForFunction(() => /Invoices, receipts and what you.{0,6}re owed/.test(document.body.innerText), { timeout: 15000 })
+    .then(() => true)
+    .catch(() => false);
+  check("...and the front door says what the app is for", frontDoor, (await bodyText(page)).slice(0, 160));
 
   // Signed in.
   await signIn(page, BASE);
