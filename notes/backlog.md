@@ -199,9 +199,12 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   **Already built and this line was stale** (found 2026-09-24): `src/lib/vatFromRate.ts`,
   used by the scan page and the inbox import, recomputed when the total is edited, marked
   as worked out so whoever reviews it sees why. `test-vat-from-rate` covers it.
-- [ ] A "getting ready" indicator on the scanner's cold start: the first open on a phone
-  downloads 13 MB of OpenCV before any green lines can appear, and it looks broken until
-  then. Not started — "don't change anything for now".
+- [x] A "getting ready" indicator on the scanner's cold start. **Already built and this
+  line was stale** (found 2026-09-24): the viewfinder says "Getting ready... the first time
+  takes a moment" while the page-finder starts. Nothing tested it, though, so it could have
+  gone at any time and nobody would have known until somebody stood in a yard holding a
+  receipt. `test-cold-start` now holds the runtime unstarted and checks the words, their
+  size and colour, that they never claim anything is wrong, and that they clear.
 
 ## The first page (Atanas, 22 September, 02:20)
 
