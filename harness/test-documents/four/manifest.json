@@ -1,0 +1,50 @@
+[
+ {
+  "file": "D-062.jpg",
+  "id": "D-062",
+  "design": "band",
+  "hard": "a quotation: money not yet owed and possibly never",
+  "documentType": "other",
+  "vendor": "Cumbria Signs",
+  "date": "2026-08-14",
+  "invoiceNumber": "QT-4412",
+  "totalAmount": 1488,
+  "vatAmount": 248
+ },
+ {
+  "file": "D-063.jpg",
+  "id": "D-063",
+  "design": "minimal",
+  "hard": "pro forma: a real VAT invoice follows, so filing both double-counts",
+  "documentType": "other",
+  "vendor": "Lakeland Fixings",
+  "date": "2026-09-10",
+  "invoiceNumber": "PF-88213",
+  "totalAmount": 384,
+  "vatAmount": 64
+ },
+ {
+  "file": "D-105.jpg",
+  "id": "D-105",
+  "design": "boxed",
+  "hard": "an order Atanas sent out: nothing is owed until the invoice arrives",
+  "documentType": "other",
+  "vendor": "Fragov Services Ltd",
+  "date": "2026-06-02",
+  "invoiceNumber": "PO-2026-0338",
+  "totalAmount": 252,
+  "vatAmount": 42
+ },
+ {
+  "file": "D-106.jpg",
+  "id": "D-106",
+  "design": "minimal",
+  "hard": "a remittance advice: a record of paying, not a new cost",
+  "documentType": "other",
+  "vendor": "Fragov Services Ltd",
+  "date": "2026-09-28",
+  "invoiceNumber": "REM-441208",
+  "totalAmount": 371.52,
+  "vatAmount": null
+ }
+]

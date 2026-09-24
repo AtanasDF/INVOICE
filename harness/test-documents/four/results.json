@@ -1,0 +1,242 @@
+[
+ {
+  "engine": "gemini",
+  "file": "D-062.jpg",
+  "ms": 3587,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": true,
+  "number": false,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Cumbria Signs",
+   "date": "2026-08-14",
+   "total": 1488,
+   "vat": 248,
+   "number": null,
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Cumbria Signs",
+   "date": "2026-08-14",
+   "total": 1488,
+   "vat": 248,
+   "number": "QT-4412"
+  }
+ },
+ {
+  "engine": "gemini",
+  "file": "D-063.jpg",
+  "ms": 3410,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": true,
+  "number": true,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Lakeland Fixings",
+   "date": "2026-09-10",
+   "total": 384,
+   "vat": 64,
+   "number": "PF-88213",
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Lakeland Fixings",
+   "date": "2026-09-10",
+   "total": 384,
+   "vat": 64,
+   "number": "PF-88213"
+  }
+ },
+ {
+  "engine": "gemini",
+  "file": "D-105.jpg",
+  "ms": 3833,
+  "error": null,
+  "type": false,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": true,
+  "number": false,
+  "lines": true,
+  "got": {
+   "type": "invoice",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-06-02",
+   "total": 252,
+   "vat": 42,
+   "number": null,
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-06-02",
+   "total": 252,
+   "vat": 42,
+   "number": "PO-2026-0338"
+  }
+ },
+ {
+  "engine": "gemini",
+  "file": "D-106.jpg",
+  "ms": 3649,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": false,
+  "number": true,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-09-28",
+   "total": 371.52,
+   "vat": null,
+   "number": "REM-441208",
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-09-28",
+   "total": 371.52,
+   "vat": null,
+   "number": "REM-441208"
+  }
+ },
+ {
+  "engine": "claude",
+  "file": "D-062.jpg",
+  "ms": 6991,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": true,
+  "number": true,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Cumbria Signs",
+   "date": "2026-08-14",
+   "total": 1488,
+   "vat": 248,
+   "number": "QT-4412",
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Cumbria Signs",
+   "date": "2026-08-14",
+   "total": 1488,
+   "vat": 248,
+   "number": "QT-4412"
+  }
+ },
+ {
+  "engine": "claude",
+  "file": "D-063.jpg",
+  "ms": 6751,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": true,
+  "number": true,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Lakeland Fixings",
+   "date": "2026-09-10",
+   "total": 384,
+   "vat": 64,
+   "number": "PF-88213",
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Lakeland Fixings",
+   "date": "2026-09-10",
+   "total": 384,
+   "vat": 64,
+   "number": "PF-88213"
+  }
+ },
+ {
+  "engine": "claude",
+  "file": "D-105.jpg",
+  "ms": 7461,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": true,
+  "number": true,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-06-02",
+   "total": 252,
+   "vat": 42,
+   "number": "PO-2026-0338",
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-06-02",
+   "total": 252,
+   "vat": 42,
+   "number": "PO-2026-0338"
+  }
+ },
+ {
+  "engine": "claude",
+  "file": "D-106.jpg",
+  "ms": 5734,
+  "error": null,
+  "type": true,
+  "vendor": true,
+  "date": true,
+  "total": true,
+  "vat": false,
+  "number": true,
+  "lines": true,
+  "got": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-09-28",
+   "total": 371.52,
+   "vat": null,
+   "number": "REM-441208",
+   "lines": 1
+  },
+  "want": {
+   "type": "other",
+   "vendor": "Fragov Services Ltd",
+   "date": "2026-09-28",
+   "total": 371.52,
+   "vat": null,
+   "number": "REM-441208"
+  }
+ }
+]

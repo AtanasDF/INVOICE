@@ -308,6 +308,17 @@ const PROMPT =
   "as POSITIVE numbers, and put the original invoice number it refers to in creditedInvoiceNumber. " +
   "If it's a barcode (product barcode/UPC/QR code and nothing else readable as a business document), set " +
   "documentType to \"barcode\" and put the decoded-looking value in notes. " +
+  // Scoring the reader against the 106 test documents on 2026-09-24 found
+  // these four read as invoices, which is the harmful answer: a pro forma
+  // read as an invoice enters the same cost twice when the real one
+  // arrives, and a quotation, an order or a remittance advice each put
+  // money into the record that nobody is owed. None of them is a request
+  // for payment, whatever they look like.
+  "These are NOT invoices, however much they resemble one -- set documentType to \"other\" for each: a PRO " +
+  "FORMA or proforma (a real VAT invoice follows it, so filing both counts the cost twice); a QUOTATION, " +
+  "ESTIMATE or QUOTE (money not yet owed and possibly never); a PURCHASE ORDER or ORDER CONFIRMATION (nothing " +
+  "is owed until the supplier invoices it); and a REMITTANCE ADVICE or payment advice (a record of a payment " +
+  "already made, not a new cost). Say which of them it is in notes. " +
   "vendor is the business that ISSUED the document as printed (the name at the top, the one whose VAT number " +
   "and bank details appear) -- never the customer, the \"bill to\" name, or whoever it's addressed to. " +
   "This is a UK document, so printed numeric dates are day/month/year: 08/09/26 is 8 September 2026, never " +
