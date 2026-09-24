@@ -7,6 +7,14 @@
 // the red box that means "scanning failed". Getting that wrong turns a
 // generous limit into a frightening one.
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, UID } from "./mockdb.mjs";
+// The words come from the app's own code, recompiled every run -- not typed
+// out here. The mutation run of 2026-09-24 proved why: the wall's wording was
+// changed to an error code and this suite stayed 18 of 18 green, because every
+// sentence it checked was one it had supplied to its own stand-in. It was
+// checking its own fiction. Now the stand-in answers with what the app would
+// really say, so a change to the wording changes both at once and the checks
+// below are about the page, which is what they were always meant to be.
+import { refusalText } from "./gen/lib/scanLimit.js";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -22,22 +30,28 @@ const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, pro
 
 // Stands in for /api/scan refusing, which is what the route does when the
 // allowance is spent. Everything else about the page is the real thing.
+const WORDS = {
+  day: refusalText({ reason: "day", usedToday: 50, dayLimit: 50 }),
+  month: refusalText({ reason: "month", usedThisMonth: 600, monthLimit: 600, topUpAvailable: true }),
+  spent: refusalText({ reason: "month", usedThisMonth: 1200, monthLimit: 1200, topUpAvailable: false }),
+};
+
 const refuseScans = (reason, topUpAvailable) =>
-  page.evaluateOnNewDocument((r, t) => {
+  page.evaluateOnNewDocument((r, t, WORDS) => {
     const real = window.fetch;
     window.fetch = async (input, init) => {
       const url = typeof input === "string" ? input : input?.url ?? "";
       if (url.includes("/api/scan")) {
         const body = r === "day"
-          ? { error: "That's 50 documents today, which is the most a free account can read in one day. It starts again tomorrow morning. You can still copy a document or write an invoice by hand.", limit: { reason: "day", dayLimit: 50 } }
+          ? { error: WORDS.day, limit: { reason: "day", dayLimit: 50 } }
           : t
-            ? { error: "That's 600 documents this month. You can have another 600 for this month — just ask, once.", limit: { reason: "month", monthLimit: 600, topUpAvailable: true } }
-            : { error: "That's the extra 600 used as well. It starts again on the 1st. You can still copy a document or write an invoice by hand.", limit: { reason: "month", monthLimit: 1200, topUpAvailable: false } };
+            ? { error: WORDS.month, limit: { reason: "month", monthLimit: 600, topUpAvailable: true } }
+            : { error: WORDS.spent, limit: { reason: "month", monthLimit: 1200, topUpAvailable: false } };
         return new Response(JSON.stringify(body), { status: 429, headers: { "Content-Type": "application/json" } });
       }
       return real(input, init);
     };
-  }, reason, topUpAvailable);
+  }, reason, topUpAvailable, WORDS);
 
 const scanOnce = async () => {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });

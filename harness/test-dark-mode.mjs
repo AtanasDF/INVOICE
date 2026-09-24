@@ -1,7 +1,14 @@
-// The app is light-only by design. iOS still tells a web page when the
-// phone is in dark mode, and Safari restyles form controls by itself --
-// which is how you end up with white text in a white box. Nothing here
-// needs to look designed for dark; it needs to stay readable.
+// NOT light-only any more. This said "the app is light-only by design" until
+// 2026-09-24, which stopped being true on 2026-09-23 when dark mode landed --
+// a comment that says the opposite of the truth is worse than none, because
+// the next person believes it.
+//
+// What this suite is still for is the case dark mode does not cover: a phone
+// in dark mode visiting a page rendered LIGHT. iOS tells the page, and Safari
+// restyles form controls by itself -- which is how you end up with white text
+// in a white box. So these checks are about staying readable when the system
+// is dark and the app is not, which is exactly what happens on any theme other
+// than Dark. `test-readable` covers the six themes' own contrast.
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, todayISO } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];

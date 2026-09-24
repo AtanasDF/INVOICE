@@ -12,7 +12,11 @@ const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
-const THEMES = ["grey", "slate", "sand", "forest", "ink"];
+// Six, not five. Dark landed on 2026-09-23 and was never contrast-tested --
+// and it is the one where a mistake is likeliest, because the whole scale is
+// inverted and "bg-neutral-900 text-white" becomes dark writing on a light
+// button.
+const THEMES = ["grey", "slate", "sand", "forest", "ink", "dark"];
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], recurring_expenses: [], invoice_payments: [] });

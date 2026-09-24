@@ -20,6 +20,18 @@ export function stashScanCapture(capture: ScanHandoff): void {
 // Clears the key on every read, success or failure -- a stale key left
 // behind would otherwise make the NEXT visit to /scan jump straight into
 // extracting a photo the user didn't just take.
+// Is a document already waiting to be read? Asked before the camera is
+// opened, because opening one over a photograph somebody has just handed us is
+// the wrong thing to do -- and once the camera can refuse, it is the wrong
+// thing loudly.
+export function scanCaptureWaiting(): boolean {
+  try {
+    return sessionStorage.getItem(HANDOFF_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function takeScanCapture(): ScanHandoff | null {
   try {
     const raw = sessionStorage.getItem(HANDOFF_KEY);

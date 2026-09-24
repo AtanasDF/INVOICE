@@ -12,7 +12,7 @@ import { documentDetailsFromScan, extractPages, mergeScanResults } from "@/lib/s
 import { type DocumentPart, splitDocuments } from "@/lib/splitDocuments";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
 import { findDuplicate, sameNumber, sameSupplier } from "@/lib/duplicates";
-import { dropUploadMarker, leftOutNote, takeScanCapture, takeUploads, uploadMarked } from "@/lib/scanHandoff";
+import { dropUploadMarker, leftOutNote, takeScanCapture, takeUploads, uploadMarked, scanCaptureWaiting } from "@/lib/scanHandoff";
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import Link from "next/link";
 import UploadFilesButton from "@/components/UploadFilesButton";
@@ -395,12 +395,12 @@ export default function ScanPage() {
 
   const [pages, setPages] = useState<CapturedFile[]>([]);
   // Files picked on another page arrive without the camera opening.
-  const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() ? null : { kind: "first" }));
+  const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() || scanCaptureWaiting() ? null : { kind: "first" }));
   // The camera on this page opens on arrival, so a person with it blocked
   // used to land on a black "Camera access was denied" screen with no way to
   // scan at all -- from the biggest button in the app. Only the camera we
   // opened ourselves closes itself; a deliberate tap keeps Try again.
-  const [autoOpened] = useState(() => !uploadMarked());
+  const [autoOpened] = useState(() => !uploadMarked() && !scanCaptureWaiting());
   const [cameraBlocked, setCameraBlocked] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);

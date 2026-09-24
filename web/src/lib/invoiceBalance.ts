@@ -8,7 +8,7 @@ const pence = (n: number) => Math.round(n * 100);
 // received. A legacy "paid" invoice with no payments recorded owes nothing.
 export function invoiceBalance({ total, credited, paid, status }: { total: number; credited: number; paid: number; status: InvoiceStatus }): number {
   if (status === "paid" && paid === 0) return 0;
-  return Math.max(0, pence(total) - pence(paid)) / 100;
+  return Math.max(0, pence(total) - pence(credited) - pence(paid)) / 100;
 }
 
 // The status an issued invoice should have given its credit notes and
