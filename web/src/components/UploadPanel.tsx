@@ -25,13 +25,22 @@ import { ScanHandoff, readUpload, stashUploads } from "@/lib/scanHandoff";
 // where each works -- both are solid on a laptop and on iPad, and iPhone
 // Safari rarely receives an app-to-app drag however well iOS supports it.
 // Which is why Photos, working everywhere in one tap, is first.
-export default function UploadPanel({ href = "/scan", inboxAddress }: { href?: string; inboxAddress?: string | null }) {
+export default function UploadPanel({ href = "/scan", inboxAddress, onMakeAddress }: {
+  href?: string;
+  inboxAddress?: string | null;
+  // Makes one if there is not one yet. Nobody will go to Settings to ask for
+  // an address they have never heard of.
+  onMakeAddress?: () => Promise<string | null>;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showAddress, setShowAddress] = useState(false);
+  const [madeAddress, setMadeAddress] = useState<string | null>(null);
+  const [making, setMaking] = useState(false);
+  const address = inboxAddress ?? madeAddress;
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
@@ -69,6 +78,17 @@ export default function UploadPanel({ href = "/scan", inboxAddress }: { href?: s
     return () => window.removeEventListener("paste", onPaste);
   }, [take]);
 
+  // Going straight where the button says (Atanas, 2026-09-24). How close that
+  // can get differs between the two, and it is worth being exact rather than
+  // hopeful:
+  //
+  //   Files  -- an input that does not accept images skips iOS's three-way
+  //             sheet altogether and opens the Files browser directly.
+  //   Photos -- accept="image/*" is the very thing that makes iOS offer "Take
+  //             Photo" and "Choose File" beside the library, and a web page
+  //             cannot dismiss that sheet. On Android and on a laptop it goes
+  //             straight to pictures; on an iPhone the library is the first row
+  //             and that is as far as a web app can take it.
   const pick = (accept: string) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -98,11 +118,26 @@ export default function UploadPanel({ href = "/scan", inboxAddress }: { href?: s
           <PhotoIcon className="h-5 w-5" />
           Photos
         </button>
-        <button type="button" disabled={busy} onClick={() => pick("image/*,application/pdf")} className={BTN}>
+        <button type="button" disabled={busy} onClick={() => pick("application/pdf")} className={BTN}>
           <FolderIcon className="h-5 w-5" />
           Files
         </button>
-        <button type="button" onClick={() => setShowAddress((v) => !v)} aria-expanded={showAddress} className={BTN}>
+        <button
+          type="button"
+          aria-expanded={showAddress}
+          onClick={async () => {
+            const opening = !showAddress;
+            setShowAddress(opening);
+            // Made on the first tap, silently. It was null until somebody
+            // visited Settings and asked for one, which nobody would.
+            if (opening && !address && onMakeAddress && !making) {
+              setMaking(true);
+              setMadeAddress(await onMakeAddress());
+              setMaking(false);
+            }
+          }}
+          className={BTN}
+        >
           <MailIcon className="h-5 w-5" />
           Email it in
         </button>
@@ -113,15 +148,17 @@ export default function UploadPanel({ href = "/scan", inboxAddress }: { href?: s
 
       {showAddress && (
         <div className="rounded-lg border bg-neutral-50 p-3 text-sm">
-          {inboxAddress ? (
+          {making ? (
+            <p role="status" className="text-neutral-700">Making your address&hellip;</p>
+          ) : address ? (
             <>
               <p className="text-neutral-700">
                 Forward any bill or receipt to this address and it lands in <strong>Needs review</strong>. It is yours alone.
               </p>
-              <p className="mt-2 font-mono text-base wrap-anywhere text-neutral-900">{inboxAddress}</p>
+              <p className="mt-2 font-mono text-base wrap-anywhere text-neutral-900">{address}</p>
               <button
                 type="button"
-                onClick={() => { void navigator.clipboard.writeText(inboxAddress).then(() => setCopied(true)).catch(() => setCopied(false)); }}
+                onClick={() => { void navigator.clipboard.writeText(address).then(() => setCopied(true)).catch(() => setCopied(false)); }}
                 className="mt-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
               >
                 {copied ? "Copied" : "Copy the address"}
@@ -129,8 +166,8 @@ export default function UploadPanel({ href = "/scan", inboxAddress }: { href?: s
             </>
           ) : (
             <p className="text-neutral-700">
-              You do not have an import address yet.{" "}
-              <Link href="/settings" className="font-medium underline">Make one in Settings</Link> and anything you forward to it lands in Needs review.
+              We could not make your address just now.{" "}
+              <Link href="/settings" className="font-medium underline">Try from Settings</Link>, and anything you forward to it lands in Needs review.
             </p>
           )}
         </div>

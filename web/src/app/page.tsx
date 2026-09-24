@@ -20,7 +20,7 @@ import { isOverdue } from "@/lib/invoiceStatus";
 import SwipePanels from "@/components/SwipePanels";
 import UploadPanel from "@/components/UploadPanel";
 import FileStrip from "@/components/FileStrip";
-import { inboxAddress } from "@/lib/inboxToken";
+import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
@@ -63,9 +63,11 @@ function ScanIcon() {
 // first one"). The choice is kept on the device: someone whose day is receipts
 // should not have to find that panel again every morning.
 type DashTab = "work" | "bills" | "sent";
+// Money out first: scanning receipts is what a driver does all day, and what
+// they open the app for (Atanas, 2026-09-24).
 const TABS: { id: DashTab; label: string }[] = [
-  { id: "work", label: "Invoices & customers" },
   { id: "bills", label: "Receipts & bills" },
+  { id: "work", label: "Invoices & customers" },
   { id: "sent", label: "Invoices sent" },
 ];
 const TAB_KEY = "dashboard-tab";
@@ -81,9 +83,9 @@ const subscribeTab = (fn: () => void) => {
 function storedTab(): DashTab {
   try {
     const v = localStorage.getItem(TAB_KEY);
-    return isTab(v) ? v : "work";
+    return isTab(v) ? v : TABS[0].id;
   } catch {
-    return "work";
+    return TABS[0].id;
   }
 }
 function rememberTab(id: DashTab) {
@@ -151,7 +153,7 @@ function Dashboard() {
   const [invoiceCounts, setInvoiceCounts] = useState<Map<string, number>>(new Map());
   // Which of the three panels is showing. Remembered, because someone who
   // lives in their receipts should not have to find that panel every morning.
-  const tab = useSyncExternalStore(subscribeTab, storedTab, () => "work" as DashTab);
+  const tab = useSyncExternalStore(subscribeTab, storedTab, () => TABS[0].id);
   const [billsBannerDismissed, setBillsBannerDismissed] = useState(false);
   const [billsError, setBillsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -465,7 +467,21 @@ function Dashboard() {
             <span>Copy a document</span>
           </Link>
         </div>
-        <UploadPanel href="/scan" inboxAddress={inbox} />
+        <UploadPanel
+          href="/scan"
+          inboxAddress={inbox}
+          onMakeAddress={async () => {
+            const current = await businessProfileStore.get();
+            const token = current.inboxToken ?? generateInboxToken();
+            if (!current.inboxToken) {
+              const saved = await businessProfileStore.save({ ...current, inboxToken: token });
+              if (!saved) return null;
+            }
+            const made = inboxAddress(token);
+            setInbox(made);
+            return made;
+          }}
+        />
 
         {/* Straight under the upload tile, as he asked: upload a document,
             then see the documents you have. */}
@@ -524,23 +540,62 @@ function Dashboard() {
         onIndex={(i) => rememberTab(TABS[i].id)}
         labelledBy="dashtab"
         panels={[
+          { id: "bills", node: (<>
+        <section aria-label="Receipts and bills" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Receipts and bills you have scanned</h2>
+            <Link href="/receipts" className="text-sm font-medium text-neutral-700 underline">See all</Link>
+          </div>
+          {allReceipts.length === 0 ? (
+            <p className="text-sm text-neutral-600">Nothing scanned yet. The big button at the top is the way in.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recent(allReceipts).map((r) => (
+                <li key={r.id}>
+                  {/* /receipts/<id> does not exist -- there is no page for a
+                      single receipt -- so this was a 404 waiting for anyone who
+                      tapped a scanned receipt here. It only showed up when this
+                      panel became the first one and Next started prefetching
+                      the links, which then never finished. */}
+                  <Link href="/receipts" className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                    <span className="min-w-0 wrap-anywhere">
+                      {supplierNames.get(r.clientId) || r.vendor || "Unknown supplier"}
+                      <span className="block text-xs text-neutral-500">
+                        {shortDate(r.date)}
+                        {r.documentType === "invoice" && (r.paid ? " · bill, paid" : " · bill, to pay")}
+                        {r.documentType === "credit_note" && " · credit note"}
+                        {r.needsReview && " · waiting on review"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-medium">{money(r.amount + r.vatAmount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+          </>) },
           { id: "work", node: (<>
       <>
       <People contacts={contacts} invoiceCounts={invoiceCounts} />
 
+      {/* Three squares on one line, never stacked (Atanas, 2026-09-24). Three
+          numbers are a glance, not three paragraphs, and stacking them made the
+          panel far taller than the two beside it for no extra information. The
+          figure shrinks on a narrow phone so three still fit across. */}
       {hasAnything && (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Link href="/invoices" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
-          <div className="text-3xl font-bold">{money(owedToMe)}</div>
-          <div className="mt-1 text-sm text-neutral-600">Owed to you</div>
+      <div className="grid grid-cols-3 gap-2">
+        <Link href="/invoices" className="rounded-xl border bg-white p-3 text-center text-neutral-900 shadow-sm">
+          <div className="text-lg font-bold sm:text-2xl">{money(owedToMe)}</div>
+          <div className="mt-0.5 text-xs text-neutral-600">Owed to you</div>
         </Link>
-        <Link href="/invoices?status=overdue" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
-          <div className={`text-3xl font-bold ${overdueAmount > 0 ? "text-red-700" : ""}`}>{money(overdueAmount)}</div>
-          <div className="mt-1 text-sm text-neutral-600">Overdue</div>
+        <Link href="/invoices?status=overdue" className="rounded-xl border bg-white p-3 text-center text-neutral-900 shadow-sm">
+          <div className={`text-lg font-bold sm:text-2xl ${overdueAmount > 0 ? "text-red-700" : ""}`}>{money(overdueAmount)}</div>
+          <div className="mt-0.5 text-xs text-neutral-600">Overdue</div>
         </Link>
-        <Link href="/expenses" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm transition hover:shadow-md">
-          <div className="text-3xl font-bold">{money((monthTotal + monthVat))}</div>
-          <div className="mt-1 text-sm text-neutral-600">Spent this month</div>
+        <Link href="/expenses" className="rounded-xl border bg-white p-3 text-center text-neutral-900 shadow-sm">
+          <div className="text-lg font-bold sm:text-2xl">{money((monthTotal + monthVat))}</div>
+          <div className="mt-0.5 text-xs text-neutral-600">Spent this month</div>
         </Link>
       </div>
       )}
@@ -619,55 +674,20 @@ function Dashboard() {
 
       {tax && hasAnything && <TaxSoFar estimate={tax} />}
 
+      {/* One line, not a card with a heading and two columns (Atanas,
+          2026-09-24: "it should be in a smaller rectangular, one line"). Two
+          numbers do not need a title to explain them when the words are right
+          beside them. */}
       {hasAnything && (
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <h2 className="font-semibold">This month so far</h2>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <div className="wrap-anywhere text-2xl font-bold">{money(monthTotal)}</div>
-            <div className="text-sm text-neutral-600">Spent excl. VAT</div>
-          </div>
-          <div>
-            <div className="wrap-anywhere text-2xl font-bold">{money(monthVat)}</div>
-            <div className="text-sm text-neutral-600">VAT on those costs</div>
-          </div>
-        </div>
-        <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-neutral-700 underline">
-          View full expense summary &rarr;
-        </Link>
-      </div>
+      <Link href="/expenses" className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border bg-white px-4 py-3 text-neutral-900 shadow-sm">
+        <span className="text-sm text-neutral-600">This month</span>
+        <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <span className="wrap-anywhere"><span className="font-bold">{money(monthTotal)}</span> <span className="text-sm text-neutral-600">spent excl. VAT</span></span>
+          <span className="wrap-anywhere"><span className="font-bold">{money(monthVat)}</span> <span className="text-sm text-neutral-600">VAT</span></span>
+        </span>
+      </Link>
       )}
       </>
-          </>) },
-          { id: "bills", node: (<>
-        <section aria-label="Receipts and bills" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">Receipts and bills you have scanned</h2>
-            <Link href="/receipts" className="text-sm font-medium text-neutral-700 underline">See all</Link>
-          </div>
-          {allReceipts.length === 0 ? (
-            <p className="text-sm text-neutral-600">Nothing scanned yet. The big button at the top is the way in.</p>
-          ) : (
-            <ul className="space-y-2">
-              {recent(allReceipts).map((r) => (
-                <li key={r.id}>
-                  <Link href={`/receipts/${r.id}`} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
-                    <span className="min-w-0 wrap-anywhere">
-                      {supplierNames.get(r.clientId) || r.vendor || "Unknown supplier"}
-                      <span className="block text-xs text-neutral-500">
-                        {shortDate(r.date)}
-                        {r.documentType === "invoice" && (r.paid ? " · bill, paid" : " · bill, to pay")}
-                        {r.documentType === "credit_note" && " · credit note"}
-                        {r.needsReview && " · waiting on review"}
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-medium">{money(r.amount + r.vatAmount)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
           </>) },
           { id: "sent", node: (<>
         <section aria-label="Invoices sent" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

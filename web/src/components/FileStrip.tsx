@@ -35,7 +35,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
   const all = useMemo<Doc[]>(() => {
     const fromReceipts = receipts.map((r) => ({
       id: `r-${r.id}`,
-      href: `/receipts?open=${r.id}`,
+      href: "/receipts",
       date: r.date,
       title: r.vendor || "Receipt",
       note: money(r.amount ?? 0),
@@ -54,10 +54,14 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
     return [...fromReceipts, ...fromInvoices].sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [receipts, invoices]);
 
+  // Every year from the oldest thing kept to this one, with no gaps. Atanas
+  // saw the skipped years and was right to doubt them: a dial that jumps from
+  // 2026 to 2023 makes somebody wonder what happened to the two in between,
+  // and "nothing in 2024" is itself an answer. Same reasoning as the days.
   const years = useMemo(() => {
-    const set = new Set<number>([thisYear]);
-    for (const d of all) if (d.date) set.add(Number(d.date.slice(0, 4)));
-    return [...set].sort((a, b) => b - a);
+    let oldest = thisYear;
+    for (const d of all) if (d.date) oldest = Math.min(oldest, Number(d.date.slice(0, 4)));
+    return Array.from({ length: thisYear - oldest + 1 }, (_, i) => thisYear - i);
   }, [all, thisYear]);
 
   const has = useMemo(() => new Set(all.map((d) => d.date)), [all]);

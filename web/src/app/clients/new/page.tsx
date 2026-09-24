@@ -37,7 +37,7 @@ export default function NewClientPage() {
   const searchParams = useSearchParams();
   const kind: ClientKind = searchParams.get("kind") === "supplier" ? "supplier" : "client";
 
-  const [isCompany, setIsCompany] = useState(true);
+  const [isCompany, setIsCompany] = useState(() => searchParams.get("person") !== "1");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");

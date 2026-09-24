@@ -10,30 +10,33 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
   const nothing = e.invoicesCounted === 0 && e.receiptsCounted === 0;
   const next = nextSelfAssessmentDate(e.through);
   const inDays = daysUntil(e.through, next.date);
+  // Nothing to report, or too early to say, is one line of news -- so it gets
+  // one line, not a heading with a paragraph under it and the whole apparatus
+  // of a card that has nothing to put in it.
+  if (nothing || e.tooEarly) {
+    return (
+      <p className="rounded-xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
+        <span className="font-medium text-neutral-900">Tax so far · {e.year.label}:</span>{" "}
+        {nothing
+          ? "nothing invoiced or spent since 6 April yet."
+          : "too early in the year to say. A year's allowances against a few days' work gives a figure that means nothing."}
+      </p>
+    );
+  }
+
   return (
     <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       <h2 className="font-semibold">Tax so far · {e.year.label}</h2>
-      {nothing ? (
-        <p className="mt-2 text-sm text-neutral-600">Nothing invoiced or spent since 6 April yet.</p>
-      ) : (
-        <>
+      <>
           <div className="mt-3">
             <div className="text-2xl font-bold">
-              {e.tooEarly
-                ? "Too early in the year to say"
-                : e.setAside >= 1
+              {e.setAside >= 1
                   ? `Set aside about ${money(e.setAside)}`
                   : e.setAside <= -1
                     ? `HMRC may owe you about ${money(-e.setAside)} back`
                     : "No tax on this year so far"}
             </div>
-            {e.tooEarly && (
-              <div className="text-sm text-neutral-600">
-                A year&apos;s allowances against a few days&apos; work gives a figure that means nothing. The totals below are real; a tax
-                estimate appears about a month into the tax year.
-              </div>
-            )}
-            {!e.tooEarly && (e.total > 0 || e.cisDeducted > 0) && (
+            {(e.total > 0 || e.cisDeducted > 0) && (
               <div className="text-sm text-neutral-600">
                 Income tax {money(e.incomeTax)} + Class 4 National Insurance {money(e.class4)}
                 {e.cisDeducted > 0 && ` − CIS already taken off ${money(e.cisDeducted)}`}
@@ -74,8 +77,7 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
               .
             </p>
           )}
-        </>
-      )}
+      </>
       <div className="mt-4 rounded-lg bg-neutral-50 p-3 text-sm">
         <p>
           <span className="font-medium">Next Self Assessment date: {longDate(next.date)}</span>

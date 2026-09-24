@@ -32,7 +32,7 @@ export default function People({ contacts, invoiceCounts }: { contacts: Client[]
   const searching = query.trim().length > 0;
 
   return (
-    <section aria-labelledby="people-heading" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <section aria-labelledby="people-heading" aria-label="Who you work with" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="people-heading" className="font-semibold">Who you work with</h2>
         <Link href="/clients" className="text-sm font-medium text-neutral-700 underline">See all</Link>
@@ -50,6 +50,9 @@ export default function People({ contacts, invoiceCounts }: { contacts: Client[]
 
       <div className="flex flex-wrap gap-2">
         <Link href="/clients/new" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
+          + Add a company
+        </Link>
+        <Link href="/clients/new?person=1" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
           + Add a customer
         </Link>
         <Link href="/clients/new?kind=supplier" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
@@ -71,7 +74,7 @@ export default function People({ contacts, invoiceCounts }: { contacts: Client[]
                 <span className="min-w-0">
                   <span className="block truncate font-medium wrap-anywhere">{c.name}</span>
                   <span className="block text-xs text-neutral-500">
-                    {c.kind === "supplier" ? "Supplier" : "Customer"}
+                    {c.kind === "supplier" ? "Supplier" : c.isCompany ? "Company" : "Customer"}
                     {(invoiceCounts.get(c.id) ?? 0) > 0 && ` · ${invoiceCounts.get(c.id)} invoice${invoiceCounts.get(c.id) === 1 ? "" : "s"}`}
                   </span>
                 </span>

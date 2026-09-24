@@ -79,19 +79,24 @@ try {
   check("the page says what it is for in one line", text.includes("Photograph the paper, and the rest fills itself in."), text.slice(0, 200));
 
   // --- the people you work with ---
-  check("the people panel is there, with both ways to add", text.includes("Who you work with") && text.includes("Add a customer") && text.includes("Add a supplier"), text.slice(0, 800));
-  const names = await page.evaluate(() => [...document.querySelectorAll("main ul a")].map((a) => a.textContent.trim().split("\n")[0]));
+  check("the people panel is there, with both ways to add", text.includes("Who you work with") && text.includes("Add a company") && text.includes("Add a customer") && text.includes("Add a supplier"), text.slice(0, 800));
+  const names = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Who you work with"] ul a')].map((a) => a.textContent.trim().split("\n")[0]));
   check("customers and suppliers are in one list", names.some((n) => n.includes("Hetherington")) && names.some((n) => n.includes("Travis Perkins")), JSON.stringify(names));
   check("an archived contact is not offered", !names.some((n) => n.includes("Gone Away")), JSON.stringify(names));
   check("the busiest comes first", names[0]?.includes("Hetherington"), JSON.stringify(names));
 
-  // Searching finds someone who is not in the first few.
+  // Searching finds someone who is not in the first few. The people panel is
+  // the second one now, and the one you are not looking at is inert -- so you
+  // genuinely cannot type into it until you are on it, which is the point of
+  // inert and worth the extra line here.
+  await clickTab("Invoices & customers");
+  await sleep(500);
   await page.type("#people-search", "quiet");
   await sleep(300);
-  const found = await page.evaluate(() => {
-    const live = [...document.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hasAttribute("inert"));
-    return [...live.querySelectorAll("ul a")].map((a) => a.textContent.trim().split("\n")[0]);
-  });
+  // Scoped to the people panel like its neighbours: the panel on screen is
+  // Receipts & bills now, since money out comes first.
+  const found = await page.evaluate(() =>
+    [...document.querySelectorAll('[aria-label="Who you work with"] ul a')].map((a) => a.textContent.trim().split("\n")[0]));
   check("searching finds a quiet customer", found.length === 1 && found[0].includes("Quietest"), JSON.stringify(found));
   // A controlled input ignores a plain value assignment: React reads its own
   // tracker, so the native setter has to be called for the change to register.
@@ -103,7 +108,7 @@ try {
   await sleep(200);
 
   // --- a name starts an invoice already addressed to them ---
-  const href = await page.evaluate(() => [...document.querySelectorAll("main ul a")].find((a) => a.textContent.includes("Hetherington"))?.getAttribute("href"));
+  const href = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Who you work with"] ul a')].find((a) => a.textContent.includes("Hetherington"))?.getAttribute("href"));
   check("tapping a name goes to a new invoice for them", href === "/invoices/new?client=c1", String(href));
   await page.goto(`${BASE}${href}`, { waitUntil: "networkidle0" });
   await sleep(1200);
@@ -118,7 +123,16 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(1000);
   const t = await tabs();
-  check("three panels, invoices and customers first", JSON.stringify(t.map((x) => x.label)) === JSON.stringify(["Invoices & customers", "Receipts & bills", "Invoices sent"]) && t[0].on, JSON.stringify(t));
+  // Order and default are two different things, and by here the suite has
+  // already proved the choice is remembered -- so whichever panel was last
+  // chosen is correctly the one showing. The default is checked below, with
+  // the memory cleared.
+  check("three panels, receipts and bills first", JSON.stringify(t.map((x) => x.label)) === JSON.stringify(["Receipts & bills", "Invoices & customers", "Invoices sent"]), JSON.stringify(t));
+  await page.evaluate(() => localStorage.removeItem("dashboard-tab"));
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(900);
+  const fresh = await tabs();
+  check("...and somebody new lands on the first of them, money out", fresh[0]?.on === true, JSON.stringify(fresh));
 
   await clickTab("Receipts & bills");
   await sleep(400);

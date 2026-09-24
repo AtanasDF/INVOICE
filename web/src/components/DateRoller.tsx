@@ -106,11 +106,11 @@ function Column({ label, items, selected, onPick, disabled = false }: {
         aria-disabled={disabled}
         tabIndex={disabled ? -1 : 0}
         onKeyDown={onKey}
-        className={`mt-1 h-28 snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-lg border bg-white text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${disabled ? "opacity-40" : ""}`}
+        className={`mt-1 h-20 snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-lg border bg-white text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${disabled ? "opacity-40" : ""}`}
       >
         {/* Half a row of air top and bottom, so the first and last items can
             sit in the middle like every other one. */}
-        <div aria-hidden className="h-10" />
+        <div aria-hidden className="h-7" />
         {items.map((i) => (
           <button
             key={i.key}
@@ -120,13 +120,13 @@ function Column({ label, items, selected, onPick, disabled = false }: {
             aria-selected={i.key === selected}
             disabled={disabled}
             onClick={() => onPick(i.value)}
-            className={`flex h-9 w-full snap-center items-center justify-center gap-1 text-sm ${i.key === selected ? "font-bold text-neutral-900" : "text-neutral-500"}`}
+            className={`flex h-6 w-full snap-center items-center justify-center gap-1 text-xs ${i.key === selected ? "font-bold text-neutral-900" : "text-neutral-500"}`}
           >
             {i.label}
             {i.dot && <span aria-hidden className="h-1 w-1 rounded-full bg-neutral-400" />}
           </button>
         ))}
-        <div aria-hidden className="h-10" />
+        <div aria-hidden className="h-7" />
       </div>
     </div>
   );
