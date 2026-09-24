@@ -48,6 +48,40 @@ age 9" is folklore**, not in GOV.UK guidance, and the ONS holds no such data.
 **Ended at 126 suites, 2,240 checks.** Three came back red from the full run and are green
 alone: the four-at-a-time load, the signature already in `CLAUDE.md`.
 
+### Later the same night — the thirty list, and two suites that were lying
+
+Working the list in `notes/thirty.md`. Items 1–9 and 29 are done.
+
+- **A customer's invoice tab was advertising us.** Giving every page the "· Invoiceover"
+  suffix caught the three customer links too, so someone opening an invoice we sent them saw
+  our name appended to their supplier's. They have no account here. `title.absolute` on
+  `/i/`, `/q/` and `/r/`.
+- **Tapping a receipt landed you on the whole list** with no way to tell which one was meant
+  — and before that, on `/receipts/<id>`, which is a 404. `?open=<id>` scrolls that row in,
+  rings it for four seconds and opens its details; a missing id says so in plain words.
+  `test-open-receipt`, 14 checks.
+- **One word for one thing.** The same person was a "client" on one screen and a "customer"
+  on the next. Customer everywhere a person reads it; `client` untouched in code, column and
+  URLs. `{{client_name}}` and "Client entertaining" kept on purpose, each saying why in
+  place. `test-vocabulary` walks twelve screens and prints the surrounding sentence on a
+  failure — which is how it caught five places grep had missed, all computed at runtime.
+
+**Two suites were dying part-way and reporting a pass**, which is the same lesson as the
+mutations reaching `main`: read the content, never the summary.
+
+1. `test-settings-add` had `page.url().catch()` in its own catch block. `url()` is
+   synchronous, so the handler threw, destroying both the real error and the tally line —
+   run-all.sh had been seeing a suite with no result at all. Underneath that, it drove the
+   dashboard's Add sheet, removed on 2026-09-23, fifty lines after asserting its absence.
+   Pointed at a list page it runs to the end for the first time in weeks: **38/38**.
+2. `test-company-picker` stopped at check 6 of 39 on a renamed button and printed 6/6.
+
+**What the first one then found is a real bug.** With the camera blocked **on an iPhone**,
+the scan page said "blocked for this site in your browser's settings" — not something
+anybody can act on from a phone — and offered no way to scan at all, from the biggest button
+in the app. It now gives the exact iOS route and offers the iPhone's own camera, which asks
+this site for no permission and therefore still works.
+
 ## 2026-09-23 — The night list: colour, the front door, the dashboard, the scan limits (Opus 5)
 
 Atanas awake through most of it, steering. Everything below is on `main` and pushed.
