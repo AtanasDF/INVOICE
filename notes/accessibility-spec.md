@@ -179,3 +179,71 @@ there is **no published user testing** of single-page-app route announcement wit
 or TalkBack; the low-literacy research everyone cites is from **2005** and desktop-era; and
 NN/g's own 2025 work walks back its 2014 line that icons are inherently ambiguous, for
 learned conventions like the hamburger.
+
+---
+
+## Correcting myself on plain English (2026-09-24, third pass)
+
+Earlier in this file I wrote a rule: *"reading age ≤ 11 on the public pages."* **Drop it.
+The number is folklore**, and I should not have written it down as a gate.
+
+- The current GOV.UK writing guidance **contains no reading-age target at all** — the phrase
+  does not appear anywhere in it.
+- The ONS answered a Freedom of Information request (FOI/2022/4596) saying it **"does not
+  hold data related to the average reading age in the UK."**
+- The Home Office design manual does state "maximum reading age of 9" — and attributes it
+  to *"the GOV.UK best practice guidance"*, **which does not say it.** The citation is
+  circular.
+- Where "age 9–11" really comes from: the Skills for Life survey's mapping of *Entry Level
+  3* to a **curriculum attainment band**. Four things go wrong on the way to "reading age
+  9": a tail (~15% of adults) is reported as a centre, a band becomes a point, a
+  qualifications equivalence becomes a psychometric score, and the mapping is itself
+  second-hand from a dead 2008 link.
+
+**And WCAG does not require it either.** 3.1.5 Reading Level is **AAA**; 3.1.3 Unusual
+Words and 3.1.4 Abbreviations are AAA too. AA — the level everything else here is measured
+against — has no reading-level requirement at all. W3C's own Understanding page says why,
+and it is the most useful sentence in the whole subject: reading level is in WCAG because
+the working group *"could not find a way to test"* clear writing, so it is **a testability
+proxy, not a measure of what matters**. W3C then links the Government of Canada's article
+arguing formulas do not work, and ISO 24495-1, which excludes them explicitly.
+
+### The trap that would have bitten us
+
+**GOV.UK house style puts no full stop on any bullet, including the last.** Every
+readability formula splits sentences on `.!?`. So a style-compliant eight-item list is
+counted as **one sentence of about eighty words** and scores as near-unreadable.
+
+A readability gate would therefore have penalised us for following the style guide. If we
+build a checker it must exempt list markup or report on lists separately.
+
+### What to use instead — all mechanical, none folklore
+
+- **Check every sentence over 25 words** (GOV.UK's own trigger, and it is phrased as
+  "try to split" and "check", not as a limit).
+- **Paragraphs of five sentences or fewer.**
+- **No negative contractions** — `cannot`, not `can't`, because *"many users find negative
+  contractions hard to read, or misread them."* Exact string match, trivial to test.
+- **The banned-word list with its replacements**: utilise→use, facilitate→say how,
+  deliver→make/provide, robust→well thought out, streamline→simplify, key→important,
+  impact→effect, plus the metaphors — *drive*, *going forward*, *in order to*, and
+  *hub/portal/one-stop shop*.
+- **Abbreviations: VAT and PAYE need no explaining. CIS, UTR, MTD, RTI and EORI do** —
+  they are not on the exempt list, and they are exactly our vocabulary.
+- **Error wording, from the GOV.UK patterns**: `Enter [what it is]` when empty,
+  `[x] must be [n] characters or less` when too long, `[x] must be a number, like 30`.
+  Never *please* (it implies a choice), never *sorry* (it does not help), never
+  *valid*/*invalid* (they add nothing), never *oops*. And the message must reuse the words
+  of the label it belongs to.
+
+A readability score stays, but as a **report beside those checks**, never the gate — which
+is also what the first pass concluded, for a different reason (idiom is invisible to it).
+
+### One more reason to write plainly, and it is binding
+
+The **Consumer Rights Act 2015** applies to us, since we produce consumer-facing documents:
+s.68 requires a written term to be **transparent**, s.64(3) defines that as *"plain and
+intelligible language"* — and s.69 is the sharp one: **if a term could have different
+meanings, the meaning most favourable to the consumer prevails.** Ambiguity in our own
+wording resolves against us. That is a firmer argument for plain drafting than any Flesch
+threshold, and unlike WCAG 3.1.5 it is law.
