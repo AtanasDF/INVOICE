@@ -35,7 +35,7 @@ export default function People({ contacts, invoiceCounts }: { contacts: Client[]
     <section aria-labelledby="people-heading" aria-label="Who you work with" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="people-heading" className="font-semibold">Who you work with</h2>
-        <Link href="/clients" className="text-sm font-medium text-neutral-700 underline">See all</Link>
+        <Link href="/clients" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">See all</Link>
       </div>
 
       <label htmlFor="people-search" className="sr-only">Search customers and suppliers</label>

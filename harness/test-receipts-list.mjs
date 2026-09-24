@@ -73,7 +73,13 @@ try {
   let list = await cards(page);
   check("all ten documents listed", list.length === 10, String(list.length));
   const maxH = Math.max(...list.map((c) => c.h));
-  check("every card compact (<= 150px)", maxH <= 150, `max ${maxH}`);
+  // 156, not 150. The limit exists so more receipts fit on one screen, and it
+  // is worth keeping -- but on 2026-09-24 the row's own actions were measured
+  // at 20px tall, under WCAG's 24px floor, with the next target close enough
+  // that the spacing exception did not save them. Details, Keep handy, Edit
+  // and Remove now clear 24px, which costs the card about six pixels. A
+  // control somebody cannot hit is not compact, it is just small.
+  check("every card compact (<= 156px)", maxH <= 156, `max ${maxH}`);
   const perScreen = await page.evaluate(() => {
     const cs = [...document.querySelectorAll("main div.space-y-2 > div.rounded-xl")];
     const top = cs[0].getBoundingClientRect().top;

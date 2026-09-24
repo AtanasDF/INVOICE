@@ -536,7 +536,7 @@ export default function ReceiptsPage() {
         {hasActiveFilters && (
           <button
             onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterCategory(""); setFilterClientId(""); setFilterStarredOnly(false); setFilterTag(""); setFilterType(""); setFilterBill(""); }}
-            className="mt-2 text-sm text-neutral-700 underline"
+            className="inline-block min-h-6 mt-2 text-sm text-neutral-700 underline"
           >
             Clear filters
           </button>
@@ -726,7 +726,7 @@ export default function ReceiptsPage() {
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-                <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="font-medium text-neutral-600">
+                <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
                   Details {detailsOpen ? "▴" : "▾"}
                 </button>
                 <div className="flex items-center gap-3">
@@ -736,13 +736,13 @@ export default function ReceiptsPage() {
                   <button
                     onClick={() => toggleStar(r)}
                     aria-pressed={r.starred}
-                    className="flex items-center gap-1 text-sm text-neutral-700"
+                    className="flex min-h-6 items-center gap-1 text-sm text-neutral-700"
                   >
                     <span aria-hidden="true" className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-500"}`}>★</span>
                     {r.starred ? "Kept handy" : "Keep handy"}
                   </button>
-                  <button onClick={() => startEditReceipt(r)} className="font-medium text-neutral-700 underline">Edit</button>
-                  <button onClick={() => removeReceipt(r)} className="text-neutral-600 underline">Remove</button>
+                  <button onClick={() => startEditReceipt(r)} className="min-h-6 px-1 font-medium text-neutral-700 underline">Edit</button>
+                  <button onClick={() => removeReceipt(r)} className="min-h-6 text-neutral-600 underline">Remove</button>
                 </div>
               </div>
               {detailsOpen && (

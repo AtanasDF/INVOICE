@@ -1229,10 +1229,10 @@ export default function ScanPage() {
                 label="Upload a photo or PDF"
                 buttonClassName="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
               />
-              <Link href="/receipts/new" className="text-sm font-medium text-neutral-700 underline">
+              <Link href="/receipts/new" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">
                 Add a receipt by hand
               </Link>
-              <button type="button" onClick={() => { setCameraBlocked(false); setCapture({ kind: "first" }); }} className="text-sm font-medium text-neutral-700 underline">
+              <button type="button" onClick={() => { setCameraBlocked(false); setCapture({ kind: "first" }); }} className="inline-block py-1 text-sm font-medium text-neutral-700 underline">
                 Try the camera again
               </button>
             </div>
@@ -1241,7 +1241,7 @@ export default function ScanPage() {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold">{form.docType ? heading : "Scan"}</h1>
           {form.docType && (
-            <button type="button" onClick={() => setTypePickerOpen((o) => !o)} className="text-xs font-medium text-neutral-700 underline">
+            <button type="button" onClick={() => setTypePickerOpen((o) => !o)} className="inline-block py-1 text-xs font-medium text-neutral-700 underline">
               {changeLabel}
             </button>
           )}

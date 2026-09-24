@@ -857,7 +857,7 @@ export default function NewInvoicePage() {
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600 underline">✕</button>
+              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 min-h-11 min-w-11 text-sm text-neutral-600 underline">✕</button>
               {cisRate !== null && <LineKind item={it} onChange={(kind) => updateItem(idx, { kind })} />}
             </div>
           ))}

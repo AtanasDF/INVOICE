@@ -543,7 +543,7 @@ function Dashboard() {
 
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <Link href="/receipts/new" className="font-medium text-neutral-700 underline">Add a receipt by hand</Link>
-          <Link href="/quotes/new" className="font-medium text-neutral-700 underline">Make a quote</Link>
+          <Link href="/quotes/new" className="inline-block py-1 font-medium text-neutral-700 underline">Make a quote</Link>
         </div>
       </section>
 
@@ -613,7 +613,7 @@ function Dashboard() {
         <section aria-label="Receipts and bills" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Receipts and bills you have scanned</h2>
-            <Link href="/receipts" className="text-sm font-medium text-neutral-700 underline">See all</Link>
+            <Link href="/receipts" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">See all</Link>
           </div>
           {allReceipts.length === 0 ? (
             <p className="text-sm text-neutral-600">Nothing scanned yet. The big button at the top is the way in.</p>
@@ -684,7 +684,7 @@ function Dashboard() {
             <button
               type="button"
               onClick={() => { setPicking((v) => !v); setPicked(new Set()); setPayError(null); }}
-              className="text-sm font-medium text-neutral-700 underline"
+              className="inline-block py-1 text-sm font-medium text-neutral-700 underline"
             >
               {picking ? "Done" : "Mark several paid"}
             </button>
@@ -804,7 +804,7 @@ function Dashboard() {
         <section aria-label="Invoices sent" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Invoices you have sent</h2>
-            <Link href="/invoices" className="text-sm font-medium text-neutral-700 underline">See all</Link>
+            <Link href="/invoices" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">See all</Link>
           </div>
           {allInvoices.length === 0 ? (
             <p className="text-sm text-neutral-600">None yet. Photograph an old invoice, or write one by hand.</p>
