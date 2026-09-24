@@ -583,6 +583,33 @@ function Dashboard() {
         labelledBy="dashtab"
         panels={[
           { id: "bills", node: (<>
+      {/* Money out, so it belongs with the receipts and bills rather than
+          with the invoices. It had been in the other panel since the
+          panels landed. */}
+      {bills.length > 0 && (
+        <div id="bills-to-pay" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <h2 className="font-semibold">Bills to pay</h2>
+          {billsError && <p role="alert" className="mt-2 text-sm text-red-600">{billsError}</p>}
+          <div className="mt-3 space-y-2">
+            {sortedBills.map((b) => {
+              const due = billDueLabel(b.dueDate, today);
+              return (
+                <div key={b.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
+                  <span className="min-w-0 wrap-anywhere">
+                    {supplierNames.get(b.clientId) || b.vendor || "Unknown supplier"}
+                    {b.invoiceNumber && <span className="text-neutral-500"> · {b.invoiceNumber}</span>}
+                    <span className={due.className}> · {due.text}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3 whitespace-nowrap">
+                    <span className="font-medium">{money((b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)))}</span>
+                    <button onClick={() => markBillPaid(b)} className="font-medium text-neutral-700 underline">Mark as paid</button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
         <section aria-label="Receipts and bills" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Receipts and bills you have scanned</h2>
@@ -628,44 +655,20 @@ function Dashboard() {
       {hasAnything && (
       <div className="grid grid-cols-3 gap-2">
         <Link href="/invoices" className="rounded-xl border bg-white p-3 text-center text-neutral-900 shadow-sm">
-          <div className="text-lg font-bold sm:text-2xl">{money(owedToMe)}</div>
+          <div className="wrap-anywhere text-base font-bold sm:text-2xl">{money(owedToMe)}</div>
           <div className="mt-0.5 text-xs text-neutral-600">Owed to you</div>
         </Link>
         <Link href="/invoices?status=overdue" className="rounded-xl border bg-white p-3 text-center text-neutral-900 shadow-sm">
-          <div className={`text-lg font-bold sm:text-2xl ${overdueAmount > 0 ? "text-red-700" : ""}`}>{money(overdueAmount)}</div>
+          <div className={`wrap-anywhere text-base font-bold sm:text-2xl ${overdueAmount > 0 ? "text-red-700" : ""}`}>{money(overdueAmount)}</div>
           <div className="mt-0.5 text-xs text-neutral-600">Overdue</div>
         </Link>
         <Link href="/expenses" className="rounded-xl border bg-white p-3 text-center text-neutral-900 shadow-sm">
-          <div className="text-lg font-bold sm:text-2xl">{money((monthTotal + monthVat))}</div>
+          <div className="wrap-anywhere text-base font-bold sm:text-2xl">{money((monthTotal + monthVat))}</div>
           <div className="mt-0.5 text-xs text-neutral-600">Spent this month</div>
         </Link>
       </div>
       )}
 
-      {bills.length > 0 && (
-        <div id="bills-to-pay" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <h2 className="font-semibold">Bills to pay</h2>
-          {billsError && <p role="alert" className="mt-2 text-sm text-red-600">{billsError}</p>}
-          <div className="mt-3 space-y-2">
-            {sortedBills.map((b) => {
-              const due = billDueLabel(b.dueDate, today);
-              return (
-                <div key={b.id} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-b-0 last:pb-0">
-                  <span className="min-w-0 wrap-anywhere">
-                    {supplierNames.get(b.clientId) || b.vendor || "Unknown supplier"}
-                    {b.invoiceNumber && <span className="text-neutral-500"> · {b.invoiceNumber}</span>}
-                    <span className={due.className}> · {due.text}</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-3 whitespace-nowrap">
-                    <span className="font-medium">{money((b.amount + b.vatAmount + (billCredits.get(b.id) ?? 0)))}</span>
-                    <button onClick={() => markBillPaid(b)} className="font-medium text-neutral-700 underline">Mark as paid</button>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Marking several at once (Atanas, 2026-09-24: "it should let you mark a
           few of them... pay this company only, pay that company only"). Money

@@ -57,8 +57,15 @@ try {
   // The dashboard's "owed" must match the sum of what's still unpaid.
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(1200);
-  const text = await bodyText(page);
-  console.log("DASH", JSON.stringify(text.slice(0, 400)));
+  // "Owed to you" is in the Invoices & customers panel, and money out is the
+  // one you land on now. Read the figure from its own square rather than
+  // taking the first pound sign on the page, which is what made this fragile.
+  await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].find((x) => x.textContent.includes("Invoices & customers"))?.click());
+  await sleep(700);
+  const text = await page.evaluate(() => {
+    const label = [...document.querySelectorAll("div")].find((d) => d.textContent.trim() === "Owed to you");
+    return label?.parentElement?.innerText ?? document.body.innerText;
+  });
   const shown = text.match(/£([\d,]+\.\d{2})/);
   const asNumber = shown ? Number(shown[1].replace(/,/g, "")) : null;
   check("the dashboard's owed matches the invoices", asNumber !== null && Math.abs(asNumber - owed) < 1, `shown ${asNumber} vs ${Math.round(owed * 100) / 100}`);

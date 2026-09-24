@@ -51,6 +51,15 @@ try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(2000);
+  // Money out is the panel you land on now, so the invoice side has to be
+  // asked for. Both are checked below; they are just no longer on screen at
+  // the same moment.
+  const showPanel = async (label) => {
+    await page.evaluate((l) => [...document.querySelectorAll('[role="tab"]')].find((x) => x.textContent.includes(l))?.click(), label);
+    await sleep(600);
+  };
+  const bills = await onScreen(page);
+  await showPanel("Invoices & customers");
   const t = await onScreen(page);
 
   check("the overdue invoice is on the dashboard", t.includes("INV-OVERDUE"), flat(t).slice(0, 400));
@@ -66,7 +75,7 @@ try {
   // on the list without being nagged about.
   check("a bill three weeks off is still on the list", t.includes("Screwfix"), flat(t).slice(0, 500));
   check("but it isn't counted as needing paying soon", /2 bills need paying soon/.test(t), flat(t).slice(flat(t).indexOf("need paying") - 40, flat(t).indexOf("need paying") + 40));
-  check("the late bill says it's late", /Overdue by \d+ day/.test(t), flat(t).slice(flat(t).indexOf("Wolseley"), flat(t).indexOf("Wolseley") + 120));
+  check("the late bill says it's late", /Overdue by \d+ day/.test(bills), flat(bills).slice(flat(bills).indexOf("Wolseley"), flat(bills).indexOf("Wolseley") + 120));
 
   check("the receipt waiting to be checked is counted", /review/i.test(t), flat(t).slice(0, 500));
   check("nothing on the dashboard is broken", !/NaN|undefined|Application error/.test(t), flat(t).slice(0, 300));
