@@ -167,3 +167,60 @@ which writes an invoice from a description. That is a different job.
 
 Worth revisiting if people actually ask for it. Not worth a fourth door now — which is what
 the Add sheet was taken off the dashboard for this morning.
+
+---
+
+# "My files" — everything saved, as files (2026-09-24, part three)
+
+Atanas: *"You need to be able to see your files in another way, not just the photos... Since
+the photos will disappear, we're going to have all the data and the information, but they
+need to be turned into files."*
+
+## The idea underneath it, which is the good one
+
+The ageing job emails a photograph away and clears it; **the record always stays** — the
+supplier, the date, the amount, the VAT, the category. What he has spotted is that a record
+with no photograph currently has **no file at all**, and that is the thing that makes
+ageing feel like a loss.
+
+So: **anything in the records can be handed over as a file, whether or not its photograph
+still exists.** A receipt whose picture has gone becomes a one-page PDF carrying everything
+the record holds, made on demand. Nothing is ever "gone" — at worst it changes shape, from
+a photograph of a receipt to a statement of what that receipt said.
+
+That closes the last gap in the ageing design, and it is worth building for that reason
+alone.
+
+## The shape he described
+
+- A **"My files"** rectangle. **Decent size, not too big** — his words, and the contrast
+  with the photo strip is deliberate.
+- **Switch through the months from the rectangle itself.**
+- **Tapping it opens the full view**, where everything can be narrowed: a **day**, a
+  **week**, a **month**, a **year**, a **period of his own**, or **one supplier or client**.
+
+## What counts as a file
+
+| | Where it comes from |
+|---|---|
+| Receipt photographs and PDFs | the private `receipts` bucket, as today |
+| Invoices, quotes, credit notes | made from the record, as the PDF already is |
+| **A receipt whose photograph has gone** | **made from the record on demand** — the new part |
+| The pages of a multi-page scan | `receipt_pages` |
+
+Made **on demand, not stored**: it costs nothing to keep, it is always current if the
+record is corrected, and it cannot drift from the record it describes.
+
+## Named, not guessed
+
+- **Two rectangles doing similar jobs is the risk here.** This morning the Add sheet was
+  taken off the dashboard precisely because it repeated the four buttons above it. A photo
+  strip and a files strip, one above the other, could be the same mistake wearing a
+  different hat. Worth deciding with him: **one rectangle with a switch** (Photos | Files),
+  or genuinely two. My instinct is one rectangle, because the switch he already asked for
+  (Receipts · Invoices · Quotes) is the same kind of control and people will look for both
+  in the same place — but it is his call and I would rather ask than assume.
+- **"Files from this month" implies wanting them all at once.** A single zip is the obvious
+  answer and a real piece of work — worth confirming that is what he means before building
+  a one-at-a-time list.
+- **By supplier or client** means the filter needs the contact list too, not just dates.
