@@ -73,7 +73,44 @@ try {
       .filter(Boolean));
   check("no screen-reader label says client either", saidClient(labels.join(" ")).length === 0, JSON.stringify(labels.filter((l) => /client/i.test(l))));
 
-  // And the name the browser tab and the announcer use.
+  // The contact field is shared by every form that names somebody, and it
+  // builds its own words from one variable. The 2026-09-24 mutation run put
+  // "client" back in that variable and this suite stayed green: it had read
+  // the pages where the field's wording is overridden, and never the field's
+  // own. Open its list and read what it says.
+  await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => !!document.querySelector('input[role="combobox"]'), { timeout: 20000 });
+  const fieldWords = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll("select, option, input, button, ul")) {
+      for (const a of ["aria-label", "placeholder", "title"]) { const v = el.getAttribute(a); if (v) out.push(v); }
+      if (el.tagName === "OPTION" || el.tagName === "BUTTON") out.push(el.textContent.trim());
+    }
+    return out.filter(Boolean);
+  });
+  check("the shared contact field says customer in its own words too",
+    saidClient(fieldWords.join(" | ")).length === 0, JSON.stringify(fieldWords.filter((w) => /client/i.test(w))));
+
+  // Typing surfaces the headings above the matches, which are built from the
+  // same variable and shown nowhere else.
+  await page.evaluate(() => {
+    const box = document.querySelector('input[role="combobox"]');
+    if (!box) return;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(box, "Acme");
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    box.dispatchEvent(new Event("focus", { bubbles: true }));
+  });
+  await sleep(900);
+  const listWords = await page.evaluate(() => {
+    const list = document.querySelector('[role="listbox"]');
+    return list ? [list.getAttribute("aria-label") ?? "", list.innerText] : [];
+  });
+  check("and so do the headings over the matches", saidClient(listWords.join(" | ")).length === 0, JSON.stringify(listWords));
+
+  // And the name the browser tab and the announcer use -- back on the page
+  // it is about, since the checks above navigate away from it.
+  await page.goto(`${BASE}/clients`, { waitUntil: "networkidle0" });
+  await sleep(800);
   const title = await page.title();
   check("the page is titled Customers & suppliers", title.startsWith("Customers & suppliers"), title);
 } catch (e) { console.log("ERROR", e.message); }

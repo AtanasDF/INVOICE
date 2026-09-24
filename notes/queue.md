@@ -63,7 +63,10 @@ page. Ask him: which screen, and a phone or a trackpad?
 13. ~~**Offline**~~ **done** — the app's own files cached, a real offline page, and nothing
     carrying figures ever cached.
 14. ~~**The manifest**~~ **done** — id, scope, a maskable icon, language and categories.
-15. **No Apple touch icon beyond 192px**, which is what an iPhone home screen uses.
+15. ~~**No Apple touch icon beyond 192px**~~ **stale, and was already done** (checked
+    2026-09-24): `public/apple-icon.png` is 180x180, which is the size an iPhone actually
+    uses, and it is flattened onto the manifest background so iOS's mask leaves no black
+    fringe. CLAUDE.md said so; this line had not been ticked.
 
 ## Money and cost
 

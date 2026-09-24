@@ -913,7 +913,16 @@ export default function InvoiceViewPage() {
         )}
         {payments.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">
-            {paid ? "Marked paid (no payments recorded)." : "Nothing received yet. Record part-payments here and the balance and reminders follow."}
+            {/* An invoice closed by credit notes alone was saying "Marked paid
+                (no payments recorded)" -- the wording for someone ticking it
+                off by hand, which reads as though the credit note had been
+                lost. The page already works this out for the text-message
+                presets; it may as well say it. */}
+            {paid
+              ? creditedInFull
+                ? "Settled in full by credit note. No money was received, and none is owed."
+                : "Marked paid (no payments recorded)."
+              : "Nothing received yet. Record part-payments here and the balance and reminders follow."}
           </p>
         ) : (
           <div className="mt-3 space-y-2">

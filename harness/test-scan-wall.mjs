@@ -15,6 +15,13 @@ import { makeDb, launchSignedIn, signIn, sleep, bodyText, UID } from "./mockdb.m
 // really say, so a change to the wording changes both at once and the checks
 // below are about the page, which is what they were always meant to be.
 import { refusalText } from "./gen/lib/scanLimit.js";
+// Taking the wording from the app's own code stopped this suite checking its
+// own fiction -- and left it unable to notice the wording going wrong, since
+// both sides then change together. The 2026-09-24 mutation run turned the
+// refusal into "ERR_DAY_LIMIT" and this suite stayed green. So the words are
+// also held to a property, which no amount of agreement can satisfy: a
+// refusal is a sentence a person can read, not a code.
+const readsLikeASentence = (t) => /[a-z]{3,} [a-z]{3,}/.test(t) && !/[A-Z][A-Z_0-9]{3,}/.test(t) && /[.!?]/.test(t);
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -61,6 +68,12 @@ const scanOnce = async () => {
   await sleep(2200);
   return bodyText(page);
 };
+
+// Asked of the words themselves before any screen is opened: whatever the
+// app says, it has to be sayable to a person.
+for (const [which, text] of Object.entries(WORDS)) {
+  check(`the ${which} refusal is a sentence, not a code`, readsLikeASentence(text), JSON.stringify(text));
+}
 
 try {
   await signIn(page, BASE);

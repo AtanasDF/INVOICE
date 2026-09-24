@@ -43,7 +43,10 @@ const APP = "/Users/nasko/Desktop/INVOICE/web/src";
 // Each one breaks something a person would actually notice.
 const MUTATIONS = [
   { file: "lib/today.ts", find: 'timeZone: "Europe/London"', replace: 'timeZone: "UTC"',
-    what: "the app asks UTC what day it is, not London", expect: ["test-midnight", "test-dates"] },
+    // Not test-dates: that one covers reading a printed date and date
+    // arithmetic, neither of which asks what day it is now. Naming it here
+    // made a correct suite look like a hole (2026-09-24).
+    what: "the app asks UTC what day it is, not London", expect: ["test-midnight"] },
   { file: "lib/cis.ts", find: "/ 100", replace: "/ 200",
     what: "CIS is deducted at half the rate", expect: ["test-cis"] },
   { file: "lib/invoiceBalance.ts", find: "return Math.max(0, pence(total) - pence(credited) - pence(paid)) / 100;",
@@ -60,6 +63,42 @@ const MUTATIONS = [
     what: "the daily wall speaks in error codes", expect: ["test-scan-limit-text", "test-scan-wall"] },
   { file: "lib/reminderTemplates.ts", find: "days: 7", replace: "days: 9",
     what: "the chase-up after the due date moves by two days", expect: ["test-reminder-clock"] },
+
+  // Added 2026-09-24, for the night's own work. A suite written today is no
+  // more trustworthy than one written in September until something breaks the
+  // thing it covers and it says so.
+  { file: "lib/errorText.ts", find: "  console.error(fallback, err);\n  return fallback;",
+    replace: "  console.error(fallback, err);\n  return message || fallback;",
+    what: "the database's own words reach a person again",
+    expect: ["test-write-fails", "test-half-saved", "test-quotes"] },
+  { file: "app/recurring/invoices/page.tsx", find: "    if (generating.current) return;\n    generating.current = true;\n",
+    replace: "",
+    what: "Make it now can be pressed twice, making two draft invoices",
+    expect: ["test-double-press"] },
+  { file: "app/mileage/page.tsx", find: "    if (savingTrip.current) return;\n    savingTrip.current = true;\n",
+    replace: "",
+    what: "one journey can be claimed twice", expect: ["test-double-press"] },
+  { file: "app/receipts/review/page.tsx", find: 'setRowError({ id: r.id, message: "A bill to be paid needs a due date." })',
+    replace: 'setError("A bill to be paid needs a due date.")',
+    what: "a refusal about one bill goes back to the top of the page",
+    expect: ["test-refusal-place"] },
+  { file: "app/recurring/invoices/page.tsx", find: '<Link href={`/invoices/${made.id}`} className="font-medium underline">Open it</Link>',
+    replace: "<span />",
+    what: "the draft invoice just made is unreachable again", expect: ["test-said-so"] },
+  { file: "app/clients/page.tsx", find: '{merged && <p role="status"',
+    replace: "{merged && <p",
+    what: "the merge result is printed but never announced", expect: ["test-said-so"] },
+  { file: "lib/zip.ts", find: "    lv.setUint32(14, crc, true);", replace: "    lv.setUint32(14, 0, true);",
+    what: "every file in a saved zip carries a wrong checksum", expect: ["test-save-these"] },
+  { file: "lib/zip.ts", find: "    return dot > 0 ? `${name.slice(0, dot)} (${n + 1})${name.slice(dot)}` : `${name} (${n + 1})`;",
+    replace: "    return name;",
+    what: "two documents in one zip are given the same name", expect: ["test-save-these"] },
+  { file: "components/ContactField.tsx", find: 'const word = kind === "client" ? "customer" : "supplier";',
+    replace: 'const word = kind === "client" ? "client" : "supplier";',
+    what: "the app calls a customer a client again", expect: ["test-vocabulary"] },
+  { file: "app/receipts/page.tsx", find: "highlight === r.id ? \" ring-2 ring-neutral-900\" : \"\"",
+    replace: '""',
+    what: "the receipt you tapped is no longer picked out from the list", expect: ["test-open-receipt"] },
 ];
 
 const cmd = process.argv[2] ?? "list";

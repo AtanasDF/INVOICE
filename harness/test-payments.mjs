@@ -88,6 +88,20 @@ try {
   await clickText(page, "Save credit note");
   await sleep(1200);
   check("a full credit note settles the invoice", db.tables.invoices.find((i) => i.id === I3).status === "paid", db.tables.invoices.find((i) => i.id === I3).status);
+  // The status and the figure come from different functions. Checking only
+  // the status let "credit notes stop coming off what is owed" go unnoticed
+  // here: the invoice said paid and still showed money owing (2026-09-24
+  // mutation run).
+  // The status and the figure come from different functions, so checking
+  // only the status let "credit notes stop coming off what is owed" go
+  // unnoticed here (2026-09-24 mutation run). This invoice was closed by a
+  // credit note with no money received, and saying "Marked paid (no payments
+  // recorded)" -- the wording for ticking it off by hand -- reads as though
+  // the credit note had been lost.
+  const settled = (await bodyText(page)).replace(/\s+/g, " ");
+  check("...and it says a credit note settled it, with nothing owed",
+    /Settled in full by credit note/.test(settled) && !/Still owed/.test(settled) && !/Marked paid \(no payments recorded\)/.test(settled),
+    settled.slice(0, 300));
 
   // Marked part-paid by hand before payments existed: Mark as paid invents nothing.
   await page.goto(`${BASE}/invoices/${I4}`, { waitUntil: "networkidle0" });

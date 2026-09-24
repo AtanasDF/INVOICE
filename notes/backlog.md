@@ -194,8 +194,11 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   within the fit margin while zoomed now zooms out to where it fits, after the usual
   settle; a page lost altogether still goes back to 1× as before. Same suite: 2.2× → 1×
   and found again. `test-autozoom` 8/8 and `test-conditions` 12/12 still.
-- [ ] Compute VAT from a printed rate when the receipt prints no VAT figure (GO OUTDOORS
+- [x] Compute VAT from a printed rate when the receipt prints no VAT figure (GO OUTDOORS
   prints "20%" per line and a total; Gemini leaves VAT empty, Claude infers £4.83).
+  **Already built and this line was stale** (found 2026-09-24): `src/lib/vatFromRate.ts`,
+  used by the scan page and the inbox import, recomputed when the total is edited, marked
+  as worked out so whoever reviews it sees why. `test-vat-from-rate` covers it.
 - [ ] A "getting ready" indicator on the scanner's cold start: the first open on a phone
   downloads 13 MB of OpenCV before any green lines can appear, and it looks broken until
   then. Not started — "don't change anything for now".
