@@ -44,7 +44,7 @@ try {
   await fill("name", "Mrs Henderson");
   await fill("email", "henderson@example.com");
   await sleep(300);
-  await clickText(page, "Save client").catch(async () => { await clickText(page, "Save").catch(() => {}); });
+  await clickText(page, "Save customer").catch(async () => { await clickText(page, "Save").catch(() => {}); });
   await sleep(1600);
   check("a customer can be added on an empty account", db.tables.clients.length === 1, JSON.stringify(db.tables.clients.map((c) => c.name)));
 

@@ -132,7 +132,7 @@ try {
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await sleep(400);
-  await clickText(page, "Save client");
+  await clickText(page, "Save customer");
   await sleep(2200);
   t = await bodyText(page);
   // The write has to have been ATTEMPTED, or "nothing was saved" is true

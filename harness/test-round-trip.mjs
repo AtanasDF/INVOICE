@@ -36,7 +36,7 @@ try {
   await sleep(1200);
   check("the name field is there", await set(page, "name", NAME));
   await sleep(300);
-  await clickText(page, "Save client").catch(async () => { await clickText(page, "Save").catch(() => {}); });
+  await clickText(page, "Save customer").catch(async () => { await clickText(page, "Save").catch(() => {}); });
   await sleep(1600);
   const saved = db.tables.clients.find((c) => c.name === NAME);
   check("an awkward name is stored exactly as typed", !!saved, JSON.stringify(db.tables.clients.map((c) => c.name)));

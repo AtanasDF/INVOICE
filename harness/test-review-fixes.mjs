@@ -103,8 +103,14 @@ try {
 
   // A stash meant for /scan doesn't turn a later new invoice into a copy
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  const dash = await page.$('input[type="file"][multiple]');
-  await dash.uploadFile(DIR + "doc1.pdf");
+  // The dashboard's upload tile builds its file input on the tap and takes it
+  // out again, so there is no input sitting in the page to hand a file to.
+  // Go in the way a person does: press the button and answer the chooser.
+  const [chooser] = await Promise.all([
+    page.waitForFileChooser({ timeout: 10000 }),
+    page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Files")?.click()),
+  ]);
+  await chooser.accept([DIR + "doc1.pdf"]);
   await page.evaluate(() => { const a = [...document.querySelectorAll("a")].find((x) => x.getAttribute("href") === "/invoices/new"); a?.click(); });
   await sleep(2500);
   const where = await page.evaluate(() => location.pathname + location.search);

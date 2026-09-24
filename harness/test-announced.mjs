@@ -84,7 +84,7 @@ try {
   await page.goto(`${BASE}/clients/new`, { waitUntil: "networkidle0" });
   await sleep(1400);
   await page.evaluate(() => {
-    const b = [...document.querySelectorAll("button")].find((x) => /^Save client$/.test(x.textContent.trim()));
+    const b = [...document.querySelectorAll("button")].find((x) => /^Save customer$/.test(x.textContent.trim()));
     b?.click();
   });
   await sleep(1200);

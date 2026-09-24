@@ -89,12 +89,22 @@ export default function UploadPanel({ href = "/scan", inboxAddress, onMakeAddres
   //             cannot dismiss that sheet. On Android and on a laptop it goes
   //             straight to pictures; on an iPhone the library is the first row
   //             and that is as far as a web app can take it.
+  // Put it in the document before clicking, and take it out after. A file
+  // input that was never in the document is the shakier of the two paths in
+  // WebKit, and this is the tile an iPhone taps; keeping it hidden off-screen
+  // for the length of one tap costs nothing and removes the question.
   const pick = (accept: string) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = accept;
     input.multiple = true;
-    input.onchange = () => void take(Array.from(input.files ?? []));
+    input.style.cssText = "position:fixed;left:-9999px;width:1px;height:1px";
+    input.onchange = () => {
+      const files = Array.from(input.files ?? []);
+      input.remove();
+      void take(files);
+    };
+    document.body.appendChild(input);
     input.click();
   };
 

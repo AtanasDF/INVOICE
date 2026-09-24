@@ -22,7 +22,15 @@ try {
   const cdp = await page.createCDPSession();
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
   await page.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
-  await page.evaluate(() => { localStorage.clear(); for (const t of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + t, "3"); });
+  // Clear the draft and the tips, NOT the whole of localStorage: the
+  // Supabase session lives there too, and /free-invoice has not been a
+  // public page since 2026-09-22 ("nothing should work before the user
+  // register"), so wiping it redirected this suite to /login and the
+  // button it then could not find was never the point.
+  await page.evaluate(() => {
+    for (const k of ["free-invoice-draft", "free-invoice-signature"]) localStorage.removeItem(k);
+    for (const t of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + t, "3");
+  });
   await page.reload({ waitUntil: "networkidle0" });
   await clickText(page, "Start a quote");
   await sleep(500);
