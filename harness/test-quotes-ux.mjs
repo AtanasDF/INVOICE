@@ -56,6 +56,19 @@ const byLabel = (page, label) => page.evaluate((l) => {
 }, label);
 const typeInto = async (page, label, text) => { const sel = await byLabel(page, label); await page.click(sel); await page.type(sel, text); };
 const hasLabel = (page, label) => page.evaluate((l) => [...document.querySelectorAll("label")].some((x) => x.textContent.trim() === l), label);
+// The address stopped being one <textarea> behind an "Address" <label> and
+// became a block of four boxes with its own heading -- house/street, flat,
+// town, postcode -- which is also where the "Find address" button went: it
+// searches on its own now (Atanas, 2026-09-24). Read it as a person sees it.
+// Town and postcode, not the street box: its wording changes with who the
+// contact is ("Number and street, or where the work is" for a person).
+const hasAddressBlock = (page) => page.evaluate(() =>
+  !!document.querySelector('input[aria-label="Town or city"]') && !!document.querySelector('input[aria-label="Postcode"]'));
+const addressValue = (page) => page.evaluate(() =>
+  ["House number and street", "Number and street, or where the work is", "Flat, building or area", "Town or city", "Postcode"]
+    .map((l) => document.querySelector(`input[aria-label="${l}"]`)?.value ?? "")
+    .filter(Boolean)
+    .join("\n"));
 const pickCustomer = (page, name) => page.evaluate((n) => { const b = [...document.querySelectorAll('[role="radio"]')].find((x) => x.querySelector("span span")?.textContent.trim() === n); if (!b) throw new Error("no customer " + n); b.click(); }, name);
 const listed = (page) => page.evaluate(() => [...document.querySelectorAll('[role="radiogroup"][aria-labelledby] > div')].map((g) => [g.querySelector("p").textContent, ...[...g.querySelectorAll('[role="radio"]')].map((b) => b.querySelector("span span").textContent)]));
 const addLine = async (page, price) => {
@@ -83,14 +96,14 @@ try {
   // Picker: everyone, clients first, then suppliers, no archived.
   await page.goto(`${BASE}/quotes/new`, { waitUntil: "networkidle0" });
   await waitText(page, "Who it's for");
-  check("picker: clients then suppliers, sorted, no archived", JSON.stringify(await listed(page)) === JSON.stringify([["Clients", "Acme Kitchens Ltd", "Bob Brown", "Carol White", "Dan Green", "Jane Customer", "Priv With Vat"], ["Suppliers", "Builders Merchant Ltd"]]), JSON.stringify(await listed(page)));
+  check("picker: customers then suppliers, sorted, no archived", JSON.stringify(await listed(page)) === JSON.stringify([["Customers", "Acme Kitchens Ltd", "Bob Brown", "Carol White", "Dan Green", "Jane Customer", "Priv With Vat"], ["Suppliers", "Builders Merchant Ltd"]]), JSON.stringify(await listed(page)));
   const kinds = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[role="radio"]')].map((b) => [b.querySelector("span span").textContent, b.lastElementChild.textContent])));
   check("picker marks company / private", kinds["Acme Kitchens Ltd"] === "Company" && kinds["Jane Customer"] === "Private" && kinds["Builders Merchant Ltd"] === "Company", JSON.stringify(kinds));
   check("search box shown for a long list", await page.$('input[aria-label="Search customers and suppliers"]') !== null);
   await page.type('input[aria-label="Search customers and suppliers"]', "merch");
   check("search filters to the supplier", JSON.stringify(await listed(page)) === JSON.stringify([["Suppliers", "Builders Merchant Ltd"]]), JSON.stringify(await listed(page)));
   await setField(page, 'input[aria-label="Search customers and suppliers"]', "sam pat");
-  check("search matches a company's contact", JSON.stringify(await listed(page)) === JSON.stringify([["Clients", "Acme Kitchens Ltd"]]), JSON.stringify(await listed(page)));
+  check("search matches a company's contact", JSON.stringify(await listed(page)) === JSON.stringify([["Customers", "Acme Kitchens Ltd"]]), JSON.stringify(await listed(page)));
   await setField(page, 'input[aria-label="Search customers and suppliers"]', "Patel Plumbing");
   await waitText(page, "No one matches");
   check("no match says so", true);
@@ -104,14 +117,14 @@ try {
   await sleep(300);
   const prefilled = await page.evaluate((s) => document.querySelector(s)?.value, await byLabel(page, "Company name"));
   check("name carried over from the search", prefilled === "Patel Plumbing", prefilled);
-  check("company form: name, contact, email, mobile, VAT, address", (await hasLabel(page, "Company name")) && (await hasLabel(page, "Contact name (optional)")) && (await hasLabel(page, "Email")) && (await hasLabel(page, "Mobile")) && (await hasLabel(page, "VAT number (optional)")) && (await hasLabel(page, "Address")));
+  check("company form: name, contact, email, mobile, VAT, address", (await hasLabel(page, "Company name")) && (await hasLabel(page, "Contact name (optional)")) && (await hasLabel(page, "Email")) && (await hasLabel(page, "Mobile")) && (await hasLabel(page, "VAT number (optional)")) && (await hasAddressBlock(page)));
   const nameSel = await byLabel(page, "Company name");
   await page.click(nameSel);
   await page.type(nameSel, " L");
   await page.waitForSelector('[role="option"]', { timeout: 10000 });
   await page.evaluate(() => document.querySelector('[role="option"]').click());
   await sleep(200);
-  const afterPick = await page.evaluate((s) => ({ name: document.querySelector(s).value, address: [...document.querySelectorAll("textarea")].find((t) => t.id.endsWith("-address"))?.value }), nameSel);
+  const afterPick = { name: await page.evaluate((s) => document.querySelector(s).value, nameSel), address: await addressValue(page) };
   check("Companies House pick fills the name and registered address", afterPick.name === "Patel Plumbing Ltd" && afterPick.address === "1 Pipe Street\nLondon\nE1 1AA", JSON.stringify(afterPick));
   await typeInto(page, "Contact name (optional)", "Raj Patel");
   await typeInto(page, "Email", "raj@patelplumbing.example");
@@ -146,7 +159,7 @@ try {
   await clickText(page, "+ New customer");
   await clickText(page, "Private person");
   await sleep(200);
-  check("private form: name, email, mobile, address; no VAT or contact", (await hasLabel(page, "Full name")) && (await hasLabel(page, "Email")) && (await hasLabel(page, "Mobile")) && (await hasLabel(page, "Address")) && !(await hasLabel(page, "VAT number (optional)")) && !(await hasLabel(page, "Contact name (optional)")));
+  check("private form: name, email, mobile, address; no VAT or contact", (await hasLabel(page, "Full name")) && (await hasLabel(page, "Email")) && (await hasLabel(page, "Mobile")) && (await hasAddressBlock(page)) && !(await hasLabel(page, "VAT number (optional)")) && !(await hasLabel(page, "Contact name (optional)")));
   await clickText(page, "Add customer");
   await waitText(page, "Add their name.");
   check("a name is needed", !db.tables.clients.some((c) => c.name === ""));
@@ -157,11 +170,17 @@ try {
   check("a bad email is caught", !db.tables.clients.some((c) => c.name === "Mary O'Neill"));
   await typeInto(page, "Email", "example.com");
   await typeInto(page, "Mobile", "07911 123456");
-  await page.type('input[placeholder^="Find address"]', "SW1A 2AA");
-  await page.waitForSelector('ul[aria-label="Addresses"] li', { timeout: 10000 });
-  await page.evaluate(() => document.querySelector('ul[aria-label="Addresses"] li').click());
-  await sleep(200);
-  const addr = await page.evaluate(() => [...document.querySelectorAll("textarea")].find((t) => t.id.endsWith("-address"))?.value);
+  // No button to press: typing a whole postcode lists its addresses by
+  // itself after a pause.
+  await page.type('input[aria-label="Postcode"]', "SW1A 2AA");
+  await page.waitForSelector('ul[aria-label="Addresses found"] li', { timeout: 10000 });
+  // The first row is "Use <postcode> as typed", which fills the postcode
+  // alone -- deliberately, for an address too new to be listed. Pick the
+  // real one.
+  await page.waitForFunction(() => [...document.querySelectorAll('ul[aria-label="Addresses found"] li')].some((li) => /Downing Street/.test(li.textContent)), { timeout: 10000 });
+  await page.evaluate(() => [...document.querySelectorAll('ul[aria-label="Addresses found"] li')].find((li) => /Downing Street/.test(li.textContent)).querySelector("button").click());
+  await sleep(400);
+  const addr = await addressValue(page);
   check("address finder fills the address", addr === "10 Downing Street\nLondon\nSW1A 2AA", addr);
   await clickText(page, "Add customer");
   await waitText(page, "Private customer");
