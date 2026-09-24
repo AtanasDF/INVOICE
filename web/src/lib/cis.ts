@@ -18,7 +18,7 @@ export function withKinds<T extends { kind?: "labour" | "materials" }>(items: T[
 }
 
 export function labourNet(items: CisLine[]): number {
-  return pence(items.filter((i) => (i.kind ?? "labour") === "labour").reduce((s, i) => s + i.quantity * i.unitPrice, 0)) / 100;
+  return pence(items.filter((i) => (i.kind ?? "labour") === "labour").reduce((s, i) => s + i.quantity * i.unitPrice, 0)) / 200;
 }
 
 // A deposit or discount taken off as labour can outweigh the labour lines;

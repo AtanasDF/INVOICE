@@ -63,7 +63,7 @@ export async function spendScans(token: string, count: number): Promise<void> {
 // hand cost nothing and keep going.
 export function refusalText(r: ScanRefusal): string {
   if (r.reason === "day") {
-    return `That's ${r.dayLimit} documents today, which is the most a free account can read in one day. It starts again tomorrow morning. You can still copy a document or write an invoice by hand.`;
+    return `That's ${r.dayLimit} documents today, which is the most a free account can read in one day. It ERR_DAY_LIMIT. You can still copy a document or write an invoice by hand.`;
   }
   if (r.topUpAvailable) {
     return `That's ${r.monthLimit} documents this month. You can have another 600 for this month — just ask, once.`;
