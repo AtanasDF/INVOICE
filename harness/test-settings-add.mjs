@@ -44,6 +44,12 @@ const click = (page, text) => page.evaluate((t) => {
   if (!b) throw new Error("no button: " + t);
   b.click();
 }, text);
+const clickWhenThere = async (page, text) => {
+  await page.waitForFunction(
+    (t) => [...document.querySelectorAll("button,a,label")].some((x) => x.textContent.trim() === t && !x.disabled),
+    { timeout: 30000 }, text);
+  await click(page, text);
+};
 // A choice in the sheet carries its hint in the same element, so it is
 // clicked by its first line.
 const pick = (page, label) => page.evaluate((t) => {
@@ -81,6 +87,10 @@ const fakeCamera = (page, state) =>
 const asks = (page) => page.evaluate(() => ({ gum: Number(sessionStorage.getItem("gum") ?? 0), perm: Number(sessionStorage.getItem("perm") ?? 0) }));
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-settings-add" });
+// /invoices/new guards an unsaved draft with a "Leave site?" dialog. Nothing
+// answered it, so the navigation away never completed, the page stayed put,
+// and the "+ Add" it then looked for was on a page it had never reached.
+page.on("dialog", (d) => { d.accept().catch(() => {}); });
 try {
   const cdp = await page.createCDPSession();
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
@@ -164,10 +174,23 @@ try {
   await shot(page, "settings-invoice-footer");
 
   // ── One Add button ────────────────────────────────────────────────
+  // The sheet was taken off the dashboard on 2026-09-23 (37ec284): it sat
+  // directly under the four buttons it repeated. It "stays on the list pages,
+  // where it is still the only way in", so that is where it is checked now.
+  // The old check looked at the dashboard for "+ Add" and passed on the "+ Add
+  // a customer" in the People panel -- green for a button that was not there,
+  // and then the click after it hung the suite.
   await page.goto(BASE + "/", { waitUntil: "networkidle0" });
   await sleep(700);
-  check("dashboard: one Add button, not a stack of them", (await bodyText(page)).includes("+ Add") && !(await bodyText(page)).includes("+ Add a receipt manually"));
-  await click(page, "+ Add");
+  const dashAdd = await page.evaluate(() =>
+    [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "+ Add"));
+  check("the dashboard does not repeat its own tiles in an Add sheet", !dashAdd, String(dashAdd));
+
+  await page.goto(BASE + "/receipts", { waitUntil: "networkidle0" });
+  await sleep(700);
+  check("a list page still has the one Add button", (await page.evaluate(() =>
+    [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "+ Add").length)) === 1);
+  await clickWhenThere(page, "+ Add");
   await sleep(300);
   const sheet = await page.evaluate(() => {
     const d = document.querySelector('[role="dialog"]');
@@ -191,7 +214,7 @@ try {
   // A list page's own way in joins the same sheet, never twice.
   await page.goto(BASE + "/invoices", { waitUntil: "networkidle0" });
   await sleep(700);
-  await click(page, "+ Add");
+  await clickWhenThere(page, "+ Add");
   await sleep(300);
   const invoicesSheet = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] a')].map((a) => `${a.innerText.split("\n")[0]}|${new URL(a.href).pathname}${new URL(a.href).search}`));
   check("invoices list: its own scan is in the sheet, nothing listed twice",
@@ -294,7 +317,7 @@ try {
     await b4.close();
   }
 } catch (e) {
-  console.log("ERROR", e.message);
+  console.log("ERROR", e.message, "| on", await page.url().catch(() => "?"));
   await shot(page, "settings-add-error").catch(() => {});
   await browser.close().catch(() => {});
 }

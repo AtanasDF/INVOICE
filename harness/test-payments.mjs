@@ -13,6 +13,12 @@ const setVal = (page, sel, v) => page.evaluate((s, v) => { const el = document.q
 const waitText = (page, t) => page.waitForFunction((x) => document.body.innerText.includes(x), { timeout: 20000 }, t);
 const i1 = () => db.tables.invoices.find((i) => i.id === I1);
 const { browser, page } = await launchSignedIn(db, { base: BASE });
+// Removing a payment asks first -- "Remove the £500.00 received on ...? The
+// balance goes back up, and this can't be undone." -- which was added after
+// this suite was written. With nothing answering it, the click hung inside
+// page.evaluate until the protocol timed out, and the suite stopped at check 7
+// of 13 while reporting {"passed":6,"total":6}.
+page.on("dialog", (d) => d.accept());
 try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/invoices/${I1}`, { waitUntil: "networkidle0" });

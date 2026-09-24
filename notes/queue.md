@@ -162,6 +162,14 @@ screens moved under them:
       finder, which no longer exists; `test-address-fields` asserts its absence and covers
       this ground. Flagged rather than deleted (hard rule 1) — say the word.
     - `test-deposits` — stale: a 15 s wait times out, the screen moved under it.
+    - `test-settings-add` — **27 of its ~30 checks pass, then it dies**, and it is out of
+      the run until it doesn't. Two causes found and fixed along the way (its dashboard
+      "+ Add" check was passing on the "+ Add a customer" in the People panel, and the
+      Add sheet moved to the list pages on 2026-09-23); what remains is that after picking
+      "Make an invoice" it never finds "+ Add" on `/invoices`, though a fresh visit to that
+      page has exactly one. Something about arriving from `/invoices/new` — an unsaved-draft
+      guard is the likeliest — leaves it somewhere else. Needs a quiet machine and a look
+      at the URL it is actually on.
     - `test-free-quote` — stale: "no button: Start a quote"; the free page's chooser changed.
     - `test-quotes` — 6/8, reading a `<select>` that is now the VAT-rate picker.
     - `test-quote-requests` — **import fixed**: `quoteRequestEmail.ts` (and `siteName.ts`)

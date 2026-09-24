@@ -4,7 +4,14 @@ import { installFakeSession } from "./fake-session.mjs";
 const OUT = new URL(".", import.meta.url).pathname;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const url = (p) => (process.env.BASE ?? "http://localhost:3000") + p;
-export const shot = (page, name) => page.screenshot({ path: OUT + name + ".png" });
+// A screenshot is a debugging aid and must never be able to fail a run. It
+// used to be able to: a slow `Runtime.callFunctionOn` on a loaded Mac, or a
+// page already closed while handling an error, threw straight out of the
+// suite -- test-payments died at check 7 of 13 on one, and reported
+// {"passed":6,"total":6}, which reads as green. Swallowed, with a word on
+// stderr so it is not silent.
+export const shot = (page, name) =>
+  page.screenshot({ path: OUT + name + ".png" }).catch((e) => console.error("(screenshot skipped:", e.message.split("\n")[0] + ")"));
 export async function launch(clip) {
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",

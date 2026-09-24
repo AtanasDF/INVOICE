@@ -380,4 +380,11 @@ export async function clickText(page, text) {
   if (!ok) throw new Error("no button: " + text);
 }
 export const bodyText = (page) => page.evaluate(() => document.body.innerText);
-export const shot = (page, name) => page.screenshot({ path: OUT + name + ".png", fullPage: true });
+// A screenshot is a debugging aid and must never be able to fail a run. It
+// used to be able to: a slow `Runtime.callFunctionOn` on a loaded Mac, or a
+// page already closed while handling an error, threw straight out of the
+// suite -- test-payments died at check 7 of 13 on one, and reported
+// {"passed":6,"total":6}, which reads as green. Swallowed, with a word on
+// stderr so it is not silent.
+export const shot = (page, name) =>
+  page.screenshot({ path: OUT + name + ".png", fullPage: true }).catch((e) => console.error("(screenshot skipped:", e.message.split("\n")[0] + ")"));
