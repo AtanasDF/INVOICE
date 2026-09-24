@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { money } from "@/lib/money";
+import { pricesFor, savedPrices } from "@/lib/savedPrices";
 import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -272,6 +273,22 @@ export default function NewInvoicePage() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
   }, [clientId, pastInvoices]);
+
+  // What this customer has been charged before is the better guess, but it
+  // only helps on the SECOND invoice to the same person -- and that is not
+  // where the time goes. The first invoice to a new customer is usually for
+  // the same work as the last one to somebody else, so everything you
+  // charge for is offered after it.
+  const everything = useMemo(() => savedPrices(pastInvoices), [pastInvoices]);
+  const offered = useMemo(
+    () =>
+      pricesFor(
+        everything,
+        suggestedItems.map((s) => ({ description: s.description, unitPrice: s.unitPrice, vatRate: s.vatRate, timesUsed: s.count, lastUsed: "" })),
+        8
+      ),
+    [everything, suggestedItems]
+  );
 
   // The VAT rate this client's most recent invoice used for a line with
   // this exact description -- scoped to (client, item), not the item
@@ -769,16 +786,20 @@ export default function NewInvoicePage() {
           emptyOption="Select a customer or company"
         />
 
-        {suggestedItems.length > 0 && (
+        {offered.length > 0 && (
           <div>
-            <p className="text-xs text-neutral-500">Used before for this customer — tap to add a line:</p>
+            <p className="text-xs text-neutral-500">
+              {suggestedItems.length > 0
+                ? "What you charge for, this customer's first — tap to add a line:"
+                : "What you charge for — tap to add a line:"}
+            </p>
             <div className="mt-1 flex flex-wrap gap-2">
-              {suggestedItems.map((s) => (
+              {offered.map((s) => (
                 <button
                   key={s.description}
                   type="button"
                   onClick={() => addSuggestedItem(s.description, s.unitPrice, s.vatRate)}
-                  className="rounded-full border px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                  className="rounded-full border px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                 >
                   + {s.description} ({money(s.unitPrice)})
                 </button>
