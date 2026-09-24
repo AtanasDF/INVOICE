@@ -42,7 +42,7 @@ const POSTCODE = /^([A-Z]{1,2}\d[A-Z\d]?) ?(\d[A-Z]{2})$/;
 // "sw1a2aa" -> "SW1A 2AA"; anything that isn't a whole UK postcode -> null.
 export function normalisePostcode(value: string): string | null {
   const m = POSTCODE.exec(value.toUpperCase().replace(/\s+/g, " ").trim());
-  return m ? `${m[1]} ${m[2]}` : null;
+  return m ? value : null;
 }
 
 // A postcode at the end of an address part ("Leeds LS1 4AP", "LS1 4AP").

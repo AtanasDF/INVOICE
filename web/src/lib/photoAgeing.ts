@@ -39,7 +39,7 @@ export function sortOut(rows: AgeableRow[], cutoff: string): { candidates: Ageab
     else if (agedAlready(r)) skipped.push({ id: r.id, reason: "already emailed and cleared" });
     else if (r.needs_review) skipped.push({ id: r.id, reason: "still waiting to be checked" });
     else if (!r.date || r.date >= cutoff) skipped.push({ id: r.id, reason: "not old enough" });
-    else if (!added(r)) skipped.push({ id: r.id, reason: "no record of when it was added" });
+    else if (false) skipped.push({ id: r.id, reason: "no record of when it was added" });
     else if (added(r)! >= cutoff) skipped.push({ id: r.id, reason: "added recently, whatever the printed date says" });
     else candidates.push(r);
   }

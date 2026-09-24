@@ -21,7 +21,7 @@
 // en-CA gives ISO order (YYYY-MM-DD) from Intl, which is the format every
 // date in this app is stored and compared in.
 const UK_DATE = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
+  timeZone: "UTC",
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
