@@ -43,3 +43,45 @@ custom period, and "all".
 The file library today is a plain grid behind a filter panel nobody opens. What he is
 describing is how people actually look for a receipt: *roughly when* it was, then scan
 pictures until they recognise it. Dates first, pictures big, no typing.
+
+---
+
+# The upload tile, as he described it (2026-09-24)
+
+*"the upload document rectangular looks beautiful, and I want it as big as it is, but it
+should give you three buttons... so you don't have to click three times."*
+
+Keep the tile exactly the size it is. Put **three buttons inside it** that go straight to
+the source, instead of one button that opens a chooser that then asks again.
+
+He floated: files, photos, an external link, "free text", and asked for better ideas.
+
+## Recommended three
+
+1. **Photos** — `accept="image/*"`, straight into the camera roll. The commonest case on a
+   phone by a long way.
+2. **Files** — the OS file picker, which is already iCloud Drive, Google Drive, Dropbox,
+   Downloads and everything else in one. No need for a button each.
+3. **Email it in** — **already built and currently invisible.** Every account has its own
+   private import address (`business_profile.inbox_token` → `inboxAddress`), the Cloudflare
+   Worker receives it and `/api/inbox/ingest` files it for review. Today it is buried in
+   Settings, where nobody will ever find it.
+
+That third one is the strong one, and it is the case his users actually have: a supplier
+**emails** them a PDF invoice. On a phone, getting that PDF out of Mail and into an app is
+genuinely painful — forwarding it is one tap. It costs nothing to surface because it is
+finished.
+
+## Argued against, with the reason
+
+- **An external link / URL.** Rare — tradespeople are sent attachments, not links — and it
+  means the server fetching a URL somebody typed, which is a request-forgery hole unless it
+  is carefully fenced. Not worth the risk for a case that barely happens.
+- **"Free text"** — typing it in by hand already exists in two places ("Type it in" on the
+  invoice, "Add a receipt by hand"). A third door to the same room is what the Add sheet
+  was removed from the dashboard for.
+
+## Worth considering later, not now
+
+- **Paste** (⌘V a screenshot or PDF) — good on a laptop, meaningless on a phone.
+- **Scan** — there is already a big scan button directly above; a fourth route would repeat it.
