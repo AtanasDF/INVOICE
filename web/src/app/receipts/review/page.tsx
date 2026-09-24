@@ -50,6 +50,12 @@ export default function ReviewQueuePage() {
   const [drafts, setDrafts] = useState<Record<string, DraftState>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A refusal about ONE receipt, kept against that receipt. This page shows
+  // the whole queue at once, so a message at the top of it says nothing about
+  // which of five bills is missing a due date -- and on a phone, with that row
+  // scrolled into view, it is not on screen at all, so the button reads as
+  // dead. `error` stays for the page's own failure to load.
+  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
     Promise.all([receiptsStore.all(), clientsStore.all(), businessProfileStore.get()])
@@ -66,6 +72,9 @@ export default function ReviewQueuePage() {
 
   function updateDraft(id: string, patch: Partial<DraftState>) {
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+    // Typing in the row is the start of a new attempt: the old refusal must
+    // not outlive the thing it described.
+    setRowError((e) => (e?.id === id ? null : e));
   }
 
   function clientName(id: string) {
@@ -77,10 +86,10 @@ export default function ReviewQueuePage() {
     const isCredit = r.documentType === "credit_note";
     const isInvoice = r.documentType === "invoice";
     if (isInvoice && !draft.paid && !draft.dueDate) {
-      setError("A bill to be paid needs a due date.");
+      setRowError({ id: r.id, message: "A bill to be paid needs a due date." });
       return;
     }
-    setError(null);
+    setRowError(null);
     setBusyId(r.id);
     try {
       const total = parseFloat(draft.totalAmount) || 0;
@@ -98,7 +107,7 @@ export default function ReviewQueuePage() {
       });
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
     } catch (err) {
-      setError(saveFailed(err, "Could not save this receipt."));
+      setRowError({ id: r.id, message: saveFailed(err, "Could not save this receipt.") });
     } finally {
       setBusyId(null);
     }
@@ -106,13 +115,13 @@ export default function ReviewQueuePage() {
 
   async function discard(r: Receipt) {
     if (!window.confirm(`Discard ${r.vendor || "this document"}? It won't be saved to your records, and the email it came from is the only copy left.`)) return;
-    setError(null);
+    setRowError(null);
     setBusyId(r.id);
     try {
       await receiptsStore.remove(r.id);
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
     } catch (err) {
-      setError(saveFailed(err, "Could not remove this receipt."));
+      setRowError({ id: r.id, message: saveFailed(err, "Could not remove this receipt.") });
     } finally {
       setBusyId(null);
     }
@@ -262,6 +271,8 @@ export default function ReviewQueuePage() {
                     )}
 
                     {r.clientId && <p className="text-xs text-neutral-500">Filed under {clientName(r.clientId)}.</p>}
+
+                    {rowError?.id === r.id && <p role="alert" className="text-sm text-red-600">{rowError.message}</p>}
 
                     <div className="flex gap-3">
                       <button
