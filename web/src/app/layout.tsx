@@ -8,7 +8,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   // Every other page sets its own and gets the name added.
-  title: { default: `${SITE_NAME} — invoices and receipts for the self-employed`, template: `%s` },
+  title: { default: `${SITE_NAME} — invoices and receipts for the self-employed`, template: `%s \u00b7 ${SITE_NAME}` },
   description:
     "Free invoicing and expenses for the self-employed. Make an invoice, photograph a receipt and see what you're owed — on your phone.",
   applicationName: SITE_NAME,
