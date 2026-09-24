@@ -16,20 +16,20 @@ Rule for the night: **a green suite must have earned it.**
 These came after the list below was written. They are features, not repairs, and they go
 first because he asked for them. Briefs in `notes/file-library-design.md`.
 
-0.1 **Swipe between the three dashboard panels.** Only the strip moves; header, scanner
+0.1 **[done]** **Swipe between the three dashboard panels.** Only the strip moves; header, scanner
     and tabs stay put. Follows the finger, gives at the ends, never steals vertical
     scrolling, as tall as the panel you are on. *(Component written, not yet wired.)*
-0.2 **Smooth movement everywhere else** — press feedback on buttons and tiles, a soft
+0.2 **[done]** **Smooth movement everywhere else** — press feedback on buttons and tiles, a soft
     transition between pages. Both must honour "reduce motion", which the app currently
     respects in **zero** places (`notes/accessibility-spec.md`).
-0.3 **The file library, rebuilt**: title that opens the full library, a year/month/day
+0.3 **[done]** **The file library, rebuilt**: title that opens the full library, a year/month/day
     roller under it, a button for a period of his own, and the documents themselves in a
     strip that slides sideways — about five on screen, big enough to recognise. Tap one to
     open it. Sits directly under the upload tile.
-0.4 **A segmented switch** on that strip: Receipts · Invoices · Quotes.
-0.5 **The upload tile, three buttons**: Photos · Files · **Email it in** — the last already
+0.4 **[done]** **A segmented switch** on that strip: Receipts · Invoices · Quotes.
+0.5 **[done]** **The upload tile, three buttons**: Photos · Files · **Email it in** — the last already
     built and currently buried in Settings, so it costs nothing but wiring and wording.
-0.6b **First-time explanations where there are none.** He asked whether every click has a
+0.6b **[done]** **First-time explanations where there are none.** 24 tips now, every screen. He asked whether every click has a
     little explanation for new users. It is built -- `Tip`, shown the first few times a
     screen is opened, remembered per device in `tip:<id>` -- and there are **19** of them.
     But **five screens have none**, and one of them is the worst possible omission:
@@ -45,7 +45,7 @@ first because he asked for them. Briefs in `notes/file-library-design.md`.
     Not a tip on *every click*: that is how people learn to dismiss things without reading.
     One short note per screen, the first few times, which is the pattern already there.
 
-0.6 **Paste and drag-and-drop**, adding no buttons: the tile becomes a drop zone and the
+0.6 **[done]** **Paste and drag-and-drop**, adding no buttons: the tile becomes a drop zone and the
     page listens for a paste. Solid on a laptop and on iPad; **not promised on iPhone**.
 
 ## A. The checks that lie
@@ -138,3 +138,29 @@ listed there and pulled into this file as it is decided.
 - Royal Mail house numbers — costs money, `notes/house-numbers-decision.md`, his call.
 - The paywall, the app stores, the offline scan queue — waiting on decisions or an iPhone.
 - Anything that needs his trading name and address.
+
+
+---
+
+## Where it got to (2026-09-24, kept as it went)
+
+**Built and pushed tonight:** the swipe · the feel and the first reduce-motion support the
+app has ever had · the upload panel's three doors, with paste and drag · the file library
+strip with the Photos/Files switch, the roller and the period picker · first-time notes on
+the five screens that had none.
+
+**Four real bugs found in my own new code, by testing it rather than trusting it:**
+1. The swipe read its drag distance from state, which lags a render — so a **fast flick**
+   reached the end still reading zero and nothing moved.
+2. The roller's Month column was written `value.month === null ? [] : MONTHS`, which left it
+   **permanently empty** — and my own check passed anyway, because it counted documents and
+   "all year" happened to hold the same two as March. Exactly the vacuous-check class I
+   built a tool to hunt, written an hour later, by me.
+3. The Photos|Files switch used `role="tab"`, so every count of the dashboard's three panels
+   found five.
+4. The 320px sweep reported a **clipped** element as pushing the page sideways — it allowed
+   `overflow-x: auto|scroll` on an ancestor but not `hidden`.
+
+**Still to do from the list below:** the mutation run, the suites that never run, the four
+questions on the screens never asked them, empty/overloaded/failed-read, the money
+combinations, and the accessibility work now specified in `notes/accessibility-spec.md`.
