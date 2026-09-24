@@ -5,6 +5,7 @@ import { money } from "@/lib/money";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BusinessProfile,
   Client,
   businessProfileStore,
   clientsStore,
@@ -20,6 +21,7 @@ import { isOverdue } from "@/lib/invoiceStatus";
 import SwipePanels from "@/components/SwipePanels";
 import UploadPanel from "@/components/UploadPanel";
 import FileStrip from "@/components/FileStrip";
+import GettingStarted from "@/components/GettingStarted";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
@@ -146,6 +148,7 @@ function Dashboard() {
   const [contacts, setContacts] = useState<Client[]>([]);
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [allReceipts, setAllReceipts] = useState<Receipt[]>([]);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   // Worked out where the VAT setting is to hand, not in the render: an issued
   // invoice is totalled under the setting it was issued under, never the
   // account's current one.
@@ -247,6 +250,7 @@ function Dashboard() {
       // before it's actually been checked.
       const monthReceipts = receipts.filter((r) => r.date.slice(0, 7) === thisMonth && !r.needsReview);
       setInbox(profile.inboxToken ? inboxAddress(profile.inboxToken) : null);
+      setProfile(profile);
       setTax(estimateTax({ invoices, creditNotes, receipts, vatRegistered: profile.vatRegistered, today }));
       setMonthTotal(monthReceipts.reduce((s, r) => s + r.amount, 0));
       setMonthVat(monthReceipts.reduce((s, r) => s + r.vatAmount, 0));
@@ -550,6 +554,17 @@ function Dashboard() {
           <Link href="/quotes/new" className="inline-block py-1 font-medium text-neutral-700 underline">Make a quote</Link>
         </div>
       </section>
+
+      {/* What the app still needs before an invoice is right: shown only
+          while something is missing, and put away for good by anyone who
+          would rather get on with it. */}
+      {profile && (
+        <GettingStarted
+          profile={profile}
+          customers={contacts.filter((c) => c.kind === "client" && !c.archived).length}
+          documents={allReceipts.length + allInvoices.length}
+        />
+      )}
 
       {/* Three panels, one page. */}
       <div role="tablist" aria-label="What to look at" className="flex gap-1 rounded-xl border bg-white p-1 shadow-sm">
