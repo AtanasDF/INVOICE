@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Tip from "@/components/Tip";
 import { useRouter } from "next/navigation";
 import {
   AccountKind,
@@ -521,6 +522,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
+        <Tip id="settings-how">How it works: what you put here goes on every invoice you send — your business name, your address and your bank details. The VAT switch changes how new invoices are priced, and it never changes one you have already sent.</Tip>
         <p className="mt-1 text-neutral-600">
           {personal
             ? "Your details and how you sort your spending. Your account and your data are at the bottom."

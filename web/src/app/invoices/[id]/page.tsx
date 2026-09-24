@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Tip from "@/components/Tip";
 import { amount, money } from "@/lib/money";
 import { useParams, useRouter } from "next/navigation";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoiceItem, InvoiceLink, InvoicePayment, PAYMENT_METHOD_LABELS, PaymentMethod, businessProfileStore, clientsStore, creditNotesStore, invoiceLinkUrl, invoiceLinksStore, invoicesStore, paymentsStore, quotesStore } from "@/lib/storage";
@@ -721,6 +722,11 @@ export default function InvoiceViewPage() {
 
   return (
     <div className="space-y-6">
+      <Tip id="invoice-how" className="print:hidden">
+        How it works: record money as it comes in and the invoice keeps its own score &mdash; part paid, then paid,
+        without you setting it. &ldquo;Mark as paid&rdquo; records whatever is still owed. The link is private to this
+        invoice and you can stop it at any time.
+      </Tip>
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-3 py-1 text-sm font-medium ${invoiceStatusBadgeClass(invoice.status, overdue)}`}>

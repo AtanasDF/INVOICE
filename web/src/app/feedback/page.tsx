@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Tip from "@/components/Tip";
 import { usePathname } from "next/navigation";
 import { Feedback, feedbackStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -57,6 +58,7 @@ export default function FeedbackPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Feedback</h1>
+        <Tip id="feedback-how">How it works: this goes straight to the person who builds the app, and your email address comes with it so you get a reply. Tell us what went wrong, or what you wish it did.</Tip>
         <p className="mt-1 text-neutral-600">
           Spotted something wrong, confusing or missing? Tell us. It goes straight to the person who makes this.
         </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Tip from "@/components/Tip";
 import { useEffect, useState } from "react";
 import { Client, clientsStore } from "@/lib/storage";
 import { ANSWER_BADGES, ANSWER_LABELS, QuoteRequest, RequestSupplier, answerKey, offerOf, quoteRequestsStore, requestSuppliersStore } from "@/lib/quoteRequests";
@@ -34,6 +35,7 @@ export default function QuoteRequestsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Quotes</h1>
+        <Tip id="quote-requests-how">How it works: list what you need, send it to a few suppliers, and each gets their own private link to fill in. Their prices come back here side by side, with the cheapest way to buy the lot worked out for you.</Tip>
           <p className="mt-1 text-neutral-600">Ask suppliers to price a list, then compare their prices line by line.</p>
         </div>
         <Link href="/quotes/requests/new" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
