@@ -52,13 +52,16 @@ const wiring = () => page.evaluate(() => {
 try {
   await signIn(page, BASE);
 
-  // --- an invoice saved with nothing filled in ---
-  await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
-  await sleep(1400);
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /save|create/i.test(b.textContent))?.click());
+  // --- a quote saved with nobody to send it to ---
+  // Not an invoice: an empty invoice draft is MEANT to save, and it does. That
+  // was the first version of this check, and it was asking for a refusal that
+  // does not exist and should not.
+  await page.goto(`${BASE}/quotes/new`, { waitUntil: "networkidle0" });
+  await sleep(1600);
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /save quote/i.test(b.textContent))?.click());
   await sleep(1200);
   let w = await wiring();
-  check("a refused invoice says something", w.alertCount > 0, JSON.stringify(w));
+  check("a quote with nobody to send it to is refused, out loud", w.alertCount > 0, JSON.stringify(w));
   check("...and every error names the field it is about", w.orphans.length === 0, JSON.stringify(w.orphans));
   check("...and no field is marked wrong with nothing to read", w.mute.length === 0, JSON.stringify(w.mute));
 

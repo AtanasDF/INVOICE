@@ -1,5 +1,7 @@
 "use client";
 
+const MISSING_TOTAL = "Enter the total paid before saving.";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
@@ -203,9 +205,11 @@ export default function NewReceiptPage() {
     return findDuplicate({ clientId, vendor, invoiceNumber: null, date, gross: netGbp + vatGbp, isCreditNote: false }, receipts);
   }
 
+  // Named so the box and the message can point at each other without the two
+  // drifting apart.
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
-    if (!totalAmount) return setError("Enter the total paid before saving.");
+    if (!totalAmount) return setError(MISSING_TOTAL);
     if (currency !== "GBP" && !fxRateInput) {
       setError("Enter an exchange rate before saving (or wait for it to load).");
       return;
@@ -342,6 +346,9 @@ export default function NewReceiptPage() {
         />
         <div className="grid grid-cols-3 gap-3">
           <input aria-label="Total"
+            id="receipt-total"
+            aria-invalid={error === MISSING_TOTAL || undefined}
+            aria-describedby={error === MISSING_TOTAL ? "receipt-error" : undefined}
             className="col-span-2 rounded-lg border px-3 py-2"
             placeholder={`Total paid (${currency}, incl. VAT)`}
             value={totalAmount}
@@ -434,7 +441,7 @@ export default function NewReceiptPage() {
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
         />
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p id="receipt-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {possibleDuplicate && (
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             This looks like it might already be saved — {possibleDuplicate.vendor || possibleDuplicate.category}, £

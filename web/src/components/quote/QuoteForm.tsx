@@ -77,6 +77,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
 
   return (
     <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div aria-invalid={error ? true : undefined} aria-describedby={error ? "quote-error" : undefined}>
       <CustomerPicker
         people={clients}
         value={v.clientId}
@@ -88,6 +89,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           setError(null);
         }}
       />
+      </div>
       {/* Atanas, 2026-09-23: "so people can check companies before they send
           the quotation". Right here is the moment -- somebody is about to put
           their prices in front of a company they may know nothing about. When
@@ -207,7 +209,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
         <div className="text-lg font-bold">Total {money(totals.total)}</div>
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p id="quote-error" role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-3">
         <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : saveLabel}
