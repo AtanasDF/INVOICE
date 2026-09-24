@@ -4,6 +4,50 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-24 — His brief, built: sliding panels, the file library, and four bugs of my own (Opus 5)
+
+Atanas dictated a long brief over the evening and then said to get on with it. Everything
+below is on `main` and pushed; the briefs are in `notes/file-library-design.md`,
+`notes/help-chat-design.md`, and the list in `notes/night-list.md`.
+
+**Built to his brief:**
+- **Sliding between the three dashboard panels** with a finger. Only the strip moves. It
+  follows the finger, gives at the ends, never steals vertical scrolling, and is as tall as
+  the panel you are on.
+- **How it feels to press things** — done once in `globals.css` rather than across 190
+  components — and **the first time the app has ever honoured "reduce motion"**, which the
+  accessibility research found it respected in exactly zero places.
+- **The upload tile's three doors**: Photos, Files, and **Email it in** — the last already
+  built months ago and buried in Settings where nobody would have found it. Paste and
+  drag-and-drop added as *ways in* rather than buttons, so his "three buttons" stayed three.
+- **The file library on the dashboard**: one rectangle with a Photos | Files switch (he
+  chose one over two), a year/month/day roller, a period picker, and the documents sliding
+  sideways. Built on scroll-snap, which answers his laptop question for free — the same
+  control rolls under a thumb, scrolls under a wheel and moves under arrow keys.
+- **First-time notes on the five screens that had none**, including the invoice page, the
+  most complicated screen in the app and the only one with no explanation at all. 24 now.
+
+**Four bugs in my own new code, every one found by testing it rather than trusting it:**
+1. The swipe read its drag distance from **state**, which lags a render — so a fast flick
+   reached the end still reading zero and the panel never moved.
+2. The roller's Month column was `value.month === null ? [] : MONTHS`, leaving it
+   **permanently empty** — and my own check passed anyway, because it counted documents and
+   "all year" held the same two as March. **Exactly the vacuous-check class I had built a
+   tool to hunt an hour earlier.** Caught only by probing the column instead of the tick.
+3. The Photos|Files switch used `role="tab"`, so every count of the dashboard's three
+   panels found five.
+4. The 320px sweep called a **clipped** element an overflow: it allowed `overflow-x:
+   auto|scroll` on an ancestor but not `hidden`.
+
+**Research, all three passes saved:** `notes/competitor-research.md` (twelve UK apps — we
+are ahead on auto-capture, which *none* of the nine mainstream ones claim; and **nobody
+shows which field a scan was unsure about**, which is the biggest hole in the market),
+`notes/accessibility-spec.md`, and a correction I had to make to my own writing — **"reading
+age 9" is folklore**, not in GOV.UK guidance, and the ONS holds no such data.
+
+**Ended at 126 suites, 2,240 checks.** Three came back red from the full run and are green
+alone: the four-at-a-time load, the signature already in `CLAUDE.md`.
+
 ## 2026-09-23 — The night list: colour, the front door, the dashboard, the scan limits (Opus 5)
 
 Atanas awake through most of it, steering. Everything below is on `main` and pushed.
