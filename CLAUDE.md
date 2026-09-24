@@ -503,6 +503,30 @@ and are now pinned by suites, so don't undo them:
   wherever a new attempt starts, and when a top-up is granted, offer the way on — the usual
   "Try again" lives in the error box the refusal is standing in (`/scan`, `test-scan-wall`).
 
+## Mutation testing, and the two ways it got onto main
+
+`harness/mutate.mjs` breaks eight real things on purpose -- CIS at half rate, credit notes
+not coming off what is owed, the app asking UTC what day it is, the scan wall speaking in
+error codes -- so the suites can be judged by whether they notice. On 2026-09-24 all eight
+were caught, which is the good news. The bad news is how it went.
+
+**Twice, the mutations reached `main`, which deploys.**
+
+1. A `git add -A` for an unrelated notes file swept all eight into a commit.
+2. Minutes after that was undone, they went back: the pre-commit hook correctly refused the
+   commit, but the `git add` had already **staged** them — and `git checkout -- web/src`
+   restores from the **index**, not from HEAD. So `revert` faithfully put the mutations back
+   and printed *"web/src is back to clean."*
+
+Both are fixed in the tool: `apply` writes `.git/MUTATED` and installs a pre-commit hook
+that refuses while it exists, and `revert` now runs `git reset` before
+`git checkout HEAD --`. Proved by reproducing the exact mistake.
+
+**The rule that generalises:** a command that reports success is not evidence. Both times
+the only thing that actually found this was opening the file and reading the line. Check
+the content, never the summary — the same lesson as verifying backups by content, and the
+same as the suite that printed `{"passed":6,"total":6}` while dying at check 7 of 13.
+
 ## Environment variables
 
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
