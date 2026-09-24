@@ -44,6 +44,10 @@ export default function RecurringInvoicesPage() {
   // AFTER the first press, and both handlers close over the same state, so two
   // presses in one tick both go through -- and this one makes a second draft invoice to the same customer.
   const generating = useRef(false);
+  // Pressing "Make it now" made a draft invoice and left you here, with the
+  // button simply gone: nothing said it had worked, and there was no way to
+  // reach the thing that had just been made.
+  const [made, setMade] = useState<{ id: string; name: string } | null>(null);
 
   const [clientId, setClientId] = useState("");
   const [lineItems, setLineItems] = useState<InvoiceItem[]>([{ ...BLANK_ITEM }]);
@@ -131,9 +135,10 @@ export default function RecurringInvoicesPage() {
     if (generating.current) return;
     generating.current = true;
     setError(null);
+    setMade(null);
     setGeneratingId(item.id);
     try {
-      await invoicesStore.add({
+      const draft = await invoicesStore.add({
         clientId: item.clientId,
         date: today,
         number: draftPlaceholderNumber(),
@@ -144,6 +149,7 @@ export default function RecurringInvoicesPage() {
         status: "draft",
         tags: [],
       });
+      setMade({ id: draft.id, name: clientName(item.clientId) });
     } catch (err) {
       setError(saveFailed(err, "Could not generate this invoice."));
       generating.current = false;
@@ -272,6 +278,12 @@ export default function RecurringInvoicesPage() {
           <div className="text-right text-sm text-neutral-600">Subtotal: {money(totals.subtotal)}</div>
         )}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {made && (
+          <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+            Draft invoice made for {made.name}.{" "}
+            <Link href={`/invoices/${made.id}`} className="font-medium underline">Open it</Link>
+          </p>
+        )}
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {saving ? "Saving…" : "Add recurring invoice"}

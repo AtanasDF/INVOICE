@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { effectiveCategories, withCurrent } from "@/lib/categories";
@@ -56,6 +57,10 @@ export default function ReviewQueuePage() {
   // scrolled into view, it is not on screen at all, so the button reads as
   // dead. `error` stays for the page's own failure to load.
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  // Saving one takes its card off the page. That is clear to look at and
+  // silent to a screen reader, which is told only that something it was
+  // reading has gone.
+  const [done, setDone] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([receiptsStore.all(), clientsStore.all(), businessProfileStore.get()])
@@ -90,6 +95,7 @@ export default function ReviewQueuePage() {
       return;
     }
     setRowError(null);
+    setDone(null);
     setBusyId(r.id);
     try {
       const total = parseFloat(draft.totalAmount) || 0;
@@ -106,6 +112,7 @@ export default function ReviewQueuePage() {
         ...(isInvoice ? { dueDate: draft.dueDate, paid: draft.paid } : {}),
       });
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
+      setDone(`${draft.vendor || "That document"} saved to your records.`);
     } catch (err) {
       setRowError({ id: r.id, message: saveFailed(err, "Could not save this receipt.") });
     } finally {
@@ -140,6 +147,11 @@ export default function ReviewQueuePage() {
       <Tip id="review-how">How it works: check what was read off each one. Once you save it, it counts towards your totals.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {done && (
+        <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+          {done} <Link href="/receipts" className="font-medium underline">See it</Link>
+        </p>
+      )}
 
       {receipts.length === 0 && !error ? (
         <p className="text-sm text-neutral-500">Nothing waiting on review.</p>

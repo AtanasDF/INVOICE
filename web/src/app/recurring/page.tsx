@@ -43,6 +43,9 @@ export default function RecurringExpensesPage() {
   // AFTER the first press, and both handlers close over the same state, so two
   // presses in one tick both go through -- and this one writes the same expense into the record twice.
   const logging = useRef(false);
+  // "Log it" wrote a real expense and said nothing: the row's reminder moved
+  // on and that was the whole of the feedback.
+  const [logged, setLogged] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([recurringExpensesStore.all(), clientsStore.all(), businessProfileStore.get()])
@@ -118,6 +121,7 @@ export default function RecurringExpensesPage() {
     setError(null);
     if (logging.current) return;
     logging.current = true;
+    setLogged(null);
     setLoggingId(item.id);
     try {
       await receiptsStore.add({
@@ -139,6 +143,7 @@ export default function RecurringExpensesPage() {
         tags: [],
         lineItems: [],
       });
+      setLogged(item.description);
     } catch (err) {
       setError(saveFailed(err, "Could not log this expense."));
       logging.current = false;
@@ -223,6 +228,12 @@ export default function RecurringExpensesPage() {
           />
         </div>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {logged && (
+          <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+            {logged} logged as an expense.{" "}
+            <Link href="/receipts" className="font-medium underline">See it</Link>
+          </p>
+        )}
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {saving ? "Saving…" : "Add recurring expense"}

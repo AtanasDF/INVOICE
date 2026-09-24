@@ -279,7 +279,10 @@ export default function ClientsPage() {
       </Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      {merged && <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{merged}</p>}
+      {/* A merge repoints invoices, receipts and quotes and archives one of
+          the two records. Saying so in a plain <p> told a screen reader
+          nothing at all about the largest change on this page. */}
+      {merged && <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{merged}</p>}
       {duplicates.map((pair) => (
         <div key={pairKey(pair)} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
           <p className="text-sm">

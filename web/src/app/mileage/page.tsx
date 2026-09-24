@@ -43,6 +43,9 @@ export default function MileagePage() {
   // AFTER the first press, and both handlers close over the same state, so two
   // presses in one tick both go through -- and this one claims the same trip twice.
   const savingTrip = useRef(false);
+  // The form empties itself and the trip joins the list below, which is
+  // plain enough to look at and silent to a screen reader.
+  const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [measuring, setMeasuring] = useState(false);
   const [measured, setMeasured] = useState<string | null>(null);
@@ -103,6 +106,7 @@ export default function MileagePage() {
     savingTrip.current = true;
     setSaving(true);
     setError(null);
+    setSaved(null);
     try {
       const saved = await receiptsStore.add({
         clientId: "",
@@ -130,6 +134,7 @@ export default function MileagePage() {
         creditOfReceiptId: null,
       });
       setReceipts((prev) => [saved, ...(prev ?? [])]);
+      setSaved(`${milesNum} miles saved as an expense, ${money(claim.amount)}.`);
       setMiles("");
       setPurpose("");
       setMeasured(null);
@@ -212,6 +217,11 @@ export default function MileagePage() {
           </p>
         )}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {saved && (
+          <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+            {saved} <Link href="/expenses" className="font-medium underline">See your expenses</Link>
+          </p>
+        )}
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : "Save the trip"}
         </button>
