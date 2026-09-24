@@ -48,6 +48,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/statement.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/gettingStarted.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/moneyScreen.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/savedPrices.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/savedPrices.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/weeklySummary.ts"
   ]
 }
