@@ -41,7 +41,8 @@ export default function SaveThese({ receipts, clients, from, to, supplier }: {
     try {
       const label = periodLabel(from, to, supplier);
       setStep(`Reading ${receipts.length} document${receipts.length === 1 ? "" : "s"}…`);
-      const items = await gather(receipts, clients, (id) => receiptPagesStore.forReceipt(id), (n, total) => setStep(`Reading ${n} of ${total}…`));
+      const extraPages = await receiptPagesStore.all();
+      const items = await gather(receipts, clients, extraPages, (n, total) => setStep(`Reading ${n} of ${total}…`));
       setStep("Putting it together…");
       const file = await buildExport(items, shape, label);
       saveBlob(file.name, file.blob);

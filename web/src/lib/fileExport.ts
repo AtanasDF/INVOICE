@@ -1,4 +1,4 @@
-import type { Client, Receipt, ReceiptPage } from "@/lib/storage";
+import type { Client, Receipt } from "@/lib/storage";
 import { inlineImage } from "@/lib/receiptImages";
 import { pagesToPdf } from "@/lib/documentPdf";
 import { makeZip, type ZipEntry } from "@/lib/zip";
@@ -45,26 +45,50 @@ export type Gathered = { receipt: Receipt; supplier: string; pages: { dataUrl: s
 // Every page of every document, with its stored photograph fetched and
 // inlined. inlineImage throws rather than skip one: an export missing a
 // receipt without saying so is worse than one that failed.
+//
+// Two things here are about a phone on mobile data rather than a laptop on
+// a desk. The extra pages arrive in ONE query for the whole set -- asking
+// per receipt was a round trip each, and six hundred of those in a row took
+// longer than anyone would wait. And the photographs are fetched a few at a
+// time rather than one after another, since each is a signed URL to
+// storage and the wait is the network, not the work.
+const AT_ONCE = 6;
+
+async function pool<T, R>(items: T[], n: number, each: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(n, items.length) }, async () => {
+      for (let i = next++; i < items.length; i = next++) out[i] = await each(items[i]);
+    })
+  );
+  return out;
+}
+
 export async function gather(
   receipts: Receipt[],
   clients: Client[],
-  pagesOf: (id: string) => Promise<ReceiptPage[]>,
+  allPages: { receiptId: string; pageIndex: number; imageDataUrl: string }[],
   onProgress?: (done: number, total: number) => void
 ): Promise<Gathered[]> {
   const nameById = new Map(clients.map((c) => [c.id, c.name]));
-  const out: Gathered[] = [];
-  for (const [i, r] of receipts.entries()) {
-    const extra = await pagesOf(r.id);
-    const sources = [r.imageDataUrl, ...extra.map((p) => p.imageDataUrl)].filter((s): s is string => !!s);
+  const extraBy = new Map<string, string[]>();
+  for (const p of [...allPages].sort((a, b) => a.pageIndex - b.pageIndex)) {
+    extraBy.set(p.receiptId, [...(extraBy.get(p.receiptId) ?? []), p.imageDataUrl]);
+  }
+
+  let done = 0;
+  const gathered = await pool(receipts, AT_ONCE, async (r) => {
+    const sources = [r.imageDataUrl, ...(extraBy.get(r.id) ?? [])].filter((s): s is string => !!s);
     const pages = [];
     for (const src of sources) {
       const inlined = await inlineImage(src);
       if (inlined) pages.push({ dataUrl: inlined, mediaType: typeOf(inlined) });
     }
-    if (pages.length) out.push({ receipt: r, supplier: nameById.get(r.clientId ?? "") ?? "", pages });
-    onProgress?.(i + 1, receipts.length);
-  }
-  return out;
+    onProgress?.(++done, receipts.length);
+    return pages.length ? { receipt: r, supplier: nameById.get(r.clientId ?? "") ?? "", pages } : null;
+  });
+  return gathered.filter((g): g is Gathered => g !== null);
 }
 
 export async function buildExport(items: Gathered[], shape: ExportShape, label: string): Promise<ExportFile> {

@@ -163,5 +163,52 @@ try {
   check("the supplier with two receipts gets two pages", jewsonPages === 2, `${jewsonPages} pages`);
 
   check("nothing was deleted from the records", db.tables.receipts.length === 5, String(db.tables.receipts.length));
+
+  // ── A real year of paperwork ──
+  // Gathering used to ask the database for a document's extra pages one
+  // receipt at a time -- a round trip each, in a row. On a phone on mobile
+  // data that is the whole of the wait, and nobody would have sat through
+  // it. One query for the set, and the photographs fetched a few at a time.
+  const many = makeDb();
+  Object.assign(many.tables, { receipts: [], receipt_pages: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [], quotes: [] });
+  many.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null });
+  const photo = "data:image/jpeg;base64," + Buffer.alloc(9000, 0xab).toString("base64");
+  const COUNT = 250;
+  for (let i = 0; i < COUNT; i++) {
+    many.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: `2025-${String((i % 12) + 1).padStart(2, "0")}-05`, vendor: `Merchant ${i % 25}`, category: "Supplies", amount: 20, vat_amount: 4, image_data_url: photo, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+  }
+  const { browser: b2, page: p2 } = await launchSignedIn(many, { base: BASE, width: 390, profile: "profile-save-these-many" });
+  try {
+    const cdp2 = await p2.createCDPSession();
+    await cdp2.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
+    for (const f of fs.readdirSync(DL)) fs.unlinkSync(DL + f);
+    await signIn(p2, BASE);
+    await p2.goto(`${BASE}/files`, { waitUntil: "networkidle0" });
+    await p2.waitForFunction(() => document.body.innerText.includes("Save these to your device"), { timeout: 60000 });
+    const started = Date.now();
+    await p2.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Save them")?.click());
+    await sleep(300);
+    await p2.evaluate(() => [...document.querySelectorAll("button")].find((b) => /A folder of files/.test(b.textContent))?.click());
+    for (let i = 0; i < 100; i++) {
+      const t = await p2.evaluate(() => document.body.innerText);
+      if (/saved to your device/.test(t)) break;
+      await sleep(300);
+    }
+    const seconds = Math.round((Date.now() - started) / 1000);
+    const bigZip = fs.readdirSync(DL).find((f) => f.endsWith(".zip"));
+    check(`${COUNT} documents are gathered and zipped in a reasonable time (${seconds}s)`, !!bigZip && seconds < 60, `${seconds}s, file ${bigZip}`);
+
+    if (bigZip) {
+      const entries = readZip(fs.readFileSync(DL + bigZip));
+      check(`all ${COUNT} are in it, and it still opens`, entries.length === COUNT && entries.every((e) => zlib.crc32(e.bytes) === e.crc), `${entries.length} entries`);
+    }
+  } finally { await b2.close(); }
+
+  // NOT COVERED: the "Reading 12 of 250…" line. Every photo above is an
+  // inline data: URL, so gathering is pure work and 250 of them are done
+  // inside a second -- there is nothing to watch. It matters on a phone,
+  // where a photograph is a signed URL and a wait on the network, and that
+  // is the case this harness has no way to stand up honestly. Said here
+  // rather than covered by a check that cannot see its subject.
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }
