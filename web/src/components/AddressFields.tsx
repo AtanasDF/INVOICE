@@ -29,11 +29,19 @@ const autoReady = (p: AddressParts) => (p.postcode.trim() ? !!normalisePostcode(
 // postcode lists the addresses in it, a number and street finds matching
 // ones with their postcode. Picking one fills the fields it knows and leaves
 // the rest alone, so nothing typed is ever wiped.
-export default function AddressFields({ address, onAddress, label = "Address", streetPlaceholder = "House number and street" }: {
+export default function AddressFields({ address, onAddress, label = "Address", streetPlaceholder = "House number and street", mine = false }: {
   address: string;
   onAddress: (next: string) => void;
   label?: string;
   streetPlaceholder?: string;
+  // Whose address this is. The autocomplete tokens tell a browser "this field
+  // holds the user's own address", and it then offers the one it has saved --
+  // which is right in Settings and wrong everywhere else. These same fields
+  // collect CUSTOMERS' addresses and site addresses, where offering the
+  // user's own is how somebody's own address ends up on a customer's record.
+  // WCAG 1.3.5 asks for the tokens on fields "about the user"; this is the
+  // other half of that sentence.
+  mine?: boolean;
 }) {
   const id = useId();
   // The fields hold their own state: reading them back out of one string on
@@ -222,14 +230,14 @@ export default function AddressFields({ address, onAddress, label = "Address", s
   return (
     <div className="space-y-2">
       <span className="text-xs text-neutral-500">{label}</span>
-      <input id={`${id}-line1`} className={INPUT} autoComplete="address-line1" placeholder={streetPlaceholder} aria-label={streetPlaceholder} value={parts.line1} onChange={(e) => set({ line1: e.target.value })} onKeyDown={onEnter} />
-      <input id={`${id}-line2`} className={INPUT} autoComplete="address-line2" placeholder="Flat, building or area (optional)" aria-label="Flat, building or area" value={parts.line2} onChange={(e) => set({ line2: e.target.value })} onKeyDown={onEnter} />
+      <input id={`${id}-line1`} className={INPUT} autoComplete={mine ? "address-line1" : "off"} placeholder={streetPlaceholder} aria-label={streetPlaceholder} value={parts.line1} onChange={(e) => set({ line1: e.target.value })} onKeyDown={onEnter} />
+      <input id={`${id}-line2`} className={INPUT} autoComplete={mine ? "address-line2" : "off"} placeholder="Flat, building or area (optional)" aria-label="Flat, building or area" value={parts.line2} onChange={(e) => set({ line2: e.target.value })} onKeyDown={onEnter} />
       <div className="grid grid-cols-2 gap-2">
-        <input id={`${id}-town`} className={INPUT} autoComplete="address-level2" placeholder="Town or city" aria-label="Town or city" value={parts.town} onChange={(e) => set({ town: e.target.value })} onKeyDown={onEnter} />
+        <input id={`${id}-town`} className={INPUT} autoComplete={mine ? "address-level2" : "off"} placeholder="Town or city" aria-label="Town or city" value={parts.town} onChange={(e) => set({ town: e.target.value })} onKeyDown={onEnter} />
         <input
           id={`${id}-postcode`}
           className={`${INPUT} uppercase`}
-          autoComplete="postal-code"
+          autoComplete={mine ? "postal-code" : "off"}
           autoCapitalize="characters"
           spellCheck={false}
           enterKeyHint="search"

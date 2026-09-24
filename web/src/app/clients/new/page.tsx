@@ -249,9 +249,12 @@ export default function NewClientPage() {
         )}
         {isCompany && check.company && <p className="text-xs text-neutral-500">Company {check.company.number} on the Companies House register.</p>}
         {isCompany && <RegisterNote check={check} />}
+        {/* Somebody else's email, so "off": the "email" token offers the
+            user's own, which is how your own address ends up on a customer's
+            record. */}
         <input aria-label="Email"
           type="email"
-          autoComplete="email"
+          autoComplete="off"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Email (optional)"
           value={email}

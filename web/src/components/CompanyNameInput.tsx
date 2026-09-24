@@ -15,6 +15,9 @@ export { useCompanyLookup };
 // there it is only offered: it is often an accountant's office, not where the
 // business trades.
 export default function CompanyNameInput({
+  // Whose name this is. "organization" tells a browser to offer the user's own
+  // business, which is right in Settings and wrong on a customer form.
+  mine = false,
   value,
   onChange,
   onPick,
@@ -27,6 +30,7 @@ export default function CompanyNameInput({
   labelledBy,
   disabled,
 }: {
+  mine?: boolean;
   value: string;
   onChange: (value: string) => void;
   onPick: (company: CompanyMatch, fillAddress: string | null) => void;
@@ -82,6 +86,7 @@ export default function CompanyNameInput({
         className={className}
         placeholder={placeholder}
         disabled={disabled}
+        autoComplete={mine ? "organization" : "off"}
         aria-labelledby={labelledBy}
         aria-label={id || labelledBy ? undefined : placeholder}
         value={value}

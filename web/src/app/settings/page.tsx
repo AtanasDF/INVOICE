@@ -561,6 +561,7 @@ export default function SettingsPage() {
           <div>
             <label className="text-xs text-neutral-500" htmlFor="business-name">{personal ? "Your name" : "Business name"}</label>
             <CompanyNameInput
+              mine
               id="business-name"
               className="w-full rounded-lg border px-3 py-2"
               lookupPlaceholder="Limited company? Type to find it on Companies House"
@@ -619,7 +620,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <AddressFields address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address"} />
+          <AddressFields mine address={address} onAddress={setAddress} label={personal ? "Your address (optional)" : "Business address"} />
 
           {!personal && (
             <div className="border-t pt-3">
