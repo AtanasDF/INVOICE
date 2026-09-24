@@ -17,6 +17,10 @@ harness/profile/
 harness/gen/
 harness/*.mjpeg
 harness/*.log
+# One-off probes written to answer a single question during a session --
+# _titles.mjs, _lg.mjs and their like. Two got swept into a commit by a
+# `git add -A` on 2026-09-24; a real suite is called test-*.mjs.
+harness/_*.mjs
 
 # Finished feature branches' worktrees: 5.4GB of copies of this repo, every
 # line of it already in git history. The launch config beside them is kept.
