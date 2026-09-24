@@ -1,4 +1,13 @@
 // Supabase errors are plain objects with a message, not Error instances.
+//
+// This one hands the message straight through, so it is ONLY for a call
+// site where everything that can be thrown is a sentence the app wrote
+// itself. Four such sites remain and were each checked on 2026-09-24: the
+// postcode lookup ("Couldn't find one of those postcodes."), the price
+// guide (the route's own `error`), and the two file readers ("Couldn't
+// open that file.", "Could not read this image."). Anything that can carry
+// a database error uses saveFailed instead -- twelve sites did not, and
+// were showing Postgres's own wording to people.
 export function errorText(err: unknown, fallback: string): string {
   const message = (err as { message?: unknown } | null)?.message;
   return typeof message === "string" && message ? message : fallback;

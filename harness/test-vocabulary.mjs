@@ -17,6 +17,11 @@ const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL"
 //   Client entertaining -- an accounting category, and a value already saved
 //                       on rows; it is the trade's own term, not our wording.
 const KEPT = [/\{\{client_name\}\}/g, /Client entertaining/g];
+// The other pair of words for one thing: who you buy from is a supplier on
+// every screen but Needs review, which called it a vendor -- the one place
+// somebody is checking what a machine read, and so the worst place to meet
+// a second word for the same thing. ("Merchant" is used nowhere.)
+const saidVendor = (text) => (text.match(/\bvendors?\b/gi) ?? []);
 // The words around each hit, not just the hit: "client" on its own tells
 // you nothing about which line to go and change.
 const saidClient = (text) => {
@@ -62,6 +67,16 @@ try {
     const loaded = text.length > 60 && !/Application error/.test(text);
     const said = saidClient(text);
     check(`${name}: says customer, never client`, loaded && said.length === 0, loaded ? JSON.stringify(said) : `page did not load: ${text.slice(0, 120)}`);
+  }
+
+  for (const [path, name] of [["/receipts/review", "Needs review"], ["/receipts", "Receipts & bills"], ["/recurring", "Recurring expenses"], ["/files", "File library"]]) {
+    await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" }).catch(() => {});
+    await sleep(1000);
+    const said = await page.evaluate(() => {
+      const labels = [...document.querySelectorAll("[aria-label], [placeholder]")].flatMap((el) => [el.getAttribute("aria-label"), el.getAttribute("placeholder")]);
+      return [document.body.innerText, ...labels.filter(Boolean)].join(" | ");
+    });
+    check(`${name}: who you buy from is a supplier, not a vendor`, saidVendor(said).length === 0, JSON.stringify(said.match(/.{0,40}vendor.{0,40}/gi)?.slice(0, 3)));
   }
 
   // The words a screen reader is given, not only the ones drawn.

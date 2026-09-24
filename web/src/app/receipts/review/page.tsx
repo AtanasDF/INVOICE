@@ -188,9 +188,13 @@ export default function ReviewQueuePage() {
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
                     )}
                     <div className="grid grid-cols-2 gap-3">
-                      <input aria-label="Vendor"
+                      {/* "Supplier" everywhere else, and this is the screen
+                          where somebody checks what a machine read off a
+                          photograph -- the worst place to use a second word
+                          for the same thing. */}
+                      <input aria-label="Supplier"
                         className="rounded-lg border px-3 py-2 text-sm"
-                        placeholder="Vendor"
+                        placeholder="Supplier"
                         value={draft.vendor}
                         onChange={(e) => updateDraft(r.id, { vendor: e.target.value })}
                       />
