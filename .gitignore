@@ -35,6 +35,9 @@ harness/fixtures/*.pdf
 # Screenshots and downloads the suites regenerate on every run. The
 # fixtures/ inputs are kept; these outputs are not.
 harness/*.png
+# PDFs a suite saves while checking a download (test-quotes-ux writes one).
+# fixtures/*.pdf above covers the inputs; these are outputs.
+harness/*.pdf
 harness/downloads/
 harness/gen-bench/
 harness/bench-docs/
