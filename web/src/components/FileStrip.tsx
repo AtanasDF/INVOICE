@@ -86,12 +86,16 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
         <span className="text-xs text-neutral-500">{shown.length} of {all.length}</span>
       </div>
 
-      <div role="tablist" aria-label="Pictures or files" className="flex gap-1 rounded-lg bg-neutral-100 p-1">
+      {/* Not role="tab": this switches what the strip is filtered to, it does
+          not switch between panels, and there is no tabpanel for it. Calling
+          it a tab also made every count of the dashboard's three panels find
+          five. A pressed button is what it actually is. */}
+      <div role="group" aria-label="Pictures or files" className="flex gap-1 rounded-lg bg-neutral-100 p-1">
         {(["photos", "files"] as const).map((m) => (
           <button
             key={m}
-            role="tab"
-            aria-selected={mode === m}
+            type="button"
+            aria-pressed={mode === m}
             onClick={() => setMode(m)}
             className={`${SWITCH} ${mode === m ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
           >

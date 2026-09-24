@@ -31,11 +31,27 @@ bill({ vendor: "Wolseley", supplierId: supplier("Wolseley"), net: 310, due: day(
 bill({ vendor: "Toolstation", supplierId: supplier("Toolstation"), net: 45, type: "receipt", paid: true, review: true }); // waiting to be checked
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 375, profile: "profile-surfaces" });
+// The dashboard holds all three panels at once now, so they can slide, and
+// only the one without `inert` is on screen. Reading the whole body reads all
+// three -- and the file library beside them, which lists everything saved on
+// purpose. A check that something is NOT shown has to ask what is shown.
+const onScreen = (pg) => pg.evaluate(() => {
+  const live = [...document.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hasAttribute("inert"));
+  const lib = document.querySelector('[aria-label="Your file library"]');
+  const all = document.body.innerText;
+  if (!live) return all;
+  const hidden = [...document.querySelectorAll('[role="tabpanel"][inert]')].map((p) => p.innerText);
+  let out = all;
+  for (const h of hidden) out = out.split(h).join("");
+  if (lib) out = out.split(lib.innerText).join("");
+  return out;
+});
+
 try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(2000);
-  const t = await bodyText(page);
+  const t = await onScreen(page);
 
   check("the overdue invoice is on the dashboard", t.includes("INV-OVERDUE"), flat(t).slice(0, 400));
   check("the one not yet late is there too, as money owed", t.includes("INV-SOON"), flat(t).slice(0, 400));

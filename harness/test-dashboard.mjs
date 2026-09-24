@@ -61,9 +61,18 @@ try {
 
   // Upload is a <label> wrapping a file input, not a button, so one tap opens
   // the picker -- the selector has to allow for that.
-  const three = await page.evaluate(() =>
-    [...document.querySelectorAll("main a, main button, main label")].map((e) => e.textContent.trim()).filter((t) => ["Create an invoice", "Copy a document", "Upload a document"].includes(t)));
-  check("three working buttons underneath: create, copy, upload", three.length === 3, JSON.stringify(three));
+  // Four tiles now, since Check a company came up beside Write a quote
+  // (2026-09-24), and uploading grew from a tile into its own panel with three
+  // doors in it -- so it is checked as a panel, below.
+  const tiles = await page.evaluate(() =>
+    [...document.querySelectorAll("main a, main button, main label")].map((e) => e.textContent.trim())
+      .filter((t) => ["Create an invoice", "Write a quote", "Check a company", "Copy a document"].includes(t)));
+  check("four tiles underneath: invoice, quote, check a company, copy", tiles.length === 4, JSON.stringify(tiles));
+  const upload = await page.evaluate(() => {
+    const el = document.querySelector('[aria-label="Upload a document"]');
+    return el ? [...el.querySelectorAll("button")].map((b) => b.textContent.trim()) : null;
+  });
+  check("...and uploading is its own panel with three doors", Array.isArray(upload) && upload.length === 3, JSON.stringify(upload));
 
   const text = await bodyText(page);
   check("writing one by hand is offered beside them", /write one by hand/i.test(text), text.slice(0, 400));

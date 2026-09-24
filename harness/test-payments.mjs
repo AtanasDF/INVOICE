@@ -19,6 +19,22 @@ const { browser, page } = await launchSignedIn(db, { base: BASE });
 // page.evaluate until the protocol timed out, and the suite stopped at check 7
 // of 13 while reporting {"passed":6,"total":6}.
 page.on("dialog", (d) => d.accept());
+// The dashboard holds all three panels at once now, so they can slide, and
+// only the one without `inert` is on screen. Reading the whole body reads all
+// three -- and the file library beside them, which lists everything saved on
+// purpose. A check that something is NOT shown has to ask what is shown.
+const onScreen = (pg) => pg.evaluate(() => {
+  const live = [...document.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hasAttribute("inert"));
+  const lib = document.querySelector('[aria-label="Your file library"]');
+  const all = document.body.innerText;
+  if (!live) return all;
+  const hidden = [...document.querySelectorAll('[role="tabpanel"][inert]')].map((p) => p.innerText);
+  let out = all;
+  for (const h of hidden) out = out.split(h).join("");
+  if (lib) out = out.split(lib.innerText).join("");
+  return out;
+});
+
 try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/invoices/${I1}`, { waitUntil: "networkidle0" });
@@ -96,7 +112,7 @@ try {
 
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await waitText(page, "Awaiting payment");
-  const dash = await bodyText(page);
+  const dash = await onScreen(page);
   check("dashboard counts only the £700 still owed", dash.includes("£700.00") && !dash.includes("£1,200.00") && !dash.includes("£1,200.00"), dash.slice(0, 600));
 } catch (e) {
   console.log("ERROR", e.message);

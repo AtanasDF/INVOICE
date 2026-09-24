@@ -31,8 +31,13 @@ try {
   for (const p of pages) try {
     await page.goto(`${BASE}${p}`, { waitUntil: "networkidle0" }).catch(() => {});
     await sleep(700);
-    const wide = await page.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => { const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.right > window.innerWidth + 1) || getComputedStyle(e).position === "fixed") return false; // inside something that scrolls sideways on purpose (a wide table in its own box) is fine
-      for (let p = e.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === "auto" || o === "scroll") return false; } return true; }).filter((e, _, all) => !all.some((o) => o !== e && o.contains(e))).slice(0, 3).map((e) => `${e.tagName}.${String(e.className).slice(0, 50)} r=${Math.round(e.getBoundingClientRect().right)} "${(e.innerText ?? "").replace(/\s+/g, " ").slice(0, 40)}"`));
+    const wide = await page.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => { const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.right > window.innerWidth + 1) || getComputedStyle(e).position === "fixed") return false; // inside something that scrolls sideways on purpose (a wide table in its own
+      // box) is fine -- and so is inside something that CLIPS, which is what the
+      // dashboard's sliding panels do: two of the three sit off to the right
+      // inside an overflow-hidden frame, where they cannot push the page
+      // anywhere. Only "auto" and "scroll" were allowed before, so a clipped
+      // element was reported as pushing a page it could not reach.
+      for (let p = e.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === "auto" || o === "scroll" || o === "hidden") return false; } return true; }).filter((e, _, all) => !all.some((o) => o !== e && o.contains(e))).slice(0, 3).map((e) => `${e.tagName}.${String(e.className).slice(0, 50)} r=${Math.round(e.getBoundingClientRect().right)} "${(e.innerText ?? "").replace(/\s+/g, " ").slice(0, 40)}"`));
     const sw = await page.evaluate(() => document.documentElement.scrollWidth);
     check(`${p} fits ${WIDTH}px`, sw <= WIDTH + 1 && !wide.length, `scrollWidth ${sw} ${JSON.stringify(wide)}`);
   } catch (e) { console.log("SKIP", p, e.message.slice(0, 80), await page.evaluate(() => location.pathname).catch(() => "")); }
