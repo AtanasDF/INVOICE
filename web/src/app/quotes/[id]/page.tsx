@@ -117,7 +117,10 @@ export default function QuotePage() {
     };
   }, [load]);
 
-  async function run(action: () => Promise<void>) {
+  // Each caller says what it was doing. "Something went wrong." was standing
+  // in for every one of five actions -- fine while the database's own words
+  // showed through underneath it, and useless the moment they stopped.
+  async function run(action: () => Promise<void>, doing: string) {
     setBusy(true);
     busyRef.current = true;
     genRef.current++;
@@ -125,7 +128,7 @@ export default function QuotePage() {
     try {
       await action();
     } catch (err) {
-      setError(saveFailed(err, "Something went wrong."));
+      setError(saveFailed(err, doing));
       await load().catch(() => {});
     } finally {
       busyRef.current = false;
@@ -179,7 +182,7 @@ export default function QuotePage() {
     run(async () => {
       await quotesStore.setStatus(q.id, status, q.status);
       setQuote({ ...q, status });
-    });
+    }, "Couldn't change the quote's status.");
 
   async function saveEdit(v: QuoteFormValue) {
     genRef.current++;
@@ -244,7 +247,7 @@ export default function QuotePage() {
       const linked = await quotesStore.linkInvoice(q.id, invoice.id).catch(() => true);
       if (!linked) throw new Error("Another invoice was linked to this quote at the same time (another tab?). A second draft invoice was made: check Invoices and keep one.");
       router.push(`/invoices/${invoice.id}`);
-    });
+    }, "Couldn't turn this quote into an invoice.");
 
   // The deposit goes out as its own invoice, due in 7 days: it books the
   // work. Claimed and recovered the same way as the final invoice.
@@ -278,7 +281,7 @@ export default function QuotePage() {
       const linked = await quotesStore.linkDeposit(q.id, invoice.id).catch(() => true);
       if (!linked) throw new Error("Another deposit invoice was linked to this quote at the same time (another tab?). A second draft was made: check Invoices and keep one.");
       router.push(`/invoices/${invoice.id}`);
-    });
+    }, "Couldn't raise the deposit invoice.");
 
   // A quote can only be answered once it's sent, so sharing its link marks
   // a draft as sent. Copying it or putting it in a text does that first;
@@ -459,7 +462,7 @@ export default function QuotePage() {
               <button
                 onClick={() => {
                   if (window.confirm("Only do this if no invoice is being made from this quote in another tab or on another device. Put it back?"))
-                    run(async () => { await quotesStore.releaseClaim(q.id, "accepted"); await load(); });
+                    run(async () => { await quotesStore.releaseClaim(q.id, "accepted"); await load(); }, "Couldn't put the quote back.");
                 }}
                 disabled={busy}
                 className={SECONDARY}
@@ -527,7 +530,7 @@ export default function QuotePage() {
             <button
               onClick={() => {
                 if (window.confirm("Only do this if no deposit invoice is being made in another tab or on another device. Clear it?"))
-                  run(async () => { await quotesStore.releaseDeposit(q.id); await load(); });
+                  run(async () => { await quotesStore.releaseDeposit(q.id); await load(); }, "Couldn't release the deposit.");
               }}
               disabled={busy}
               className={SECONDARY}

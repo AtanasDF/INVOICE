@@ -5,6 +5,10 @@ import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText, newId, toda
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
+// Said in words a person can read. Allowing "mock failure" here is what let
+// the database's own wording live on four screens: a check that accepts the
+// leak cannot ever find it.
+const saidPlainly = (t) => /could not|couldn't|failed/i.test(t) && !/mock failure|XX000|PGRST/i.test(t);
 const flat = (t) => t.replace(/\s+/g, " ");
 
 const db = makeDb();
@@ -71,7 +75,7 @@ try {
   await sleep(1600);
   t = await bodyText(page);
   check("a receipt that failed to save isn't in the database", db.tables.receipts.length === 0, JSON.stringify(db.tables.receipts.length));
-  check("the failed save is said out loud", /could not|couldn't|failed|mock failure/i.test(t), flat(t).slice(0, 400));
+  check("the failed save is said out loud", saidPlainly(t), flat(t).slice(0, 400));
   db.fail = {};
   await clickText(page, "Save receipt").catch(async () => { await clickText(page, "Save").catch(() => {}); });
   await sleep(1800);
@@ -90,7 +94,7 @@ try {
   const made = db.tables.invoices.filter((i) => i.tags?.includes("from Q-1"));
   check("no invoice is left behind when the write failed", made.length === 0, JSON.stringify(made.length));
   check("the quote is given back, not left claimed", db.tables.quotes.find((q) => q.id === Q.id)?.status === "accepted", db.tables.quotes.find((q) => q.id === Q.id)?.status);
-  check("the failure is on screen", /could not|couldn't|failed|mock failure/i.test(t), flat(t).slice(0, 400));
+  check("the failure is on screen", saidPlainly(t), flat(t).slice(0, 400));
   db.fail = {};
 
   // 4. The same, but the reply is lost after the invoice was written: the
@@ -140,7 +144,7 @@ try {
   // did to the first version of this check.
   check("the save was actually attempted", db.log.some((e) => e.key === "POST clients"), JSON.stringify(db.log.slice(-3).map((e) => e.key)));
   check("a contact that failed to save isn't in the list", db.tables.clients.length === before.clients, String(db.tables.clients.length - before.clients));
-  check("...and the failure is said out loud", /could not|couldn't|failed|mock failure/i.test(t), flat(t).slice(0, 300));
+  check("...and the failure is said out loud", saidPlainly(t), flat(t).slice(0, 300));
   db.fail = {};
 
   db.fail = { "POST business_profile": 20 };
@@ -149,7 +153,7 @@ try {
   await clickText(page, "Save").catch(() => {});
   await sleep(2200);
   t = await bodyText(page);
-  check("a failed Settings save says so rather than showing Saved", /could not|couldn't|failed|mock failure/i.test(t) && !/^.*\bSaved\b/.test(flat(t).slice(0, 0) || ""), flat(t).slice(0, 300));
+  check("a failed Settings save says so rather than showing Saved", saidPlainly(t) && !/^.*\bSaved\b/.test(flat(t).slice(0, 0) || ""), flat(t).slice(0, 300));
   db.fail = {};
 
   db.fail = { "POST invoices": 20 };
@@ -167,7 +171,7 @@ try {
   await sleep(2400);
   t = await bodyText(page);
   check("an invoice that failed to save isn't in the books", db.tables.invoices.length === before.invoices, String(db.tables.invoices.length - before.invoices));
-  check("...and that failure is said out loud too", /could not|couldn't|failed|mock failure/i.test(t), flat(t).slice(0, 300));
+  check("...and that failure is said out loud too", saidPlainly(t), flat(t).slice(0, 300));
   db.fail = {};
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

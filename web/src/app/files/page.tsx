@@ -10,6 +10,7 @@ import { loadFailed } from "@/lib/errorText";
 import { shortDate } from "@/lib/dates";
 import Tip from "@/components/Tip";
 import EmailFileForm from "@/components/EmailFileForm";
+import SaveThese from "@/components/SaveThese";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -169,6 +170,18 @@ export default function FilesPage() {
           {emailed === 1 ? "One older photo has" : `${emailed} older photos have`} been emailed to you and cleared from here to keep the app free.
           {" "}Those receipts are all still in your records — the supplier, the date, the amount and the VAT are untouched.
         </p>
+      )}
+
+      {/* Acts on whatever the filter is showing, so "this year, from
+          Jewson" is set up once and used for both looking and saving. */}
+      {!loading && !error && files.length > 0 && (
+        <SaveThese
+          receipts={files}
+          clients={clients}
+          from={filterFrom}
+          to={filterTo}
+          supplier={filterSupplierId ? supplierName(filterSupplierId) : ""}
+        />
       )}
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>

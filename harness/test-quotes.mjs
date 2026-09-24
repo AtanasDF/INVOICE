@@ -116,8 +116,13 @@ try {
 
   db.fail["POST invoices"] = 1;
   await clickText(page, "Turn into invoice");
-  await waitText(page, "mock failure on POST invoices");
+  // This used to wait for "mock failure on POST invoices" -- the database's
+  // own words, on screen, which is what it was pinning. It says what it was
+  // trying to do now, and the machine's words stay in the console.
+  await waitText(page, "Couldn't turn this quote into an invoice.");
   await sleep(300);
+  check("a failed write says what it was doing, not what Postgres called it",
+    !/mock failure|XX000/.test(await bodyText(page)), (await bodyText(page)).replace(/\s+/g, " ").slice(0, 200));
   check("invoice failure releases the claim", db.tables.quotes[0].status === "accepted" && db.tables.quotes[0].invoice_id === null && db.tables.invoices.length === 0, JSON.stringify(db.tables.quotes[0]));
 
   // Another device changes the quote; coming back to the tab shows it.

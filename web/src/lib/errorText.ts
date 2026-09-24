@@ -20,8 +20,15 @@ export function saveFailed(err: unknown, fallback: string): string {
   if (code === "23503") return "Something else in your records is linked to this, so it can't be changed.";
   if (code === "42501") return "This account isn't allowed to do that.";
   if (code === "PGRST204") return "This needs a database change that hasn't been run yet. Nothing was saved.";
-  // P0001 is one of our own database functions raising its own sentence.
-  if (code === "P0001" && message) return message;
+  // Our own database functions raise their own sentences, already written
+  // for the person reading them, under a chosen SQLSTATE: P0001, and these
+  // three, which nothing else in this app raises. 23503 and 42501 are NOT on
+  // the list -- Postgres raises those itself, in its own words, and the two
+  // sentences above are what to say instead.
+  //   40001  the answer changed since the page loaded
+  //   55000  this list has gone out / this request is closed
+  //   22023  that isn't an answer the app knows
+  if (["P0001", "40001", "55000", "22023"].includes(code) && message) return message;
   // Anything else: the caller's sentence knows what was being done, which
   // "XX000" never will. The real one goes to the console.
   console.error(fallback, err);
