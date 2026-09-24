@@ -727,7 +727,11 @@ export default function InvoiceViewPage() {
         without you setting it. &ldquo;Mark as paid&rdquo; records whatever is still owed. The link is private to this
         invoice and you can stop it at any time.
       </Tip>
-      <div className="flex items-center justify-between print:hidden">
+      {/* Wraps: this row holds the status buttons on one side and Edit
+          details / Duplicate / Send on the other, and at a large text size
+          the two together are wider than a phone. justify-between with
+          nowrap pushed the second set straight off the screen. */}
+      <div className="flex flex-wrap items-center justify-between gap-y-2 print:hidden">
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-3 py-1 text-sm font-medium ${invoiceStatusBadgeClass(invoice.status, overdue)}`}>
             {invoiceStatusLabel(invoice.status, overdue)}

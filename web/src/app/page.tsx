@@ -50,7 +50,9 @@ import { shortDate } from "@/lib/dates";
 // than doing.
 const TILE = "flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md";
 const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800";
-const TAB = "flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-medium";
+// min-w-0 for the same reason as the upload tile: "Invoices sent" is
+// wider than a third of a phone once the text is turned up.
+const TAB = "min-w-0 flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-medium";
 
 function ScanIcon() {
   return (

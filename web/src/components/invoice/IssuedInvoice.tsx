@@ -48,7 +48,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
           </div>
         )}
         <div className="text-right">
-          <h1 className="text-2xl font-bold">Invoice {invoice.number}</h1>
+          <h1 className="wrap-anywhere text-2xl font-bold">Invoice {invoice.number}</h1>
           <p className="text-sm text-neutral-500">Date: {longDate(invoice.date)}</p>
           {invoice.paymentTerms && <p className="text-sm text-neutral-500">Terms: {invoice.paymentTerms}</p>}
         </div>
@@ -62,7 +62,10 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         {client?.vatNumber && <p className="text-sm text-neutral-600">VAT: {client.vatNumber}</p>}
       </div>
 
-      <div className="mt-6 overflow-x-auto print:overflow-visible">
+      {/* min-w-0: a scroll box that is a flex item sizes to its content by
+          default, so the table's min-content width pushed the whole page
+          sideways instead of scrolling inside this. */}
+      <div className="mt-6 min-w-0 overflow-x-auto print:overflow-visible">
         <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-neutral-500">

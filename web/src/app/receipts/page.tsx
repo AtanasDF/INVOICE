@@ -459,7 +459,7 @@ function ReceiptsPage() {
             Receipts, supplier invoices (bills) and credit notes you&apos;ve captured.
           </p>
         </div>
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           {receipts.length > 0 && (
             <button onClick={exportReceipts} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Download for a spreadsheet
@@ -755,7 +755,10 @@ function ReceiptsPage() {
                       </a>
                     )}
                   </div>
-                  <div className="mt-1 truncate text-xs text-neutral-500">
+                  {/* Wraps rather than truncates: this line carries the bill
+                      number, the date and the category, and losing the end of it
+                      to an ellipsis loses the category. */}
+                  <div className="mt-1 text-xs text-neutral-500 wrap-anywhere">
                     {[r.invoiceNumber, longDate(r.date), r.category].filter(Boolean).join(" · ")}
                   </div>
                 </div>
@@ -764,7 +767,7 @@ function ReceiptsPage() {
                 <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
                   Details {detailsOpen ? "▴" : "▾"}
                 </button>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {isInvoice && !r.paid && !r.needsReview && (
                     <button onClick={() => markPaid(r)} className="font-medium text-neutral-700 underline">Mark as paid</button>
                   )}

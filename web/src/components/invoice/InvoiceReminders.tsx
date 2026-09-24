@@ -70,8 +70,8 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
             const sentAt = sent?.get(r.kind);
             const state = sentAt ? `Sent ${shortDate(sentAt)}` : r.kind === goingToday ? "Goes out today" : on > today ? `Goes out ${shortDate(on)}` : "Not sent";
             return (
-              <li key={r.kind} className={`flex justify-between gap-4 ${r === next ? "font-medium" : sentAt ? "text-neutral-700" : "text-neutral-500"}`}>
-                <span>{r.label}</span>
+              <li key={r.kind} className={`flex flex-wrap justify-between gap-x-4 ${r === next ? "font-medium" : sentAt ? "text-neutral-700" : "text-neutral-500"}`}>
+                <span className="min-w-0 wrap-anywhere">{r.label}</span>
                 <span className="shrink-0">{state}</span>
               </li>
             );

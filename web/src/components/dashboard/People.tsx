@@ -72,7 +72,11 @@ export default function People({ contacts, invoiceCounts }: { contacts: Client[]
             <li key={c.id}>
               <Link href={`/invoices/new?client=${encodeURIComponent(c.id)}`} className={ROW}>
                 <span className="min-w-0">
-                  <span className="block truncate font-medium wrap-anywhere">{c.name}</span>
+                  {/* truncate and wrap-anywhere contradict each other: truncate won, so a
+                      long customer name was cut with an ellipsis and turning the
+                      text up made it cut sooner. The house rule is that a long
+                      name wraps. */}
+                  <span className="block font-medium wrap-anywhere">{c.name}</span>
                   <span className="block text-xs text-neutral-500">
                     {c.kind === "supplier" ? "Supplier" : c.isCompany ? "Company" : "Customer"}
                     {(invoiceCounts.get(c.id) ?? 0) > 0 && ` · ${invoiceCounts.get(c.id)} invoice${invoiceCounts.get(c.id) === 1 ? "" : "s"}`}

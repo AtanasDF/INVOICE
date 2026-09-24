@@ -108,7 +108,10 @@ export default function UploadPanel({ href = "/scan", inboxAddress, onMakeAddres
     input.click();
   };
 
-  const BTN = "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg border bg-white px-2 py-2.5 text-center text-sm font-medium text-neutral-900";
+  // min-w-0: a flex-1 button will not shrink below its own words without
+// it, so at a large text size three of them in a row pushed the tile
+// wider than the screen.
+const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg border bg-white px-2 py-2.5 text-center text-sm font-medium text-neutral-900";
 
   return (
     <section

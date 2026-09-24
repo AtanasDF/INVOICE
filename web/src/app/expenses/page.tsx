@@ -178,8 +178,12 @@ export default function ExpensesPage() {
           </span>
         </div>
       <Tip id="expenses-how">How it works: every receipt and bill you save adds itself up here, by category and by month.</Tip>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* The row already wrapped; the control inside it did not, so at
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+          {/* w-full so it takes a line of its own and wraps inside it: as a
+              flex item sized to its content it was 363px wide on a 326px
+              line, and a flex item will not shrink below its content unless
+              it is told to.
+              The row already wrapped; the control inside it did not, so at
               a large text size Week/Month/Year/Custom ran off together. */}
           <div className="flex flex-wrap rounded-lg border text-sm">
             <button
@@ -208,9 +212,9 @@ export default function ExpensesPage() {
             </button>
           </div>
           {periodMode === "week" ? (
-            <input aria-label="Week" type="date" className="rounded-lg border px-3 py-2" value={weekAnchor} onChange={(e) => setWeekAnchor(e.target.value)} />
+            <input aria-label="Week" type="date" className="min-w-0 max-w-full rounded-lg border px-3 py-2" value={weekAnchor} onChange={(e) => setWeekAnchor(e.target.value)} />
           ) : periodMode === "month" ? (
-            <input aria-label="Month" type="month" className="rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
+            <input aria-label="Month" type="month" className="min-w-0 max-w-full rounded-lg border px-3 py-2" value={month} onChange={(e) => setMonth(e.target.value)} />
           ) : periodMode === "year" ? (
             <input aria-label="Year"
               type="number"
@@ -220,9 +224,9 @@ export default function ExpensesPage() {
             />
           ) : (
             <div className="flex items-center gap-2">
-              <input aria-label="From" type="date" className="rounded-lg border px-3 py-2" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              <input aria-label="From" type="date" className="min-w-0 max-w-full rounded-lg border px-3 py-2" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
               <span className="text-sm text-neutral-500">to</span>
-              <input aria-label="To" type="date" className="rounded-lg border px-3 py-2" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              <input aria-label="To" type="date" className="min-w-0 max-w-full rounded-lg border px-3 py-2" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
             </div>
           )}
           <button onClick={() => window.print()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">

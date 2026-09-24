@@ -209,7 +209,7 @@ function InvoicesPage() {
           <h1 className="text-2xl font-bold">Invoices</h1>
           <p className="mt-1 text-neutral-600">Make invoices, and look back at the ones you have sent.</p>
         </div>
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           {invoices.length > 0 && (
             <button onClick={exportInvoices} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Download for a spreadsheet

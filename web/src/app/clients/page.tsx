@@ -246,7 +246,7 @@ export default function ClientsPage() {
             Customers are who you invoice. Suppliers are who invoices or receipts come from.
           </p>
         </div>
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           {visibleClients.length > 0 && (
             <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Download for a spreadsheet
@@ -257,7 +257,7 @@ export default function ClientsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex rounded-lg border text-sm w-fit">
+        <div className="flex w-fit max-w-full flex-wrap rounded-lg border text-sm">
           <button
             onClick={() => setTab("client")}
             className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}

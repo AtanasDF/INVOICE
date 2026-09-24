@@ -7,7 +7,13 @@
 // that", ignoring a setting somebody already changed is the plainest
 // failure there is.
 //
-// NOT IN run-all.sh, and it fails on purpose. It is the target for work
+// NOT IN run-all.sh: 21 of its 22 pass. What is left is the issued
+// invoice, 36px over a 390px screen -- the table is in a scroll box and
+// behaves; something else on that page is 426px wide and has not been
+// found yet. The Dynamic Type rule in globals.css stays commented out
+// until it is, and then both go live together.
+//
+// Was: fails on purpose. It is the target for work
 // that is not done: at twice the text size the dashboard panels, the
 // invoice table, the receipt action rows and the expenses picker all run
 // off the side of a 390px screen. The Dynamic Type rule in globals.css is
@@ -73,22 +79,47 @@ try {
     // Nothing may run off the side: that is what turns "big text" into
     // "half the screen is missing".
     const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+    // Name the element that actually WIDENS THE PAGE, not merely the one
+    // furthest right: a table inside a scroll box is supposed to stick out,
+    // and listing it buried the real culprit every time.
     const sticking = fits ? [] : await page.evaluate(() => {
       const w = window.innerWidth;
+      const scrollable = (el) => {
+        for (let n = el.parentElement; n; n = n.parentElement) {
+          const o = getComputedStyle(n).overflowX;
+          if (o === "auto" || o === "scroll" || o === "hidden") return true;
+        }
+        return false;
+      };
       return [...document.querySelectorAll("*")]
-        .map((el) => ({ el, r: el.getBoundingClientRect() }))
-        .filter(({ r }) => r.right > w + 1 && r.width > 0)
-        .sort((a, b) => b.r.right - a.r.right)
+        .filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.right > w + 1 && !scrollable(el);
+        })
+        // The deepest one is the thing itself rather than a parent stretched
+        // by it.
+        .map((el) => { let d = 0; for (let n = el; (n = n.parentElement); ) d++; return { el, d }; })
+        .sort((a, b) => b.d - a.d)
         .slice(0, 3)
-        .map(({ el, r }) => `${el.tagName}.${(el.className || "").toString().slice(0, 30)} right=${Math.round(r.right)} :: ${(el.textContent || "").trim().slice(0, 30)}`);
+        .map(({ el }) => `${el.tagName}.${(el.className || "").toString().slice(0, 34)} :: ${(el.textContent || "").trim().slice(0, 30)}`);
     });
     check(`${name}: nothing runs off the side at twice the text size`, fits, JSON.stringify(sticking));
 
-    // A figure cut in half is a wrong figure to whoever reads it.
+    // A figure cut in half is a wrong figure to whoever reads it. Only text
+    // that is really LOST counts: clipped or ellipsised. Text that merely
+    // spills past its box is still readable, and flagging it buried the
+    // cases where a total is actually unreadable.
     const cut = await page.evaluate(() =>
       [...document.querySelectorAll("span, td, dd, p, strong, div, h1, h2, button, a")]
         .filter((el) => el.children.length === 0 && el.textContent.trim())
-        .filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== "hidden")
+        .filter((el) => {
+          if (el.scrollWidth <= el.clientWidth + 1) return false;
+          // sr-only is a 1px clipped box on purpose: it is there to be READ
+          // OUT, not looked at, so it is always "clipped" and never a loss.
+          if (el.closest(".sr-only") || el.classList.contains("sr-only")) return false;
+          const s = getComputedStyle(el);
+          return s.overflow === "hidden" || s.overflowX === "hidden" || s.textOverflow === "ellipsis";
+        })
         .map((el) => el.textContent.trim().slice(0, 30))
         .slice(0, 4));
     check(`${name}: no words or figures are cut off`, cut.length === 0, JSON.stringify(cut));
