@@ -216,6 +216,23 @@ try {
     [...document.querySelectorAll('[role="tabpanel"]')].filter((p) => p.hasAttribute("inert")).length);
   check("the two panels you are not looking at are inert and hidden", hidden === 2, String(hidden));
 
+  // "Create an invoice" photographs an old one -- that is the scanner-first
+  // dashboard and it is deliberate. What matters is that the other way is
+  // offered where somebody about to tap it can see it. The line had drifted
+  // below the upload panel and the file library, a screenful away, so on a
+  // phone you tapped the tile, got a camera, and never learned there was a
+  // choice.
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(1500);
+  const offer = await page.evaluate(() => {
+    const tile = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Create an invoice");
+    const byHand = [...document.querySelectorAll("a")].find((a) => a.getAttribute("href") === "/invoices/new");
+    if (!tile || !byHand) return { tile: !!tile, byHand: !!byHand };
+    return { tile: true, byHand: true, gap: Math.round(byHand.getBoundingClientRect().top - tile.getBoundingClientRect().bottom) };
+  });
+  check("writing an invoice by hand is offered beside the tile that opens the camera",
+    offer.tile && offer.byHand && offer.gap >= 0 && offer.gap < 260, JSON.stringify(offer));
+
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

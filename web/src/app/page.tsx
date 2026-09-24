@@ -509,6 +509,15 @@ function Dashboard() {
             <span>Copy a document</span>
           </Link>
         </div>
+        {/* Beside the tile it explains, which is where the brief put it
+            ("a line beside Create an invoice offers to write one by hand
+            instead"). It had drifted below the upload panel and the file
+            library: on a phone you tapped Create an invoice, got a camera,
+            and never saw that there was another way. */}
+        <p className="text-sm text-neutral-600">
+          &ldquo;Create an invoice&rdquo; photographs an old one and fills the next in for you, or{" "}
+          <Link href="/invoices/new" className="font-medium text-neutral-800 underline">write one by hand</Link>.
+        </p>
         <UploadPanel
           href="/scan"
           inboxAddress={inbox}
@@ -528,11 +537,6 @@ function Dashboard() {
         {/* Straight under the upload tile, as he asked: upload a document,
             then see the documents you have. */}
         <FileStrip receipts={allReceipts} invoices={allInvoices} />
-
-        <p className="text-sm text-neutral-600">
-          Photograph an old invoice and the next one is filled in for you, or{" "}
-          <Link href="/invoices/new" className="font-medium text-neutral-800 underline">write one by hand</Link>.
-        </p>
 
         {!hasAnything && (
           <p className="rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-700">
