@@ -29,6 +29,22 @@ first because he asked for them. Briefs in `notes/file-library-design.md`.
 0.4 **A segmented switch** on that strip: Receipts · Invoices · Quotes.
 0.5 **The upload tile, three buttons**: Photos · Files · **Email it in** — the last already
     built and currently buried in Settings, so it costs nothing but wiring and wording.
+0.6b **First-time explanations where there are none.** He asked whether every click has a
+    little explanation for new users. It is built -- `Tip`, shown the first few times a
+    screen is opened, remembered per device in `tip:<id>` -- and there are **19** of them.
+    But **five screens have none**, and one of them is the worst possible omission:
+
+    | Screen | Why it needs one |
+    |---|---|
+    | **The invoice page** (`/invoices/[id]`) | The most complicated screen in the app: payments, part-paid status, credit notes, CIS deductions, reminders, the private link. No tip at all. |
+    | **Settings** | Where the VAT switch, the bank details and the private import address live. |
+    | **Recurring** (invoices and expenses) | Something that will act on its own later needs saying so. |
+    | **Quote requests** | A whole feature -- asking suppliers to price a list -- with no introduction. |
+    | **Feedback** | Least important, but free. |
+
+    Not a tip on *every click*: that is how people learn to dismiss things without reading.
+    One short note per screen, the first few times, which is the pattern already there.
+
 0.6 **Paste and drag-and-drop**, adding no buttons: the tile becomes a drop zone and the
     page listens for a paste. Solid on a laptop and on iPad; **not promised on iPhone**.
 
