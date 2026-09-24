@@ -830,6 +830,10 @@ export default function SettingsPage() {
                 underneath. Nothing more is sent after the final notice. Part-paid invoices are chased for what&apos;s still
                 owed once their payments are recorded; one marked part-paid with no payments recorded gets none, since its
                 balance isn&apos;t known. Edit the wording below; leave a box blank to use the default text. Use{" "}
+                {/* Not renamed to customer_name with the rest of the wording:
+                    it is a token people have already typed into their saved
+                    reminder text, and changing it would silently stop those
+                    substituting. */}
                 <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>, <code>{"{{amount_due}}"}</code>,{" "}
                 <code>{"{{due_date}}"}</code> and <code>{"{{pay_by}}"}</code> (a week from the day it&apos;s sent) anywhere in
                 the text.

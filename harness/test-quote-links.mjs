@@ -87,7 +87,7 @@ try {
   await settled(cust);
   await sleep(1200);
   let t = await bodyText(cust);
-  check("customer sees the quote and Accept / Decline", t.includes("Quote Q-0001") && t.includes("Accept quote") && t.includes("Decline") && !t.includes("Clients & suppliers"), t.slice(0, 300));
+  check("customer sees the quote and Accept / Decline", t.includes("Quote Q-0001") && t.includes("Accept quote") && t.includes("Decline") && !t.includes("Customers & suppliers"), t.slice(0, 300));
   check("nothing private in the page", !(await cust.content()).includes("SECRET-INBOX") && !(await cust.content()).includes(Q1));
   check("opening counted once", l1.view_count === 1, l1.view_count);
   await clickBtn(cust, "Accept quote");

@@ -418,7 +418,7 @@ export default function QuotePage() {
 
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         <p className="text-xs text-neutral-500">For</p>
-        <p className="font-medium">{client?.name ?? "No client"}</p>
+        <p className="font-medium">{client?.name ?? "No customer"}</p>
         {client && <p className="text-sm text-neutral-600">{customerKind(client)}</p>}
         {contact && <p className="wrap-anywhere text-sm text-neutral-500">{contact}</p>}
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 sm:grid-cols-3">

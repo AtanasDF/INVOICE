@@ -195,7 +195,7 @@ export default function ClientsPage() {
       await clientsStore.remove(id);
       setClients((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      setError(saveFailed(err, "Could not remove client."));
+      setError(saveFailed(err, `Could not remove this ${tab === "client" ? "customer" : "supplier"}.`));
     }
   }
 
@@ -216,7 +216,7 @@ export default function ClientsPage() {
 
   function exportClients() {
     downloadCsv(
-      `${tab}s-${todayISO()}.csv`,
+      `${tab === "client" ? "customer" : "supplier"}s-${todayISO()}.csv`,
       visibleClients.map((c) => ({
         name: c.name,
         type: c.isCompany ? "Company" : "Individual",
@@ -234,9 +234,9 @@ export default function ClientsPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Clients & suppliers</h1>
+          <h1 className="text-2xl font-bold">Customers &amp; suppliers</h1>
           <p className="mt-1 text-neutral-600">
-            Clients are who you invoice. Suppliers are who invoices or receipts come from.
+            Customers are who you invoice. Suppliers are who invoices or receipts come from.
           </p>
         </div>
         <div className="flex items-start gap-2">
@@ -245,7 +245,7 @@ export default function ClientsPage() {
               Download for a spreadsheet
             </button>
           )}
-          <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab}`} addHref={`/clients/new?kind=${tab}`} />
+          <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab === "client" ? "customer" : "supplier"}`} addHref={`/clients/new?kind=${tab}`} />
         </div>
       </div>
 
@@ -255,7 +255,7 @@ export default function ClientsPage() {
             onClick={() => setTab("client")}
             className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
-            Clients
+            Customers
           </button>
           <button
             onClick={() => setTab("supplier")}
@@ -300,7 +300,7 @@ export default function ClientsPage() {
         <div className="space-y-3">
           {visibleClients.length === 0 && archivedCount === 0 && !error && (
             <p className="text-sm text-neutral-500">
-              No {tab}s yet. Scan a business card, letter or invoice to add one, or add one by hand.
+              No {tab === "client" ? "customer" : "supplier"}s yet. Scan a business card, letter or invoice to add one, or add one by hand.
             </p>
           )}
           {visibleClients.map((c) => {

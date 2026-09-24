@@ -109,7 +109,7 @@ try {
     ["/quotes", "quotes", "No quotes yet"],
     ["/receipts", "receipts", "No receipts or bills yet"],
     ["/receipts/review", "receipts", "Nothing waiting on review"],
-    ["/clients", "clients", "No clients yet"],
+    ["/clients", "clients", "No customers yet"],
     ["/files", "receipts", "No scanned or uploaded documents yet"],
     ["/expenses", "receipts", "Total excl. VAT"],
     ["/vat", "invoices", "Box 1"],

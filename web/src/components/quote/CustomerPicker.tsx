@@ -26,7 +26,7 @@ export function customerContact(c: Client): string {
 
 export type NewCustomerStart = { name: string; email: string; address: string; isCompany?: boolean };
 
-// Who a quote is for: anyone in Clients & suppliers, clients first, or
+// Who a quote is for: anyone in Customers & suppliers, customers first, or
 // someone new added on the spot. An archived one stays shown only while it's
 // the one picked. Whether a new customer is being added is held by the form,
 // so it can't be saved over one half typed in.
@@ -47,7 +47,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
   const q = query.trim().toLowerCase();
   const found = q ? shown.filter((c) => [c.name, c.contactPerson, c.email].some((f) => f.toLowerCase().includes(q))) : shown;
   const groups = [
-    { label: "Clients", people: found.filter((c) => c.kind === "client").sort(byName) },
+    { label: "Customers", people: found.filter((c) => c.kind === "client").sort(byName) },
     { label: "Suppliers", people: found.filter((c) => c.kind === "supplier").sort(byName) },
   ].filter((g) => g.people.length);
 
@@ -98,8 +98,8 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
         <input
           type="search"
           className={INPUT}
-          placeholder="Search clients and suppliers"
-          aria-label="Search clients and suppliers"
+          placeholder="Search customers and suppliers"
+          aria-label="Search customers and suppliers"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -148,7 +148,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
   );
 }
 
-// A new client, company or private person, saved straight to Clients.
+// A new customer, company or private person, saved straight to Customers.
 function NewCustomer({ start, existing, onSaved, onCancel }: {
   start: NewCustomerStart;
   existing: Client[];
@@ -213,7 +213,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
     <div className="space-y-3 rounded-lg border p-4">
       <div>
         <p className="font-medium">New customer</p>
-        <p className="text-sm text-neutral-600">Saved to your clients, so it&apos;s there next time.</p>
+        <p className="text-sm text-neutral-600">Saved to your customers, so it&apos;s there next time.</p>
       </div>
       <div role="radiogroup" aria-label="Company or private person" className="grid grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-1">
         {choice(true, "Company")}

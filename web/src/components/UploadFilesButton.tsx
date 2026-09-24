@@ -15,6 +15,9 @@ export default function UploadFilesButton({
   buttonClassName = "inline-flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-sm font-medium text-neutral-900 shadow-sm",
   label,
   disabled = false,
+  // The phone's own camera, through the file input: it asks this site for
+  // no permission at all, so it is the way out of a blocked camera.
+  camera = false,
 }: {
   href?: string;
   onFiles?: (files: ScanHandoff[], failed: number) => void;
@@ -23,6 +26,7 @@ export default function UploadFilesButton({
   buttonClassName?: string;
   label?: string;
   disabled?: boolean;
+  camera?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -64,7 +68,7 @@ export default function UploadFilesButton({
       <label aria-disabled={busy || disabled} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${buttonClassName}`}>
         <UploadIcon className="h-4 w-4" />
         {busy ? "Reading files…" : label ?? (multiple ? "Upload from files" : "Upload a file")}
-        <input type="file" accept="image/*,application/pdf" multiple={multiple} className="hidden" onChange={onChange} disabled={busy || disabled} />
+        <input type="file" accept={camera ? "image/*" : "image/*,application/pdf"} {...(camera ? { capture: "environment" as const } : {})} multiple={!camera && multiple} className="hidden" onChange={onChange} disabled={busy || disabled} />
       </label>
       {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
     </div>

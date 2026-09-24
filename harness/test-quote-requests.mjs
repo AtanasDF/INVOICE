@@ -256,7 +256,7 @@ try {
   let st = await bodyText(sp);
   check("supplier page: the list, who it's from, needed by, deliver to, notes", res.status() === 200 && st.includes("Kitchen extension, 12 High St") && st.includes("Harness Plastering Ltd would like your prices") && st.includes("Deliver to") && st.includes("BS1 4DJ") && st.includes("narrow lane") && st.includes("20 lengths") && st.includes("Gyproc or equivalent"), st.slice(0, 500));
   const html = await sp.content();
-  check("supplier page: nothing else about the owner, no ids, no other suppliers", !html.includes("SECRET-INBOX") && !html.includes("1 Secret Lane") && !html.includes("00-00-00") && !html.includes(UID) && !html.includes(R.id) && !html.includes(J.id) && !html.includes("Travis") && !html.includes("owner@example.com") && !st.includes("Clients & suppliers") && !st.includes("Feedback"));
+  check("supplier page: nothing else about the owner, no ids, no other suppliers", !html.includes("SECRET-INBOX") && !html.includes("1 Secret Lane") && !html.includes("00-00-00") && !html.includes(UID) && !html.includes(R.id) && !html.includes(J.id) && !html.includes("Travis") && !html.includes("owner@example.com") && !st.includes("Customers & suppliers") && !st.includes("Feedback"));
   check("supplier page: noindex and no-referrer", /noindex/.test(await sp.$eval('meta[name="robots"]', (m) => m.content).catch(() => "")) && (await sp.$eval('meta[name="referrer"]', (m) => m.content).catch(() => "")) === "no-referrer");
   await clickBtn(sp, "Send prices");
   await waitText(sp, "Add a price for line 1", 5000);

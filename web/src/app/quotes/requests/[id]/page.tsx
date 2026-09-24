@@ -308,7 +308,7 @@ export default function QuoteRequestPage() {
                 <p className="mt-1 text-sm text-neutral-600">{answerLine(row)}</p>
                 {row.status === "waiting" && !email && open && (
                   <p className="mt-1 text-xs text-neutral-500">
-                    Add their email in <Link href="/clients?tab=supplier" className="underline">Clients &amp; suppliers</Link> to send it, or copy the link and text it to them.
+                    Add their email in <Link href="/clients?tab=supplier" className="underline">Customers &amp; suppliers</Link> to send it, or copy the link and text it to them.
                   </p>
                 )}
                 {open && (

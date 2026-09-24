@@ -356,7 +356,7 @@ export const clientsStore = {
       // from who it was billed to or bought from is a real integrity
       // problem, not a convenience.
       if (error.code === "23503") {
-        throw new Error("Can't remove this client or supplier — it still has receipts, invoices, quotes, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
+        throw new Error("Can't remove this customer or supplier — it still has receipts, invoices, quotes, or recurring items linked to it. Archive it instead to hide it from new records without losing that history.");
       }
       throw error;
     }

@@ -203,7 +203,7 @@ try {
     sheet.links.some((l) => l === "Add a receipt by hand|/receipts/new") &&
     sheet.links.some((l) => l === "Make an invoice|/invoices/new") &&
     sheet.links.some((l) => l === "Make a quote|/quotes/new") &&
-    sheet.links.some((l) => l === "Add a client or supplier|/clients/new"),
+    sheet.links.some((l) => l === "Add a customer or supplier|/clients/new"),
     JSON.stringify(sheet.links));
   check("the sheet fits 375px", await fits(page));
   await shot(page, "settings-add-sheet");
@@ -238,7 +238,10 @@ try {
     const firstAsks = await asks(p2);
     check("granted: the scanner opens, after checking the permission first", first.live && firstAsks.perm >= 1 && firstAsks.gum >= 1 && !/Camera access was denied/.test(first.body), JSON.stringify({ ...firstAsks, live: first.live }));
     check("granted: no 'asked every time' tip", !first.body.includes("Asked for the camera every time?"), first.body.slice(0, 200));
-    await p2.goto(BASE + "/", { waitUntil: "networkidle0" });
+    // A list page, not the dashboard: the Add sheet was taken off the
+    // dashboard on 2026-09-23 and this suite asserts its absence there 50
+    // lines up. Clicking a button that is gone is what killed the run.
+    await p2.goto(BASE + "/receipts", { waitUntil: "networkidle0" });
     await sleep(400);
     await click(p2, "+ Add");
     await sleep(600);
@@ -257,11 +260,15 @@ try {
     await p3.goto(BASE + "/scan", { waitUntil: "networkidle0" });
     await sleep(1500);
     const denied = { ...(await asks(p3)), body: await p3.evaluate(() => document.body.innerText) };
-    check("denied: says so instead of a black screen, and never re-asks", denied.body.includes("Camera access was denied") && denied.gum === 0, JSON.stringify(denied).slice(0, 300));
-    check("denied: the iPhone instructions are right there", denied.body.includes("iPhone Settings → Safari") && denied.body.includes("Camera → Allow"), denied.body.slice(0, 300));
-    check("denied: offers the iPhone camera, which needs no permission", denied.body.includes("Use the iPhone camera instead"), denied.body.slice(0, 300));
+    // The black "Camera access was denied" screen was replaced by a panel on
+    // the scan page itself, so the page is usable with the camera blocked.
+    // The three things that matter are unchanged: it says so, it never asks
+    // again, and it leads somewhere.
+    check("denied: says so instead of a black screen, and never re-asks", denied.body.includes("The camera didn't open") && denied.gum === 0, JSON.stringify(denied).slice(0, 300));
+    check("denied: the iPhone instructions are right there", denied.body.includes("iPhone Settings → Safari") && denied.body.includes("Camera → Allow"), denied.body.slice(0, 400));
+    check("denied: offers the iPhone camera, which needs no permission", denied.body.includes("Use the iPhone camera instead"), denied.body.slice(0, 400));
     await shot(p3, "settings-camera-denied");
-    await p3.goto(BASE + "/", { waitUntil: "networkidle0" });
+    await p3.goto(BASE + "/receipts", { waitUntil: "networkidle0" });
     await sleep(500);
     await click(p3, "+ Add");
     await sleep(500);

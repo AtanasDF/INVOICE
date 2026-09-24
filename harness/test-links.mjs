@@ -78,7 +78,7 @@ try {
   await sleep(1500);
   const ct = await bodyText(customer);
   check("customer sees the invoice without signing in", resp.status() === 200 && ct.includes("Invoice INV-1001") && ct.includes("Harness Plastering Ltd") && ct.includes("Amount due: £450.00") && ct.includes("Download PDF"), ct.slice(0, 300));
-  check("no app menu, no feedback button", !ct.includes("Clients & suppliers") && !ct.includes("Sign in") && !ct.includes("Feedback"));
+  check("no app menu, no feedback button", !ct.includes("Customers & suppliers") && !ct.includes("Sign in") && !ct.includes("Feedback"));
   // Next streams a page's metadata, so under load the tag can land after
   // the page has settled: waited for, not read on sight.
   await customer.waitForSelector('meta[name="robots"]', { timeout: 30000 }).catch(() => {});

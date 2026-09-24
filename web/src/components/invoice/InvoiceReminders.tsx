@@ -36,7 +36,7 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
       : !invoice.dueDate
         ? "No due date, so no automatic reminders."
         : !client?.email
-          ? "No automatic reminders: this client has no email address."
+          ? "No automatic reminders: this customer has no email address."
           : !client.remindersEnabled
             ? "Automatic reminders are off for this client."
             : null;

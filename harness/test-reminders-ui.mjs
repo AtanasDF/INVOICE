@@ -36,7 +36,7 @@ try {
 
   await page.goto(`${BASE}/invoices/${I2}`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.body.innerText.includes("Payment reminders"), { timeout: 20000 });
-  check("client without email: says why", (await bodyText(page)).includes("this client has no email address"));
+  check("client without email: says why", (await bodyText(page)).includes("this customer has no email address"));
 
   await page.goto(`${BASE}/invoices/${I3}`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.body.innerText.includes("Send it"), { timeout: 20000 });

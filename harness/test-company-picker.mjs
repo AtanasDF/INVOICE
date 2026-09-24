@@ -126,7 +126,7 @@ try {
     JSON.stringify(order)
   );
   const blank = await page.evaluate(() => document.querySelector("select").options[0].textContent);
-  check("arrow: blank option keeps the old wording", blank === "Select a client or company", blank);
+  check("arrow: blank option keeps the old wording", blank === "Select a customer or company", blank);
 
   // Picking from the arrow selects, as the old dropdown did.
   await page.select("select", ACME);
@@ -141,7 +141,7 @@ try {
   const filtered = await listed(page);
   check(
     "typing filters the saved contacts",
-    JSON.stringify(filtered?.slice(0, 2)) === JSON.stringify([["head", "YOUR CLIENTS"], ["option", "Acme Kitchens Ltd"]]) && filtered.length === 3 && /Nothing more/.test(filtered[2][1]),
+    JSON.stringify(filtered?.slice(0, 2)) === JSON.stringify([["head", "YOUR CUSTOMERS"], ["option", "Acme Kitchens Ltd"]]) && filtered.length === 3 && /Nothing more/.test(filtered[2][1]),
     JSON.stringify(filtered)
   );
 
@@ -155,24 +155,24 @@ try {
   // ---- Nothing is created without a tap -----------------------------------
   const clientsBefore = db.tables.clients.length;
   await page.evaluate(() => document.querySelector('[role="option"]').click());
-  await waitText(page, "Add as client");
+  await waitText(page, "Add as customer");
   check("picking a register company creates nothing yet", db.tables.clients.length === clientsBefore, String(db.tables.clients.length));
   const card = await page.evaluate(() => document.body.innerText);
   check("the card shows the registered name, number and office", /Patel Plumbing Ltd/.test(card) && /Company 01234567/.test(card) && /1 Pipe Street, London, E1 1AA/.test(card));
 
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Not now").click());
   await sleep(200);
-  check("Not now still creates nothing", db.tables.clients.length === clientsBefore && !(await page.evaluate(() => document.body.innerText.includes("Add as client"))));
+  check("Not now still creates nothing", db.tables.clients.length === clientsBefore && !(await page.evaluate(() => document.body.innerText.includes("Add as customer"))));
 
   // ---- ...and everything after one --------------------------------------
   await setField(page, 'input[role="combobox"]', "Patel Plumbing");
   await page.waitForFunction(() => document.body.innerText.includes("Patel Plumbing Ltd"), { timeout: 8000 });
   await page.evaluate(() => document.querySelector('[role="option"]').click());
-  await waitText(page, "Add as client");
-  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Add as client").click());
+  await waitText(page, "Add as customer");
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Add as customer").click());
   await sleep(700);
   const made = db.tables.clients.find((c) => c.name === "Patel Plumbing Ltd");
-  check("Add as client saves the registered name and address", !!made && made.address === "1 Pipe Street\nLondon\nE1 1AA" && made.kind === "client", JSON.stringify(made));
+  check("Add as customer saves the registered name and address", !!made && made.address === "1 Pipe Street\nLondon\nE1 1AA" && made.kind === "client", JSON.stringify(made));
   const remembered = await page.evaluate(() => JSON.parse(localStorage.getItem("company-register") ?? "{}"));
   check("the company number is kept against the new contact", Object.values(remembered).some((f) => f.number === "01234567"), JSON.stringify(remembered));
   const selected = await page.evaluate(() => ({ box: document.querySelector('input[role="combobox"]').value, sel: document.querySelector("select").value }));
@@ -276,7 +276,7 @@ try {
   await setField(page, 'input[role="combobox"]', "Dead Co Ltd");
   await sleep(1200);
   const offText = await page.evaluate(() => document.body.innerText);
-  check("no key: nothing mentions the register", !/Companies House|On the register|Add as client/.test(offText), offText.slice(0, 400));
+  check("no key: nothing mentions the register", !/Companies House|On the register|Add as customer/.test(offText), offText.slice(0, 400));
   check("no key: no register rows", (await page.evaluate(() => document.querySelectorAll('[role="option"]').length)) === 0);
   check("no key: no lookups beyond the one configured check", asked.slice(askedBefore).every((s) => s === ""), JSON.stringify(asked.slice(askedBefore)));
   check("no key: typing still works", (await page.$eval('input[role="combobox"]', (e) => e.value)) === "Dead Co Ltd");

@@ -16,6 +16,8 @@ import { dropUploadMarker, leftOutNote, takeScanCapture, takeUploads, uploadMark
 import DocumentCapture, { CapturedFile } from "@/components/DocumentCapture";
 import Link from "next/link";
 import UploadFilesButton from "@/components/UploadFilesButton";
+import { SAFARI_CAMERA_TIP } from "@/lib/camera";
+import { useIsIOS } from "@/lib/platform";
 import CaptureButton from "@/components/CaptureButton";
 import PagesStrip, { Capture } from "@/components/scan/PagesStrip";
 import DateConfirm from "@/components/scan/DateConfirm";
@@ -402,6 +404,7 @@ export default function ScanPage() {
   // opened ourselves closes itself; a deliberate tap keeps Try again.
   const [autoOpened] = useState(() => !uploadMarked() && !scanCaptureWaiting());
   const [cameraBlocked, setCameraBlocked] = useState(false);
+  const isIOS = useIsIOS();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   // A refusal is not a failure -- it carries what to offer next, which a
@@ -1223,11 +1226,25 @@ export default function ScanPage() {
               It&apos;s blocked for this site in your browser&apos;s settings. You can still upload a photo or
               PDF of the document, or type the receipt in yourself.
             </p>
+            {/* "Your browser's settings" is not something anybody can act on
+                from a phone, and the iPhone's own camera asks this site for
+                nothing -- so on iOS the exact route is given, and the way
+                that still works is offered first. */}
+            {isIOS && <p className="mt-1 text-sm text-neutral-600">{SAFARI_CAMERA_TIP}</p>}
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              {isIOS && (
+                <UploadFilesButton
+                  camera
+                  multiple={false}
+                  onFiles={(files, failed) => { setCameraBlocked(false); readUploads(files.map((f) => [f]), leftOutNote(failed, files.length + failed)); }}
+                  label="Use the iPhone camera instead"
+                  buttonClassName="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+                />
+              )}
               <UploadFilesButton
                 onFiles={(files, failed) => { setCameraBlocked(false); readUploads(files.map((f) => [f]), leftOutNote(failed, files.length + failed)); }}
                 label="Upload a photo or PDF"
-                buttonClassName="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+                buttonClassName={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium ${isIOS ? "border bg-white text-neutral-900 shadow-sm" : "bg-neutral-900 text-white"}`}
               />
               <Link href="/receipts/new" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">
                 Add a receipt by hand

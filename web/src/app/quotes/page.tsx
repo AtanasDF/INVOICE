@@ -35,7 +35,7 @@ export default function QuotesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const clientName = (id: string) => clients.find((c) => c.id === id)?.name || "No client";
+  const clientName = (id: string) => clients.find((c) => c.id === id)?.name || "No customer";
   // A sent quote keeps the VAT setting it went out under (migration-033);
   // a draft, and anything from before the column, follows Settings.
   const vatOf = (q: Quote) => q.vatRegistered ?? profile?.vatRegistered ?? false;

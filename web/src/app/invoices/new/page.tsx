@@ -595,7 +595,7 @@ export default function NewInvoicePage() {
       setCustomerText("");
       setNewCustomer(null);
     } catch (err) {
-      setAddClientError(saveFailed(err, "Could not add the client."));
+      setAddClientError(saveFailed(err, "Could not add the customer."));
     } finally {
       setAddingClient(false);
     }
@@ -691,7 +691,7 @@ export default function NewInvoicePage() {
       ) : (
         <p className="text-xs text-neutral-500 -mt-4">
           Scanning fills in the date, line items, and notes from a source document (a timesheet, delivery note,
-          etc.) — the client is always your own choice below, never guessed.
+          etc.) — the customer is always your own choice below, never guessed.
         </p>
       )}
       {scanError && <p role="alert" className="text-sm text-red-600">{scanError}</p>}
@@ -742,8 +742,8 @@ export default function NewInvoicePage() {
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
             <span>
               {newCustomer.archivedId
-                ? `${newCustomer.name} is an archived client`
-                : `${newCustomer.name} isn't one of your clients yet`}
+                ? `${newCustomer.name} is an archived customer`
+                : `${newCustomer.name} isn't one of your customers yet`}
               {addClientError && <span className="block text-red-600">{addClientError}</span>}
             </span>
             <button
@@ -752,7 +752,7 @@ export default function NewInvoicePage() {
               disabled={addingClient}
               className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {addingClient ? "Adding…" : newCustomer.archivedId ? "Unarchive and use" : "Add as new client"}
+              {addingClient ? "Adding…" : newCustomer.archivedId ? "Unarchive and use" : "Add as new customer"}
             </button>
           </div>
         )}
@@ -766,12 +766,12 @@ export default function NewInvoicePage() {
           text={customerText}
           onText={setCustomerText}
           placeholder="Customer — type a name, or tap the arrow"
-          emptyOption="Select a client or company"
+          emptyOption="Select a customer or company"
         />
 
         {suggestedItems.length > 0 && (
           <div>
-            <p className="text-xs text-neutral-500">Used before for this client — tap to add a line:</p>
+            <p className="text-xs text-neutral-500">Used before for this customer — tap to add a line:</p>
             <div className="mt-1 flex flex-wrap gap-2">
               {suggestedItems.map((s) => (
                 <button

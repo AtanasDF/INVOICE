@@ -103,7 +103,7 @@ function InvoicesPage() {
   const billableClients = useMemo(() => clients.filter((c) => c.kind === "client" || invoices.some((i) => i.clientId === c.id)), [clients, invoices]);
 
   function clientName(id: string) {
-    return clients.find((c) => c.id === id)?.name || "No client";
+    return clients.find((c) => c.id === id)?.name || "No customer";
   }
 
   // Deleting is the one thing here that can't be undone, and Remove sits a
@@ -238,7 +238,7 @@ function InvoicesPage() {
           <label className="flex flex-col gap-0.5 text-xs text-neutral-500">From<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></label>
           <label className="flex flex-col gap-0.5 text-xs text-neutral-500">To<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></label>
           <select aria-label="Customer" className="rounded-lg border px-3 py-2 text-sm" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
-            <option value="">All clients</option>
+            <option value="">All customers</option>
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select aria-label="Status" className="rounded-lg border px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>

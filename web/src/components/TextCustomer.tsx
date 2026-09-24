@@ -116,7 +116,7 @@ export default function TextCustomer({
           <label className="text-xs text-neutral-500" htmlFor="text-customer-phone">{first}&apos;s mobile</label>
           <input id="text-customer-phone" type="tel" className="w-full rounded-lg border px-3 py-2 text-base sm:text-sm" placeholder="07700 900123" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <p className="mt-1 text-xs text-neutral-500">
-            {client.phone ? "The number saved for them doesn't look right; check it here, and in Clients." : "Add it to the customer in Clients to skip this next time."}
+            {client.phone ? "The number saved for them doesn't look right; check it here, and in Customers & suppliers." : "Add it to the customer in Customers & suppliers to skip this next time."}
           </p>
         </div>
       )}

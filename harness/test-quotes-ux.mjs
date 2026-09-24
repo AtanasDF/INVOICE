@@ -86,12 +86,12 @@ try {
   check("picker: clients then suppliers, sorted, no archived", JSON.stringify(await listed(page)) === JSON.stringify([["Clients", "Acme Kitchens Ltd", "Bob Brown", "Carol White", "Dan Green", "Jane Customer", "Priv With Vat"], ["Suppliers", "Builders Merchant Ltd"]]), JSON.stringify(await listed(page)));
   const kinds = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[role="radio"]')].map((b) => [b.querySelector("span span").textContent, b.lastElementChild.textContent])));
   check("picker marks company / private", kinds["Acme Kitchens Ltd"] === "Company" && kinds["Jane Customer"] === "Private" && kinds["Builders Merchant Ltd"] === "Company", JSON.stringify(kinds));
-  check("search box shown for a long list", await page.$('input[aria-label="Search clients and suppliers"]') !== null);
-  await page.type('input[aria-label="Search clients and suppliers"]', "merch");
+  check("search box shown for a long list", await page.$('input[aria-label="Search customers and suppliers"]') !== null);
+  await page.type('input[aria-label="Search customers and suppliers"]', "merch");
   check("search filters to the supplier", JSON.stringify(await listed(page)) === JSON.stringify([["Suppliers", "Builders Merchant Ltd"]]), JSON.stringify(await listed(page)));
-  await setField(page, 'input[aria-label="Search clients and suppliers"]', "sam pat");
+  await setField(page, 'input[aria-label="Search customers and suppliers"]', "sam pat");
   check("search matches a company's contact", JSON.stringify(await listed(page)) === JSON.stringify([["Clients", "Acme Kitchens Ltd"]]), JSON.stringify(await listed(page)));
-  await setField(page, 'input[aria-label="Search clients and suppliers"]', "Patel Plumbing");
+  await setField(page, 'input[aria-label="Search customers and suppliers"]', "Patel Plumbing");
   await waitText(page, "No one matches");
   check("no match says so", true);
   await shot(page, "qux-ux-picker");

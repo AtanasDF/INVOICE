@@ -62,9 +62,9 @@ try {
   const saved = await page.evaluate(() => localStorage.getItem("free-invoice-draft"));
   check("draft kept as a quote", JSON.parse(saved).docType === "quote");
   await page.goto(`${BASE}/quotes/new?import=1`, { waitUntil: "networkidle0" });
-  await page.waitForFunction(() => document.body.innerText.includes("isn't one of your clients yet"), { timeout: 20000 });
+  await page.waitForFunction(() => document.body.innerText.includes("isn't one of your customers yet"), { timeout: 20000 });
   await clickText(page, "Add Acme Kitchens Ltd as a client");
-  await page.waitForFunction(() => !document.body.innerText.includes("isn't one of your clients yet"), { timeout: 10000 });
+  await page.waitForFunction(() => !document.body.innerText.includes("isn't one of your customers yet"), { timeout: 10000 });
   const client = db.tables.clients[0];
   check("customer added as a client (company, from the Ltd)", client?.name === "Acme Kitchens Ltd" && client.is_company === true, JSON.stringify(client));
   const num = await page.evaluate(() => [...document.querySelectorAll("input")].find((i) => i.previousElementSibling?.textContent === "Quote number")?.value);

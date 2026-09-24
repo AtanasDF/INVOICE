@@ -77,7 +77,7 @@ export default function ContactField({
 }) {
   const listId = useId();
   const on = useCompanyLookup();
-  const word = kind === "client" ? "client" : "supplier";
+  const word = kind === "client" ? "customer" : "supplier";
   // A label given without an id still has to point at the box.
   const fallbackId = useId();
   const inputId = id ?? fallbackId;
@@ -207,7 +207,7 @@ export default function ContactField({
           id={inputId}
           className={inputClassName}
           placeholder={placeholder}
-          aria-label={label ? undefined : word === "client" ? "Customer" : "Supplier"}
+          aria-label={label ? undefined : kind === "client" ? "Customer" : "Supplier"}
           value={shown}
           autoComplete="off"
           role="combobox"
@@ -255,7 +255,7 @@ export default function ContactField({
           // Holding the mouse down anywhere in the list (its scrollbar too)
           // mustn't blur the input and close it.
           <div onMouseDown={(e) => e.preventDefault()} className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-lg border bg-white text-neutral-900 shadow-lg">
-            <ul id={listId} role="listbox" aria-label={`${word === "client" ? "Clients" : "Suppliers"} and Companies House matches`} className="max-h-80 overflow-y-auto">
+            <ul id={listId} role="listbox" aria-label={`${kind === "client" ? "Customers" : "Suppliers"} and Companies House matches`} className="max-h-80 overflow-y-auto">
               {filtered.length > 0 && <li role="presentation" className={heading}>Your {word}s</li>}
               {rows.map((row, i) => (
                 <Fragment key={row.contact ? row.contact.id : `ch-${row.company!.number}`}>

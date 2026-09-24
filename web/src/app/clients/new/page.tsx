@@ -160,7 +160,7 @@ export default function NewClientPage() {
       if (pickedCompany) rememberCompany(created.id, pickedCompany);
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
-      setError(saveFailed(err, "Could not save client."));
+      setError(saveFailed(err, `Could not save this ${kind === "client" ? "customer" : "supplier"}.`));
       setSaving(false);
     }
   }
@@ -172,9 +172,9 @@ export default function NewClientPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">New {kind === "client" ? "client" : "supplier"}</h1>
+        <h1 className="text-2xl font-bold">New {kind === "client" ? "customer" : "supplier"}</h1>
         <p className="mt-1 text-neutral-600">
-          Clients are who you invoice. Suppliers are who invoices or receipts come from.
+          Customers are who you invoice. Suppliers are who invoices or receipts come from.
         </p>
       </div>
 
@@ -274,13 +274,13 @@ export default function NewClientPage() {
         {kind === "client" && (
           <label className="flex items-center gap-2 text-sm text-neutral-700">
             <input type="checkbox" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
-            Send automatic payment reminders to this client
+            Send automatic payment reminders to this customer
           </label>
         )}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {saving ? "Saving…" : `Save ${kind}`}
+            {saving ? "Saving…" : `Save ${kind === "client" ? "customer" : "supplier"}`}
           </button>
           <ClearFormButton onClear={clearForm} disabled={saving || reading || !filled} />
         </div>
