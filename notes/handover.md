@@ -76,6 +76,15 @@ not read an empty Resend list as a failure again.
 
 ## Waiting on Atanas, nobody else can do these
 
+**47 stale duplicate suites in `harness/`, his call to remove** (found 2026-09-24). Files
+prefixed `cp-`, `int-`, `qux-`, `main-`, `main3000-`, `run-` and `dbg-` are older copies of
+real suites, made when they ran against hand-built servers on their own ports. They are
+tracked in git, they are not in `run-all.sh`, and nothing runs them. They are worse than
+dead weight: they still carry `new Date().toISOString().slice(0, 10)`, the exact bug the
+whole of `todayISO()` exists to fix, so anyone grepping the harness finds the wrong pattern
+first. Nothing in this project is deleted without him saying so, so they stay until he does.
+
+
 Companies House API key (24) · his business details in Settings on Hidefield (42) ·
 GO OUTDOORS receipt date 2012 → 2026 (46) · yes or no to the front-page picture
 (`notes/front-page-picture/`) (28) · iPhone testing (48) · Safari camera permission (55) ·
