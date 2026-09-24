@@ -7,7 +7,10 @@ import { SITE_URL } from "@/lib/siteUrl";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  // Every other page sets its own and gets the name added.
+  // Every other page sets its own and gets the name added -- except the
+  // customer links /i/, /q/ and /r/, which use title.absolute: the person
+  // opening one has no account here, and the tab should say whose invoice
+  // it is rather than advertise the software it was made in.
   title: { default: `${SITE_NAME} — invoices and receipts for the self-employed`, template: `%s \u00b7 ${SITE_NAME}` },
   description:
     "Free invoicing and expenses for the self-employed. Make an invoice, photograph a receipt and see what you're owed — on your phone.",

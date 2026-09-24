@@ -11,9 +11,9 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   const { token } = await params;
   const data = await loadPublicInvoice(token);
   const hidden = { robots: { index: false, follow: false }, referrer: "no-referrer" } as const;
-  if (!data) return { title: "Invoice", ...hidden };
+  if (!data) return { title: { absolute: "Invoice" }, ...hidden };
   const from = data.profile.businessName ? ` from ${data.profile.businessName}` : "";
-  return { title: `Invoice ${data.invoice.number}${from}`, ...hidden };
+  return { title: { absolute: `Invoice ${data.invoice.number}${from}` }, ...hidden };
 }
 
 export default async function PublicInvoicePage({ params }: { params: Promise<{ token: string }> }) {
