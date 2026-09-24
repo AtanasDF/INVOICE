@@ -44,6 +44,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/peopleCheck.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/quoteRequestEmail.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/siteName.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/quoteDeposit.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/quoteDeposit.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/statement.ts"
   ]
 }
