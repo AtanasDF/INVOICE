@@ -245,3 +245,36 @@ So, decided:
 
 That also avoids the mistake removed from the dashboard this morning: two rectangles doing
 similar jobs, one above the other.
+
+---
+
+# Downloading a period (2026-09-24, his answer)
+
+*"you should be able to download everything from the period... as a zip, as pictures, as
+one PDF... or you should also be able to combine them by suppliers — if you're downloading
+files for a whole month from different suppliers you should be able to separate them into
+different PDFs, including all the files from that supplier."*
+
+So picking a month or a period and downloading it gives a choice of **four shapes**:
+
+| Shape | What arrives |
+|---|---|
+| **A zip** | every file as it is, original photographs and PDFs |
+| **Pictures** | every page as an image |
+| **One PDF** | the lot, in date order, one page per document page |
+| **A PDF per supplier** | one file per supplier, holding everything from that supplier in the period |
+
+The last one is his idea and it is the best of the four: it is how an accountant actually
+wants a month handed over, and how anybody checks one supplier's charges against each
+other. Nobody in the twelve apps researched does it.
+
+**Most of the machinery exists.** `src/lib/documentPdf.ts` already builds one PDF from
+pages and copies a PDF's own pages in; `src/lib/convert.ts` already turns images and PDFs
+into each other; `src/lib/saveFile.ts` is already the single place a file reaches the
+device. The new parts are the zip, the grouping by supplier, and the choice of shape.
+
+**Where it runs matters.** A month of photographs is tens of megabytes, and doing that in
+the browser on a phone will fail on the one it needs to work on. This is the first thing
+in the app that genuinely belongs on the server — and the receipts bucket is already there
+with the service role. To be built server-side, streamed, and with a plain word when a
+period is too big to hand over in one go.

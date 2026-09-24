@@ -142,3 +142,39 @@ Explanations first, chat second, email last. Each rung is cheaper than the one b
 a walkthrough costs nothing to serve and always says the same correct thing; the chat costs
 money per message and can be wrong; his time is the most expensive of the three. Most
 questions should never reach the chat, and very few should reach him.
+
+---
+
+# What the chat actually costs, and his better instinct (2026-09-24)
+
+He asked the right question: *"how much would the chatbot cost?"* — and then answered it
+himself: *"maybe instead of help... people can help themselves choosing what they wanna do
+and looking through how to do it. We're just gonna make sure there's everything explained."*
+
+## The numbers, honestly
+
+On a cheap model (`gemini-3.5-flash-lite`, the one the scanner already uses for reading),
+a help answer is a small prompt and a short reply. The **unit cost is a fraction of a
+penny** — order of a hundredth of a penny a message, so a thousand questions is pennies and
+ten thousand is a couple of pounds. I would rather say "order of magnitude" than quote a
+figure I have not re-checked against Google's current price list on the day.
+
+**So the unit cost is not the risk. The risk is volume and abuse:**
+- An open chat endpoint is a free AI for anyone who finds it. Fenced by sign-in and the
+  database rate limiter already built for scans.
+- Cost grows with everything sent *back*, so a long conversation history is the expensive
+  part, not the question. A short window fixes it.
+
+## His instinct is right, and it is the cheaper order
+
+**Build the explanations first.** They cost nothing to serve, always say the same correct
+thing, work offline, work for somebody who cannot think what to ask, and answer most
+questions before a chat is ever opened.
+
+**Then the chat, behind a switch**, for the long tail — the questions the explanations did
+not anticipate. Which is also the honest measure of whether the explanations are any good:
+*what people end up asking the bot is the list of what the app failed to explain.* Worth
+logging for exactly that reason.
+
+So: **help first, chat second, and the chat is the thing that tells us what the help is
+missing.**
