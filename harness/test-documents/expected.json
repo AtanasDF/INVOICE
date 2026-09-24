@@ -193,7 +193,7 @@
     "gross": 6.6,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-015",
@@ -207,7 +207,7 @@
     "gross": 6.9,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-016",
@@ -221,7 +221,7 @@
     "gross": 12.9,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-017",
@@ -235,7 +235,7 @@
     "gross": 93.48,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-018",
@@ -249,7 +249,7 @@
     "gross": 33.44,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-019",
@@ -599,7 +599,7 @@
     "gross": 4.08,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-044",
@@ -613,7 +613,7 @@
     "gross": 10,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-045",
@@ -627,7 +627,7 @@
     "gross": 96.88,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-046",
@@ -641,7 +641,7 @@
     "gross": 138.56,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-047",
@@ -655,7 +655,7 @@
     "gross": 27.9,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-048",
@@ -1072,7 +1072,7 @@
     "gross": 6.53,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-077",
@@ -1297,7 +1297,7 @@
     "gross": 17.72,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-093",
@@ -1311,7 +1311,7 @@
     "gross": 116.63,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-094",
@@ -1325,7 +1325,7 @@
     "gross": 20.87,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-095",
@@ -1339,7 +1339,7 @@
     "gross": 46.78,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-096",
@@ -1353,7 +1353,7 @@
     "gross": 11.28,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-097",
@@ -1367,7 +1367,7 @@
     "gross": 3.6,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-098",
@@ -1381,7 +1381,7 @@
     "gross": 336.24,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-099",
@@ -1395,7 +1395,7 @@
     "gross": 22.08,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-100",
@@ -1409,7 +1409,7 @@
     "gross": 8.22,
     "dueDate": null,
     "currency": "GBP",
-    "type": "invoice"
+    "type": "receipt"
   },
   {
     "id": "D-101",

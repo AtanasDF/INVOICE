@@ -483,7 +483,14 @@ const build = (o) => {
       gross: sign * gross,
       dueDate: o.due ? uk(o.due) : null,
       currency: o.currencyCode ?? "GBP",
-      type: o.type ?? "invoice",
+      // A till roll and a card terminal slip are proof that money has
+      // already been handed over -- they carry "CARD **** 4417" or "CASH"
+      // and no amount due. They are receipts, and calling them invoices
+      // made this key mark the reader WRONG for reading them correctly
+      // (found 2026-09-24, scoring the reader against this file). The app's
+      // own model draws the same line: an invoice is a bill to pay, a
+      // receipt is one already paid.
+      type: o.type ?? (o.style === "till" || o.style === "slip" ? "receipt" : "invoice"),
       ...(o.note ? { note: o.note } : {}),
     },
     html: STYLES[o.style](d),

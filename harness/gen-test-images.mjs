@@ -27,7 +27,11 @@ const iso = (printed) => {
 };
 
 fs.mkdirSync(OUT, { recursive: true });
-for (const f of fs.readdirSync(OUT)) fs.unlinkSync(OUT + f);
+// Emptying this folder while something is reading it kills that run: on
+// 2026-09-24 a re-render to check the pictures had not changed deleted them
+// out from under a scoring run half way through, at D-039. Anything that
+// is not one of ours is left where it is, results.json above all.
+for (const f of fs.readdirSync(OUT)) if (/^D-\d+\.jpg$/.test(f) || f === "manifest.json") fs.unlinkSync(OUT + f);
 
 const browser = await puppeteer.launch({
   executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
