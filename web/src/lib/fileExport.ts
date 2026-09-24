@@ -1,6 +1,5 @@
 import type { Client, Receipt } from "@/lib/storage";
 import { inlineImage } from "@/lib/receiptImages";
-import { pagesToPdf } from "@/lib/documentPdf";
 import { makeZip, type ZipEntry } from "@/lib/zip";
 import { tidyFileName } from "@/lib/saveFile";
 
@@ -13,6 +12,13 @@ import { tidyFileName } from "@/lib/saveFile";
 // Every byte is read and written on the device. Nothing is uploaded.
 
 export type ExportShape = "zip" | "pictures" | "pdf" | "pdf-per-supplier";
+
+// pdf-lib is 500KB, and importing it here put it on the dashboard: this
+// file is used by the file library, and Next preloads what a visible link
+// opens, so the Files link in the header dragged the whole PDF writer onto
+// every signed-in page. Fetched when somebody actually asks for a PDF --
+// the same fix the spending chart needed for its chart library.
+const pdfWriter = () => import("@/lib/documentPdf").then((m) => m.pagesToPdf);
 
 export type ExportFile = { name: string; blob: Blob };
 
@@ -108,6 +114,7 @@ export async function buildExport(items: Gathered[], shape: ExportShape, label: 
   }
 
   if (shape === "pdf") {
+    const pagesToPdf = await pdfWriter();
     const pages = items.flatMap((i) => i.pages);
     const pdf = await pagesToPdf(pages, label);
     return { name: `${label}.pdf`, blob: new Blob([pdf as BlobPart], { type: "application/pdf" }) };
@@ -121,6 +128,7 @@ export async function buildExport(items: Gathered[], shape: ExportShape, label: 
     const who = item.supplier || item.receipt.vendor || "Unknown";
     bySupplier.set(who, [...(bySupplier.get(who) ?? []), item]);
   }
+  const pagesToPdf = await pdfWriter();
   const entries: ZipEntry[] = [];
   for (const [who, theirs] of [...bySupplier].sort((a, b) => a[0].localeCompare(b[0]))) {
     const pdf = await pagesToPdf(theirs.flatMap((i) => i.pages), `${who} — ${label}`);

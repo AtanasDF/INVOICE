@@ -51,3 +51,8 @@ harness/multi/
 # answer key and the index are kept because they are read and annotated.
 harness/test-documents/documents.pdf
 harness/test-documents/documents.html
+# The 106 test documents rendered one-per-file for scoring the reader, and
+# the trial subset. Both regenerate from gen-test-images.mjs in seconds;
+# the answer key they are scored against IS kept.
+harness/test-documents/images/
+harness/test-documents/trial/

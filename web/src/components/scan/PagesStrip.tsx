@@ -88,7 +88,7 @@ export default function PagesStrip({ pages, scanning, onOpen, onCaptured, confir
           onOpen={() => onOpen({ kind: "first" })}
           onCapture={(file) => onCaptured(file, { kind: "first" })}
           disabled={scanning}
-          className="text-sm font-medium text-neutral-600 disabled:opacity-50"
+          className="inline-block min-h-11 px-2 py-2.5 text-sm font-medium text-neutral-600 disabled:opacity-50"
         >
           Start a new document
         </CaptureButton>

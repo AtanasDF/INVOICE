@@ -26,6 +26,7 @@ const GROUPS: Group[] = [
       ["/invoices", "Invoices"],
       ["/quotes", "Quotes"],
       ["/money", "Money"],
+      ["/jobs", "Jobs"],
       ["/clients", "Customers & suppliers"],
       ["/recurring/invoices", "Recurring invoices"],
     ],

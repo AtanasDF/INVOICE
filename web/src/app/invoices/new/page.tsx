@@ -799,7 +799,7 @@ export default function NewInvoicePage() {
                   key={s.description}
                   type="button"
                   onClick={() => addSuggestedItem(s.description, s.unitPrice, s.vatRate)}
-                  className="rounded-full border px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                  className="rounded-full border px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                 >
                   + {s.description} ({money(s.unitPrice)})
                 </button>

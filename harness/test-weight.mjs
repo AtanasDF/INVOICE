@@ -16,6 +16,16 @@ Object.assign(db.tables, { receipts: [], credit_notes: [], invoice_payments: [],
 db.tables.business_profile.push({ user_id: UID, business_name: "Harness Ltd", vat_registered: false, invoice_prefix: "INV-", invoice_next_number: 1, custom_categories: null });
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-weight" });
+// Weight is what a FIRST-TIME visitor downloads, so the service worker is
+// stood aside for it. Since 2026-09-24 the worker is registered for
+// everybody rather than only for whoever turned on notifications, and it
+// caches the app's content-hashed files -- which is the point of it, and
+// which made this suite measure a warm cache instead of a cold arrival:
+// the 13MB page-finder came back as 0 KB because it never touched the
+// network. What it fetched second time round is not what this is about.
+const weightCdp = await page.createCDPSession();
+await weightCdp.send("Network.enable");
+await weightCdp.send("Network.setBypassServiceWorker", { bypass: true });
 
 // Bytes of JavaScript per load, and whether OpenCV was among them.
 let js = 0, opencv = 0, requests = [];
