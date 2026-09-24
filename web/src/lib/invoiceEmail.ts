@@ -26,6 +26,12 @@ const Word = (i: InvoiceEmailInput) => (i.docType === "quote" ? "Quote" : "Invoi
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
+// The message the owner sends with the document, and the placeholder the
+// send-it form shows for it. Correspondence, so it is written the way an
+// invoice email is written.
+export const defaultNote = (word: string, number?: string) =>
+  `Please find attached ${word}${number ? ` ${number}` : ""}. Thank you.`;
+
 export function invoiceEmailSubject(i: InvoiceEmailInput): string {
   return `${Word(i)}${i.number ? ` ${i.number}` : ""} from ${i.issuerName}`;
 }

@@ -17,7 +17,7 @@ async function signatureFromPhoto(file: File): Promise<string> {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
       el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("Could not read this image."));
+      el.onerror = () => reject(new Error("Couldn't read that image."));
       el.src = url;
     });
     const scale = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -25,7 +25,7 @@ async function signatureFromPhoto(file: File): Promise<string> {
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not read this image.");
+    if (!ctx) throw new Error("Couldn't read that image.");
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const px = data.data;
@@ -186,7 +186,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
       onChange(await signatureFromPhoto(file));
       setDrawing(false);
     } catch (err) {
-      setError(saveFailed(err, "Could not read this image."));
+      setError(saveFailed(err, "Couldn't read that image."));
     }
   }
 

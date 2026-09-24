@@ -196,7 +196,7 @@ export default function InvoiceViewPage() {
       await invoicesStore.update(invoice.id, { status: next });
     } catch (err) {
       setInvoice({ ...invoice, status: prevStatus });
-      setStatusError(saveFailed(err, "Could not update status."));
+      setStatusError(saveFailed(err, "Couldn't update status."));
     } finally {
       setStatusSaving(false);
     }
@@ -253,7 +253,7 @@ export default function InvoiceViewPage() {
       setShowPayForm(false);
       setPayAmount("");
     } catch (err) {
-      setPayError(saveFailed(err, "Could not record the payment."));
+      setPayError(saveFailed(err, "Couldn't record the payment."));
     } finally {
       payingNow.current = false;
       setPaySaving(false);
@@ -300,7 +300,7 @@ export default function InvoiceViewPage() {
         celebrate(all);
       }
     } catch (err) {
-      setStatusError(saveFailed(err, "Could not mark it paid."));
+      setStatusError(saveFailed(err, "Couldn't mark it paid."));
     } finally {
       settlingNow.current = false;
       setStatusSaving(false);
@@ -317,7 +317,7 @@ export default function InvoiceViewPage() {
       const { pays, notes } = await freshFigures();
       await syncStatus(invoice, notes, pays, invoiceVat(invoice, vatRegistered), true);
     } catch (err) {
-      setPayError(saveFailed(err, "Could not remove the payment."));
+      setPayError(saveFailed(err, "Couldn't remove the payment."));
     }
   }
 
@@ -372,7 +372,7 @@ export default function InvoiceViewPage() {
       setInvoice({ ...invoice, dueDate: editDueDate || null, paymentTerms: editPaymentTerms, notes: editNotes, tags });
       setEditingDetails(false);
     } catch (err) {
-      setEditError(saveFailed(err, "Could not save changes."));
+      setEditError(saveFailed(err, "Couldn't save changes."));
     } finally {
       setEditSaving(false);
     }
@@ -409,7 +409,7 @@ export default function InvoiceViewPage() {
       const fresh = await invoicesStore.get(invoice.id);
       setInvoice(fresh);
     } catch (err) {
-      setDraftError(saveFailed(err, "Could not save this draft."));
+      setDraftError(saveFailed(err, "Couldn't save this draft."));
     } finally {
       setDraftSaving(false);
     }
@@ -467,7 +467,7 @@ export default function InvoiceViewPage() {
       // Supabase errors are plain objects, not Errors: instanceof would
       // hide the reason behind the fallback on exactly the failures worth
       // reading.
-      setSendError(saveFailed(err, "Could not mark this invoice sent."));
+      setSendError(saveFailed(err, "Couldn't mark this invoice sent."));
     } finally {
       setSendBusy(false);
     }
@@ -497,7 +497,7 @@ export default function InvoiceViewPage() {
       });
       router.push(`/invoices/${created.id}`);
     } catch (err) {
-      setDuplicateError(saveFailed(err, "Could not duplicate this invoice."));
+      setDuplicateError(saveFailed(err, "Couldn't duplicate this invoice."));
       setDuplicating(false);
     }
   }
@@ -521,7 +521,7 @@ export default function InvoiceViewPage() {
       setShowCnForm(false);
       await syncStatus(invoice, notes, payments, invoiceVat(invoice, vatRegistered));
     } catch (err) {
-      setCnError(saveFailed(err, "Could not save credit note."));
+      setCnError(saveFailed(err, "Couldn't save credit note."));
     } finally {
       setCnSaving(false);
     }

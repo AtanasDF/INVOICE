@@ -902,7 +902,7 @@ export default function ScanPage() {
       pickSupplier(created.id, [...suppliers, created]);
       setSupplierSaved(true);
     } catch (err) {
-      setSaveError(saveFailed(err, "Could not save."));
+      setSaveError(saveFailed(err, "Couldn't save."));
     } finally {
       setSaving(false);
     }
@@ -957,7 +957,7 @@ export default function ScanPage() {
       if (d) updateDoc(d.id, { done: "saved", look: null });
       if (!advance()) router.push("/receipts");
     } catch (err) {
-      setSaveError(saveFailed(err, "Could not save."));
+      setSaveError(saveFailed(err, "Couldn't save."));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -1036,7 +1036,7 @@ export default function ScanPage() {
       setSummary({ saved: saved.size, looks: todo.filter((d) => looks.has(d.id)).map((d) => `${names.get(d.id)} (${looks.get(d.id)})`) });
       if (!saved.has(shown.id) || !advance()) window.scrollTo({ top: 0 });
     } catch (err) {
-      setSaveError(saveFailed(err, "Could not save."));
+      setSaveError(saveFailed(err, "Couldn't save."));
     } finally {
       savingRef.current = false;
       setSaving(false);

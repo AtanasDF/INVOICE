@@ -105,14 +105,14 @@ export default function RecurringExpensesPage() {
       setSupplierId("");
       setDayOfMonth("1");
     } catch (err) {
-      setError(saveFailed(err, "Could not save."));
+      setError(saveFailed(err, "Couldn't save."));
     } finally {
       setSaving(false);
     }
   }
 
   // Two writes, and the second one failing used to undo the first in the
-  // telling but not in the books: "Could not log this expense." while the
+  // telling but not in the books: "Couldn't log this expense." while the
   // receipt was already saved, with the Log it button still sitting there.
   // A second tap wrote a second identical expense, and nothing flags it --
   // the recurring path never runs findDuplicate.
@@ -145,7 +145,7 @@ export default function RecurringExpensesPage() {
       });
       setLogged(item.description);
     } catch (err) {
-      setError(saveFailed(err, "Could not log this expense."));
+      setError(saveFailed(err, "Couldn't log this expense."));
       logging.current = false;
       setLoggingId(null);
       return;
@@ -171,7 +171,7 @@ export default function RecurringExpensesPage() {
       await recurringExpensesStore.update(item.id, { active: next });
     } catch (err) {
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, active: !next } : i)));
-      setError(saveFailed(err, "Could not update."));
+      setError(saveFailed(err, "Couldn't update."));
     }
   }
 
@@ -182,7 +182,7 @@ export default function RecurringExpensesPage() {
       await recurringExpensesStore.remove(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(saveFailed(err, "Could not remove."));
+      setError(saveFailed(err, "Couldn't remove."));
     }
   }
 
@@ -246,7 +246,7 @@ export default function RecurringExpensesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring expenses set up yet.</p>}
+          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring expenses set up yet. Add one for a bill that comes every month, and it goes in with your expenses on the day.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             return (

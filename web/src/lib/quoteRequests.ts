@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 import { currentUserId, newLinkToken } from "./storage";
 import { RECEIPTS_BUCKET } from "./receiptsBucket";
 import type { LinePrice, Offer, Picks, RequestItem } from "./quoteCompare";
+import { SIGNED_OUT } from "@/lib/errorText";
 
 // Asking suppliers to price a list (migration-028). A request is Atanas's
 // list; each supplier asked has its own row, link and answer.
@@ -205,7 +206,7 @@ export const requestSuppliersStore = {
   // shows; the server refuses if it has changed since.
   async send(id: string, to: string): Promise<{ sentAt: string }> {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Please sign in again.");
+    if (!session) throw new Error(SIGNED_OUT);
     const res = await fetch("/api/quote-requests/send", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },

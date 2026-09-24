@@ -281,7 +281,7 @@ export default function QuoteRequestPage() {
 
       <section className={CARD} aria-labelledby="suppliers-heading">
         <h2 id="suppliers-heading" className="font-semibold">Suppliers</h2>
-        {!rows.length && <p className="mt-1 text-sm text-neutral-600">No suppliers on this request yet.</p>}
+        {!rows.length && <p className="mt-1 text-sm text-neutral-600">No suppliers on this request yet. Add one below to email them the list to price.</p>}
         <div className="mt-3 space-y-3">
           {rows.map((row) => {
             const client = clientOf(row.supplierId);

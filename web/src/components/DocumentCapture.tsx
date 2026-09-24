@@ -1695,7 +1695,7 @@ export default function DocumentCapture({
     try {
       const image = await renderCapture();
       if (streamRef.current !== stream) return;
-      if (!image) throw new Error("Could not read this image.");
+      if (!image) throw new Error("Couldn't read that image.");
       setFlash(true);
       const [scaled] = await Promise.all([downscaleImageDataUrl(image), new Promise((r) => setTimeout(r, FLASH_MS))]);
       if (streamRef.current !== stream) return;
@@ -1710,7 +1710,7 @@ export default function DocumentCapture({
         rearmAtRef.current = 0;
       }
       resetStable();
-      showFailure(saveFailed(err, "Could not read this image."));
+      showFailure(saveFailed(err, "Couldn't read that image."));
       return;
     }
     if (multi) {
@@ -1750,7 +1750,7 @@ export default function DocumentCapture({
           reject(err);
         }
       };
-      reader.onerror = () => reject(new Error("Could not read this file."));
+      reader.onerror = () => reject(new Error("Couldn't read that file."));
       reader.readAsDataURL(file);
     });
   }
@@ -1772,7 +1772,7 @@ export default function DocumentCapture({
       stopStream();
       onCapture?.(file);
     } catch (err) {
-      showFailure(saveFailed(err, "Could not read this file."));
+      showFailure(saveFailed(err, "Couldn't read that file."));
     }
   }
 

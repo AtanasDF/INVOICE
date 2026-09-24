@@ -337,7 +337,7 @@ export default function SettingsPage() {
         setPushEnabled(true);
       }
     } catch (err) {
-      setPushError(saveFailed(err, "Could not update notification settings."));
+      setPushError(saveFailed(err, "Couldn't update notification settings."));
     } finally {
       setPushBusy(false);
     }
@@ -420,7 +420,7 @@ export default function SettingsPage() {
       setSaved(true);
       return true;
     } catch (err) {
-      setError(saveFailed(err, "Could not save your profile."));
+      setError(saveFailed(err, "Couldn't save your profile."));
       return false;
     } finally {
       setSaving(false);
@@ -500,7 +500,7 @@ export default function SettingsPage() {
         feedback,
       });
     } catch (err) {
-      setExportError(saveFailed(err, "Could not export your data."));
+      setExportError(saveFailed(err, "Couldn't export your data."));
     } finally {
       setExporting(false);
     }

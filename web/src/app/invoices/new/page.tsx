@@ -23,7 +23,7 @@ import UploadFilesButton from "@/components/UploadFilesButton";
 import ContactField, { type Usage } from "@/components/ContactField";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
-import { saveFailed } from "@/lib/errorText";
+import { saveFailed, SIGNED_OUT } from "@/lib/errorText";
 
 function addDays(dateStr: string, days: number): string {
   // UTC methods throughout -- see the comment on the equivalent helper in
@@ -380,7 +380,7 @@ export default function NewInvoicePage() {
     setScanError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Please sign in again.");
+      if (!session) throw new Error(SIGNED_OUT);
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -415,7 +415,7 @@ export default function NewInvoicePage() {
     setScanError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Please sign in again.");
+      if (!session) throw new Error(SIGNED_OUT);
       const res = await fetch("/api/invoice-template", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -440,7 +440,7 @@ export default function NewInvoicePage() {
     setTypedNote(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Please sign in again.");
+      if (!session) throw new Error(SIGNED_OUT);
       const res = await fetch("/api/invoice-from-text", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -612,7 +612,7 @@ export default function NewInvoicePage() {
       setCustomerText("");
       setNewCustomer(null);
     } catch (err) {
-      setAddClientError(saveFailed(err, "Could not add the customer."));
+      setAddClientError(saveFailed(err, "Couldn't add the customer."));
     } finally {
       setAddingClient(false);
     }
@@ -641,7 +641,7 @@ export default function NewInvoicePage() {
       if (imported) clearFreeInvoiceDraft();
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
-      setError(saveFailed(err, "Could not save invoice."));
+      setError(saveFailed(err, "Couldn't save invoice."));
       setSaving(false);
     }
   }

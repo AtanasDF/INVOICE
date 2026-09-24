@@ -43,12 +43,12 @@ export default function FeedbackPage() {
         body: JSON.stringify({ message, category, page: pathname }),
       });
       const body = (await res.json().catch(() => ({}))) as { id?: string; createdAt?: string; emailed?: boolean; error?: string };
-      if (!res.ok || !body.id) throw new Error(body.error || "Could not send feedback. Try again in a minute.");
+      if (!res.ok || !body.id) throw new Error(body.error || "Couldn't send feedback. Try again in a minute.");
       setItems((prev) => [{ id: body.id!, message: message.trim(), category, page: pathname, createdAt: body.createdAt ?? new Date().toISOString() }, ...prev]);
       setMessage("");
       setSent("Sent. Thank you.");
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Could not send feedback. Try again in a minute.");
+      setError(err instanceof Error && err.message ? err.message : "Couldn't send feedback. Try again in a minute.");
     } finally {
       setSaving(false);
     }

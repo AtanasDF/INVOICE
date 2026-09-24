@@ -5,7 +5,7 @@
 // itself. Four such sites remain and were each checked on 2026-09-24: the
 // postcode lookup ("Couldn't find one of those postcodes."), the price
 // guide (the route's own `error`), and the two file readers ("Couldn't
-// open that file.", "Could not read this image."). Anything that can carry
+// open that file.", "Couldn't read that image."). Anything that can carry
 // a database error uses saveFailed instead -- twelve sites did not, and
 // were showing Postgres's own wording to people.
 export function errorText(err: unknown, fallback: string): string {
@@ -59,3 +59,12 @@ export function loadFailed(err: unknown, what: string, advice = "Check your conn
 // is watching and a stray "Invalid PDF structure" would be the whole of what
 // they are told.
 export const PDF_FAILED = "Couldn't make the PDF. Try again, or use Print instead.";
+
+// Signed out part-way through something. "Please sign in again" said what
+// to do but not what had happened, so it read as the app asking a favour
+// rather than telling somebody their session had run out.
+export const SIGNED_OUT = "You've been signed out. Sign in again, then try that once more.";
+
+// Said on two screens -- making an account and resetting a password --
+// which had two different sentences for the same mistake.
+export const PASSWORDS_DIFFER = "The two passwords are not the same. Type the same one in both boxes.";

@@ -241,7 +241,7 @@ function ReceiptsPage() {
       await receiptsStore.remove(id);
       setReceipts((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      setError(saveFailed(err, "Could not remove receipt."));
+      setError(saveFailed(err, "Couldn't remove receipt."));
     }
   }
 
@@ -252,7 +252,7 @@ function ReceiptsPage() {
       await receiptsStore.update(r.id, { starred: next });
     } catch (err) {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, starred: !next } : x)));
-      setError(saveFailed(err, "Could not update receipt."));
+      setError(saveFailed(err, "Couldn't update receipt."));
     }
   }
 
@@ -263,7 +263,7 @@ function ReceiptsPage() {
       await receiptsStore.update(r.id, { paid: true });
     } catch (err) {
       setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, paid: false } : x)));
-      setError(saveFailed(err, "Could not mark this invoice as paid."));
+      setError(saveFailed(err, "Couldn't mark this invoice as paid."));
     }
   }
 
@@ -381,7 +381,7 @@ function ReceiptsPage() {
       setEditingId(null);
       setEditDraft(null);
     } catch (err) {
-      setEditError(saveFailed(err, "Could not save changes."));
+      setEditError(saveFailed(err, "Couldn't save changes."));
     } finally {
       setEditBusy(false);
     }

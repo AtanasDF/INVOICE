@@ -192,7 +192,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
         })
       );
     } catch (err) {
-      setError(saveFailed(err, "Could not add the customer."));
+      setError(saveFailed(err, "Couldn't add the customer."));
       setSaving(false);
     }
   }

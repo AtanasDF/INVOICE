@@ -117,7 +117,7 @@ function InvoicesPage() {
       await invoicesStore.remove(id);
       setInvoices((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(saveFailed(err, "Could not remove invoice."));
+      setError(saveFailed(err, "Couldn't remove invoice."));
     }
   }
 
@@ -149,7 +149,7 @@ function InvoicesPage() {
       setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: "paid" } : i)));
       celebratePaid({ amount: all.reduce((s, p) => s + p.amount, 0), from: clients.find((c) => c.id === inv.clientId)?.name, number: inv.number });
     } catch (err) {
-      setError(saveFailed(err, "Could not update invoice."));
+      setError(saveFailed(err, "Couldn't update invoice."));
     } finally {
       setMarking((m) => m.filter((id) => id !== inv.id));
     }

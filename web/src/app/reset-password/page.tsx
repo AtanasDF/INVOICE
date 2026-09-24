@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { saveFailed } from "@/lib/errorText";
+import { PASSWORDS_DIFFER, saveFailed } from "@/lib/errorText";
 
 type Status = "checking" | "ready" | "invalid" | "done";
 
@@ -48,11 +48,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError("Your new password needs to be at least 6 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords don't match.");
+      setError(PASSWORDS_DIFFER);
       return;
     }
     setSaving(true);
@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
       setStatus("done");
       setTimeout(() => router.replace("/"), 1500);
     } catch (err) {
-      setError(saveFailed(err, "Could not update your password."));
+      setError(saveFailed(err, "Couldn't change your password. Try again."));
     } finally {
       setSaving(false);
     }
@@ -75,9 +75,9 @@ export default function ResetPasswordPage() {
   if (status === "invalid") {
     return (
       <div className="mx-auto max-w-sm space-y-4">
-        <h1 className="text-2xl font-bold">Link expired</h1>
+        <h1 className="text-2xl font-bold">That link has run out</h1>
         <p className="text-neutral-600">
-          This password reset link is invalid or has expired. Request a new one from the sign-in page.
+          It has expired, or it was already used. Ask for a new one on the sign-in page.
         </p>
         <button onClick={() => router.push("/login")} className="text-sm font-medium text-neutral-700 underline">
           Back to sign in
@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
   if (status === "done") {
     return (
       <div className="mx-auto max-w-sm space-y-4">
-        <h1 className="text-2xl font-bold">Password updated</h1>
+        <h1 className="text-2xl font-bold">Password changed</h1>
         <p className="text-neutral-600">Taking you to your dashboard…</p>
       </div>
     );

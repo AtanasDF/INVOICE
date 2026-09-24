@@ -17,11 +17,11 @@ import AddressFields from "@/components/AddressFields";
 import UploadFilesButton from "@/components/UploadFilesButton";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
-import { saveFailed } from "@/lib/errorText";
+import { saveFailed, SIGNED_OUT } from "@/lib/errorText";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Please sign in again.");
+  if (!session) throw new Error(SIGNED_OUT);
   const res = await fetch("/api/contact-scan", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -160,7 +160,7 @@ export default function NewClientPage() {
       if (pickedCompany) rememberCompany(created.id, pickedCompany);
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
-      setError(saveFailed(err, `Could not save this ${kind === "client" ? "customer" : "supplier"}.`));
+      setError(saveFailed(err, `Couldn't save this ${kind === "client" ? "customer" : "supplier"}.`));
       setSaving(false);
     }
   }

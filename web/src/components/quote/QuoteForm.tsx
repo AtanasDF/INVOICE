@@ -70,7 +70,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
     try {
       await onSave({ ...v, number: v.number.trim(), items: lines, deposit });
     } catch (err) {
-      setError(saveFailed(err, "Could not save the quote."));
+      setError(saveFailed(err, "Couldn't save the quote."));
       setSaving(false);
     }
   }

@@ -100,13 +100,13 @@ export default function NewReceiptPage() {
         setImageDataUrl(await downscaleImageDataUrl(reader.result as string));
       } catch {
         // Not saveFailed: this is our own decode failing, not Supabase, and
-        // its message ("Could not read this image.") says nothing about
+        // its message ("Couldn't read that image.") says nothing about
         // what to do instead. A HEIC straight off an iPhone is the common
         // case, and Chrome can't decode one.
-        setError("Could not read this photo. Try a JPEG or PNG.");
+        setError("Couldn't read that photo. Try a JPEG or PNG.");
       }
     };
-    reader.onerror = () => setError("Could not read this photo. Try a JPEG or PNG.");
+    reader.onerror = () => setError("Couldn't read that photo. Try a JPEG or PNG.");
     reader.readAsDataURL(file);
   }
 
@@ -248,7 +248,7 @@ export default function NewReceiptPage() {
       });
       router.push("/receipts");
     } catch (err) {
-      setError(saveFailed(err, "Could not save receipt."));
+      setError(saveFailed(err, "Couldn't save receipt."));
       setSaving(false);
     }
   }

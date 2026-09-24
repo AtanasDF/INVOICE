@@ -108,7 +108,7 @@ export function readUpload(file: File): Promise<ScanHandoff> {
     reader.onload = async () => {
       try {
         const known = typed(reader.result as string, file.type);
-        if (!known) throw new Error("Could not tell what kind of file this is.");
+        if (!known) throw new Error("Couldn't tell what kind of file this is.");
         const { downscaleImageDataUrl } = await import("@/lib/imageDownscale");
         const dataUrl = await downscaleImageDataUrl(known.dataUrl);
         resolve({ dataUrl, mediaType: known.type.startsWith("image/") ? "image/jpeg" : known.type });
@@ -116,7 +116,7 @@ export function readUpload(file: File): Promise<ScanHandoff> {
         reject(err);
       }
     };
-    reader.onerror = () => reject(new Error("Could not read this file."));
+    reader.onerror = () => reject(new Error("Couldn't read that file."));
     reader.readAsDataURL(file);
   });
 }

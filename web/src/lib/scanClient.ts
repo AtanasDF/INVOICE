@@ -3,6 +3,7 @@ import type { ScanDetailKey, ScanDetails, ScanResult } from "@/lib/scanExtractio
 import type { DocumentDetails } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
 import { countPages } from "@/lib/splitDocuments";
+import { SIGNED_OUT } from "@/lib/errorText";
 
 // Vercel rejects request bodies over 4.5MB, so a multi-page scan is sent
 // to /api/scan in batches and the per-batch results merged here. Batches
@@ -41,7 +42,7 @@ export async function extractPages(
     );
   }
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Please sign in again.");
+  if (!session) throw new Error(SIGNED_OUT);
   const batches = batchPages(pages);
   const found: ScanResult[][] = [];
   for (const batch of batches) {

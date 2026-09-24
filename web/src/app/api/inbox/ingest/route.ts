@@ -33,7 +33,7 @@ function convertToGbp(total: number, vat: number, rate: number) {
 // queue or it's silently lost.
 function dateCue(label: string, printed: string | null, iso: string | null, alternative: string | null): string {
   const alt = alternative ? `; could be ${alternative}` : "";
-  return `${label} read as ${printed} as ${iso ?? "unreadable"}${alt} — please confirm`;
+  return `${label} read as ${printed} as ${iso ?? "unreadable"}${alt} — check this one`;
 }
 
 // An attachment holding several documents gives a row for each: a PDF cut

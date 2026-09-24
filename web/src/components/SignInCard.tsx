@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { saveFailed } from "@/lib/errorText";
+import { saveFailed, PASSWORDS_DIFFER } from "@/lib/errorText";
 import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 import { readSource } from "@/lib/source";
 import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites";
@@ -155,7 +155,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
     const formPassword = (formData.get("password") as string) || password;
     const formAgain = (formData.get("again") as string) || again;
     if (mode === "signup" && formPassword !== formAgain) {
-      setError("The two passwords are not the same. Type the same one in both boxes.");
+      setError(PASSWORDS_DIFFER);
       return;
     }
     setBusy(true);
@@ -249,7 +249,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         <p role="status" className="sr-only">{info ?? ""}</p>
         <p className="text-base text-neutral-600">Nothing after a minute? Look in the junk folder, or send it again.</p>
         <button type="button" onClick={resend} disabled={busy} className={bigButton}>
-          {busy ? "Please wait…" : "Send it again"}
+          {busy ? "Sending…" : "Send it again"}
         </button>
         <button type="button" onClick={() => go("signin")} className="w-full rounded-lg border px-4 py-3 text-base font-medium text-neutral-700">
           I&apos;ve done it, sign me in
@@ -279,7 +279,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
           {info && <p className="text-base text-neutral-700">{info}</p>}
           <Turnstile onToken={setCaptchaToken} resetKey={captchaRound} />
           <button disabled={busy} className={bigButton}>
-            {busy ? "Please wait…" : "Send me a link"}
+            {busy ? "Sending…" : "Send me a link"}
           </button>
         </form>
         <button type="button" onClick={() => go("signin")} className="text-base font-medium text-neutral-700 underline">
@@ -362,7 +362,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         <p role="status" className="sr-only">{info ?? ""}</p>
         <Turnstile onToken={setCaptchaToken} resetKey={captchaRound} />
         <button disabled={busy} className={bigButton}>
-          {busy ? "Please wait…" : newAccount ? "Make my account" : "Sign me in"}
+          {busy ? (newAccount ? "Making your account…" : "Signing you in…") : newAccount ? "Make my account" : "Sign me in"}
         </button>
       </form>
 

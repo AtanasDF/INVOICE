@@ -78,7 +78,7 @@ export default function MoneyPage() {
       setReceipts((prev) => prev.map((r) => (r.id === row.id ? { ...r, paid: true } : r)));
       setDone(`${row.who} marked paid.`);
     } catch (err) {
-      setError(saveFailed(err, "Could not mark that bill paid."));
+      setError(saveFailed(err, "Couldn't mark that bill paid."));
     } finally {
       paying.current = false;
     }

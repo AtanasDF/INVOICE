@@ -114,7 +114,7 @@ export default function ReviewQueuePage() {
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
       setDone(`${draft.vendor || "That document"} saved to your records.`);
     } catch (err) {
-      setRowError({ id: r.id, message: saveFailed(err, "Could not save this receipt.") });
+      setRowError({ id: r.id, message: saveFailed(err, "Couldn't save this receipt.") });
     } finally {
       setBusyId(null);
     }
@@ -128,7 +128,7 @@ export default function ReviewQueuePage() {
       await receiptsStore.remove(r.id);
       setReceipts((prev) => prev.filter((x) => x.id !== r.id));
     } catch (err) {
-      setRowError({ id: r.id, message: saveFailed(err, "Could not remove this receipt.") });
+      setRowError({ id: r.id, message: saveFailed(err, "Couldn't remove this receipt.") });
     } finally {
       setBusyId(null);
     }

@@ -13,7 +13,7 @@ export async function downscaleImageDataUrl(dataUrl: string, maxDimension = 1600
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
     el.onload = () => resolve(el);
-    el.onerror = () => reject(new Error("Could not read this image."));
+    el.onerror = () => reject(new Error("Couldn't read that image."));
     el.src = dataUrl;
   });
 

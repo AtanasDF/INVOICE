@@ -45,7 +45,7 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
     try {
       await onSave({ ...v, title: v.title.trim(), items }, picked);
     } catch (err) {
-      setError(saveFailed(err, "Could not save the request."));
+      setError(saveFailed(err, "Couldn't save the request."));
       setSaving(false);
     }
   }

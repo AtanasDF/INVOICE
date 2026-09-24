@@ -121,7 +121,7 @@ export default function RecurringInvoicesPage() {
       setNotes("");
       setDayOfMonth("1");
     } catch (err) {
-      setError(saveFailed(err, "Could not save."));
+      setError(saveFailed(err, "Couldn't save."));
     } finally {
       setSaving(false);
     }
@@ -152,7 +152,7 @@ export default function RecurringInvoicesPage() {
       });
       setMade({ id: draft.id, name: clientName(item.clientId) });
     } catch (err) {
-      setError(saveFailed(err, "Could not generate this invoice."));
+      setError(saveFailed(err, "Couldn't generate this invoice."));
       generating.current = false;
       setGeneratingId(null);
       return;
@@ -180,7 +180,7 @@ export default function RecurringInvoicesPage() {
       await recurringInvoicesStore.update(item.id, { active: next });
     } catch (err) {
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, active: !next } : i)));
-      setError(saveFailed(err, "Could not update."));
+      setError(saveFailed(err, "Couldn't update."));
     }
   }
 
@@ -191,7 +191,7 @@ export default function RecurringInvoicesPage() {
       await recurringInvoicesStore.remove(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(saveFailed(err, "Could not remove."));
+      setError(saveFailed(err, "Couldn't remove."));
     }
   }
 
@@ -298,7 +298,7 @@ export default function RecurringInvoicesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring invoices set up yet.</p>}
+          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring invoices set up yet. Add one for work you bill every month, and a draft invoice is made for you on the day.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             const total = computeInvoiceTotals(item.items, profile?.vatRegistered ?? false).total;

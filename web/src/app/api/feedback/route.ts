@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     .single();
   if (error || !row) {
     console.error("feedback: could not save,", error?.message);
-    return NextResponse.json({ error: "Could not save your feedback. Try again in a minute." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't save your feedback. Try again in a minute." }, { status: 500 });
   }
 
   let emailed = false;

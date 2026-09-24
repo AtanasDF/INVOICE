@@ -9,6 +9,7 @@ import SaveAsMenu from "@/components/SaveAsMenu";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
 import { saveFailed, PDF_FAILED } from "@/lib/errorText";
+import { defaultNote } from "@/lib/invoiceEmail";
 
 type Status =
   | { kind: "idle" }
@@ -279,7 +280,7 @@ export function EmailForm({
           id="send-message"
           rows={3}
           className={INPUT}
-          placeholder={`Please find attached ${word}${fields.number ? ` ${fields.number}` : ""}. Thank you.`}
+          placeholder={defaultNote(word, fields.number)}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />

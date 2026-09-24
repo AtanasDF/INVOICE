@@ -377,7 +377,7 @@ function Dashboard() {
     setOutstandingInvoices((prev) => prev.filter((o) => !done.has(o.invoice.id)));
     setAllInvoices((prev) => prev.map((i) => (done.has(i.id) ? { ...i, status: "paid" as const } : i)));
     if (failed.length) {
-      setPayError(`Could not record ${failed.join(", ")}. The others went through.`);
+      setPayError(`Couldn't record ${failed.join(", ")}. The others went through.`);
       setPicked((prev) => new Set([...prev].filter((id) => !done.has(id))));
     } else {
       setPicking(false);
@@ -392,7 +392,7 @@ function Dashboard() {
       await receiptsStore.update(bill.id, { paid: true });
     } catch (err) {
       setBills((prev) => [...prev, bill]);
-      setBillsError(saveFailed(err, "Could not mark this bill as paid."));
+      setBillsError(saveFailed(err, "Couldn't mark this bill as paid."));
     }
   }
 

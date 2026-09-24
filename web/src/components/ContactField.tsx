@@ -174,7 +174,7 @@ export default function ContactField({
       onSelect(created);
       setPending(null);
     } catch (err) {
-      setAddError(saveFailed(err, `Could not add the ${word}.`));
+      setAddError(saveFailed(err, `Couldn't add the ${word}.`));
     } finally {
       setAdding(false);
     }

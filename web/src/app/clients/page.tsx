@@ -188,7 +188,7 @@ export default function ClientsPage() {
       setEditingId(null);
       setDraft(null);
     } catch (err) {
-      setError(saveFailed(err, "Could not save changes."));
+      setError(saveFailed(err, "Couldn't save changes."));
     } finally {
       setBusyId(null);
     }
@@ -202,7 +202,7 @@ export default function ClientsPage() {
       await clientsStore.remove(id);
       setClients((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      setError(saveFailed(err, `Could not remove this ${tab === "client" ? "customer" : "supplier"}.`));
+      setError(saveFailed(err, `Couldn't remove this ${tab === "client" ? "customer" : "supplier"}.`));
     }
   }
 
@@ -217,7 +217,7 @@ export default function ClientsPage() {
       await (next ? clientsStore.archive(c.id) : clientsStore.unarchive(c.id));
     } catch (err) {
       setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: !next } : x)));
-      setError(saveFailed(err, "Could not update."));
+      setError(saveFailed(err, "Couldn't update."));
     }
   }
 
