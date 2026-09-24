@@ -3,6 +3,7 @@
 // dev server runs with RESEND_API_KEY empty and the send route is
 // intercepted in the owner's browser.
 import fs from "fs";
+import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./qr-mock-server.mjs";
 import { makeDb, newId, sleep, bodyText } from "./qr-mockdb.mjs";
@@ -11,8 +12,23 @@ import { makeDb, newId, sleep, bodyText } from "./qr-mockdb.mjs";
 // from inside it, so this suite never ran at all.
 import { quoteRequestEmailHtml, quoteRequestEmailSubject, quoteRequestEmailText } from "./gen/lib/quoteRequestEmail.js";
 
-const BASE = process.env.BASE ?? "http://localhost:3305";
-const OUT = "/private/tmp/claude-501/-Users-nasko-Desktop-MM-INVOICES-AUTO/85090693-d203-4a4e-be6a-5911529c13ff/scratchpad/qr/";
+// This suite is not like the others: it needs the SERVER pointed at its
+// mock, not just the browser. /api/quote-requests/send checks the caller's
+// token server-side, where no browser interception can reach, so run-all.sh
+// handing it $BASE=3000 left those checks talking to the real Supabase and
+// getting 401. It starts its own dev server on 3305, as its header always
+// said it did, and ignores $BASE.
+const PORT = 3305;
+const BASE = `http://localhost:${PORT}`;
+const WEB = new URL("../web/", import.meta.url).pathname;
+const MOCK = "http://localhost:5566";
+// Beside the suite (harness/*.png is gitignored), not in a session
+// scratchpad: the one this was written in was wiped long ago, and writing
+// to it threw straight out of the run. A screenshot is a debugging aid and
+// must never be able to fail a suite, so it is caught as well.
+const OUT = new URL(".", import.meta.url).pathname;
+const shot = (page, name) =>
+  page.screenshot({ path: OUT + name + ".png", fullPage: true }).catch((e) => console.log("(screenshot skipped:", e.message.split("\n")[0] + ")"));
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : JSON.stringify(d ?? "").slice(0, 600)); };
 
@@ -44,6 +60,18 @@ db.tables.quote_requests = [];
 db.tables.quote_request_suppliers = [];
 db.tables.push_subscriptions = [];
 const { server } = startMockServer(5566, db, { [UID]: owner, [OTHER]: userOf(OTHER, "other@example.com") });
+
+// RESEND_API_KEY empty so nothing can be emailed even if a send got through.
+const devEnv = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: MOCK, NEXT_PUBLIC_SUPABASE_ANON_KEY: "fake-anon", SUPABASE_SERVICE_ROLE_KEY: "fake-service", RESEND_API_KEY: "", ANTHROPIC_API_KEY: "", GEMINI_API_KEY: "" };
+const dev = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], { cwd: WEB, env: devEnv, stdio: ["ignore", "pipe", "pipe"] });
+dev.stderr.on("data", (d) => process.env.VERBOSE && console.log("dev:", String(d).trim()));
+let up = false;
+for (let i = 0; i < 180 && !up; i++) {
+  const res = await fetch(`${BASE}/login`).catch(() => null);
+  if (res) { await res.text(); up = true; break; }
+  await sleep(1000);
+}
+if (!up) { dev.kill("SIGTERM"); server.close(); console.log("ERROR dev server never answered"); console.log(JSON.stringify({ passed: 0, total: 1 })); process.exit(1); }
 
 const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true, args: ["--no-first-run"] });
 const sent = [];
@@ -101,10 +129,23 @@ const rowFor = (supplierId) => db.tables.quote_request_suppliers.find((r) => r.s
 
 async function fillPrices(page, lines, { delivery, vatIncluded, validUntil, name, note } = {}) {
   for (const [n, v] of lines.entries()) {
+    // The boxes are named after the item now -- "Sand: price per bag" rather
+    // than "... for line 1" -- which is what a screen reader should say, so
+    // they are found by position on the form instead of by that wording.
     if (v === "x") {
-      await page.evaluate((i) => { const boxes = [...document.querySelectorAll("fieldset label")].filter((l) => l.textContent.includes("Can't supply")); boxes[i].querySelector("input").click(); }, n);
+      await page.evaluate((i) => {
+        const boxes = [...document.querySelectorAll('input[type="checkbox"][aria-label*="can\'t supply"]')];
+        if (!boxes[i]) throw new Error("no 'can't supply' box for line " + (i + 1));
+        boxes[i].click();
+      }, n);
     } else if (v !== "") {
-      await setValue(page, `input[aria-label$="for line ${n + 1}"][inputmode="decimal"]`, String(v));
+      await page.evaluate((i, val) => {
+        const boxes = [...document.querySelectorAll('input[aria-label*=": price per"]')];
+        const el = boxes[i];
+        if (!el) throw new Error("no price box for line " + (i + 1));
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, val);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      }, n, String(v));
     }
   }
   if (delivery !== undefined) await setValue(page, "#pf-delivery", String(delivery));
@@ -197,7 +238,7 @@ try {
   for (const name of ["Jewson Bristol", "Travis Perkins", "MKM Building"]) {
     await page.evaluate((n) => [...document.querySelectorAll("fieldset label")].find((l) => l.textContent.includes(n)).querySelector("input").click(), name);
   }
-  await page.screenshot({ path: OUT + "qr-1-request-form.png", fullPage: true });
+  await shot(page, "qr-1-request-form");
   check("375px: new request form fits", await fits(page));
   await clickBtn(page, "Save request");
   await page.waitForFunction(() => /\/quotes\/requests\/[0-9a-f-]{36}$/.test(location.pathname), { timeout: 60000 });
@@ -294,7 +335,7 @@ try {
   await waitText(sp, "Your prices", 60000);
   await fillPrices(sp, ["x", 8.9, "x"], { delivery: 30 });
   await sleep(100);
-  check("can't supply disables that line's price", await sp.evaluate(() => document.querySelector('input[aria-label$="for line 1"][inputmode="decimal"]').disabled));
+  check("can't supply disables that line's price", await sp.evaluate(() => document.querySelectorAll('input[aria-label*=": price per"]')[0]?.disabled === true));
   await clickBtn(sp, "Send prices");
   await waitText(sp, "your prices have gone to", 20000);
   check("MKM stored with can't-supply lines", M.prices[ids[0]].unavailable === true && M.prices[ids[0]].price === null && M.prices[ids[1]].price === 8.9 && M.prices[ids[2]].unavailable === true, M.prices);
@@ -352,7 +393,7 @@ try {
   await waitText(page, "matched 2 of 3", 20000);
   const matched = await page.evaluate(() => [...document.querySelectorAll('select[id^="match-"]')].map((s) => s.options[s.selectedIndex].text));
   check("scanned lines matched by description, the unmatched one left for him", scans === 1 && matched[0].startsWith("Treated C24 4x2 3.6m") && matched[1] === "Not on their quote" && matched[2].startsWith("Multi Finish plaster"), matched);
-  check("matched prices filled in", await page.evaluate(() => document.querySelector('input[aria-label$="for line 1"][inputmode="decimal"]').value === "3.5"));
+  check("matched prices filled in", await page.evaluate(() => document.querySelectorAll('input[aria-label*=": price per"]')[0]?.value === "3.5"));
   await setValue(page, "#pf-delivery", "");
   await clickBtn(page, "Save their prices");
   await waitText(page, "prices are saved", 20000);
@@ -374,14 +415,27 @@ try {
   check("choice not saved while following the recommendation", R.choice === null);
 
   // ── Per-line override ──
-  await page.evaluate(() => [...document.querySelectorAll("table button")].find((b) => b.getAttribute("aria-label").startsWith("Plasterboard") && b.getAttribute("aria-label").includes("MKM Building")).click());
+  // Not every button in the table carries an aria-label, and reading one off
+  // null threw out of the suite rather than failing a check.
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("table button")].find((x) => {
+      const l = x.getAttribute("aria-label") ?? "";
+      return l.startsWith("Plasterboard") && l.includes("MKM Building");
+    });
+    if (!b) throw new Error("no override button for Plasterboard from MKM");
+    b.click();
+  });
   await page.waitForFunction(() => document.body.innerText.includes("Your picks come to"), { timeout: 90000 });
   check("override saved on the request: board from MKM", await until(() => R.choice && R.choice[ids[1]] === M.id && R.choice[ids[0]] === B.id && R.choice[ids[2]] === B.id), R.choice);
   orders = await page.$$eval('[data-testid="order"]', (els) => els.map((e) => e.innerText));
   check("order lists follow the override: MKM board (with its delivery), Bob the rest", orders.length === 2 && orders.some((o) => o.includes("MKM Building") && o.includes("£8.90 = £267.00") && o.includes("Delivery: £30.00")) && !orders.some((o) => o.includes("Jewson")), orders);
   const rec2 = await page.$eval('[data-testid="recommendation"]', (e) => e.innerText);
   check("the override is shown against the best value", rec2.includes("Use the best value") && rec2.includes("Your picks come to £457.00 ex VAT"), rec2);
-  await page.evaluate(() => [...document.querySelectorAll("table button[aria-pressed=true]")].find((b) => b.getAttribute("aria-label").startsWith("Multi-finish")).click());
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("table button[aria-pressed=true]")].find((x) => (x.getAttribute("aria-label") ?? "").startsWith("Multi-finish"));
+    if (!b) throw new Error("no pressed Multi-finish button to unpick");
+    b.click();
+  });
   await waitText(page, "Not ordering: Multi-finish plaster 25kg", 20000);
   check("tapping a picked price leaves that line out", await until(() => R.choice?.[ids[2]] === null));
   await (await page.$('section[aria-labelledby="compare-heading"]')).screenshot({ path: OUT + "qr-3b-compare-override.png" });
@@ -391,7 +445,14 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes("Not ordering") && !document.body.innerText.includes("Use the best value"), { timeout: 90000 });
   orders = await page.$$eval('[data-testid="order"]', (els) => els.map((e) => e.innerText));
   check("Use the best value clears his picks and follows the split again", (await until(() => R.choice === null)) && orders.length === 2 && orders[0].includes("Jewson Bristol") && orders[1].includes("Bob's Builders"), { choice: R.choice, orders });
-  await page.evaluate(() => [...document.querySelectorAll("table button")].find((b) => b.getAttribute("aria-label").startsWith("4x2") && b.getAttribute("aria-label").includes("Jewson")).click());
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("table button")].find((x) => {
+      const l = x.getAttribute("aria-label") ?? "";
+      return l.startsWith("4x2") && l.includes("Jewson");
+    });
+    if (!b) throw new Error("no override button for 4x2 from Jewson");
+    b.click();
+  });
   await page.waitForFunction(() => document.body.innerText.includes("Everything from Jewson Bristol instead") || document.body.innerText.includes("Your picks"), { timeout: 90000 });
   await clickBtn(page, "Everything from Jewson Bristol instead");
   await page.waitForFunction(() => document.querySelectorAll('[data-testid="order"]').length === 1, { timeout: 90000 });
@@ -407,7 +468,7 @@ try {
   await (await page.$('section[aria-labelledby="compare-heading"]')).screenshot({ path: OUT + "qr-3-compare-768.png" });
   await page.setViewport({ width: 375, height: 900 });
   await sleep(500);
-  await page.screenshot({ path: OUT + "qr-5-request-page.png", fullPage: true });
+  await shot(page, "qr-5-request-page");
 
   // ── Closed / reopened / declined online / ask again ──
   await page.select('select[aria-label="Add a supplier"]', SELCO);
@@ -463,7 +524,12 @@ try {
   const nf = await (await browser.createBrowserContext()).newPage();
   const nfRes = await nf.goto(`${BASE}/r/${"z".repeat(43)}`, { waitUntil: "networkidle0" });
   const nfHtml = await nfRes.text();
-  check("unknown link: not found, noindex", nfHtml.includes("could not be found") && nfHtml.includes("noindex"));
+  // The wording stopped saying the link "could not be found": a page that
+  // says so tells somebody guessing tokens which of their guesses existed.
+  // It now says the same thing to everyone, whatever the truth is.
+  check("unknown link: says the link isn't working, gives nothing away, noindex",
+    /This link isn.{0,8}t working/i.test(nfHtml) && nfHtml.includes("noindex") && !/could not be found|no such|invalid token/i.test(nfHtml),
+    JSON.stringify({ working: /isn.{0,8}t working/i.test(nfHtml), noindex: nfHtml.includes("noindex"), leaks: nfHtml.match(/could not be found|no such|invalid token/i) }));
   const ocText = await bodyText(oc.p);
   check("owner's #o copy: no form, says it's his copy", ocText.includes("This is your copy of the link") || ocText.includes("already has your prices") || ocText.includes("You sent these prices"), ocText.slice(0, 300));
 
@@ -473,14 +539,23 @@ try {
   const card = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => a.innerText.includes("Kitchen extension")).innerText);
   check("list: each supplier with status and ex-VAT total", card.includes("Jewson Bristol") && card.includes("£489.00") && card.includes("Travis Perkins") && card.includes("£510.00") && card.includes("£297.00 (1/3)") && card.includes("Selco") && card.includes("Replied"), card);
   check("list: expired request listed separately with its own supplier", (await bodyText(page)).includes("Old job"));
-  await page.screenshot({ path: OUT + "qr-6-list.png", fullPage: true });
+  await shot(page, "qr-6-list");
   check("375px: list fits", await fits(page));
   check("no UNHANDLED calls reached the mock", !db.log.some((l) => l.key.startsWith("UNHANDLED")), db.log.filter((l) => l.key.startsWith("UNHANDLED")));
 } catch (e) {
   console.log("ERROR", e.stack);
-  check("no crash", false, e.message);
+  // Where and what was on screen, not just the timeout: this suite waits up
+  // to two minutes, so a bare message costs the next reader two minutes to
+  // learn nothing.
+  let where = "?";
+  try { where = page.url(); } catch {}
+  let body = "";
+  try { body = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, " ").slice(0, 400); } catch {}
+  const at = (e.stack ?? "").split("\n").filter((l) => l.includes("test-quote-requests.mjs")).join(" <- ");
+  check("no crash", false, `${e.message} | on ${where} | ${at.trim()} | ${body}`);
 } finally {
   await browser.close();
+  dev.kill("SIGTERM");
   server.close();
   console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));
 }

@@ -74,7 +74,7 @@ fi
 # other: two dev servers in one folder trip over the same build cache, and
 # test-check-company stopped after 2 of its 54 checks when it ran next to
 # test-feedback (2026-09-22). They run one at a time, after the rest.
-DEV_SERVER=(test-check-company test-inbox-ingest test-feedback test-send-document test-public-logo test-address-stubbed test-public-request test-links test-quote-links)
+DEV_SERVER=(test-check-company test-inbox-ingest test-feedback test-send-document test-public-logo test-address-stubbed test-public-request test-links test-quote-links test-quote-requests)
 PARALLEL=(${SUITES:|DEV_SERVER})
 
 export OUT BASE
