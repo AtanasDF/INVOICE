@@ -63,3 +63,51 @@ while they type — roughly one credit per address actually entered.
    balance degrades rather than breaks.
 
 The key goes in Vercel as `IDEAL_POSTCODES_API_KEY`. Nothing else changes.
+
+---
+
+## What it would actually cost at scale (2026-09-24)
+
+**A credit is spent only when somebody picks a full address.** Typing and searching are
+free — their own wording. So the bill is driven by *addresses entered*, not by users.
+
+**Assumptions, stated so they can be argued with:** a new user enters about **10** addresses
+in their first month (their own, then clients and suppliers as work comes in), and about
+**3 a month** after that. That is **43 a year** each. At the cheapest published rate
+(£0.028, the 32,100 pack) that is **£1.20 per user per year**.
+
+| Users | Addresses a year | Per year | Per month |
+|---|---|---|---|
+| 100 | 4,300 | **£155** (one 4,300 pack) | ~£13 |
+| 1,000 | 43,000 | **£1,200** | ~£100 |
+| 10,000 | 430,000 | **£12,000** | ~£1,000 |
+| 100,000 | 4.3m | **£120,000** at list | ~£10,000 |
+
+Credits last 12 months and do not auto-renew, so none of it is a subscription.
+
+**At 100,000 that number is not real** — it is far past where they quote a price, and
+Enterprise is negotiated. But it is the right order of magnitude to plan against, and it is
+the number that says this cannot simply be left switched on for everyone for ever.
+
+### The lever that changes everything
+
+The cost is not "having Royal Mail addresses" — it is **where you allow them**. Three
+settings, same feature:
+
+| Where it is allowed | Cost at 100,000 users |
+|---|---|
+| Everywhere, every address | ~£120,000 a year |
+| **Only the user's own business address** (once, at sign-up) | **~£2,800, once** |
+| Only on a paid account | whatever the paid accounts cover, by definition |
+
+**Their own address once each is the one to notice.** It is a single lookup per person
+ever, it is the address that appears on every invoice they will ever send, and getting it
+right matters more than any other. One hundred thousand people would cost under three
+thousand pounds — once.
+
+### Recommended, unchanged
+
+Take the **free 50 credits** first and see it working. If it earns its place, £9 for 200.
+The code already caps per account (20 per five minutes, 100 a day) and overall, and falls
+back to the free lookup when capped — so a spent balance degrades rather than breaks, and
+the box says so.
