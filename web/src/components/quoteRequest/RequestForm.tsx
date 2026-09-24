@@ -7,7 +7,7 @@ import { NumberInput } from "@/components/free-invoice/fields";
 import type { Client } from "@/lib/storage";
 import type { RequestItem } from "@/lib/quoteCompare";
 import { RequestInput, newItemId } from "@/lib/quoteRequests";
-import { errorText } from "@/lib/errorText";
+import { saveFailed } from "@/lib/errorText";
 import { todayIso } from "@/lib/freeInvoiceDraft";
 
 const INPUT = "w-full rounded-lg border px-3 py-2";
@@ -45,7 +45,7 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
     try {
       await onSave({ ...v, title: v.title.trim(), items }, picked);
     } catch (err) {
-      setError(errorText(err, "Could not save the request."));
+      setError(saveFailed(err, "Could not save the request."));
       setSaving(false);
     }
   }

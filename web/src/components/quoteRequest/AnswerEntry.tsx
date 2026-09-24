@@ -6,7 +6,7 @@ import { extractPages } from "@/lib/scanClient";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { ScannedLine, formatPounds, isDeliveryLine, matchScannedLines, scannedUnitPrice } from "@/lib/quoteCompare";
 import { QuoteRequest, RequestSupplier, quoteDocumentUrl, requestSuppliersStore, uploadQuoteDocument } from "@/lib/quoteRequests";
-import { errorText } from "@/lib/errorText";
+import { errorText, saveFailed } from "@/lib/errorText";
 
 const SECONDARY = "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
@@ -115,7 +115,7 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
       );
       onSaved();
     } catch (err) {
-      setError(errorText(err, "Couldn't save their prices."));
+      setError(saveFailed(err, "Couldn't save their prices."));
       setSaving(false);
     }
   }

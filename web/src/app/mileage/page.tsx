@@ -19,7 +19,7 @@ import {
 } from "@/lib/mileage";
 import { normalisePostcode } from "@/lib/addressLookup";
 import { supabase } from "@/lib/supabaseClient";
-import { errorText, loadFailed } from "@/lib/errorText";
+import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import Tip from "@/components/Tip";
@@ -134,7 +134,7 @@ export default function MileagePage() {
       setPurpose("");
       setMeasured(null);
     } catch (err) {
-      setError(errorText(err, "Couldn't save that trip."));
+      setError(saveFailed(err, "Couldn't save that trip."));
     } finally {
       savingTrip.current = false;
       setSaving(false);

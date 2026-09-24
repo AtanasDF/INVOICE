@@ -19,7 +19,7 @@ import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
 import { celebratePaid } from "@/components/PaidCelebration";
-import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import { logoSrc } from "@/lib/logo";
@@ -467,7 +467,7 @@ export default function InvoiceViewPage() {
       // Supabase errors are plain objects, not Errors: instanceof would
       // hide the reason behind the fallback on exactly the failures worth
       // reading.
-      setSendError(errorText(err, "Could not mark this invoice sent."));
+      setSendError(saveFailed(err, "Could not mark this invoice sent."));
     } finally {
       setSendBusy(false);
     }

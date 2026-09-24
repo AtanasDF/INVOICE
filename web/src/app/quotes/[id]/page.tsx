@@ -15,7 +15,7 @@ import { invoiceVat } from "@/lib/invoiceBalance";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
 import { quoteStatusBadgeClass, quoteStatusLabel, shortDate, termsLength } from "@/lib/quoteStatus";
-import { errorText, loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 import { depositDeductions, depositGross, depositLines, depositTag } from "@/lib/quoteDeposit";
 import { logoSrc } from "@/lib/logo";
 
@@ -125,7 +125,7 @@ export default function QuotePage() {
     try {
       await action();
     } catch (err) {
-      setError(errorText(err, "Something went wrong."));
+      setError(saveFailed(err, "Something went wrong."));
       await load().catch(() => {});
     } finally {
       busyRef.current = false;
@@ -299,7 +299,7 @@ export default function QuotePage() {
       await navigator.clipboard.writeText(await ensureLink(true)).catch(() => {});
       setLinkCopied(true);
     } catch (err) {
-      setError(errorText(err, "Couldn't make the link."));
+      setError(saveFailed(err, "Couldn't make the link."));
     } finally {
       setLinkBusy(false);
     }
@@ -320,7 +320,7 @@ export default function QuotePage() {
       setLink(await quoteLinksStore.replace(q.id));
       setLinkCopied(false);
     } catch (err) {
-      setError(errorText(err, "Couldn't replace the link."));
+      setError(saveFailed(err, "Couldn't replace the link."));
     } finally {
       setLinkBusy(false);
     }
@@ -565,7 +565,7 @@ export default function QuotePage() {
               .then((changed) => {
                 if (changed) setQuote((prev) => (prev && prev.status === "draft" ? { ...prev, status: "sent" } : prev));
               })
-              .catch((err) => setError(errorText(err, "Sent, but the quote couldn't be marked as sent.")));
+              .catch((err) => setError(saveFailed(err, "Sent, but the quote couldn't be marked as sent.")));
           }}
           client={client}
           textLink={q.status === "draft" ? "" : url}

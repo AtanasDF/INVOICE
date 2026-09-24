@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { money } from "@/lib/money";
 import { DuplicatePair, duplicatePairs, pairKey, readIgnoredDuplicates, writeIgnoredDuplicates } from "@/lib/duplicateContacts";
-import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
@@ -154,7 +154,7 @@ export default function ClientsPage() {
         `Merged into ${pair.keep.name}${total ? `: ${total} record${total === 1 ? "" : "s"} moved` : ""}.${left.length ? ` Some rows stayed with the old record (${left.join(", ")}).` : ""}`
       );
     } catch (err) {
-      setError(errorText(err, "Couldn't merge those two."));
+      setError(saveFailed(err, "Couldn't merge those two."));
     } finally {
       mergingPair.current = false;
       setMerging(null);

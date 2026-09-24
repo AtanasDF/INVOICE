@@ -5,7 +5,7 @@ import AddressFields from "@/components/AddressFields";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import { INPUT } from "@/components/free-invoice/fields";
 import { Client, clientsStore } from "@/lib/storage";
-import { errorText } from "@/lib/errorText";
+import { saveFailed } from "@/lib/errorText";
 
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
 // Past this many, a search box goes above the list.
@@ -192,7 +192,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
         })
       );
     } catch (err) {
-      setError(errorText(err, "Could not add the customer."));
+      setError(saveFailed(err, "Could not add the customer."));
       setSaving(false);
     }
   }

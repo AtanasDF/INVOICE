@@ -12,7 +12,7 @@ import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
 import { depositGross } from "@/lib/quoteDeposit";
 import { VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
-import { errorText } from "@/lib/errorText";
+import { saveFailed } from "@/lib/errorText";
 
 export type QuoteFormValue = {
   clientId: string;
@@ -70,7 +70,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
     try {
       await onSave({ ...v, number: v.number.trim(), items: lines, deposit });
     } catch (err) {
-      setError(errorText(err, "Could not save the quote."));
+      setError(saveFailed(err, "Could not save the quote."));
       setSaving(false);
     }
   }

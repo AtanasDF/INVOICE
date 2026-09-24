@@ -27,7 +27,7 @@ import {
 } from "@/lib/quoteRequests";
 import { Picks, compare, formatPence, planFor, quantityText, supplierTotal } from "@/lib/quoteCompare";
 import { todayIso } from "@/lib/freeInvoiceDraft";
-import { errorText, loadFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 
 const PRIMARY = "rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50";
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
@@ -132,7 +132,7 @@ export default function QuoteRequestPage() {
       await action();
       ok = true;
     } catch (err) {
-      setError(errorText(err, "Something went wrong."));
+      setError(saveFailed(err, "Something went wrong."));
     }
     await load().catch(() => {});
     busyRef.current = false;
