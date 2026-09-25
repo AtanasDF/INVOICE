@@ -2,6 +2,19 @@ import { makeDb, launchSignedIn, signIn, sleep, clickText, bodyText, shot, newId
 const BASE = process.env.BASE ?? "http://localhost:3700";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
+
+// The app writes the payment first and the invoice's new status second, as two
+// separate requests. Waiting on the screen -- "Still owed: £700.00" -- only
+// proves the first has landed, so under a four-at-a-time run this suite read
+// the status between the two writes and reported a part-payment that had not
+// changed the status. It had; it just had not yet.
+//
+// This waits for the condition the check is about to assert, and gives up, so
+// a status that never arrives still fails rather than hanging.
+const settles = async (fn, ms = 5000) => {
+  const until = Date.now() + ms;
+  while (Date.now() < until) { if (fn()) return; await sleep(80); }
+};
 const db = makeDb();
 const C = newId(), I1 = newId(), I2 = newId();
 db.tables.business_profile.push({ business_name: "Harness Ltd", vat_registered: true, show_overdue_reminders: false });
@@ -50,16 +63,19 @@ try {
   await setVal(page, 'input[aria-label="Amount received"]', "500");
   await clickText(page, "Save payment");
   await waitText(page, "Still owed: £700.00");
+  await settles(() => i1().status === "partial");
   check("part-payment recorded, status part-paid", db.tables.invoice_payments.length === 1 && db.tables.invoice_payments[0].amount === 500 && db.tables.invoice_payments[0].method === "bank" && i1().status === "partial", JSON.stringify({ p: db.tables.invoice_payments, s: i1().status }));
   const t = await bodyText(page);
   check("invoice shows the payment and £700 due", t.includes("−£500.00") && t.includes("Amount due: £700.00"), t.match(/Amount due: £[\d.,]+/)?.[0]);
   check("reminders card chases the part-paid invoice", t.includes("7 days after due") && !t.includes("balance isn't known"));
   await clickText(page, "Mark as paid");
   await waitText(page, "Paid in full.");
+  await settles(() => db.tables.invoice_payments.length === 2 && i1().status === "paid");
   check("mark as paid records the remaining £700 and sets paid", db.tables.invoice_payments.length === 2 && db.tables.invoice_payments[1].amount === 700 && i1().status === "paid", JSON.stringify(db.tables.invoice_payments));
   await shot(page, "payments-paid");
   await page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Remove")[1].click());
   await waitText(page, "Still owed: £700.00");
+  await settles(() => i1().status === "partial");
   check("removing a payment puts the status back to part-paid", i1().status === "partial" && db.log.some((l) => l.key === "DELETE invoice_payments"), i1().status);
 
   await page.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" });
@@ -75,6 +91,7 @@ try {
   if (!clicked) console.log("no Mark as paid button on INV-2");
   await sleep(800);
   const p2 = db.tables.invoice_payments.find((p) => p.invoice_id === I2);
+  await settles(() => db.tables.invoices.find((i) => i.id === I2).status === "paid");
   check("quick mark paid records the full £120", p2?.amount === 120 && db.tables.invoices.find((i) => i.id === I2).status === "paid", JSON.stringify(p2));
 
   // Credited in full, nothing paid: settled.
@@ -87,6 +104,7 @@ try {
   await setVal(page, 'input[placeholder="Amount to credit (£)"]', "120");
   await clickText(page, "Save credit note");
   await sleep(1200);
+  await settles(() => db.tables.invoices.find((i) => i.id === I3).status === "paid");
   check("a full credit note settles the invoice", db.tables.invoices.find((i) => i.id === I3).status === "paid", db.tables.invoices.find((i) => i.id === I3).status);
   // The status and the figure come from different functions. Checking only
   // the status let "credit notes stop coming off what is owed" go unnoticed
@@ -108,6 +126,7 @@ try {
   await waitText(page, "Mark as unpaid");
   await clickText(page, "Mark as paid");
   await sleep(1000);
+  await settles(() => db.tables.invoices.find((i) => i.id === I4).status === "paid");
   check("legacy part-paid: marked paid with no invented payment", db.tables.invoices.find((i) => i.id === I4).status === "paid" && !db.tables.invoice_payments.some((p) => p.invoice_id === I4));
 
   // One payment in, then removed: back to sent.
@@ -122,6 +141,7 @@ try {
   await sleep(300);
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Remove").click());
   await sleep(1200);
+  await settles(() => db.tables.invoices.find((i) => i.id === I5).status === "sent");
   check("removing the only payment puts it back to sent", db.tables.invoices.find((i) => i.id === I5).status === "sent", db.tables.invoices.find((i) => i.id === I5).status);
 
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
