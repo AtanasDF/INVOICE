@@ -896,6 +896,7 @@ export default function ScanPage() {
         contactPerson: form.contactPerson,
         phone: form.details.supplierPhone ?? "",
         companyNumber: registerCompanyNumber(form),
+        endUserDeclared: false,
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, created]);

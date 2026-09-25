@@ -189,6 +189,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
           contactPerson: isCompany ? contactPerson.trim() : "",
           phone: phone.trim(),
           companyNumber: "",
+          endUserDeclared: false,
           remindersEnabled: true,
         })
       );

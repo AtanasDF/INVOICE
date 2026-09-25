@@ -20,6 +20,10 @@ export type Client = {
   // Companies House number, when this contact was picked from the
   // register (migration-030). Empty when it wasn't, or isn't a company.
   companyNumber: string;
+  // The customer has said IN WRITING that they are an end user or an
+  // intermediary supplier, so the VAT domestic reverse charge does not apply
+  // to them (src/lib/reverseCharge.ts). Their statement, never our guess.
+  endUserDeclared: boolean;
   // Payment reminders (3 days before due / on due date / 7 days after)
   // go out for this client unless turned off here. Only meaningful for
   // kind "client" -- suppliers are never invoiced, so it's ignored for them.
@@ -206,6 +210,7 @@ type ClientRow = {
   reminders_enabled: boolean | null;
   archived: boolean | null;
   company_number?: string | null;
+  reverse_charge_end_user?: boolean | null;
 };
 
 function clientFromRow(r: ClientRow): Client {
@@ -223,6 +228,7 @@ function clientFromRow(r: ClientRow): Client {
     phone: r.phone ?? "",
     remindersEnabled: r.reminders_enabled ?? true,
     companyNumber: r.company_number ?? "",
+    endUserDeclared: r.reverse_charge_end_user ?? false,
     archived: r.archived ?? false,
   };
 }
@@ -246,9 +252,7 @@ export const clientsStore = {
   },
   async add(input: Omit<Client, "id" | "archived">): Promise<Client> {
     const user_id = await currentUserId();
-    const { data, error } = await supabase
-      .from("clients")
-      .insert({
+    const row = {
         user_id,
         name: input.name,
         is_company: input.isCompany,
@@ -263,9 +267,21 @@ export const clientsStore = {
         reminders_enabled: input.remindersEnabled,
         company_number: input.companyNumber || null,
         archived: false,
-      })
+      };
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({ ...row, reverse_charge_end_user: input.endUserDeclared })
       .select()
       .single();
+    // Until migration-039 has been run that column does not exist and
+    // PostgREST refuses the whole insert (PGRST204). Adding a customer still
+    // has to work -- the same pattern as the business profile's three
+    // columns from migration-029.
+    if (error?.code === "PGRST204") {
+      const retry = await supabase.from("clients").insert(row).select().single();
+      if (retry.error) throw retry.error;
+      return clientFromRow(retry.data as ClientRow);
+    }
     if (error) throw error;
     return clientFromRow(data as ClientRow);
   },
@@ -288,7 +304,15 @@ export const clientsStore = {
     if (patch.phone !== undefined) dbPatch.phone = patch.phone || null;
     if (patch.remindersEnabled !== undefined) dbPatch.reminders_enabled = patch.remindersEnabled;
     if (patch.companyNumber !== undefined) dbPatch.company_number = patch.companyNumber || null;
-    const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
+    const withEndUser = patch.endUserDeclared !== undefined ? { ...dbPatch, reverse_charge_end_user: patch.endUserDeclared } : dbPatch;
+    const { error } = await supabase.from("clients").update(withEndUser).eq("id", id);
+    if (error?.code === "PGRST204" && patch.endUserDeclared !== undefined) {
+      // migration-039 has not been run: everything else about the customer
+      // still saves, and the declaration simply is not kept yet.
+      const retry = await supabase.from("clients").update(dbPatch).eq("id", id);
+      if (retry.error) throw retry.error;
+      return;
+    }
     if (error) throw error;
   },
   // Hides this client/supplier from pickers on new records and, since

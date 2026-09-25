@@ -609,6 +609,7 @@ export default function NewInvoicePage() {
         contactPerson: "",
         phone: "",
         companyNumber: "",
+        endUserDeclared: false,
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, c]);
@@ -856,7 +857,10 @@ export default function NewInvoicePage() {
             cisRate,
             customerIsCompany: client?.isCompany ?? false,
             customerVatNumber: client?.vatNumber ?? "",
-            endUserDeclared: false,
+            // Their written statement, kept against the customer. Without
+            // it the app asked this on every invoice to them for ever, and
+            // a question asked too often is one people stop reading.
+            endUserDeclared: client?.endUserDeclared ?? false,
             items,
           });
           if (!ask || reverseChargeDismissed) return null;
