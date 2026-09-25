@@ -50,6 +50,9 @@ const GROUPS: Group[] = [
       ["/check-company", "Check a company"],
       ["/vat", "VAT"],
       ["/files", "Files"],
+      // Before Feedback on purpose: most questions should be answered by a
+      // walkthrough rather than by asking somebody.
+      ["/help", "How it works"],
       ["/feedback", "Feedback"],
     ],
   },
@@ -344,6 +347,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mx-auto w-full max-w-4xl px-4 pb-24 pt-2 text-xs text-neutral-500 sm:pb-8 print:hidden">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-4">
           <span>{SITE_NAME}</span>
+          <Link href="/help" className="underline">How it works</Link>
           <Link href="/how-to-invoice" className="underline">How to invoice</Link>
           <Link href="/privacy" className="underline">Your information</Link>
           <Link href="/terms" className="underline">Terms</Link>

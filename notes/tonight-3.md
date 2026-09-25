@@ -29,7 +29,7 @@ polish. Tick as they land, with the commit.
 
 ## B. The part of his brief nothing has been built for
 
-- [ ] **B1. Walkthroughs.** "Show me how" on the screens that need it, driving the real
+- [x] **B1. Walkthroughs.** "Show me how" on the screens that need it, driving the real
   page rather than a video: highlight the control, say what it is for, move on. Must be
   skippable, must never trap focus, must work at twice the text size.
 - [ ] **B2. The help chat.** `notes/help-chat-design.md` exists and nothing was built.

@@ -30,8 +30,21 @@ const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, pro
 
 const measure = () => page.evaluate(() => {
   const SEL = 'a[href],button,input:not([type=hidden]),select,textarea,[role=button],[role=link],[role=checkbox],[role=switch],[role=tab],[role=radio],[role=option]';
+  // An input hidden with sr-only inside a <label> is the standard way to
+  // make a file picker look like a button: the INPUT is a clipped 1x1 box on
+  // purpose and the LABEL is what anybody actually taps. Exempt only when
+  // that label is itself big enough, so this cannot become a way to hide a
+  // small target.
+  const wrappedBySomethingBigger = (e) => {
+    if (!e.classList.contains("sr-only")) return false;
+    const label = e.closest("label");
+    if (!label) return false;
+    const r = label.getBoundingClientRect();
+    return r.width >= 24 && r.height >= 24;
+  };
   const boxes = [...document.querySelectorAll(SEL)].filter((e) => {
     if (e.disabled || e.closest("[inert]")) return false;
+    if (wrappedBySomethingBigger(e)) return false;
     const s = getComputedStyle(e), r = e.getBoundingClientRect();
     return s.display !== "none" && s.visibility !== "hidden" && r.width > 0 && r.height > 0;
   }).map((e) => ({ e, r: e.getBoundingClientRect() }));
