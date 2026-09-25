@@ -53,6 +53,13 @@ for (let i = 1; i <= 4; i++) {
   db.tables.receipts.push({ id: newId(), user_id: "x", client_id: SUPPLIER, date: lastQuarterDay(9 * i + 2), vendor: "Jewson", category: "Materials", amount: 120 + i * 15, vat_amount: 24 + i * 3, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
 }
 
+// One document waiting to be checked, for the review journey. Deliberately
+// missing its VAT: the scan rule is that a reading only fills in what it is
+// sure of, so the frame shows an empty box to fill rather than a tidy form,
+// which is what somebody will actually meet.
+const PENDING = newId();
+db.tables.receipts.push({ id: PENDING, user_id: "x", client_id: null, date: todayISO(), vendor: "Jewson", category: "", amount: 120, vat_amount: null, image_data_url: null, notes: "", starred: false, needs_review: true, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+
 // Puts the thing the caption talks about on screen AND rings it.
 //
 // The ring is not decoration. Three of these pages fit on a phone screen
@@ -139,6 +146,29 @@ const DRIVE = {
     async (page) => { await page.evaluate(`(async () => { const set = ${setNative}; const m = document.getElementById("m-miles"); if (m) set(m, "34"); })()`); await sleep(900); await look(page, { id: "m-miles" }); },
     async (page) => { await look(page, { text: "Save the trip" }); },
     async (page) => { await look(page, { text: "This tax year" }); },
+  ],
+  quote: [
+    async (page) => { await page.goto(`${BASE}/quotes/new`, { waitUntil: "networkidle0" }); await sleep(1700); await look(page, { text: "New quote" }); },
+    async (page) => { await look(page, { text: "+ New customer" }); },
+    async (page) => {
+      await page.evaluate(`(async () => { const set = ${setNative}; const d = [...document.querySelectorAll("input")].find(i => i.getAttribute("aria-label") === "What the work or item is"); if (d) set(d, "Skim and plaster the front room"); const p = [...document.querySelectorAll("input")].find(i => i.getAttribute("aria-label") === "Unit price"); if (p) set(p, "1450"); })()`);
+      await sleep(900); await look(page, { label: "Unit price" });
+    },
+    async (page) => { await look(page, { label: "Deposit" }); },
+    async (page) => { await look(page, { text: "Save quote" }); },
+  ],
+  review: [
+    async (page) => { await page.goto(`${BASE}/receipts/review`, { waitUntil: "networkidle0" }); await sleep(1800); await look(page, { text: "Needs review" }); },
+    async (page) => { await look(page, { label: "Supplier" }); },
+    async (page) => { await look(page, { label: "Date" }); },
+    // The category step went in, came out, and went back. Its select had no
+    // aria-label, so "nothing to ring for Category" read as "there is no
+    // category control" -- and the frame showed one plainly. The select was
+    // the only control in that row without an accessible name, /receipts/review
+    // was not in test-labels' page list, and both are now fixed.
+    async (page) => { await look(page, { label: "Category" }); },
+    async (page) => { await look(page, { label: "Total (£, incl. VAT)" }); },
+    async (page) => { await look(page, { text: "Looks good" }); },
   ],
 };
 

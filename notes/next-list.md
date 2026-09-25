@@ -66,7 +66,18 @@ Nothing here needs a decision from Atanas unless it says so.
    when they click on help..." Rungs 2 (Tips), 3 (walkthroughs), 4 (the chat) and 5 (email)
    are all built. Rung 1 is a single `Tip` called `dashboard-welcome` and no walkthrough.
 
-6. **More walkthroughs.** There are four — invoice, receipt, VAT, mileage — against about
+6. ~~**More walkthroughs.**~~ **DONE — six now, was four.** "Price a job before you start"
+   (quotes) and "Check a receipt you emailed in" (the review queue). The chat's grounding
+   improves with them for free, since it is built from the same journeys. The camera itself
+   is deliberately not recorded: the harness has no camera, and a staged viewfinder picture
+   would be the stale hand-made clip this whole arrangement exists to avoid.
+   **Three caption errors were caught, and only one by the recorder.** It flagged two rings
+   that found nothing; the other two came from opening the recorded frames and looking. The
+   review journey said "anything you photograph, upload or email in waits here" — only the
+   email import writes a review row — and it described an empty VAT box that renders 0.00.
+   And the "no category control" conclusion was wrong: the select simply had no accessible
+   name, which is why the ring could not find it.
+   Original: There are four — invoice, receipt, VAT, mileage — against about
    twenty pages. **Scanning and quotes are the app's headline features and neither has one**,
    which is also why the chat has to say "I do not know about that part" so often. The frames
    record themselves (`harness/record-help.mjs`), so these do not rot.

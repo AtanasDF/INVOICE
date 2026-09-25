@@ -82,7 +82,7 @@ Five rungs, and three of them already exist:
 |---|---|
 | 1. **When they first sign in** | `dashboard-welcome` exists; there is no walkthrough |
 | 2. **Each page, once** | **Built** — `Tip`, 19 of them. **Five screens still have none**, including the invoice page |
-| 3. **A Help section**, feature by feature, with animations | **Not built.** The new work |
+| 3. **A Help section**, feature by feature, with animations | **Built** — six journeys, 30 frames, recorded by the harness |
 | 4. **A chat to ask anything** | Not built; `/api/feedback` and the rate limiter are |
 | 5. **Anything else emails him** | **Built** — `/api/feedback`, Reply-to the sender |
 

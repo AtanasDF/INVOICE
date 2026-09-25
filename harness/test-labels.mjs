@@ -11,11 +11,17 @@ Object.assign(db.tables, { receipts: [], receipt_pages: [], credit_notes: [], in
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, custom_categories: null });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Acme Kitchens Ltd", email: "acme@example.com", address: "1 Mill Lane\nBristol\nBS1 4DJ", kind: "client", archived: false, is_company: true, reminders_enabled: true, vat_number: "", payment_terms: "", default_currency: "", contact_person: "", phone: "", company_number: null });
+// A document waiting to be checked, so /receipts/review actually renders its
+// row. Without one the page is empty and proves nothing -- which is how a
+// select with no accessible name sat there unnoticed.
+const PENDING = { id: newId(), user_id: "x", client_id: null, date: todayISO(), vendor: "Jewson", category: "", amount: 120, vat_amount: null, image_data_url: null, notes: "", starred: false, needs_review: true, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null };
+
 const INV = { id: newId(), user_id: "x", client_id: C, date: todayISO(), number: "INV-9", items: [{ description: "Work", quantity: 1, unitPrice: 1000, vatRate: "standard" }], notes: "", due_date: todayISO(), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null };
 db.tables.invoices.push(INV);
 const DRAFT = { ...INV, id: newId(), number: "DRAFT-l", status: "draft" };
 db.tables.invoices.push(DRAFT);
 db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: todayISO(), vendor: "Travis Perkins", category: "Supplies", amount: 50, vat_amount: 10, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
+db.tables.receipts.push(PENDING);
 
 const PAGES = [
   ["/", "Dashboard"], ["/invoices", "Invoices"], [`/invoices/${DRAFT.id}`, "A draft"], [`/invoices/${INV.id}`, "A sent invoice"],
@@ -23,6 +29,7 @@ const PAGES = [
   ["/quotes/new", "New quote"], ["/quotes/requests/new", "New quote request"], ["/clients", "Contacts"], ["/clients/new", "New contact"],
   ["/expenses", "Expenses"], ["/vat", "VAT"], ["/mileage", "Mileage"], ["/files", "Files"], ["/settings", "Settings"],
   ["/recurring", "Recurring"], ["/check-company", "Check a company"], ["/free-invoice", "Free invoice"],
+  ["/receipts/review", "Needs review"],
 ];
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-labels" });

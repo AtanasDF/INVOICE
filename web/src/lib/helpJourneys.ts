@@ -83,6 +83,44 @@ export const HELP_JOURNEYS: HelpJourney[] = [
       { caption: "Save the trip. It goes in with your expenses like any other." },
     ],
   },
+  {
+    id: "quote",
+    title: "Price a job before you start",
+    summary: "Send a quote, let them accept it, turn it into an invoice.",
+    start: "/quotes/new",
+    steps: [
+      { caption: "Start from Write a quote. The number is filled in for you, and it stays a draft until you send it." },
+      { caption: "Pick who it is for. Anybody you have dealt with is already in the list, and + New customer adds one on the spot." },
+      { caption: "Put in what the work is and what it comes to. Add a line for each part of the job." },
+      { caption: "Ask for a deposit if you want one, as a percentage or an amount. It goes out as its own invoice first and comes off the final one." },
+      { caption: "Save it. Sending gives the customer a link they can accept or decline, and once accepted it turns into an invoice." },
+    ],
+  },
+  {
+    id: "review",
+    // The camera is deliberately not recorded: the harness has no camera, and
+    // a staged picture of a viewfinder would be the stale hand-made clip this
+    // whole arrangement exists to avoid.
+    //
+    // It is about EMAILED receipts, not scanned ones, and the first draft of
+    // it said "anything you photograph, upload or email in". Only the inbox
+    // import writes a needs-review row (`needs_review: true` appears in
+    // api/inbox/ingest and nowhere else); a scan is saved as you walk it. The
+    // page's own subtitle had it right and the caption had it wrong, which was
+    // caught by looking at the recorded frame rather than at the recorder's
+    // "no problems" line.
+    title: "Check a receipt you emailed in",
+    summary: "Forwarded receipts wait here until you have checked what was read off them.",
+    start: "/receipts/review",
+    steps: [
+      { caption: "Receipts you forward to your own inbox address land here first. Nothing counts towards your totals until you have looked at it." },
+      { caption: "Check the supplier against the receipt itself." },
+      { caption: "Check the date. A date read wrong puts the cost in the wrong month — and on the first of a quarter, in the wrong VAT return." },
+      { caption: "Say what it was for, so your expenses add up by category." },
+      { caption: "Check the total, and the VAT under it. This is the figure that goes into your books, so it is worth a second look." },
+      { caption: "Looks good files it. From then on it is in your receipts, your expenses and your VAT." },
+    ],
+  },
 ];
 
 export function journey(id: string): HelpJourney | null {
