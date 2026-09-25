@@ -11,8 +11,10 @@
 -- changes, which makes it a curiosity rather than a record. A reference nobody
 -- keeps is the same as no reference.
 --
--- NO BACKUP FILE. This creates one table and alters nothing that exists, so
--- CLAUDE.md rule 2 asks for none.
+-- NO BACKUP FILE. This creates one table and adds a unique constraint to
+-- clients; it changes no existing data and drops nothing, so CLAUDE.md rule 2
+-- asks for none. The unique constraint can only fail if (id, user_id) were
+-- somehow not unique, which the primary key on id already guarantees.
 --
 -- Additive and idempotent: safe to run twice.
 
@@ -29,7 +31,10 @@ create table if not exists public.vat_checks (
   -- be checked from Settings or a form before the contact exists, and losing
   -- the check because the contact was later merged away would be worse than
   -- keeping it loose.
-  client_id uuid references public.clients (id) on delete set null,
+  --
+  -- The foreign key is added below rather than here, because it has to carry
+  -- user_id with it -- see the note there.
+  client_id uuid,
   -- As HMRC hold it: nine or twelve digits, no GB.
   vat_number text not null,
   -- What HMRC said. Null name means they had nobody with that number, which is
@@ -44,6 +49,27 @@ create table if not exists public.vat_checks (
   checked_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+-- FK checks bypass row level security, so a plain `references clients (id)`
+-- would happily accept another account's client id -- migration-017 found
+-- exactly this and says so in its own comment. Making (id, user_id) the
+-- target means a check can only ever point at a customer in its own account.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'clients_id_user_id_key') then
+    alter table public.clients add constraint clients_id_user_id_key unique (id, user_id);
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'vat_checks_client_fk') then
+    alter table public.vat_checks
+      add constraint vat_checks_client_fk
+      foreign key (client_id, user_id) references public.clients (id, user_id)
+      on delete set null;
+  end if;
+end $$;
 
 create index if not exists vat_checks_user_idx on public.vat_checks (user_id, checked_at desc);
 create index if not exists vat_checks_client_idx on public.vat_checks (user_id, client_id);
