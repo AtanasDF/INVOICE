@@ -85,5 +85,24 @@ try {
   // Nothing anywhere should echo a key or a stack trace.
   const noisy = await call("/api/scan", { body: { pages: [{ mediaType: "image/png", data: "not-base64" }] } });
   check("a bad request doesn't return a stack trace", !/at \w+ \(|node_modules/.test(noisy.text), noisy.text);
+
+  // A mistyped address is the one thing a stranger should be TOLD rather than
+  // turned away from. It used to bounce to /login with no word of why: the
+  // Gate in AppShell returns null for a stranger on a gated path, so
+  // not-found.tsx never rendered -- the page whose own comment says it is for
+  // "an old link off a flyer" could not be reached by anyone following one.
+  // app/global-not-found.tsx is served at the routing level, outside the
+  // layout and therefore outside the Gate, which is the only place it can work
+  // from. Found by driving the live site signed out.
+  const missing = await fetch(`${BASE}/no-such-page-at-all`, { redirect: "manual" });
+  const body = await missing.text();
+  check("a mistyped address says so, rather than asking for a sign-in",
+    missing.status === 404 && /That page isn.t here/.test(body), `${missing.status} ${body.slice(0, 160)}`);
+  // Told what happened, reassured, and given the way back.
+  check("...and says nothing of theirs is lost, with a way out",
+    /Nothing of yours has gone anywhere/.test(body) && /Back to the start/.test(body), body.slice(0, 200));
+  // It renders outside the layout, so it carries no header, no navigation and
+  // nothing that needs a session -- it cannot know whether there is one.
+  check("...without offering pages that need an account", !/Sign out|Money in|Money out/.test(body), body.slice(0, 200));
 } catch (e) { console.log("ERROR", e.message); }
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

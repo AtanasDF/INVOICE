@@ -55,7 +55,18 @@ Nothing here needs a decision from Atanas unless it says so.
    reading every name in `run-all.sh` and checking it prints that line would have caught it
    the first time. Cheap, and it closes a hole that hid four suites for a day.
 
-4. **A live pass over every page, signed out, against production.** Launch-plan week 3.
+4. ~~**A live pass over every page, signed out, against production.**~~ **DONE**, real Chrome,
+   no mock, no session. Seven public pages render with sensible titles, no sideways scroll
+   and no broken text; eight gated pages all land on `/login`; `/i/`, `/q/` and `/r/` with a
+   bogus token all say "This link isn't working" and leak nothing technical. Two console
+   errors, both Cloudflare Turnstile's own styled output, on the only two pages carrying it.
+   **It found one real thing:** a mistyped address — or a stale QR off one of the flyers —
+   bounced a stranger to `/login` with no word of why, because AppShell's Gate returns null
+   for a stranger on a gated path, so `not-found.tsx` never rendered. The page whose own
+   comment says it is for "an old link off a flyer" could not be reached by anybody following
+   one. Fixed with `app/global-not-found.tsx`, which is served outside the layout and so
+   outside the Gate — the only place it can work from.
+   Original: Launch-plan week 3.
    The harness runs against a mocked database; nobody has clicked through the real thing
    as a stranger since the front door changed.
 
