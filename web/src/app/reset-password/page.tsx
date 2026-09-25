@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { PASSWORDS_DIFFER, saveFailed } from "@/lib/errorText";
 
-type Status = "checking" | "ready" | "invalid" | "done";
+type Status = "checking" | "ready" | "expired" | "done";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -29,13 +29,13 @@ export default function ResetPasswordPage() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (error) {
-          setStatus("invalid");
+          setStatus("expired");
           return;
         }
       }
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
-      setStatus(data.session ? "ready" : "invalid");
+      setStatus(data.session ? "ready" : "expired");
     }
 
     establishSession();
@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
     return <p className="mx-auto max-w-sm text-sm text-neutral-500">Checking your reset link…</p>;
   }
 
-  if (status === "invalid") {
+  if (status === "expired") {
     return (
       <div className="mx-auto max-w-sm space-y-4">
         <h1 className="text-2xl font-bold">That link has run out</h1>

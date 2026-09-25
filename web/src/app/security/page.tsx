@@ -24,7 +24,7 @@ export default function Security() {
   return (
     <div className="mx-auto max-w-2xl py-4">
       <h1 className="text-2xl font-bold">Report a security problem</h1>
-      <p className="mt-1 text-neutral-600">If you have found something that puts anybody&apos;s records at risk, please tell us.</p>
+      <p className="mt-1 text-neutral-600">If you have found something that puts anybody&apos;s records at risk, tell us.</p>
 
       <h2 className={H}>How to tell us</h2>
       <p className={P}>
@@ -52,7 +52,7 @@ export default function Security() {
         <li className={LI}>We tell you what we found and when it was fixed.</li>
       </ul>
 
-      <h2 className={H}>Please do not</h2>
+      <h2 className={H}>What not to do</h2>
       <ul className="list-disc space-y-1 pl-5">
         <li className={LI}>Look at, change or keep anybody else&apos;s records. If you reach someone else&apos;s data by accident, stop and tell us.</li>
         <li className={LI}>Run anything that would knock the app over or slow it down for other people.</li>

@@ -82,10 +82,24 @@ const sorry = hits(ours, /\bsorry\b/i);
 check("the app never apologises instead of saying what happened", sorry.length === 0, JSON.stringify(sorry.slice(0, 4)));
 
 // aria-invalid is an HTML attribute and a Status value is code, not words.
-// aria-invalid is an HTML attribute, a Status value is code, and
-// /expired|invalid/ is a test against what SUPABASE said, done precisely so
-// that the person is shown our sentence instead of theirs.
-const invalid = hits(ours, /\binvalid\b/i).filter((h) => !/aria-invalid|"invalid"|'invalid'|: "checking"|Status =|\/.*invalid.*\/i?\.test\(/.test(h));
+// Only what a person could READ. `invalid` is also the natural name for a
+// prop that mirrors aria-invalid, and a prop name is not a word anybody
+// sees -- flagging those made the check cry wolf on the very commit that
+// tied errors to their fields. So this one looks inside quoted strings and
+// JSX text, not at whole lines: aria-invalid stays exempt as an attribute,
+// and /expired|invalid/ stays exempt as a test against what SUPABASE said,
+// done precisely so the person is shown our sentence instead of theirs.
+const readable = (line) => {
+  const strings = [...line.matchAll(/"([^"]{2,})"|`([^`]{2,})`/g)].map((m) => m[1] ?? m[2]);
+  const jsxText = [...line.matchAll(/>([^<>{}]{2,})</g)].map((m) => m[1]);
+  return [...strings, ...jsxText].join(" ");
+};
+const invalid = hits(ours, /\binvalid\b/i)
+  .filter((h) => !/aria-invalid|: "checking"|Status =|\/.*invalid.*\/i?\.test\(/.test(h))
+  // And only in a SENTENCE. A bare "invalid" on its own is a state value in
+  // code; a person only ever meets the word inside something written to
+  // them, which is never two words long.
+  .filter((h) => readable(h).split(/\s+/).filter(Boolean).length > 2 && /\binvalid\b/i.test(readable(h)));
 check("nothing shown to a person calls anything \"invalid\"", invalid.length === 0, JSON.stringify(invalid.slice(0, 4)));
 
 const oops = hits(scanned, /\boops\b|\bwhoops\b/i);
