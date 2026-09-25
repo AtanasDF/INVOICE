@@ -128,6 +128,39 @@ Both new suites were mutation-tested rather than trusted: dropping the GB strip,
 ISO string, and counting an unproven lookup as evidence each make `test-vat-checks` fail, in
 both directions of the London/UTC boundary.
 
+**The help chat, and the ten minutes that were worth more than the suites.** Rung 4 of the
+ladder went in behind `NEXT_PUBLIC_HELP_CHAT`, off by default and off on the server too. Both
+suites green, committed, done. Then it was asked nine real questions through the live model
+and **six faults came back that no suite could have reached.** Answers ended mid-sentence,
+because thinking tokens come out of the reply's budget and the route only treated `failed` as
+a failure, so it handed the fragment through as an answer. Markdown landed on screen exactly
+as typed. It invented an address, sending somebody to /invoices/new to find their customers.
+And it told somebody deposits on quotes "are not a feature in the app" — they are built; they
+were merely missing from the grounding, which is the difference between "I do not know" and
+"you cannot", and one of those sends a person away from something they are paying for.
+
+That last one was the real finding: four walkthroughs against twenty pages meant the honest
+answer to most of the app was "I do not know about that part". Every page now has a line.
+That is a hand-written summary, the thing argued against when the walkthrough frames were
+made to record themselves — so both ways it drifts are checked: every route must resolve to a
+real page file, and every page in the header's nav must be described. A new screen fails the
+suite until somebody writes its line.
+
+**A real bug found by pinning a pattern rather than a behaviour.** `test-utc-today` scans the
+app for `new Date().toISOString().slice(0, 10)` and found the push cron building its 3-day
+bill window from UTC while `today`, two lines above it in the same function, was already
+London. For the hour after midnight each summer night the window was counted from yesterday,
+so a bill due in exactly three days would not have been pushed about. The cron runs at 08:00
+and never met that hour — but the pattern was sitting there to be copied, which is how this
+class of bug spreads. test-midnight pins the behaviour; nothing had pinned the pattern.
+
+**Three suites came back CRASHED and all three were my fault**, in two runs. I recompiled
+`gen/` while the harness was running, which left a module briefly importing `./today` with no
+extension, and I edited a suite's imports mid-flight. Each was green on its own. I also
+stretched a fifty-minute run past eighty by testing the chat against the live model beside
+it — four dev servers competing with four suites. **Do not touch `gen/`, `.next` or a suite
+while `run-all.sh` is going**, and do not start a dev server next to it.
+
 **Left open, and his:** the UTR letter (about 15 days by post) finishes the HMRC production
 application. And **Settings → VAT registered should be off on his own account** — he said he
 is not VAT registered, and with it on his invoices would add VAT he cannot legally charge.
