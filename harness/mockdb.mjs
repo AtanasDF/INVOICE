@@ -284,14 +284,12 @@ export function handle(db, method, path, search, headers, body) {
 // a suite that opens a second browser still gets its own state back.
 const suiteProfile = () => "profile-" + ((process.argv[1] ?? "run").split("/").pop().replace(/\.mjs$/, "").replace(/\W/g, "") || "run");
 
-export async function launchSignedIn(db, { width = 375, base = "http://localhost:3100", intercept, profile = suiteProfile() } = {}) {
-  const browser = await puppeteer.launch({
-    executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    headless: true,
-    userDataDir: OUT + profile,
-    args: ["--no-first-run", "--no-default-browser-check"],
-  });
-  const page = await browser.newPage();
+// Everything that makes a page talk to the mocked database instead of the
+// real one. Pulled out of launchSignedIn so a suite can open a SECOND tab
+// on the same records: interception is per-page, so a new tab used to reach
+// nothing at all -- which one suite mistook for a passing test, because a
+// page with no data shows no error either.
+export async function wire(page, db, { base = "http://localhost:3100", intercept, width = 375 } = {}) {
   await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
   // Settings warns before a page is left with unsaved changes; headless
@@ -339,6 +337,17 @@ export async function launchSignedIn(db, { width = 375, base = "http://localhost
     }
     req.continue();
   });
+  return page;
+}
+
+export async function launchSignedIn(db, { width = 375, base = "http://localhost:3100", intercept, profile = suiteProfile() } = {}) {
+  const browser = await puppeteer.launch({
+    executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    headless: true,
+    userDataDir: OUT + profile,
+    args: ["--no-first-run", "--no-default-browser-check"],
+  });
+  const page = await wire(await browser.newPage(), db, { base, intercept, width });
   return { browser, page };
 }
 
