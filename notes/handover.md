@@ -1,3 +1,23 @@
+## Waiting on Atanas (2026-09-25)
+
+1. **HMRC production credentials.** The application is complete except one field:
+   "Identify your organisation" wants a UTR. His company **FRAGOV LTD** (registered
+   15 March 2024) is dormant and he is not VAT registered, so the Corporation Tax UTR is
+   the one to use — **requested 25/09, HMRC post it within 15 days** to the registered
+   office. HMRC hold the application for **six months**, so nothing is at risk. When it
+   arrives: the question is
+   `/developer/submissions/74bf912f-a069-48d8-ab7d-f04dc6d48d5f/question/cbdf264f-be39-4638-92ff-6ecd2259c662`,
+   then Save and continue, then submit. Review takes up to 10 working days.
+   **The Developer Hub session times out fast** — expect to sign in again each time.
+   The production application is named **FRAGOV LTD** to match the organisation; that is
+   free of cost because the API is application-restricted, so no customer ever sees it.
+2. **Two migrations, both on branches, neither merged** (rule 4):
+   `feature/vat-check-record` (038: keep HMRC's consultation number) and
+   `feature/end-user-declaration` (039: the written end-user declaration that turns the
+   reverse charge off). Both are additive, need no backup file, and say so in their headers.
+3. **Check Settings → VAT registered is OFF** on his own account. He said on 25/09 that he
+   is not VAT registered; with it on, his invoices would add VAT he cannot legally charge.
+
 # Handover
 
 **Top of the file, 2026-09-23, end of the long night.** What is live, what is built and
