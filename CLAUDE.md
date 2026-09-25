@@ -605,7 +605,31 @@ numbers are still there. **Without the credentials the boxes still catch a typo*
 VAT number carries its own check digits (`src/lib/vatNumber.ts`, mod 97 and mod 97-55, both
 in circulation), which catches 159 of every 162 single-digit slips and every transposition,
 and nothing is said about HMRC at all. `HMRC_API_BASE` points the route at a stand-in
-(`harness/test-vat-lookup.mjs`) and defaults to the live API.
+(`harness/test-vat-lookup.mjs`) or at HMRC's sandbox, and defaults to the live API.
+
+**Sandbox is set up and verified live (2026-09-25).** Developer account registered
+(atanaschoo@gmail.com, 2-step verification on an authenticator app — losing it loses the
+account), sandbox application **"Invoiceover sandbox"** subscribed to Check a UK VAT
+number 2.0, credentials in `web/.env.local` with
+`HMRC_API_BASE=https://test-api.service.hmrc.gov.uk`. Verified by calling our own route:
+a registered number returns the name and address, the two-number form returns a
+consultation number and the time it was made, a number nobody holds returns
+`registered:false` rather than an outage, and a mistyped one never leaves the machine.
+
+**The trap for whoever tests this next: HMRC's own sandbox VAT numbers are mostly not
+real VAT numbers.** Their published list
+(`hmrc/vat-registered-companies-api`, `public/api/conf/2.0/test-data/vrn.csv`) holds 40
+numbers, and **only one of the 22 nine-digit ones passes the real mod-97 check: 726129090**
+(a mod 97-55 number). Every other one — including `553557881`, the number in HMRC's own
+documentation example — fails it, so our check-digit test refuses them before any request
+is made. That is correct behaviour in production, where every real VRN passes, but it means
+**726129090 is the only number the sandbox can be exercised with end to end**. Hours could
+go into "the sandbox is broken" otherwise.
+
+Still to do: a **production** application (named `Invoiceover` — HMRC reject a name
+containing "HMRC" or one similar to an existing app), subscribed to the same API, then
+apply for production credentials and accept Terms of Use 2.0. HMRC review it in up to 10
+working days.
 UK address lookup (`/api/address-search`, behind `AddressFields`, the block of address
 fields used everywhere an address is typed) is
 free by default: postcodes.io (postcode check, place, post town from the built-up area)
