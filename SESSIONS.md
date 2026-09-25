@@ -179,6 +179,61 @@ is not VAT registered, and with it on his invoices would add VAT he cannot legal
 Nothing in the app writes a `vat_checks` row until `HMRC_CLIENT_ID` is set in production, so
 that half is inert until then.
 
+---
+
+**Then he asked for a list of what was left, and to work down it.** Eight items, drawn from
+`notes/backlog.md`, `queue.md`, `future-ideas.md` and `launch-plan.md` — and checking each
+against the code before listing it caught three already done (Jobs, the per-screen Tips,
+migration-036). Seven are now finished; `notes/next-list.md` holds what each found.
+
+**The theme, since it repeated all day: almost nothing was found by a test that was already
+passing.** The finds came from walking the app as a stranger, opening the recorded pictures,
+asking the chat real questions, and breaking things on purpose to see whether anything
+noticed.
+
+- **The main invoice path** does not dead-end, but the Free page told strangers "no sign-in
+  needed" while the gate turned every one of them away. `test-free-draft` signs in before
+  reading the page, so it had green-lit by exact regex the one sentence it should have
+  refused.
+- **The harness could not be trusted to report.** Four new suites printed a friendly
+  "26/26 passed" and not the `{"passed":N,"total":N}` line `run-one.sh` greps for, so all
+  four were reported CRASHED in every full run while passing alone — and I blamed a `gen/`
+  recompile and wrote that into three files before reading the log, which said nothing at
+  all, which no module-resolution failure ever does. `test-suites-report` now watches for
+  it, and found more: `test-quote-requests` (81 checks) running invisibly, in DEV_SERVER but
+  not in SUITES, and six suites written and never run — four green, **77 checks** that had
+  never once run.
+- **Mutation testing** went from 27 to 40. The whole-run pass proved less than it looked:
+  five new mutations expect `test-help-chat` and three expect `test-reverse-charge`, so a red
+  suite proves only that *one* of its group was noticed. Each was then applied alone.
+- **A live signed-out pass over production** — which the harness cannot do — found every
+  mistyped address bouncing a stranger to `/login` with no explanation. `app/global-not-found.tsx`
+  fixes it, and the docs' experimental flag turned out not to be needed here.
+- **Two more walkthroughs** (six now). Recording them found a `<select>` on `/receipts/review`
+  with no accessible name, and `/receipts/review` missing from `test-labels` entirely — the
+  page renders nothing without a row waiting, so the suite had never looked at it.
+- **Four `addDays`**, not the two the list claimed, disagreeing on unparseable input. Not a
+  live bug, which was checked rather than assumed. One now, in `today.ts`.
+- **migration-040** (`help_questions`) run and verified with him signed in. Grants for anon,
+  authenticated and public together: `authenticated=INSERT`, nothing else. The first Run
+  click silently did not register — had I trusted it, I would have "verified" a migration
+  that never ran.
+
+**Three vacuous checks were found, and two of them I wrote.** One matched the header's own
+nav link, so it passed with the thing it guarded deleted. One asserted the Setting up panel
+held exactly six links, so the panel could never carry a seventh. One forbade `.from(` in the
+help-chat route, which would have been satisfied by deleting the log rather than keeping the
+route honest. All three now fail when they should, proved by breaking them.
+
+**He said he will move the project off the iCloud Desktop** — after iCloud duplicated two git
+**ref files** and stopped `git fetch` working entirely (`fatal: bad object refs/heads/main 2`).
+Nothing was lost; both pointed at a commit already in main. The harness would have broken the
+moment he moved it — 87 hard-coded copies of the path across 39 files — so it now works its
+own location out from `import.meta.url`, **verified by copying the project elsewhere and
+running from there**. The move is now: move the folder, nothing else.
+
+**Ends green: 180 suites, 3,386 checks, nothing crashed.**
+
 ## 2026-09-24 (later) — The text size people already chose, the words for when it goes wrong, and checking a VAT number (Opus 5)
 
 Three pieces, each finished and on `main`.
