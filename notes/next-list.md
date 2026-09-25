@@ -1,5 +1,8 @@
 # What's left that I can do — 2026-09-25
 
+**Items 1, 2 and 3 are done** (2026-09-25, later). Struck through below with what each
+actually found. Items 4–9 and D remain.
+
 Atanas asked for the list. Drawn from `notes/queue.md`, `notes/backlog.md`,
 `notes/future-ideas.md`, `notes/launch-plan.md` and `notes/help-chat-design.md`, with each
 item checked against the code rather than taken from the note — several notes were stale
@@ -10,19 +13,43 @@ Nothing here needs a decision from Atanas unless it says so.
 
 ## A. Real, and I would start here
 
-1. **Walk the dashboard's first tile as a signed-in person.** `src/app/page.tsx:496` sends
+1. ~~**Walk the dashboard's first tile as a signed-in person.**~~ **DONE — and it does not
+   dead-end.** "Save to my invoices" writes the draft and pushes to `/invoices/new`, which
+   imports it, so the path ends at a real numbered invoice. The camera-first behaviour is his
+   own decision and stands. What the walk found instead: the page said **"no sign-in needed"**
+   while the gate sent every stranger to `/login`, and `CLAUDE.md`, the page and
+   `test-free-draft`'s own comment all said the page stayed open for typing. Three days stale.
+   Nothing caught it because the suite signs in before reading the page — it had never once
+   arrived without an account, so it green-lit by exact regex the one sentence it should have
+   refused. Fixed, and the suite now walks the stranger case in its own browser.
+   Original: `src/app/page.tsx:496` sends
    "Make an invoice" to `/free-invoice?start=photo` — a path built when strangers could use
    the free page. Queue item 7 has been open since then and nobody has walked it signed in.
    It is the app's main action, so if it ends anywhere other than a saved invoice in the
    account, that is the most expensive bug left in the app. **Verify first, fix if needed.**
 
-2. **Extend the mutation testing to everything built since it was written.**
+2. ~~**Extend the mutation testing.**~~ **DONE — 40 mutations, 13 new, all caught.** The
+   reverse charge, the kept VAT checks, the help chat, the UTC bill window, the free page's
+   claim. The part worth keeping: the whole-run pass did **not** prove it, because five expect
+   `test-help-chat` and three expect `test-reverse-charge` — a red suite proves only that *one*
+   of its group was caught. Each was then applied alone, recompiling `gen/` between, and every
+   one is caught by its own named check. Also found: two mutations on one line always leave the
+   second skipped, and the skip message blamed "the code moved".
+   Original:
    `harness/mutate.mjs` breaks eight things and all eight are caught, but it predates the
    reverse charge, CIS-on-quotes, the VAT checks, the scan wall's wording, the photo-ageing
    rules and the help chat's fences. The suites for those have only been mutation-tested by
    hand, by me, on the day. A suite nobody has tried to fool is a suite of unknown value.
 
-3. **A suite that checks a suite can report.** Today four suites were reported CRASHED in
+3. ~~**A suite that checks a suite can report.**~~ **DONE — `test-suites-report`, and it
+   found more than it was written for.** It accused `test-fit-320` wrongly (that one delegates
+   to `test-fit-sweep`, so it now follows delegation). Then it found **`test-quote-requests`,
+   81 checks, running invisibly** — in `DEV_SERVER` but not in `SUITES`, so it ran, its
+   failures counted towards "not green", and no line said which suite. And six more suites
+   written and never run: four were green and are now in the run (**77 checks**), two time out
+   and stay named as pending with the reason. Second time this has happened; 83 checks sat
+   unrun for weeks in September.
+   Original: Today four suites were reported CRASHED in
    every full run while passing alone, because `run-one.sh` finds a result by grepping for
    `{"passed":N,"total":N}` and they printed only a friendly `26/26 passed`. One suite
    reading every name in `run-all.sh` and checking it prints that line would have caught it
