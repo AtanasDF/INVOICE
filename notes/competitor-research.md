@@ -94,7 +94,7 @@ accountants but will still give accountants reports."*
 
 ## The ten best things to build, by value over effort
 
-1. **"Same again"** — one-tap duplicate of the last invoice to that customer, **dates reset
+1. [BUILT 2026-09-25, `test-same-again`] **"Same again"** — one-tap duplicate of the last invoice to that customer, **dates reset
    to today**. Xero's is the strongest mobile friction-reducer found; **Tide charges £5.99+VAT
    a month for it, Square paywalls templates at £20/mo**, and most do not have it on mobile
    at all. Very low effort.

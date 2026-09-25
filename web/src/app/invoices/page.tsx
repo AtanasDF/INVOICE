@@ -13,6 +13,9 @@ import Tip from "@/components/Tip";
 import { celebratePaid } from "@/components/PaidCelebration";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { addDays } from "@/lib/reminderTemplates";
+import { draftPlaceholderNumber } from "@/lib/invoiceNumber";
+import { sameAgainOptions, worthOffering } from "@/lib/sameAgain";
 import { shortDate } from "@/lib/dates";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -200,6 +203,43 @@ function InvoicesPage() {
     );
   }
 
+  // "Same again": last month's invoice to this customer, dated today.
+  //
+  // Duplicating already existed, but only from the invoice itself -- which
+  // means finding last month's first. For somebody billing the same
+  // contractor every month that is four steps before they have typed
+  // anything. This is the same thing from where they actually start.
+  const repeatable = useMemo(() => sameAgainOptions(invoices), [invoices]);
+  const [repeating, setRepeating] = useState<string | null>(null);
+
+  async function sameAgain(clientId: string) {
+    const option = repeatable.find((o) => o.clientId === clientId);
+    if (!option || repeating) return;
+    setRepeating(clientId);
+    setError(null);
+    try {
+      const today = todayISO();
+      const created = await invoicesStore.add({
+        clientId: option.invoice.clientId,
+        date: today,
+        number: draftPlaceholderNumber(),
+        items: option.invoice.items,
+        cisRate: option.invoice.cisRate,
+        notes: option.invoice.notes,
+        dueDate: addDays(today, 30),
+        paymentTerms: option.invoice.paymentTerms,
+        status: "draft",
+        // A copy is not the invoice a quote became, so those tags do not
+        // come with it -- the same rule as Duplicate on the invoice itself.
+        tags: option.invoice.tags.filter((t) => !/^(from|deposit for) /i.test(t)),
+      });
+      router.push(`/invoices/${created.id}`);
+    } catch (err) {
+      setError(saveFailed(err, "Couldn't start that invoice."));
+      setRepeating(null);
+    }
+  }
+
   const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterStatus || filterTag;
 
   return (
@@ -225,6 +265,32 @@ function InvoicesPage() {
       </Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+
+      {/* Only where there is a habit to repeat: one invoice to one customer
+          is not a habit, and a "Same again" under somebody's only invoice is
+          noise. */}
+      {worthOffering(repeatable) && (
+        <section aria-labelledby="same-again" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <h2 id="same-again" className="font-semibold">Same again</h2>
+          <p className="mt-1 text-sm text-neutral-600">Last month&apos;s invoice to them, dated today. Check it before you send it.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {repeatable.map((o) => (
+              <button
+                key={o.clientId}
+                type="button"
+                onClick={() => void sameAgain(o.clientId)}
+                disabled={!!repeating}
+                className="min-h-11 rounded-lg border px-4 py-2 text-left text-sm font-medium text-neutral-700 disabled:opacity-50"
+              >
+                {repeating === o.clientId ? "Starting…" : clientName(o.clientId)}
+                <span className="block wrap-anywhere text-xs font-normal text-neutral-500">
+                  {displayInvoiceNumber(o.invoice)} · {money(invoiceCharge(o.invoice, invoiceVat(o.invoice, profile?.vatRegistered ?? false)).total)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
