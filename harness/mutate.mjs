@@ -96,6 +96,66 @@ const MUTATIONS = [
   { file: "components/ContactField.tsx", find: 'const word = kind === "client" ? "customer" : "supplier";',
     replace: 'const word = kind === "client" ? "client" : "supplier";',
     what: "the app calls a customer a client again", expect: ["test-vocabulary"] },
+  // Added 2026-09-25, for everything built since the list above. The suites
+  // for the reverse charge, the VAT checks and the help chat were all written
+  // in the last few days and none had been judged by anything but their own
+  // author on the day.
+  { file: "lib/reverseCharge.ts", find: 'export const REVERSE_CHARGE_WORDING = "Reverse charge: VAT Act 1994 Section 55A applies";',
+    replace: 'export const REVERSE_CHARGE_WORDING = "Reverse charge applies";',
+    what: "the invoice drops the statute the Regulations require it to name",
+    expect: ["test-reverse-charge"] },
+  { file: "lib/vat.ts", find: "  reverse_charge: 0,", replace: "  reverse_charge: 0.2,",
+    what: "a reverse-charge line charges the customer the VAT they are meant to account for themselves",
+    expect: ["test-reverse-charge"] },
+  // PAIRED with "nobody is ever asked whether the reverse charge applies"
+  // further down, which rewrites the same line. Whichever comes first wins and
+  // the other is skipped, so in a whole-run pass only this one applies. They
+  // are different faults and both worth having -- ignoring a written
+  // declaration is not the same as never asking at all -- so run the other one
+  // on its own when you want it. Both were proved individually on 2026-09-25.
+  { file: "lib/reverseChargePrompt.ts", find: "  if (!vatRegistered || cisRate === null || endUserDeclared) return null;",
+    replace: "  if (!vatRegistered || cisRate === null) return null;",
+    what: "a customer who has declared in writing they are the end user is asked anyway",
+    expect: ["test-reverse-charge"] },
+  { file: "lib/vatCheckRules.ts", find: "  const day = ukDate(when);", replace: "  const day = when.slice(0, 10);",
+    what: "the day a VAT check was kept is asked of UTC, not London",
+    expect: ["test-vat-checks"] },
+  { file: "lib/vatCheckRules.ts", find: 'export const vatCheckKey = (n: string) => n.replace(/[^a-z0-9]/gi, "").toUpperCase().replace(/^(GB|XI)/, "");',
+    replace: 'export const vatCheckKey = (n: string) => n.replace(/[^a-z0-9]/gi, "").toUpperCase();',
+    what: "GB123456789 and 123456789 become two separate histories for one supplier",
+    expect: ["test-vat-checks"] },
+  { file: "lib/vatCheckRules.ts", find: "  return key ? checks.filter((c) => c.vatNumber === key && c.consultationNumber) : [];",
+    replace: "  return key ? checks.filter((c) => c.vatNumber === key) : [];",
+    what: "a lookup with no reference from HMRC is shown as evidence of a check",
+    expect: ["test-vat-checks"] },
+  { file: "lib/helpChat.ts", find: "  return messages.slice(-Math.max(1, window));", replace: "  return messages;",
+    what: "the whole conversation is sent to the model every time, and the bill grows with it",
+    expect: ["test-help-chat", "test-help-chat-live"] },
+  { file: "lib/helpChat.ts", find: 'export const helpChatOn = () => (process.env.NEXT_PUBLIC_HELP_CHAT ?? "") === "on";',
+    replace: "export const helpChatOn = () => true;",
+    what: "the help chat is on for everybody, switch or no switch",
+    expect: ["test-help-chat"] },
+  { file: "app/api/help-chat/route.ts",
+    find: '  if (!answer || interaction.status === "failed" || interaction.status === "incomplete" || interaction.status === "budget_exceeded") {',
+    replace: '  if (!answer || interaction.status === "failed") {',
+    what: "an answer cut off mid-sentence is handed to somebody as though it were finished",
+    expect: ["test-help-chat"] },
+  { file: "lib/helpPrompt.ts", find: "Never invent an address:",
+    replace: "Addresses may be guessed:",
+    what: "the chat is free to send somebody to a page that does not exist",
+    expect: ["test-help-chat"] },
+  { file: "lib/helpFacts.ts", find: '{ route: "/check-company",', replace: '{ route: "/companies-house",',
+    what: "the chat is grounded in a page the app does not have",
+    expect: ["test-help-chat"] },
+  { file: "app/api/notifications/check/route.ts", find: "  return addDays(todayISO(), days);",
+    replace: "  const d = new Date();\n  d.setUTCDate(d.getUTCDate() + days);\n  return d.toISOString().slice(0, 10);",
+    what: "the bills-due window is counted from UTC's idea of today again",
+    expect: ["test-utc-today"] },
+  { file: "components/free-invoice/FreeInvoiceBuilder.tsx", find: "Photograph one you&apos;ve sent before and the next is filled in for you, or build one here. Print it, save it as a file, or keep it in your invoices.",
+    replace: "Build an invoice or a quote and print it or save it, no sign-in needed.",
+    what: "the free page tells strangers it needs no account, while the gate turns them away",
+    expect: ["test-free-draft"] },
+
   { file: "components/DocumentCapture.tsx", find: 'cvStatus === "loading" ? "Getting ready\u2026 the first time takes a moment"',
     replace: 'false ? "Getting ready\u2026 the first time takes a moment"',
     what: "the scanner's cold start says nothing while the page-finder starts",
@@ -169,7 +229,7 @@ for (const m of MUTATIONS) {
   const path = `${APP}/${m.file}`;
   let text;
   try { text = readFileSync(path, "utf8"); } catch { console.log(`SKIP ${m.file} (no such file)`); continue; }
-  if (!text.includes(m.find)) { console.log(`SKIP ${m.file}: cannot find ${JSON.stringify(m.find)} -- the code moved, fix the mutation`); continue; }
+  if (!text.includes(m.find)) { console.log(`SKIP ${m.file}: cannot find ${JSON.stringify(m.find)}\n    Either the code moved and the mutation needs fixing, or an EARLIER mutation in this run already rewrote that line -- two mutations on one line always leave the second skipped. Check before assuming the first.`); continue; }
   console.log(`${cmd === "apply" ? "BREAK" : "would break"}: ${m.what}\n    ${m.file}: ${JSON.stringify(m.find)} -> ${JSON.stringify(m.replace)}\n    expect red: ${m.expect.join(", ")}`);
   if (cmd === "apply") { writeFileSync(path, text.replace(m.find, m.replace)); applied++; }
 }

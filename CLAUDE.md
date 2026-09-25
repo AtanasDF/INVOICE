@@ -570,6 +570,22 @@ the only thing that actually found this was opening the file and reading the lin
 the content, never the summary — the same lesson as verifying backups by content, and the
 same as the suite that printed `{"passed":6,"total":6}` while dying at check 7 of 13.
 
+**Extended to 40 on 2026-09-25**, covering everything built since: the reverse charge (the
+statute the Regulations require, the rate, the end-user declaration), the kept VAT checks
+(the London day, the GB strip, an unproven lookup passing as evidence), the help chat (the
+switch, the conversation window, a cut-off answer served as finished, an invented address, a
+page that does not exist), the UTC bill window and the free page's "no sign-in needed". All
+13 were caught — **and each was proved on its own, not just in the crowd.** That distinction
+matters and nearly went unnoticed: five of them expect `test-help-chat` and three expect
+`test-reverse-charge`, so the whole-run pass showing those suites red proves only that *at
+least one* of each group was caught. Applying them one at a time, recompiling `gen/` between,
+showed each is caught by its own named check.
+
+Two things worth knowing before the next run. **Two mutations on one line leave the second
+skipped**, and the skip message used to say only "the code moved, fix the mutation", which is
+misleading — it now says so. And under mutation `test-company-picker` and `test-quotes`
+**crash rather than fail**; they notice, but a crash says less than a named failing check.
+
 ## Environment variables
 
 Vercel (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
