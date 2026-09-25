@@ -53,6 +53,19 @@ export default function Privacy() {
         We do not give your information to anyone else, unless the law makes us.
       </p>
 
+      <h2 className={H}>Where it is kept</h2>
+      <p className={P}>
+        Your records, your files and the app itself are in <strong>Frankfurt, Germany</strong> — inside the European
+        Economic Area. Nothing about your account is stored outside it.
+      </p>
+      <p className={P}>
+        The one thing that leaves is a document you scan: the picture is sent to Google or Anthropic in the
+        <strong> United States</strong> to be read, and what comes back fills in the form. The picture itself stays with
+        us; they are not given your account, your name, or anything else you have here, and they do not use it to train
+        anything. If you would rather nothing left the EEA, type your receipts in by hand — every screen that takes a
+        scan also takes typing.
+      </p>
+
       <h2 className={H}>Why we are allowed to keep it</h2>
       <p className={P}>
         Because you asked us to. Keeping your invoices, receipts and business details is the thing the app is for, so

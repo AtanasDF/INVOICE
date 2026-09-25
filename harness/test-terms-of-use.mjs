@@ -72,6 +72,13 @@ try {
   check("it still says how to get everything out", /saved to your own device|PDF/i.test(priv));
   check("and how to have it erased", /erased|deleted/i.test(priv));
   check("it points at the security page", /security/i.test(priv));
+  // International transfers have to be disclosed, and this is also the
+  // answer HMRC's form asks for. The app and the records are in Frankfurt;
+  // the one thing that leaves the EEA is a scanned picture, on its way to be
+  // read.
+  check("it says where the records are kept", /Frankfurt/.test(priv) && /European Economic Area/i.test(priv), priv.slice(0, 120));
+  check("and names the one thing that leaves", /United States/.test(priv) && /(Google|Anthropic)/.test(priv));
+  check("and says how to avoid that if you would rather", /type your receipts in by hand|typing/i.test(priv));
 
   // ---- Focus when the page changes (WCAG 2.4.3) ---------------------------
   await page.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" });
