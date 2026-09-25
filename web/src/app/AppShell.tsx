@@ -248,6 +248,10 @@ function Gate({ children }: { children: React.ReactNode }) {
     pathname === "/" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
+    // Whoever finds a security problem in this app almost certainly does not
+    // have an account, and telling them to make one first is how a report
+    // turns into a tweet.
+    pathname === "/security" ||
     pathname === "/how-to-invoice" ||
     // Shown by the service worker when there is no signal, which is exactly
     // when the sign-in check cannot be made.
@@ -295,13 +299,42 @@ function FeedbackButton() {
   );
 }
 
+// Where the keyboard goes when the page changes. Next announces the new
+// title, but focus stays on the link that was just followed -- which is now
+// in the header of a different page, so the next Tab carries on from the
+// old place and a screen reader starts reading nowhere near the new
+// content. WCAG 2.4.3.
+//
+// Focus is moved to <main>, not to its first heading: the heading belongs to
+// the page and comes and goes, and main is always there. tabIndex={-1} makes
+// it focusable without putting it in the tab order, and the outline is taken
+// off because nobody clicked it -- the focus RING is for people driving by
+// keyboard, and this is where they already are.
+//
+// Not on the first load: on arrival the browser's own focus is right, and
+// stealing it would skip the header for somebody who has just pressed Tab.
+function FocusOnNavigate({ target }: { target: React.RefObject<HTMLElement | null> }) {
+  const pathname = usePathname();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    target.current?.focus();
+  }, [pathname, target]);
+  return null;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   useWakeLock();
+  const main = useRef<HTMLElement>(null);
   return (
     <AuthProvider>
       <Header />
+      <FocusOnNavigate target={main} />
       {/* Room at the foot on a phone, so the Feedback pill never sits on a last card's buttons. */}
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
+      <main ref={main} tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
       {/* Small, quiet, and on every page: an advertiser, an app store and a
@@ -314,6 +347,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/how-to-invoice" className="underline">How to invoice</Link>
           <Link href="/privacy" className="underline">Your information</Link>
           <Link href="/terms" className="underline">Terms</Link>
+          <Link href="/security" className="underline">Security</Link>
           <Link href="/feedback" className="underline">Tell us something</Link>
         </div>
       </footer>

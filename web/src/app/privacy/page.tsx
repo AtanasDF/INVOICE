@@ -53,6 +53,15 @@ export default function Privacy() {
         We do not give your information to anyone else, unless the law makes us.
       </p>
 
+      <h2 className={H}>Why we are allowed to keep it</h2>
+      <p className={P}>
+        Because you asked us to. Keeping your invoices, receipts and business details is the thing the app is for, so
+        the lawful basis is <strong>performing our contract with you</strong> — we cannot show you your own records
+        without holding them. Keeping the app secure, and keeping enough of a record to stop somebody abusing it, rests
+        on our <strong>legitimate interests</strong>. We do not rely on consent for any of it, and there is nothing we
+        do with your records that you have to opt out of.
+      </p>
+
       <h2 className={H}>How long we keep it</h2>
       <p className={P}>
         Your records stay until you delete them or close your account. Photographs may be tidied away after a time to
@@ -69,6 +78,13 @@ export default function Privacy() {
       <p className={P}>
         You have the right to see what we hold, to correct it, to take it elsewhere, and to have it erased. If you think
         we have got something wrong you can complain to the Information Commissioner&apos;s Office at ico.org.uk.
+      </p>
+
+      <h2 className={H}>If something goes wrong</h2>
+      <p className={P}>
+        If you find a security problem, <Link href="/security" className="font-medium underline">tell us here</Link>. If
+        anybody&apos;s information is ever put at risk, we tell the Information Commissioner&apos;s Office within 72
+        hours of knowing, and we tell the people affected.
       </p>
 
       <h2 className={H}>Cookies</h2>

@@ -22,11 +22,17 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 type Nullable<T> = { [K in keyof T]: string | null };
 
-function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey }: {
+// `mine` says whose details these are. The same block draws "your business"
+// and "your customer", and a browser should only offer somebody their OWN
+// name and address -- offering it while they type a customer's is worse
+// than offering nothing (WCAG 1.3.5 is about the user's own information,
+// which is why AddressFields and CompanyNameInput take this too).
+function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey, mine }: {
   value: T;
   fields: { key: keyof T; label: string; type?: string; multiline?: boolean; hint?: string; span?: boolean; lookup?: (c: CompanyMatch) => Partial<T>; finder?: boolean }[];
   // Where a picked company's registered address goes.
   addressKey?: keyof T;
+  mine?: boolean;
   onChange: (v: T) => void;
 }) {
   const labelBase = useId();
@@ -39,6 +45,7 @@ function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey
           <div key={String(f.key)} className={f.span ? "col-span-2" : ""}>
             <span id={`${labelBase}-${String(f.key)}`} className="text-xs text-neutral-500">{f.label}</span>
             <CompanyNameInput
+              mine={mine}
               className={INPUT}
               labelledBy={`${labelBase}-${String(f.key)}`}
               value={value[f.key] ?? ""}
@@ -51,7 +58,7 @@ function TextFields<T extends Nullable<T>>({ value, fields, onChange, addressKey
           </div>
         ) : f.finder ? (
           <div key={String(f.key)} className="col-span-2">
-            <AddressFields address={value[f.key] ?? ""} onAddress={(a) => onChange({ ...value, [f.key]: a || null })} label={f.label} />
+            <AddressFields mine={mine} address={value[f.key] ?? ""} onAddress={(a) => onChange({ ...value, [f.key]: a || null })} label={f.label} />
           </div>
         ) : (
         <div key={String(f.key)} className={f.span || f.multiline ? "col-span-2" : ""}>
@@ -122,6 +129,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         <>
       <Card title="Your business">
         <TextFields
+          mine
           value={draft.issuer}
           onChange={(issuer) => set({ issuer })}
           addressKey="address"
@@ -160,6 +168,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
         <>
       <Card title="Your business">
         <TextFields
+          mine
           value={draft.issuer}
           onChange={(issuer) => set({ issuer })}
           addressKey="address"
