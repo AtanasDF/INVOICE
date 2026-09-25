@@ -246,7 +246,20 @@ clauses in their terms rather than on adequacy. Two things follow:
 Neither is urgent and neither is a breach; both are the difference between a true statement
 and a roughly true one.
 
-## Where the data is actually processed (found 2026-09-25, needs Atanas)
+**Item 1 done (2026-09-25).** `/privacy` now says Google reads the documents you scan, and
+that Anthropic can read them instead **only on a device where you have turned that on** —
+which is what actually happens. Verified by reading the page, not the commit.
+
+## Where the data is actually processed (found 2026-09-25 — **fixed the same day**)
+
+**Resolved:** `web/vercel.json` now pins `"regions": ["fra1"]`, so the functions run in
+Frankfurt beside the database. Verified live rather than assumed:
+`x-vercel-id: lhr1::fra1::…` — London edge, Frankfurt function. The account default was
+`iad1` (Washington DC) and nothing had overridden it, so every server-side query had been
+crossing the Atlantic twice and UK accounting records were being processed in the US by a
+function holding the service-role key. Nobody chose that; it was Vercel's Hobby default.
+The original finding is kept below because the reasoning is what matters.
+
 
 HMRC's production-credentials form asks "Where are your servers that process customer
 information?" — UK / EEA / outside-with-adequacy / outside-without. Checking rather than
@@ -275,8 +288,17 @@ Three things follow:
    between every query and makes the app slower for no privacy gain. Same region for both,
    whichever it is.
 
-The privacy policy should also say where the data is processed once this is settled; it
-names the processors but not their countries.
+**Both settled and written up (2026-09-25).** `/privacy` has a "Where it is kept" section
+naming **Frankfurt** for the records, the files and the app, and the **United States** for a
+document sent to Google to be read — with the Data Bridge as the basis for that transfer and
+the honest way out ("if you would rather nothing left the EEA, type your receipts in by
+hand"). Supabase's region is Frankfurt, which is what settled point 3 as `fra1` rather than
+`lhr1`.
+
+The one gap left in it was closed the same day: the page offered Anthropic as a per-device
+reader but gave the lawful basis only for Google. Anthropic is **not** on the Data Bridge
+list, so that transfer rests on contract terms instead, and the page now says so. A page that
+states a legal basis should state the right one for each case.
 
 ## Bigger pieces
 

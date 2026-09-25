@@ -35,6 +35,12 @@ offline page, 404, global-error.
 - `NEXT_PUBLIC_INVITES` — invite a friend (migration-037 is applied).
 - `PHOTO_AGEING` / `PHOTO_AGEING_DELETE` — letting old photographs go. Two switches on
   purpose; read a dry-run report before arming the second. `notes/ageing-photos-design.md`.
+- `NEXT_PUBLIC_HELP_CHAT` — the help chat (2026-09-25), the last rung of the ladder Atanas
+  described. Off, and off on the **server** too: a route that answers while the feature is
+  meant to be off is an open model endpoint nothing in the UI admits to. It is the first
+  thing in the app that costs money every time somebody uses it with no natural limit, so
+  read the fences in `src/lib/helpChat.ts` before turning it on — 40 an hour an account, 400
+  overall, a six-message window trimmed server-side. `notes/help-chat-design.md`.
 
 **Waiting on Atanas:** a trading name and address for the legal pages · business details in
 Settings on Hidefield · one real scan on the live site to prove the counting · print and

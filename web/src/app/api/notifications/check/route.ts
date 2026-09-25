@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { selfAssessmentNotice } from "@/lib/taxEstimate";
 import { todayISO } from "@/lib/today";
+import { addDays } from "@/lib/reminderTemplates";
 import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
@@ -20,10 +21,17 @@ function todayStr(): string {
   return todayISO();
 }
 
+// From TODAY as Britain reckons it, not as UTC does. This asked UTC what day
+// it was and then counted from there, while `today` two lines up was already
+// London -- so for the hour after midnight every summer night the two
+// disagreed by a day, and the 3-day bill window was computed from yesterday.
+// A bill due in exactly 3 days would not have been pushed about.
+//
+// The cron runs at 08:00, so it never met that hour in practice; the route
+// can be called at any hour with the secret, and the pattern was sitting
+// here to be copied.
 function daysFromToday(days: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+  return addDays(todayISO(), days);
 }
 
 export async function GET(req: Request) {

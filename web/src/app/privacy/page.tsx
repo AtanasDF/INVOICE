@@ -67,6 +67,12 @@ export default function Privacy() {
         lawful. If you would rather nothing left the EEA, type your receipts in by hand — every screen that takes a scan
         also takes typing.
       </p>
+      <p className={P}>
+        If you have turned on Anthropic as the reader on your own device, that picture goes to the{" "}
+        <strong>United States</strong> as well. Anthropic is not certified under the UK-US Data Bridge, so that transfer
+        rests on the contract terms we have with them rather than on that arrangement. It is not what happens unless you
+        have switched it on yourself.
+      </p>
 
       <h2 className={H}>Why we are allowed to keep it</h2>
       <p className={P}>

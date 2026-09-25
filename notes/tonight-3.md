@@ -20,8 +20,8 @@ polish. Tick as they land, with the commit.
   disregard: if the reverse-charge part is 5% or less of the whole, normal VAT applies.
   Zero-rated work is out. Supplier enters the NET only on their return — no output tax.
   Credit notes need their own wording.
-- [~] **A2. The end-user declaration.** The ASK is built and shipped; STORING their written declaration per customer needs a migration, so it stays on the list as a branch.
-- [ ] **A2b. The end-user declaration, stored.** A flag per customer ("they have told me in writing
+- [x] **A2. The end-user declaration.** The ASK shipped; storing it shipped with A2b (migration-039).
+- [x] **A2b. The end-user declaration, stored.** (migration-039, run and verified 2026-09-25; the box is on both contact forms, `reverseChargeAsk` stops asking once it is ticked, and `invoices/new` reads it off the customer.) A flag per customer ("they have told me in writing
   they are an end user / intermediary supplier"), because that single fact flips the whole
   treatment and it is the customer's statement, not ours to guess.
 - [x] **A3. The VAT return under reverse charge** — already correct by construction, now pinned. — `src/lib/vatReturn.ts` must not put
@@ -32,12 +32,12 @@ polish. Tick as they land, with the commit.
 - [x] **B1. Walkthroughs.** "Show me how" on the screens that need it, driving the real
   page rather than a video: highlight the control, say what it is for, move on. Must be
   skippable, must never trap focus, must work at twice the text size.
-- [ ] **B2. The help chat.** `notes/help-chat-design.md` exists and nothing was built.
+- [x] **B2. The help chat.** Built behind `NEXT_PUBLIC_HELP_CHAT`, off by default and off on the server too; grounded in `HELP_JOURNEYS`; every refusal leads to the email. `test-help-chat` (37) and `test-help-chat-live` (25).
   Answers from the app's own pages, never invented, and says when it does not know.
 
 ## C. Things that are written down and half-finished
 
-- [ ] **C1. Keep the consultation number** from an HMRC VAT check against the supplier, so
+- [x] **C1. Keep the consultation number** (migration-038 wired; one per number per day, London-reckoned; `test-vat-checks`, 26) from an HMRC VAT check against the supplier, so
   a check leaves a record. Needs a migration → feature branch, does not merge before it is
   applied.
 - [x] **C2. The privacy policy overstates the scanner.** It names "Google and Anthropic" as
