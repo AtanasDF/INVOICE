@@ -334,9 +334,9 @@ function InvoicesPage() {
                     </div>
                   )}
                 </div>
-                // Wraps rather than shrink-0: at a large text size on a narrow phone
-                // "View / print" and "Remove" together are wider than the card,
-                // and Remove went off the side.
+                {/* Wraps rather than shrink-0: at a large text size on a
+                    narrow phone the two actions together are wider than the
+                    card, and Remove went off the side. */}
                 <div className="flex flex-wrap justify-end gap-x-3">
                   <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-neutral-700 underline">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
