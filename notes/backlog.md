@@ -216,6 +216,38 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   research.md`), then a design he reacts to, then the build. Today's page opens with "How
   do you want to start?" and four choices with a paragraph each.
 
+## Where the data is actually processed (found 2026-09-25, needs Atanas)
+
+HMRC's production-credentials form asks "Where are your servers that process customer
+information?" — UK / EEA / outside-with-adequacy / outside-without. Checking rather than
+guessing turned up something worth knowing.
+
+`curl -D - https://invoice-omega-rust.vercel.app/api/vat-check?number=726129090` returns
+**`x-vercel-id: lhr1::iad1::…`**. The edge that answered is London, but the **function ran
+in `iad1` — Washington DC**. Vercel's Hobby default is US East, and nothing in
+`web/vercel.json` overrides it. So a UK accounting product is processing UK accounting
+records in the United States. Scanned documents already go to Google and Anthropic (also
+US) to be read, which `/privacy` does disclose — but neither the policy nor anything else
+says *where* any of it happens.
+
+Three things follow:
+
+1. **The honest answer on the form is "Outside the EEA with adequacy agreements"** — the
+   US is adequate only for organisations certified under the UK-US Data Bridge (the UK
+   Extension to the EU-US Data Privacy Framework). Worth confirming Vercel, Supabase,
+   Google and Anthropic are each certified before relying on it.
+2. **Supabase's region is still unknown.** It sits behind Cloudflare, so DNS and response
+   headers give nothing away — `cf-ray …-LHR` is only the edge that served the request.
+   It is one glance in Supabase → Project Settings → General, and it decides the next point.
+3. **Moving the functions to London (`"regions": ["lhr1"]` in `web/vercel.json`) is one
+   line**, and Hobby allows a single region. But do NOT do it before knowing where Supabase
+   is: if the database is in the US, moving the functions to London puts the Atlantic
+   between every query and makes the app slower for no privacy gain. Same region for both,
+   whichever it is.
+
+The privacy policy should also say where the data is processed once this is settled; it
+names the processors but not their countries.
+
 ## Bigger pieces
 
 - [x] **Make the screens work at twice the text size** (2026-09-24, done). Not one of the
