@@ -48,9 +48,17 @@ try {
     !!document.querySelector('[role="progressbar"][aria-valuenow="0"][aria-valuemax="6"]')), "no progressbar");
 
   // Each unfinished step is a link somebody can follow.
+  //
+  // Scoped to the step LIST, not the whole section. It used to count every
+  // link in the panel and insist on exactly six, so the panel could never
+  // carry a link that was not a step -- and the way to the walkthroughs, added
+  // to its foot on 2026-09-25, broke it. Counting the list is what the check
+  // was always for, and it is stricter: a step that stops being a link now
+  // fails it, which a whole-section count could have hidden behind any other
+  // link that happened to be there.
   const links = await page.evaluate(() => {
     const s = [...document.querySelectorAll("section")].find((x) => /Setting up/.test(x.textContent));
-    return s ? [...s.querySelectorAll("a")].map((a) => a.getAttribute("href")) : [];
+    return s ? [...s.querySelectorAll("ul a")].map((a) => a.getAttribute("href")) : [];
   });
   check("every unfinished step is a link to where it is done", links.length === 6 && links.includes("/settings") && links.includes("/clients/new"), JSON.stringify(links));
 
