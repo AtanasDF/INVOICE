@@ -5,6 +5,7 @@ import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
 import { startFixtures } from "./ch-fixtures.mjs";
 import { fakeSession } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 
 const OUT = new URL(".", import.meta.url).pathname;
 // The app this suite starts. It used to point at
@@ -13,7 +14,7 @@ const OUT = new URL(".", import.meta.url).pathname;
 // since that branch merged, and would have stayed green whatever changed
 // in main. (It also breaks outright the day those worktrees are deleted,
 // which is on the list.)
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3307;
 const FIX = 3399;
 const KEY = "fixture-key-never-shown";

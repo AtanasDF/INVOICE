@@ -23,8 +23,9 @@
 // from `new Date()`, which is a moment rather than a day.
 import fs from "node:fs";
 import path from "node:path";
+import { REPO } from "./repo.mjs";
 
-const APP = "/Users/nasko/Desktop/INVOICE/web/src";
+const APP = `${REPO}/web/src`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 

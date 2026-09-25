@@ -8,7 +8,10 @@
 # again, which is what to do if a timing-sensitive suite starts flaking.
 export BASE=${BASE:-http://localhost:3000}
 JOBS=${JOBS:-4}
-APP=/Users/nasko/Desktop/INVOICE/web
+# Worked out from where this script is, not written down: the project has to
+# be able to move off the iCloud-synced Desktop, and a hard-coded path here
+# broke every suite the moment it did.
+APP="$(cd "$(dirname "$0")/../web" && pwd)"
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 

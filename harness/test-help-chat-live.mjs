@@ -14,8 +14,9 @@
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { HELP_CHAT_LIMITS } from "./gen/lib/helpChat.js";
+import { REPO } from "./repo.mjs";
 
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3323;
 const STUB = 3573;
 const base = `http://localhost:${PORT}`;

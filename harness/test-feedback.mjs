@@ -6,8 +6,9 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { startMockServer } from "./mock-server.mjs";
 import { makeDb, UID } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3309;
 const MOCK = 3557;
 const STUB = 3398;

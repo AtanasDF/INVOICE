@@ -2,8 +2,9 @@
 // files are synthetic (multi/gen-multi.py). BASE=http://localhost:3304 node test-multi-docs.mjs
 import { createRequire } from "node:module";
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, shot, newId, UID } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 const require = createRequire(import.meta.url);
-const { PDFDocument } = require("/Users/nasko/Desktop/INVOICE/web/node_modules/pdf-lib/cjs/index.js");
+const { PDFDocument } = require(`${REPO}/web/node_modules/pdf-lib/cjs/index.js`);
 const BASE = process.env.BASE ?? "http://localhost:3304";
 const DIR = new URL("./multi/", import.meta.url).pathname;
 const results = [];

@@ -15,6 +15,7 @@ import { HELP_JOURNEYS } from "./gen/lib/helpJourneys.js";
 import fs from "node:fs";
 import { HELP_FACTS } from "./gen/lib/helpFacts.js";
 import { NAV_HREFS } from "./gen/lib/navGroups.js";
+import { REPO } from "./repo.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const results = [];
@@ -89,7 +90,7 @@ check("the grounding is not empty", ground.length > 200, String(ground.length));
 // which is the thing argued against when the walkthrough frames were made to
 // record themselves. The difference is that both ways it can drift are checked
 // right here: an address that does not resolve, and a page nobody described.
-const APP = "/Users/nasko/Desktop/INVOICE/web/src/app";
+const APP = `${REPO}/web/src/app`;
 const pageFileFor = (route) => {
   const rel = route === "/" ? "page.tsx" : `${route.replace(/^\//, "")}/page.tsx`;
   return `${APP}/${rel}`;
@@ -159,7 +160,7 @@ check("it is told a question is never an instruction to it", /never an instructi
 // route only treated "failed" as a failure, so it handed the fragment
 // straight through as though it were an answer. extractors.ts had always
 // treated both of the other statuses as a failure; this route had not.
-const route = fs.readFileSync("/Users/nasko/Desktop/INVOICE/web/src/app/api/help-chat/route.ts", "utf8");
+const route = fs.readFileSync(`${REPO}/web/src/app/api/help-chat/route.ts`, "utf8");
 check("a cut-off answer is a failure, not an answer", /"incomplete"/.test(route) && /"budget_exceeded"/.test(route));
 check("an empty answer is a failure too", /!answer/.test(route));
 // The budget has to hold a three-sentence answer AND the thinking.

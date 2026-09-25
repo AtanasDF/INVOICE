@@ -6,9 +6,10 @@
 // Source-level: a Tip that has never been rendered is still a Tip missing.
 import fs from "fs";
 import path from "path";
+import { REPO } from "./repo.mjs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const APP = "/Users/nasko/Desktop/INVOICE/web/src/app";
+const APP = `${REPO}/web/src/app`;
 
 // Screens that rightly have no first-time note, each for a reason.
 const NO_TIP = {

@@ -2,8 +2,9 @@
 // its simplified quad, each pass's side fits and the chosen corners.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { REPO } from "./repo.mjs";
 const require = createRequire(import.meta.url);
-const WEB = "/Users/nasko/Desktop/INVOICE/.claude/worktrees/bent-paper/web";
+const WEB = `${REPO}/.claude/worktrees/bent-paper/web`;
 const ts = require(WEB + "/node_modules/typescript");
 const tsx = readFileSync(WEB + "/src/components/DocumentCapture.tsx", "utf8");
 const body = tsx.slice(tsx.indexOf("type Point ="), tsx.indexOf("function BackButton("));

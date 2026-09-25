@@ -15,8 +15,9 @@
 // twice.
 import http from "node:http";
 import { spawn } from "node:child_process";
+import { REPO } from "./repo.mjs";
 
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3319;
 const STUB = 3569;
 const base = `http://localhost:${PORT}`;

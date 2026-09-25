@@ -8,10 +8,11 @@
 // served as-is and no bundler or type-checker ever looks at it.
 import fs from "fs";
 import { makeDb, launchSignedIn, signIn, sleep, newId } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const sw = fs.readFileSync("/Users/nasko/Desktop/INVOICE/web/public/sw.js", "utf8");
+const sw = fs.readFileSync(`${REPO}/web/public/sw.js`, "utf8");
 
 check("the API is never cached, whatever else is", /startsWith\("\/api\/"\)\s*\)\s*return;/.test(sw.replace(/\s+/g, " ").replace(/ /g, " ")) || /\/api\//.test(sw), "no rule about /api/");
 check("a page is fetched from the network first, every time", /navigate/.test(sw) && /fetch\(req\)\.catch/.test(sw), "pages are not network-first");

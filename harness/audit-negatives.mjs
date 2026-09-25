@@ -17,8 +17,9 @@
 // suites notice. Run: node audit-negatives.mjs
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { REPO } from "./repo.mjs";
 
-const APP = "/Users/nasko/Desktop/INVOICE/web/src";
+const APP = `${REPO}/web/src`;
 const walk = (d) => readdirSync(d).flatMap((f) => {
   const p = join(d, f);
   return statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx)$/.test(p) ? [p] : [];

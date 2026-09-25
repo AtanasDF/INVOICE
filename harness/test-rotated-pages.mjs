@@ -15,7 +15,8 @@
 // The positions are now reported by the code that writes the pages.
 import { createRequire } from "module";
 import { pdfWithPages } from "./gen/lib/pdfPages.js";
-const require = createRequire("/Users/nasko/Desktop/INVOICE/web/");
+import { REPO } from "./repo.mjs";
+const require = createRequire(`${REPO}/web/`);
 const { PDFDocument, degrees } = require("pdf-lib");
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };

@@ -8,9 +8,10 @@
 // rule lives and because a hex nobody has rendered yet is still a hex.
 import fs from "fs";
 import path from "path";
+import { REPO } from "./repo.mjs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const SRC = "/Users/nasko/Desktop/INVOICE/web/src";
+const SRC = `${REPO}/web/src`;
 
 // Places a fixed colour is RIGHT, each for a reason, not because it was
 // easier. Anything not on this list has to follow the theme.

@@ -4,8 +4,8 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "outDir": "gen-bench",
-    "rootDir": "/Users/nasko/Desktop/INVOICE/web/src",
-    "baseUrl": "/Users/nasko/Desktop/INVOICE/web/src",
+    "rootDir": "../web/src",
+    "baseUrl": "../web/src",
     "paths": {
       "@/*": [
         "*"
@@ -16,6 +16,6 @@
     "noEmitOnError": false
   },
   "files": [
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/scanExtraction.ts"
+    "../web/src/lib/scanExtraction.ts"
   ]
 }

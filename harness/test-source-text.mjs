@@ -5,7 +5,8 @@
 // old site name missed a sender line in one of them.
 import fs from "node:fs";
 import path from "node:path";
-const ROOT = "/Users/nasko/Desktop/INVOICE";
+import { REPO } from "./repo.mjs";
+const ROOT = REPO;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 const SKIP = new Set(["node_modules", "vendor", "gen", ".next", ".vercel", ".git", "uploads", "multi"]);

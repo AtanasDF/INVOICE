@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./mock-server.mjs";
 import { makeDb, newId, sleep, bodyText, todayISO } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 // Its own dev server against the stand-in database; its waits allow for a
 // route compiling on first use (it used to need one
 // built by hand against it, on 3950, so it never ran with the rest).
@@ -23,7 +24,7 @@ db.tables.quotes.push(quote(Q1, "Q-0001", "sent", "2099-01-01"), quote(Q2, "Q-00
 db.tables.quote_links = []; db.tables.invoices = []; db.tables.credit_notes = []; db.tables.push_subscriptions = []; db.tables.invoice_payments = [];
 const { server } = startMockServer(MOCK, db);
 const app = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], {
-  cwd: "/Users/nasko/Desktop/INVOICE/web",
+  cwd: `${REPO}/web`,
   env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://localhost:${MOCK}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "fake-anon-key", SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-key", RESEND_API_KEY: "" },
   stdio: ["ignore", "pipe", "pipe"],
 });

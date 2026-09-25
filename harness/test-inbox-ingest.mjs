@@ -14,10 +14,11 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { startMockServer } from "./mock-server.mjs";
 import { makeDb, UID } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 const require = createRequire(import.meta.url);
-const { PDFDocument } = require("/Users/nasko/Desktop/INVOICE/web/node_modules/pdf-lib");
+const { PDFDocument } = require(`${REPO}/web/node_modules/pdf-lib`);
 
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3308;
 const MOCK = 3556;
 const STUB = 3397;

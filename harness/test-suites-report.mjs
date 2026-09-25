@@ -19,8 +19,9 @@
 // other suite's value rests on.
 import fs from "node:fs";
 import path from "node:path";
+import { REPO } from "./repo.mjs";
 
-const HERE = "/Users/nasko/Desktop/INVOICE/harness";
+const HERE = `${REPO}/harness`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 

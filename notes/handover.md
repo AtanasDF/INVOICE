@@ -16,7 +16,15 @@
    catalog rather than the success message: the FK's ON DELETE is SET NULL, `authenticated`
    has INSERT and SELECT only, `anon` appears nowhere, and the two existing client rows were
    untouched.
-3. **Move the project off the iCloud Desktop.** Raised from a preference to a real risk on
+3. **Move the project off the iCloud Desktop — the harness no longer stands in the way.**
+   It used to: 87 copies of `/Users/nasko/Desktop/INVOICE` across 39 files, 38 of them in
+   `harness/`, so the move broke every suite at once. They now ask `harness/repo.mjs`, which
+   works the answer out from its own `import.meta.url`; the two tsconfigs use paths relative
+   to themselves, and `run-all.sh` derives `APP` from where the script is. **Verified by
+   copying the project to a different path and running from there**, not by reading the
+   diff. So the move is now: move the folder, and nothing else. (The `web/.next` build and
+   `harness/gen` are rebuilt anyway, and `web/node_modules` may need a fresh `npm install`
+   if anything in it holds an absolute path.) Raised from a preference to a real risk on
    2026-09-25: iCloud duplicated two git **ref** files and `git fetch`/`git pull` both died
    on `fatal: bad object refs/heads/main 2`. Nothing was lost and it is fixed (the strays
    were moved to `~/icloud-git-strays-2026-09-25/`, both pointing at a commit already in

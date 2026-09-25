@@ -5,8 +5,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { makeDb, launchSignedIn, sleep, bodyText } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 

@@ -10,10 +10,11 @@
 import fs from "fs";
 import zlib from "zlib";
 import { makeDb, launchSignedIn, signIn, sleep, newId, day } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 // The app's own copy: pdf-lib compresses its object streams, so counting
 // pages by grepping the bytes for "/Type /Page" finds nothing at all -- and
 // a check that always answers zero is worse than no check.
-const { PDFDocument } = await import("/Users/nasko/Desktop/INVOICE/web/node_modules/pdf-lib/cjs/index.js");
+const { PDFDocument } = await import(`${REPO}/web/node_modules/pdf-lib/cjs/index.js`);
 const pageCount = async (bytes) => (await PDFDocument.load(bytes, { updateMetadata: false })).getPageCount();
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const DL = new URL("./downloads/", import.meta.url).pathname;

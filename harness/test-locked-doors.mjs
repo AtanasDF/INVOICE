@@ -14,8 +14,9 @@
 // so nothing here can touch a real record even by accident.
 import http from "node:http";
 import { spawn } from "node:child_process";
+import { REPO } from "./repo.mjs";
 
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3322;
 const STUB = 3572;
 const base = `http://localhost:${PORT}`;

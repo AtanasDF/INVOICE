@@ -10,8 +10,9 @@
 // requests fighting for the connection.
 import fs from "node:fs";
 import { execSync } from "node:child_process";
+import { REPO } from "./repo.mjs";
 const HERE = new URL(".", import.meta.url).pathname;
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const only = process.argv[2];
 
 for (const line of fs.readFileSync(`${WEB}/.env.local`, "utf8").split("\n")) {

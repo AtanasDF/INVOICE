@@ -12,8 +12,9 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { HELP_JOURNEYS, frameSrc, journey } from "./gen/lib/helpJourneys.js";
 import { makeDb, launchSignedIn, signIn, sleep, bodyText } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
-const PUBLIC = "/Users/nasko/Desktop/INVOICE/web/public";
+const PUBLIC = `${REPO}/web/public`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
@@ -38,7 +39,7 @@ check("every step has its words", empty.length === 0, JSON.stringify(empty));
 // The whole point of generating them: no two steps may show the same thing.
 // A duplicate is a step that taught nothing, and the recorder is the only
 // place that can catch it -- so check the recorder still refuses them.
-const recorder = readFileSync("/Users/nasko/Desktop/INVOICE/harness/record-help.mjs", "utf8");
+const recorder = readFileSync(`${REPO}/harness/record-help.mjs`, "utf8");
 check("the recorder refuses two identical frames", /identical to/.test(recorder) && /createHash/.test(recorder));
 check("and refuses a caption with nothing to ring", /nothing to ring for/.test(recorder));
 check("and never deletes a frame it did not write", /\^\\\\d\\\\d\\\\.webp\$/.test(recorder) || /\\d\\d\\.webp/.test(recorder));

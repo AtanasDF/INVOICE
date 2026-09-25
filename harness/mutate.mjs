@@ -19,8 +19,9 @@
 // commit while that marker exists. `revert` removes it.
 import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync, chmodSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { REPO } from "./repo.mjs";
 
-const REPO = "/Users/nasko/Desktop/INVOICE";
+const REPO = REPO;
 const MARKER = `${REPO}/.git/MUTATED`;
 const HOOK = `${REPO}/.git/hooks/pre-commit`;
 
@@ -38,7 +39,7 @@ fi
   chmodSync(HOOK, 0o755);
 }
 
-const APP = "/Users/nasko/Desktop/INVOICE/web/src";
+const APP = `${REPO}/web/src`;
 
 // Each one breaks something a person would actually notice.
 const MUTATIONS = [

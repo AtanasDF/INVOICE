@@ -10,8 +10,9 @@ import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 import { startMockServer } from "./mock-server.mjs";
 import { fakeSession, makeDb, UID } from "./mockdb.mjs";
+import { REPO } from "./repo.mjs";
 
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const PORT = 3313;
 const MOCK = 3562;
 const STUB = 3563;

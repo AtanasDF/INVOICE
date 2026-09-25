@@ -2,7 +2,8 @@
 // table without it is readable by any signed-in account, and the anon key
 // is published in the app itself.
 import { readdirSync, readFileSync } from "node:fs";
-const DIR = "/Users/nasko/Desktop/INVOICE/web/supabase";
+import { REPO } from "./repo.mjs";
+const DIR = `${REPO}/web/supabase`;
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 

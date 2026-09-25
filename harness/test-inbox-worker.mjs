@@ -9,11 +9,12 @@
 // and used only when there is nothing else (a screenshot pasted into the
 // body is still a document).
 import { createRequire } from "node:module";
+import { REPO } from "./repo.mjs";
 const require = createRequire(import.meta.url);
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
-const worker = (await import("/Users/nasko/Desktop/INVOICE/worker/src/index.ts")).default;
+const worker = (await import(`${REPO}/worker/src/index.ts`)).default;
 const TOKEN = "8F3A91C2E6B4D0A17F2C9E4B1A6D3F08";
 const ENV = { APP_INGEST_URL: "http://app.test/api/inbox/ingest", INBOX_WEBHOOK_SECRET: "hook-secret" };
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";

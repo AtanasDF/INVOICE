@@ -5,9 +5,10 @@
 // because neither is a bug in any file -- it is a disagreement between two.
 import fs from "fs";
 import path from "path";
+import { REPO } from "./repo.mjs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const WEB = "/Users/nasko/Desktop/INVOICE/web";
+const WEB = `${REPO}/web`;
 const API = path.join(WEB, "src/app/api");
 
 const crons = JSON.parse(fs.readFileSync(path.join(WEB, "vercel.json"), "utf8")).crons ?? [];

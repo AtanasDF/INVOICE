@@ -15,9 +15,10 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { makeDb, launchSignedIn, signIn, sleep, newId, todayISO } from "./mockdb.mjs";
 import { HELP_JOURNEYS } from "./gen/lib/helpJourneys.js";
+import { REPO } from "./repo.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
-const OUT = "/Users/nasko/Desktop/INVOICE/web/public/help";
+const OUT = `${REPO}/web/public/help`;
 // A phone, because that is what this is for and what the frames are shown
 // at. Two-times pixel ratio so the picture is crisp at its printed size.
 const WIDTH = 390;
