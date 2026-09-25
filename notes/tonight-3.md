@@ -57,7 +57,7 @@ Not a re-run of the suites — new attacks:
 - [x] **D2. Two tabs, one record.** Every concurrent path: the same invoice issued twice,
   a quote accepted online while the owner invoices it, a payment recorded twice, a deposit
   claimed in two windows.
-- [ ] **D3. The half-connection.** Not "offline", but slow, flaky and truncated: a save
+- [x] **D3. The half-connection.** Not "offline", but slow, flaky and truncated: a save
   that reaches the database and loses the reply, a scan that times out mid-read.
 - [x] **D4. Dates that break things.** Leap day, BST boundaries both ways, a quarter end at
   midnight, a due date on 29 February, a tax year boundary.
