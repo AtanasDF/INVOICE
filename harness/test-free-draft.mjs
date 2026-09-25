@@ -34,8 +34,16 @@ try {
   await sleep(1200);
 
   check("the page opens for an account", (await bodyText(page)).length > 100);
-  // Typing one in is open to all; scanning one in asks for a free sign-in
-  // first (Atanas, 2026-09-22), with the draft kept.
+  // Scanning one in asks for a free sign-in first (Atanas, 2026-09-22), with
+  // the draft kept. Typing one in WAS open to all, and this comment said so
+  // for three days after it stopped being true: "nothing should work before
+  // the user register" closed the whole page, and queue item 29 settled the
+  // "free invoice template UK" question with a public article (/how-to-invoice,
+  // which is in the gate's public list) rather than by reopening this one.
+  // The page went on saying "no sign-in needed" throughout, because this suite
+  // signs in before reading it and so never met the gate. The stranger check
+  // at the foot of this file exists so the words and the gate cannot part
+  // company again.
   const gate = await page.evaluate(() => {
     const link = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Take a photo of an old invoice");
     return { href: link ? decodeURIComponent(new URL(link.href).pathname + new URL(link.href).search) : null, camera: !![...document.querySelectorAll("button,label")].find((b) => b.textContent.trim() === "Take a photo of an old invoice") };
@@ -43,7 +51,13 @@ try {
   const opening = await bodyText(page);
   check("signed in, the photo button opens the camera itself", !gate.href && gate.camera, JSON.stringify({ href: gate.href, camera: gate.camera, said: /needs a free sign-in first/.test(opening) }));
   check("the chooser asks in plain words", /How would you like to start\?/.test(opening) && /Type it in/.test(opening) && /Fill in a few boxes/.test(opening), opening.slice(0, 300));
-  check("the page says so at the top", /no sign-in needed\. Copying an old one in from a photo takes a free sign-in first/.test(opening), opening.slice(0, 300));
+  // Pinned on what the page DOES, not on a sentence: it photographs an old
+  // invoice, it builds one, and the three things you can do with the result.
+  check("the page says at the top what it is for",
+    /Photograph one you.{0,3}ve sent before/.test(opening) && /keep it in your invoices/.test(opening), opening.slice(0, 300));
+  // Whatever it says, it must not claim to need no account while the gate
+  // sends every stranger to /login. That claim was live for three days.
+  check("it does not claim to work without an account", !/no sign-in needed/i.test(opening), opening.slice(0, 300));
   // It opens on a chooser: blank, a quote, or scan one you've sent before.
   await clickText(page, "Type it in");
   await sleep(1200);
@@ -106,6 +120,31 @@ try {
   check("signed in, saving into their own records is offered", saveIdx >= 0, JSON.stringify(acts.slice(0, 10)));
   check("...before sending or sharing it", saveIdx >= 0 && sendIdx >= 0 && saveIdx < sendIdx, JSON.stringify({ saveIdx, sendIdx }));
   check("...and not worded as an optional extra", !acts.some((a) => /Keep a copy in the app/i.test(a)), JSON.stringify(acts.slice(0, 10)));
+
+  // ---- What a STRANGER gets -------------------------------------------
+  // Everything above signs in first, which is exactly why nobody noticed the
+  // page telling people it needed no account: this suite had never once
+  // arrived without one. A fresh browser, no session.
+  // A second BROWSER, not a second tab: pages in one browser share the
+  // origin's localStorage, so a new tab here is still signed in. The first
+  // version of this check did exactly that and reported the gate open.
+  const { browser: strangerBrowser, page: plain } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-free-draft-stranger" });
+  try {
+    await plain.goto(`${BASE}/free-invoice`, { waitUntil: "networkidle0" });
+    await sleep(2500);
+    const landed = new URL(plain.url()).pathname;
+    // Either answer is defensible and Atanas has decided it twice; what is not
+    // defensible is the page's words disagreeing with whichever it is. The
+    // gate closes it today, so the page must not offer itself to strangers.
+    check("a stranger is sent to sign in, as the gate intends", landed === "/login", landed);
+    await plain.goto(`${BASE}/how-to-invoice`, { waitUntil: "networkidle0" });
+    await sleep(2000);
+    // The public article is what queue item 29 chose INSTEAD of reopening this
+    // page. If it ever stops being public, nothing a stranger can read is left.
+    check("and the public article a stranger can read is still public", new URL(plain.url()).pathname === "/how-to-invoice", new URL(plain.url()).pathname);
+  } finally {
+    await strangerBrowser.close();
+  }
 
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

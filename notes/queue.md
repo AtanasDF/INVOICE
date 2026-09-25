@@ -48,9 +48,15 @@ page. Ask him: which screen, and a phone or a trackpad?
    until then. Original: The design has "38 of 50 today" and nothing
    draws it. Until it does, the wall arrives with no warning.
 6. **Nothing shows whether an account is free or paid.** `plan` exists; no screen mentions it.
-7. **The dashboard's "Create an invoice" goes to `/free-invoice?start=photo`**, a path built
-   for a page strangers used to see. Walk it as a signed-in person and make sure it ends at
-   a saved invoice rather than the old free-page dead end.
+7. ~~**The dashboard's "Create an invoice" goes to `/free-invoice?start=photo`**~~ **walked
+   2026-09-25, and it does NOT dead-end.** "Save to my invoices" writes the draft and pushes
+   to `/invoices/new`, which imports it — so the path ends at a real, numbered invoice in the
+   account. The camera-first behaviour is deliberate and his own (the line beside the tile
+   offering "write one by hand" was added at his request, precisely because on a phone you
+   tapped Create an invoice, got a camera, and never saw the other way), so it is left alone.
+   What the walk DID find was the page telling people "no sign-in needed" while the gate sent
+   every stranger to `/login` — fixed, and `test-free-draft` now checks the stranger case in
+   its own browser.
 8. ~~**`AddAnything` repeats the buttons above it**~~ **done**. Original: — Scan it, Upload a photo or PDF.
    Two ways to the same place, a tap apart.
 9. ~~**The Tip naming renamed buttons**~~ done.

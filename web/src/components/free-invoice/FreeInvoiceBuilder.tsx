@@ -338,7 +338,7 @@ export default function FreeInvoiceBuilder() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{quote ? "Free quote" : "Free invoice"}</h1>
-          <p className="mt-1 text-neutral-600">Build an invoice or a quote and print it or save it, no sign-in needed. Copying an old one in from a photo takes a free sign-in first.</p>
+          <p className="mt-1 text-neutral-600">Photograph one you&apos;ve sent before and the next is filled in for you, or build one here. Print it, save it as a file, or keep it in your invoices.</p>
         </div>
         {stage === "editor" && <div className="hidden items-center gap-2 sm:flex">{actions}</div>}
       </div>

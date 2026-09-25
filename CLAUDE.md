@@ -183,8 +183,14 @@ register... a plain page with some nice advertising of the app and the log in
 rectangulars"). `/` for a stranger is the **front door** (`src/components/Welcome.tsx`):
 the headline, five short lines of what the app does, what you can save it as, and
 `SignInCard` beside them. Every other page redirects to `/login`; only `/`, `/login`,
-`/reset-password` and the customer links `/i/`, `/q/`, `/r/` are public (the Gate in
-`AppShell`). Its words follow `notes/first-page-research.md` (`test-first-page`), which
+`/reset-password` and the customer links `/i/`, `/q/`, `/r/` are public — **and so are
+`/privacy`, `/terms`, `/security`, `/accessibility`, `/how-to-invoice` and `/offline`**, each
+for a reason written beside it in the Gate (`AppShell`): a legal page has to be readable
+before anybody hands over an email address, a security report should not need an account, a
+statement about whether somebody can use the app is no use behind a sign-in they cannot get
+through, and the offline page is shown exactly when the sign-in check cannot be made.
+**`/free-invoice` is NOT public** (checked 2026-09-25 by walking it: a stranger lands on
+`/login`). Its words follow `notes/first-page-research.md` (`test-first-page`), which
 now allows "account" and "PDF" because the page is about making one.
 
 `SignInCard` (`src/components/SignInCard.tsx`, used by `/` and `/login`) is the whole of
@@ -399,7 +405,15 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
   signed-in only too since 2026-09-22, Atanas's rule that everyone signs in to scan:
   Gemini unless `engine` is `claude`, 60 an hour per account and 200 an hour overall,
   counted in the database via `hit_rate_limit` (service role, HMAC'd keys), falling back
-  to per-instance memory if that fails. The Free page stays open for typing an invoice. `POST /api/contact-scan` (signed in) lists every business/person on any photo
+  to per-instance memory if that fails. **The Free page is not open to strangers**, though it
+said "no sign-in needed" on its own heading until 2026-09-25 and this file said it stayed open
+for typing. Both were three days stale: "nothing should work before the user register" closed
+the whole page, and queue item 29 settled the "free invoice template UK" question with a
+public article (`/how-to-invoice`) instead of reopening this one. Nothing caught it because
+`test-free-draft` signs in before reading the page and had never once arrived without an
+account — a suite that green-lit the very sentence it should have refused. It now checks the
+stranger case **in its own browser** (pages in one browser share the origin's localStorage, so
+a second tab is still signed in) and refuses the claim outright. `POST /api/contact-scan` (signed in) lists every business/person on any photo
   for the new client/supplier form.
 - A scanned invoice on the Free page becomes the NEXT invoice (`templateToDraft`): number
   +1 via `nextInvoiceNumber` (labels like "No." stripped, year-last formats bump the
