@@ -581,7 +581,25 @@ test stand-in; it defaults to the live API.
 against HMRC's "Check a UK VAT number" API (`/api/vat-check`, `VatNumberInput`): Settings,
 the new and edit contact forms, and the quote customer picker. The API is
 application-restricted, so it needs an application registered on HMRC's Developer Hub with
-the `read:vat` scope; the route swaps the two for a four-hour server token itself. VIES
+the `read:vat` scope; the route swaps the two for a four-hour server token itself.
+**Version 2.0 only** (`Accept: application/vnd.hmrc.2.0+json`): version 1 was open and was
+removed on 17 February 2025. Checked against HMRC's own OpenAPI spec on 2026-09-25, which
+also settled two things a guess got wrong — the address is **line1, postcode, countryCode
+and nothing else** (not line1..line8), and the token URL is `/oauth/token` with the
+`clientCredentials` flow. **Getting in takes about two weeks**: a developer account, then a
+sandbox application (`https://test-api.service.hmrc.gov.uk`, `HMRC_API_BASE` points there),
+then testing, then a production application and Terms of Use 2.0, which HMRC review in up
+to 10 working days.
+There are **two endpoints**, and the app uses both: `lookup/<their VRN>` answers whether a
+number is registered and to whom, and `lookup/<their VRN>/<our VRN>` also returns a
+**consultation number** — HMRC's dated reference proving the check was made, which is the
+evidence they ask for if they ever query VAT reclaimed against a supplier who turns out not
+to have been registered. Nothing in `notes/competitor-research.md` offers it. The plain
+answer is cached for six hours; **a consultation number never is**, because handing back
+yesterday's reference would be a reference to a check that did not happen. A 403 on the
+two-number form means *our* number was refused, not theirs, so the route falls back to the
+plain lookup rather than telling somebody nothing. The number is shown under the box and
+**not yet stored** — keeping it against a supplier needs a migration (queued). VIES
 cannot stand in for it: GB numbers left VIES after Brexit and only Northern Ireland's XI
 numbers are still there. **Without the credentials the boxes still catch a typo** — a UK
 VAT number carries its own check digits (`src/lib/vatNumber.ts`, mod 97 and mod 97-55, both

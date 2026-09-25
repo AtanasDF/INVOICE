@@ -17,7 +17,7 @@ import { checkVatNumberFormat, formatVatNumber } from "@/lib/vatNumber";
 type Lookup =
   | { for: string; kind: "checking" }
   | { for: string; kind: "off" }
-  | { for: string; kind: "registered"; name: string; address: string }
+  | { for: string; kind: "registered"; name: string; address: string; consultationNumber?: string; checkedOn?: string | null }
   | { for: string; kind: "unknown" }
   | { for: string; kind: "unavailable" };
 
@@ -33,6 +33,7 @@ export default function VatNumberInput({
   business,
   disabled,
   hint,
+  mine,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -46,6 +47,10 @@ export default function VatNumberInput({
   disabled?: boolean;
   // What the line under the box says while there is nothing to report.
   hint?: string;
+  // The account's OWN VAT number. Given both, HMRC returns a reference
+  // proving this supplier was checked on this date -- the evidence HMRC
+  // asks for if they ever query the VAT reclaimed against them.
+  mine?: string;
 }) {
   const format = checkVatNumberFormat(value);
   const number = format.kind === "ok" ? format.normalised : "";
@@ -71,13 +76,14 @@ export default function VatNumberInput({
     const t = setTimeout(async () => {
       setLookup({ for: number, kind: "checking" });
       try {
-        const res = await fetch(`/api/vat-check?number=${encodeURIComponent(number)}`, { signal: controller.signal });
-        const body = (await res.json()) as { configured?: boolean; registered?: boolean; name?: string; address?: string };
+        const ours = mine?.trim() ? `&mine=${encodeURIComponent(mine.trim())}` : "";
+        const res = await fetch(`/api/vat-check?number=${encodeURIComponent(number)}${ours}`, { signal: controller.signal });
+        const body = (await res.json()) as { configured?: boolean; registered?: boolean; name?: string; address?: string; consultationNumber?: string; checkedOn?: string | null };
         if (controller.signal.aborted) return;
         if (!body.configured) setLookup({ for: number, kind: "off" });
         else if (res.status === 429 || res.status === 503) setLookup({ for: number, kind: "unavailable" });
         else if (body.registered === false) setLookup({ for: number, kind: "unknown" });
-        else if (body.registered && body.name) setLookup({ for: number, kind: "registered", name: body.name, address: body.address ?? "" });
+        else if (body.registered && body.name) setLookup({ for: number, kind: "registered", name: body.name, address: body.address ?? "", consultationNumber: body.consultationNumber, checkedOn: body.checkedOn });
         else setLookup({ for: number, kind: "off" });
       } catch {
         if (!controller.signal.aborted) setLookup({ for: number, kind: "unavailable" });
@@ -87,7 +93,7 @@ export default function VatNumberInput({
       controller.abort();
       clearTimeout(t);
     };
-  }, [number]);
+  }, [number, mine]);
 
   const answer = lookup && lookup.for === number ? lookup : null;
   const said =
@@ -130,6 +136,16 @@ export default function VatNumberInput({
         <p id={saidId} role={bad ? "alert" : "status"} className={`mt-1 wrap-anywhere text-xs ${bad ? "text-red-600" : "text-neutral-500"}`}>
           {said || hint}
           {differs && " That is a different name from the one above, so check you have the right number."}
+        </p>
+      )}
+      {/* Worth writing down, and nowhere in the app keeps it yet: HMRC's
+          reference for THIS check on THIS day. Shown rather than hidden,
+          because a reference nobody sees is the same as no reference. */}
+      {answer?.kind === "registered" && answer.consultationNumber && (
+        <p className="mt-1 wrap-anywhere text-xs text-neutral-500">
+          HMRC&apos;s reference for this check is <span className="font-medium text-neutral-700">{answer.consultationNumber}</span>
+          {answer.checkedOn ? `, made ${new Date(answer.checkedOn).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}` : ""}. Keep it
+          with your records: it is what proves you checked.
         </p>
       )}
     </>

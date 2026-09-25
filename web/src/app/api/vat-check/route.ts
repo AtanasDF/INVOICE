@@ -52,10 +52,16 @@ async function serverToken(): Promise<string | null> {
   return token.value;
 }
 
-type Lookup = { target?: { name?: string; vatNumber?: string; address?: Record<string, string | undefined> } };
+type Lookup = {
+  target?: { name?: string; vatNumber?: string; address?: Record<string, string | undefined> };
+  consultationNumber?: string;
+  processingDate?: string;
+};
 
-// HMRC returns the address as named lines; they print in this order.
-const LINES = ["line1", "line2", "line3", "line4", "line5", "line6", "line7", "line8", "postcode", "countryCode"];
+// The whole of HMRC's address: line1, postcode, countryCode, and nothing
+// else. Checked against their own OpenAPI spec rather than guessed -- the
+// first version of this read line1 through line8, which no response has.
+const LINES = ["line1", "postcode", "countryCode"];
 
 export async function GET(req: Request) {
   const asked = new URL(req.url).searchParams.get("number") ?? "";
@@ -67,8 +73,19 @@ export async function GET(req: Request) {
 
   if (!ID || !SECRET) return NextResponse.json({ configured: false, format: "ok", number: format.normalised });
 
-  const vrn = format.normalised.replace(/^(GB|XI)/, "").slice(0, 9);
-  const hit = cache.get(vrn);
+  const vrn = format.normalised.replace(/^(GB|XI)/, "");
+  // Your own VAT number, when you have one. Given both, HMRC answers with a
+  // consultation number: a reference that proves you checked this supplier
+  // on this date, which is the evidence HMRC asks for if they ever query
+  // the VAT you reclaimed. Nobody else in notes/competitor-research.md
+  // offers it, and it costs one extra path segment.
+  const mine = checkVatNumberFormat(new URL(req.url).searchParams.get("mine") ?? "");
+  const requester = mine.kind === "ok" ? mine.normalised.replace(/^(GB|XI)/, "") : null;
+
+  // Only the plain check is answered from memory. A consultation number is
+  // issued per request and dated: handing back yesterday's would be handing
+  // back a reference to a check that did not happen today.
+  const hit = requester ? null : cache.get(vrn);
   if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json(hit.body);
 
   const ip = addressKey(req.headers.get("x-forwarded-for"));
@@ -79,13 +96,21 @@ export async function GET(req: Request) {
   const bearer = await serverToken();
   if (!bearer) return NextResponse.json({ configured: true, unavailable: true }, { status: 503 });
 
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}/organisations/vat/check-vat-number/lookup/${vrn}`, {
+  const ask = (path: string) =>
+    fetch(`${BASE}/organisations/vat/check-vat-number/lookup/${path}`, {
       headers: { Authorization: `Bearer ${bearer}`, Accept: "application/vnd.hmrc.2.0+json" },
       signal: AbortSignal.timeout(8000),
       cache: "no-store",
     });
+
+  let res: Response;
+  try {
+    res = requester ? await ask(`${vrn}/${requester}`) : await ask(vrn);
+    // 403 on the two-number form means OUR number was refused, not theirs.
+    // The answer somebody actually wants -- is this supplier registered --
+    // is still available, so ask the plain way rather than telling them
+    // nothing.
+    if (requester && res.status === 403) res = await ask(vrn);
   } catch {
     return NextResponse.json({ configured: true, unavailable: true }, { status: 503 });
   }
@@ -108,7 +133,15 @@ export async function GET(req: Request) {
   if (!body?.target?.name) return NextResponse.json({ configured: true, unavailable: true }, { status: 503 });
 
   const address = LINES.map((k) => body.target!.address?.[k]).filter(Boolean).join(", ");
-  const answer = { configured: true, format: "ok", number: format.normalised, registered: true, name: body.target.name, address };
-  cache.set(vrn, { at: Date.now(), body: answer });
+  const answer = {
+    configured: true,
+    format: "ok",
+    number: format.normalised,
+    registered: true,
+    name: body.target.name,
+    address,
+    ...(body.consultationNumber ? { consultationNumber: body.consultationNumber, checkedOn: body.processingDate ?? null } : {}),
+  };
+  if (!body.consultationNumber) cache.set(vrn, { at: Date.now(), body: answer });
   return NextResponse.json(answer);
 }

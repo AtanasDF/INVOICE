@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ClientKind, clientsStore } from "@/lib/storage";
+import { ClientKind, clientsStore, businessProfileStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
 import type { ScannedContact } from "@/lib/contactExtraction";
 import CaptureButton from "@/components/CaptureButton";
@@ -48,6 +48,9 @@ export default function NewClientPage() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [vatNumber, setVatNumber] = useState("");
+  // Our own VAT number, so checking a supplier's also brings back HMRC's
+  // reference for having checked it.
+  const [myVatNumber, setMyVatNumber] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState("");
   const [contactPerson, setContactPerson] = useState("");
@@ -134,6 +137,13 @@ export default function NewClientPage() {
     setCompany(null);
     scannedRef.current = { email: "", address: "", vatNumber: "", contactPerson: "", phone: "" };
   }
+
+  useEffect(() => {
+
+    businessProfileStore.get().then((p) => setMyVatNumber(p.vatNumber ?? ""), () => {});
+
+  }, []);
+
 
   useEffect(() => {
     if (!uploadMarked()) return;
@@ -277,7 +287,7 @@ export default function NewClientPage() {
           <summary className="cursor-pointer text-sm font-medium text-neutral-600">More details (optional)</summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <VatNumberInput id="new-contact-vat" label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={vatNumber} onChange={setVatNumber} business={name} />
+              <VatNumberInput id="new-contact-vat" mine={myVatNumber} label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={vatNumber} onChange={setVatNumber} business={name} />
             </div>
             <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
             <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />

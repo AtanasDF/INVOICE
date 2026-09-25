@@ -30,5 +30,17 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // The "* 2.ts" entries are iCloud's, not ours. This project sits on a
+  // synced Desktop, so iCloud spawns "routes.d 2.ts" beside "routes.d.ts"
+  // inside .next/types, and tsc then fails with a dozen duplicate-identifier
+  // errors in generated files nobody wrote. TypeScript's globs understand
+  // only * and ?, NOT [0-9] -- an exclude written with [0-9] silently
+  // matches nothing, which is how the first attempt "passed".
+  "exclude": [
+    "node_modules",
+    ".next/**/* ?.ts",
+    ".next/**/* ??.ts",
+    ".next/**/* ?.tsx",
+    ".next/**/* ??.tsx"
+  ]
 }

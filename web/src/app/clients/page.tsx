@@ -87,6 +87,9 @@ export default function ClientsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [textingId, setTextingId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
+  // Our own VAT number, so a supplier's check comes back with HMRC's
+  // reference for having made it.
+  const [myVatNumber, setMyVatNumber] = useState("");
   const [vatRegistered, setVatRegistered] = useState(false);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [merging, setMerging] = useState<string | null>(null);
@@ -110,6 +113,7 @@ export default function ClientsPage() {
     businessProfileStore.get().then((p) => {
       setBusinessName(p.businessName);
       setVatRegistered(p.vatRegistered);
+      setMyVatNumber(p.vatNumber ?? "");
     }, () => {});
   }, []);
 
@@ -365,7 +369,7 @@ export default function ClientsPage() {
                     <AddressFields address={draft.address} onAddress={(address) => setDraft({ ...draft, address })} />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <VatNumberInput id="edit-vat" label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={draft.vatNumber} onChange={(v) => setDraft({ ...draft, vatNumber: v })} business={draft.name} />
+                        <VatNumberInput id="edit-vat" mine={myVatNumber} label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={draft.vatNumber} onChange={(v) => setDraft({ ...draft, vatNumber: v })} business={draft.name} />
                       </div>
                       <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
                       <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
