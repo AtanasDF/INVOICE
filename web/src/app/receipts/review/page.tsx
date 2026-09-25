@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
+import FieldFlag from "@/components/scan/FieldFlag";
 import { effectiveCategories, withCurrent } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
@@ -42,6 +43,12 @@ const TYPE_BADGE: Partial<Record<Receipt["documentType"], { label: string; class
   invoice: { label: "Invoice", className: "bg-blue-100 text-blue-800" },
   credit_note: { label: "Credit note", className: "bg-red-100 text-red-800" },
 };
+
+// What the reader was not sure of, for a document nobody watched being
+// read. The same badge the scan page shows, in the same words, because it
+// means the same thing -- look at this one before you agree to it.
+const doubted = (r: Receipt, field: "vendor" | "date" | "total" | "vat") =>
+  (r.details?.unsure ?? []).includes(field) ? "low" : null;
 
 export default function ReviewQueuePage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -192,18 +199,28 @@ export default function ReviewQueuePage() {
                           where somebody checks what a machine read off a
                           photograph -- the worst place to use a second word
                           for the same thing. */}
-                      <input aria-label="Supplier"
-                        className="rounded-lg border px-3 py-2 text-sm"
-                        placeholder="Supplier"
-                        value={draft.vendor}
-                        onChange={(e) => updateDraft(r.id, { vendor: e.target.value })}
-                      />
-                      <input aria-label="Date"
-                        type="date"
-                        className="rounded-lg border px-3 py-2 text-sm"
-                        value={draft.date}
-                        onChange={(e) => updateDraft(r.id, { date: e.target.value })}
-                      />
+                      <div>
+                        <span className="text-xs text-neutral-500">
+                          Supplier <FieldFlag confidence={doubted(r, "vendor")} />
+                        </span>
+                        <input aria-label="Supplier"
+                          className="w-full rounded-lg border px-3 py-2 text-sm"
+                          placeholder="Supplier"
+                          value={draft.vendor}
+                          onChange={(e) => updateDraft(r.id, { vendor: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs text-neutral-500">
+                          Date <FieldFlag confidence={doubted(r, "date")} />
+                        </span>
+                        <input aria-label="Date"
+                          type="date"
+                          className="w-full rounded-lg border px-3 py-2 text-sm"
+                          value={draft.date}
+                          onChange={(e) => updateDraft(r.id, { date: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     {(isInvoice || r.documentType === "credit_note") && (
@@ -240,20 +257,30 @@ export default function ReviewQueuePage() {
                     </select>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <input aria-label="Total (£, incl. VAT)"
-                        className="rounded-lg border px-3 py-2 text-sm"
-                        placeholder="Total (£, incl. VAT)"
-                        value={draft.totalAmount}
-                        onChange={(e) => updateDraft(r.id, { totalAmount: e.target.value })}
-                        inputMode="decimal"
-                      />
-                      <input aria-label="Of which VAT (£)"
-                        className="rounded-lg border px-3 py-2 text-sm"
-                        placeholder="Of which VAT (£)"
-                        value={draft.vatAmount}
-                        onChange={(e) => updateDraft(r.id, { vatAmount: e.target.value })}
-                        inputMode="decimal"
-                      />
+                      <div>
+                        <span className="text-xs text-neutral-500">
+                          Total (£, incl. VAT) <FieldFlag confidence={doubted(r, "total")} />
+                        </span>
+                        <input aria-label="Total (£, incl. VAT)"
+                          className="w-full rounded-lg border px-3 py-2 text-sm"
+                          placeholder="Total (£, incl. VAT)"
+                          value={draft.totalAmount}
+                          onChange={(e) => updateDraft(r.id, { totalAmount: e.target.value })}
+                          inputMode="decimal"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs text-neutral-500">
+                          Of which VAT (£) <FieldFlag confidence={doubted(r, "vat")} />
+                        </span>
+                        <input aria-label="Of which VAT (£)"
+                          className="w-full rounded-lg border px-3 py-2 text-sm"
+                          placeholder="Of which VAT (£)"
+                          value={draft.vatAmount}
+                          onChange={(e) => updateDraft(r.id, { vatAmount: e.target.value })}
+                          inputMode="decimal"
+                        />
+                      </div>
                     </div>
                     {r.originalCurrency && r.originalAmount != null && r.fxRate != null && (
                       <p className="text-xs text-neutral-500">

@@ -100,7 +100,7 @@ accountants but will still give accountants reports."*
    at all. Very low effort.
 2. [BUILT 2026-09-24, `test-govuk-words`] **A GOV.UK wording pass** over every error and empty state — free, externally written,
    and **no competitor follows it**.
-3. **Show which field the reader doubted** — the market-wide hole above.
+3. [BUILT 2026-09-25, `test-unsure-fields`] **Show which field the reader doubted** — the market-wide hole above.
 4. [TEXT SIZE BUILT 2026-09-24, `test-big-text`] **Respect the device's text size**, and publish an accessibility statement that names our
    own failures, in Starling's candid style.
 5. [HALF BUILT 2026-09-24: the check digits ship, the HMRC lookup waits on credentials — `test-vat-number`, `test-vat-lookup`] **Validate VAT numbers against HMRC** (Dext-only today), and **ask before remembering** a

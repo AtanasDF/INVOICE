@@ -22,7 +22,7 @@ export type ScanLineItem = {
   lineTotal: number | null;
 };
 
-export type ScanDetailKey = Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage" | "photoAgedAt">;
+export type ScanDetailKey = Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage" | "photoAgedAt" | "unsure">;
 
 export type ScanDetails = Record<ScanDetailKey, string | null> & { other: { label: string; value: string }[] };
 

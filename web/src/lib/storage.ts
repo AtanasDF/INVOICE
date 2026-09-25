@@ -63,6 +63,16 @@ export type DocumentDetails = {
   supplierPhone?: string;
   deliveryAddress?: string;
   other?: { label: string; value: string }[];
+  // Which fields the reader was not sure of.
+  //
+  // On /scan somebody is watching: the form marks a doubtful field and they
+  // look at it before saving. A document that arrives BY EMAIL is read with
+  // nobody there, and the doubt was thrown away -- so an amount the reader
+  // flagged as a guess landed in the accounting record looking exactly as
+  // confident as one it was certain about. The app's rule is that it only
+  // fills in what it is sure of and says so; this is the saying-so for the
+  // path where nobody was there to be told.
+  unsure?: ("vendor" | "date" | "total" | "vat")[];
   // Set when the supplier was cleared on purpose, so a name match isn't
   // offered back later.
   noSupplier?: true;
@@ -77,7 +87,7 @@ export type DocumentDetails = {
   photoAgedAt?: string;
 };
 
-export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage" | "photoAgedAt">, string> = {
+export const DOCUMENT_DETAIL_LABELS: Record<Exclude<keyof DocumentDetails, "other" | "noSupplier" | "mileage" | "photoAgedAt" | "unsure">, string> = {
   accountNumber: "Account number",
   sortCode: "Sort code",
   iban: "IBAN",

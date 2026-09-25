@@ -31,6 +31,19 @@ function convertToGbp(total: number, vat: number, rate: number) {
 // Nobody sees the scan screen's "could also be ..." prompt for an emailed
 // document, so the ambiguity has to travel with the row into the review
 // queue or it's silently lost.
+// What the reader was not sure of, kept so the review page can say so.
+// Nobody was watching when this document was read; without this the doubt
+// is thrown away and a guessed total arrives looking as confident as a
+// certain one.
+function unsureFields(result: { vendorConfidence?: string; dateConfidence?: string; totalAmountConfidence?: string; vatAmountConfidence?: string }): ("vendor" | "date" | "total" | "vat")[] {
+  const out: ("vendor" | "date" | "total" | "vat")[] = [];
+  if (result.vendorConfidence === "low") out.push("vendor");
+  if (result.dateConfidence === "low") out.push("date");
+  if (result.totalAmountConfidence === "low") out.push("total");
+  if (result.vatAmountConfidence === "low") out.push("vat");
+  return out;
+}
+
 function dateCue(label: string, printed: string | null, iso: string | null, alternative: string | null): string {
   const alt = alternative ? `; could be ${alternative}` : "";
   return `${label} read as ${printed} as ${iso ?? "unreadable"}${alt} — check this one`;
@@ -276,7 +289,7 @@ export async function POST(req: Request) {
             invoice_number: result.invoiceNumber,
             due_date: result.dueDate,
             paid: documentType !== "invoice" || result.paidOnDocument === true,
-            details: documentDetailsFromScan(result.details),
+            details: { ...documentDetailsFromScan(result.details), ...(unsureFields(result).length ? { unsure: unsureFields(result) } : {}) },
           })
           .select("id")
           .single();
