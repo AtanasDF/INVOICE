@@ -30,3 +30,12 @@ const UK_DATE = new Intl.DateTimeFormat("en-CA", {
 export function todayISO(): string {
   return UK_DATE.format(new Date());
 }
+
+// The London date of some other moment -- a timestamp from the database, or
+// HMRC's processingDate. Same reckoning as todayISO(), for the same reason:
+// `someIso.slice(0, 10)` is the UTC date, which for the hour after midnight
+// on a summer night is yesterday's.
+export function ukDate(when: string | Date): string {
+  const d = typeof when === "string" ? new Date(when) : when;
+  return Number.isNaN(d.getTime()) ? "" : UK_DATE.format(d);
+}

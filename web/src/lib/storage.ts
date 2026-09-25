@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 import { VatRateKind } from "./vat";
 import { InvoiceStatus } from "./invoiceStatus";
 import { resolveImages, storeImages } from "./receiptImages";
+import { alreadyKeptToday, vatCheckKey } from "./vatCheckRules";
 
 export type ClientKind = "client" | "supplier";
 
@@ -1714,3 +1715,93 @@ export const quoteLinksStore = {
 };
 
 export const quoteLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/q/${token}`;
+
+// What HMRC said about a VAT number, and when (migration-038).
+//
+// A history, not a status: the same supplier checked a year apart is two
+// rows, because what matters is what was true on the day. A business can
+// deregister, and last March's reference does not cover this March's
+// invoice.
+//
+// The table grants authenticated INSERT and SELECT and nothing else, so
+// there is deliberately no update and no remove here: a record of what HMRC
+// said on a date is evidence, and evidence you can quietly edit afterwards
+// is not.
+export type VatCheck = {
+  id: string;
+  clientId: string | null;
+  vatNumber: string;
+  registered: boolean;
+  name: string | null;
+  address: string | null;
+  consultationNumber: string | null;
+  checkedAt: string;
+};
+
+type VatCheckRow = {
+  id: string;
+  client_id: string | null;
+  vat_number: string;
+  registered: boolean;
+  name: string | null;
+  address: string | null;
+  consultation_number: string | null;
+  checked_at: string;
+};
+
+const vatCheckFromRow = (r: VatCheckRow): VatCheck => ({
+  id: r.id,
+  clientId: r.client_id,
+  vatNumber: r.vat_number,
+  registered: r.registered,
+  name: r.name,
+  address: r.address,
+  consultationNumber: r.consultation_number,
+  checkedAt: r.checked_at,
+});
+
+export const vatChecksStore = {
+  // Keyed on the number rather than the contact: a number is often checked
+  // before the contact exists, and client_id stays null for those. The
+  // index behind this is vat_checks_number_idx.
+  async forNumber(vatNumber: string): Promise<VatCheck[]> {
+    const key = vatCheckKey(vatNumber);
+    if (!key) return [];
+    const { data, error } = await supabase.from("vat_checks").select("*").eq("vat_number", key).order("checked_at", { ascending: false });
+    if (error) throw error;
+    return (data as VatCheckRow[]).map(vatCheckFromRow);
+  },
+  async all(): Promise<VatCheck[]> {
+    const { data, error } = await supabase.from("vat_checks").select("*").order("checked_at", { ascending: false });
+    if (error) throw error;
+    return (data as VatCheckRow[]).map(vatCheckFromRow);
+  },
+  async add(input: Omit<VatCheck, "id">): Promise<VatCheck> {
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("vat_checks")
+      .insert({
+        user_id,
+        client_id: input.clientId,
+        vat_number: vatCheckKey(input.vatNumber),
+        registered: input.registered,
+        name: input.name,
+        address: input.address,
+        consultation_number: input.consultationNumber,
+        checked_at: input.checkedAt,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return vatCheckFromRow(data as VatCheckRow);
+  },
+  // One kept reference per number per day. A consultation number is issued
+  // per request, so every save would otherwise write another row proving
+  // the same thing: "what was true on the day" is the granularity that
+  // matters, and the day is reckoned in London, not UTC.
+  async recordDaily(input: Omit<VatCheck, "id">): Promise<VatCheck | null> {
+    const had = await this.forNumber(input.vatNumber);
+    if (alreadyKeptToday(had, input.vatNumber, input.checkedAt)) return null;
+    return this.add(input);
+  },
+};

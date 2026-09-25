@@ -56,6 +56,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/reverseCharge.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/reverseChargePrompt.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/helpJourneys.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/sameAgain.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/sameAgain.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/vatCheckRules.ts"
   ]
 }

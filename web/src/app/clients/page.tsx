@@ -8,7 +8,7 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 import { useEffect, useMemo, useState, useRef } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useSearchParams } from "next/navigation";
-import { Client, ClientKind, CreditNote, Invoice, businessProfileStore, clientsStore, creditNotesStore, invoicesStore } from "@/lib/storage";
+import { Client, ClientKind, CreditNote, Invoice, VatCheck, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, vatChecksStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
 import { displayInvoiceNumber, invoiceStatusBadgeClass, invoiceStatusLabel, isOverdue } from "@/lib/invoiceStatus";
 import Tip from "@/components/Tip";
@@ -20,7 +20,9 @@ import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
-import VatNumberInput from "@/components/VatNumberInput";
+import VatNumberInput, { VerifiedCheck } from "@/components/VatNumberInput";
+import { keepVatCheck } from "@/lib/keepVatCheck";
+import KeptVatChecks from "@/components/KeptVatChecks";
 
 // What this customer was actually billed: gross, incl. VAT, less any CIS
 // the contractor keeps back -- the "Amount due" figure on the invoice
@@ -92,6 +94,9 @@ export default function ClientsPage() {
   // Our own VAT number, so a supplier's check comes back with HMRC's
   // reference for having made it.
   const [myVatNumber, setMyVatNumber] = useState("");
+  const vatCheck = useRef<VerifiedCheck | null>(null);
+  // Kept references, newest first, keyed by the number they were about.
+  const [vatChecks, setVatChecks] = useState<VatCheck[]>([]);
   const [vatRegistered, setVatRegistered] = useState(false);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [merging, setMerging] = useState<string | null>(null);
@@ -112,6 +117,10 @@ export default function ClientsPage() {
       })
       .catch((err) => setError(loadFailed(err, "your contacts")))
       .finally(() => setLoading(false));
+    // On its own, not in the Promise.all above: failing to read an
+    // evidence log nobody asked for must not turn into "Couldn't load your
+    // contacts".
+    vatChecksStore.all().then(setVatChecks, () => {});
     businessProfileStore.get().then((p) => {
       setBusinessName(p.businessName);
       setVatRegistered(p.vatRegistered);
@@ -191,6 +200,8 @@ export default function ClientsPage() {
     setBusyId(id);
     try {
       await clientsStore.update(id, draft);
+      const kept = await keepVatCheck(vatCheck.current, id, draft.vatNumber);
+      if (kept) setVatChecks((prev) => [kept, ...prev]);
       setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...draft } : c)));
       setEditingId(null);
       setDraft(null);
@@ -371,7 +382,8 @@ export default function ClientsPage() {
                     <AddressFields address={draft.address} onAddress={(address) => setDraft({ ...draft, address })} />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <VatNumberInput id="edit-vat" mine={myVatNumber} label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={draft.vatNumber} onChange={(v) => setDraft({ ...draft, vatNumber: v })} business={draft.name} />
+                        <VatNumberInput id="edit-vat" mine={myVatNumber} onChecked={(c) => (vatCheck.current = c)} label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={draft.vatNumber} onChange={(v) => setDraft({ ...draft, vatNumber: v })} business={draft.name} />
+                        <KeptVatChecks checks={vatChecks} number={draft.vatNumber} />
                       </div>
                       <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={draft.contactPerson} onChange={(e) => setDraft({ ...draft, contactPerson: e.target.value })} />
                       <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />

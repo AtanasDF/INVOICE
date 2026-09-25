@@ -21,6 +21,14 @@ type Lookup =
   | { for: string; kind: "unknown" }
   | { for: string; kind: "unavailable" };
 
+export type VerifiedCheck = {
+  vatNumber: string;
+  name: string;
+  address: string;
+  consultationNumber: string;
+  checkedAt: string;
+};
+
 const bare = (s: string) => s.replace(/[^a-z0-9]/gi, "").toLowerCase();
 
 export default function VatNumberInput({
@@ -34,6 +42,7 @@ export default function VatNumberInput({
   disabled,
   hint,
   mine,
+  onChecked,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -51,6 +60,10 @@ export default function VatNumberInput({
   // proving this supplier was checked on this date -- the evidence HMRC
   // asks for if they ever query the VAT reclaimed against them.
   mine?: string;
+  // Handed a verified check the moment HMRC answers, so the page can keep
+  // it when the contact is saved. Only fired for a check that carries a
+  // consultation number: without one there is nothing to prove.
+  onChecked?: (check: VerifiedCheck) => void;
 }) {
   const format = checkVatNumberFormat(value);
   const number = format.kind === "ok" ? format.normalised : "";
@@ -59,9 +72,18 @@ export default function VatNumberInput({
   // a refusal waits until they have stopped typing.
   const [settled, setSettled] = useState("");
 
+  // Merely opening a form that already holds a number must not ask HMRC
+  // for a reference. A consultation lookup is never cached, so a panel
+  // opened three times made three calls against a 30-an-hour limit and
+  // issued three references nobody kept. Only a number somebody has
+  // actually typed is worth a reference.
+  const [touched, setTouched] = useState(false);
+
   const businessRef = useRef(business);
+  const onCheckedRef = useRef(onChecked);
   useEffect(() => {
     businessRef.current = business;
+    onCheckedRef.current = onChecked;
   });
 
   useEffect(() => {
@@ -76,14 +98,24 @@ export default function VatNumberInput({
     const t = setTimeout(async () => {
       setLookup({ for: number, kind: "checking" });
       try {
-        const ours = mine?.trim() ? `&mine=${encodeURIComponent(mine.trim())}` : "";
+        const ours = touched && mine?.trim() ? `&mine=${encodeURIComponent(mine.trim())}` : "";
         const res = await fetch(`/api/vat-check?number=${encodeURIComponent(number)}${ours}`, { signal: controller.signal });
         const body = (await res.json()) as { configured?: boolean; registered?: boolean; name?: string; address?: string; consultationNumber?: string; checkedOn?: string | null };
         if (controller.signal.aborted) return;
         if (!body.configured) setLookup({ for: number, kind: "off" });
         else if (res.status === 429 || res.status === 503) setLookup({ for: number, kind: "unavailable" });
         else if (body.registered === false) setLookup({ for: number, kind: "unknown" });
-        else if (body.registered && body.name) setLookup({ for: number, kind: "registered", name: body.name, address: body.address ?? "", consultationNumber: body.consultationNumber, checkedOn: body.checkedOn });
+        else if (body.registered && body.name) {
+          setLookup({ for: number, kind: "registered", name: body.name, address: body.address ?? "", consultationNumber: body.consultationNumber, checkedOn: body.checkedOn });
+          if (body.consultationNumber)
+            onCheckedRef.current?.({
+              vatNumber: number,
+              name: body.name,
+              address: body.address ?? "",
+              consultationNumber: body.consultationNumber,
+              checkedAt: body.checkedOn ?? new Date().toISOString(),
+            });
+        }
         else setLookup({ for: number, kind: "off" });
       } catch {
         if (!controller.signal.aborted) setLookup({ for: number, kind: "unavailable" });
@@ -93,7 +125,7 @@ export default function VatNumberInput({
       controller.abort();
       clearTimeout(t);
     };
-  }, [number, mine]);
+  }, [number, mine, touched]);
 
   const answer = lookup && lookup.for === number ? lookup : null;
   const said =
@@ -125,7 +157,10 @@ export default function VatNumberInput({
         placeholder={placeholder ?? "GB 123 4567 89"}
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          setTouched(true);
+          onChange(e.target.value);
+        }}
         onBlur={() => {
           const pretty = formatVatNumber(value);
           if (pretty !== value.trim()) onChange(pretty);

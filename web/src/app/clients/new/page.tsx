@@ -18,7 +18,8 @@ import UploadFilesButton from "@/components/UploadFilesButton";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 import { saveFailed, SIGNED_OUT } from "@/lib/errorText";
-import VatNumberInput from "@/components/VatNumberInput";
+import VatNumberInput, { VerifiedCheck } from "@/components/VatNumberInput";
+import { keepVatCheck } from "@/lib/keepVatCheck";
 
 async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -51,6 +52,9 @@ export default function NewClientPage() {
   // Our own VAT number, so checking a supplier's also brings back HMRC's
   // reference for having checked it.
   const [myVatNumber, setMyVatNumber] = useState("");
+  // HMRC's reference for the number in the box, kept until the contact is
+  // saved so it can be attached to it.
+  const vatCheck = useRef<VerifiedCheck | null>(null);
   const [paymentTerms, setPaymentTerms] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState("");
   const [contactPerson, setContactPerson] = useState("");
@@ -179,6 +183,7 @@ export default function NewClientPage() {
         remindersEnabled,
       });
       if (pickedCompany) rememberCompany(created.id, pickedCompany);
+      await keepVatCheck(vatCheck.current, created.id, vatNumber);
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
       setError(saveFailed(err, `Couldn't save this ${kind === "client" ? "customer" : "supplier"}.`));
@@ -298,7 +303,7 @@ export default function NewClientPage() {
           <summary className="cursor-pointer text-sm font-medium text-neutral-600">More details (optional)</summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <VatNumberInput id="new-contact-vat" mine={myVatNumber} label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={vatNumber} onChange={setVatNumber} business={name} />
+              <VatNumberInput id="new-contact-vat" mine={myVatNumber} onChecked={(c) => (vatCheck.current = c)} label="VAT number" className="w-full rounded-lg border px-3 py-2 text-sm" value={vatNumber} onChange={setVatNumber} business={name} />
             </div>
             <input aria-label="Contact person" className="rounded-lg border px-3 py-2 text-sm" placeholder="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
             <input aria-label="Phone" className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
