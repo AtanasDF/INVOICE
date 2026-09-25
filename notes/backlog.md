@@ -208,7 +208,23 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
 
 ## The first page (Atanas, 22 September, 02:20)
 
-- [ ] **One first page for strangers: Free invoice and Check a company together.** His
+- [~] **SUPERSEDED by his own later instruction — do not build this without asking him.**
+  Checked 2026-09-25: this asks for a first page where a stranger can use the Free invoice
+  and Check a company. On **2026-09-22** he said the opposite — *"nothing should work before
+  the user register... a plain page with some nice advertising of the app and the log in
+  rectangulars"* — and that is what shipped. `/` is now the front door
+  (`src/components/Welcome.tsx`: the headline, five lines of what the app does, `SignInCard`
+  beside them), and `AppShell`'s gate makes **`/free-invoice` and `/check-company` both
+  signed-in only**; verified by reading the gate, where the public list is `/`, `/login`,
+  `/reset-password`, `/privacy`, `/terms`, `/security`, `/accessibility`, `/how-to-invoice`,
+  `/offline` and the customer links. The "today's page opens with *How do you want to
+  start?*" line below describes a page that no longer exists.
+  **What survives is the wording brief** — "precise, delicate, posh, polite,
+  understandable", not overloaded, "three old kids should be able to do that" — and that is
+  live and pinned by `notes/first-page-research.md` and `test-first-page`. The rest is a
+  reversal only he can make.
+
+- [ ] ~~One first page for strangers: Free invoice and Check a company together.~~ His
   brief, verbatim in spirit: a nice picture of the scan/camera; everything done with one
   or two buttons; every word "precise, delicate, posh, polite, understandable"; not
   overloaded, not confusing — "three old kids should be able to do that": older people,
