@@ -165,3 +165,39 @@ Wait on the output instead, which is written only at the end:
 ```
 until [ -s /tmp/harness.log ]; do sleep 20; done
 ```
+
+## Don't touch `gen/`, `.next` or a suite while a run is going
+
+Three suites came back `CRASHED` on 2026-09-25 and all three were self-inflicted, in two
+separate runs:
+
+- **`gen/` was recompiled mid-run.** The build is two steps — `tsc`, then a rewrite that adds
+  `.js` to the import specifiers Node insists on — and in the gap between them
+  `vatCheckRules.js` imported `./today` with no extension. Whichever suite happened to start
+  in that window died on `ERR_MODULE_NOT_FOUND`. `test-vat-checks` was 26/26 on its own a
+  minute later.
+- **A suite's own imports were edited while it was queued**, pointing at a module `gen/` did
+  not have yet.
+
+Add to that: a `next dev` started alongside a run competes with it. Testing the help chat
+against the live model three times over stretched a fifty-minute run past eighty minutes —
+four dev servers against four parallel suites on one machine.
+
+So while `run-all.sh` is going: no `tsc -p tsconfig.logic.json`, no `npm run build` (it swaps
+`.next` out from under the `next start` every browser suite is pointed at), no edits to a
+suite that has not run yet, and no dev servers. Write notes, read code, wait.
+
+**And the `pgrep` warning in the section above is real — it was written on 2026-09-23 and
+walked into again on 2026-09-25**, twice, by two waiters that each matched themselves. Wait
+on the log, or on `ps -eo command | grep -c '^node test-'`, which names no script.
+
+## `ask-help-chat.mjs` — not a suite
+
+Asks the help chat nine real questions through the live model and prints the answers for
+reading. It is not in `run-all.sh`, has nothing to pass or fail, and spends a fraction of a
+penny a question.
+
+It is here because ten minutes of it found six faults that every green suite had missed —
+answers cut off mid-sentence, markdown printed on screen as typed, an invented page address,
+and a real feature declared absent because the grounding had not mentioned it. Run it after
+changing the prompt, the grounding or `helpFacts.ts`. Its header says what to read for.
