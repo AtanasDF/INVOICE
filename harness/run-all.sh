@@ -57,6 +57,11 @@ SUITES=(
   # the summary loop at the foot only prints what is HERE. It ran invisibly:
   # its failures counted towards "not green" while no line said which suite.
   test-quote-requests
+  # Written, never added, never run -- found by test-suites-report on
+  # 2026-09-25, which is the second time this has happened (83 checks sat
+  # unrun for weeks in September). Each was run against $BASE first and was
+  # green: 48, 13, 11 and 5 checks, 77 between them.
+  test-quotes-ux test-free-quote test-quotes-fixes test-tax
 )
 
 # $BASE is served by `next start` from a BUILT app, not by a watching dev

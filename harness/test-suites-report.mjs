@@ -89,7 +89,12 @@ const SUPERSEDED = new Map([
 // Suites that exist, are not camera suites, and are not run. Every one is either
 // live work nobody is running or a copy that should be named above. Listing them
 // is the point: this check is what makes the choice deliberate.
-const PENDING = new Set(["test-deposits", "test-free-quote", "test-quotes-fixes", "test-quotes-ux", "test-settings-add", "test-tax"]);
+// Four of the original six were run against $BASE on 2026-09-25, came back
+// green (48, 13, 11 and 5 checks) and are now in run-all.sh. These two both
+// die on a 30s navigation timeout -- test-deposits on /free-invoice,
+// test-settings-add before it opens a page at all -- so they want a server of
+// their own and a look, not a line in SUITES that turns every run red.
+const PENDING = new Set(["test-deposits", "test-settings-add"]);
 
 const onDisk = fs.readdirSync(HERE).filter((f) => /^test-[a-z0-9-]+\.mjs$/.test(f)).map((f) => f.slice(0, -4));
 const unaccounted = onDisk.filter((t) => !SUITES.has(t) && !CLIP_RUNNERS.has(t) && !SUPERSEDED.has(t) && !PENDING.has(t));
@@ -107,7 +112,7 @@ const pendingChecks = [...PENDING]
   .filter((t) => fs.existsSync(path.join(HERE, `${t}.mjs`)))
   .reduce((n, t) => n + (fs.readFileSync(path.join(HERE, `${t}.mjs`), "utf8").match(/^\s*check\(/gm)?.length ?? 0), 0);
 console.log(`NOTE ${PENDING.size} suites are written and not running, about ${pendingChecks} checks between them.`);
-check("the written-but-not-running debt has not grown", PENDING.size <= 6, String(PENDING.size));
+check("the written-but-not-running debt has not grown", PENDING.size <= 2, String(PENDING.size));
 // They must at least still exist; a name left here for a deleted file is a lie.
 const ghostPending = [...PENDING].filter((t) => !fs.existsSync(path.join(HERE, `${t}.mjs`)));
 check("nothing is listed as pending that is not there", ghostPending.length === 0, ghostPending.join(", "));
