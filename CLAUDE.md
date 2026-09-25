@@ -85,6 +85,17 @@ can show the same thing (details in `notes/claude-notes.md`).
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **The app still
    does nothing with any of it until `SCAN_LIMITS=on` in Vercel.** Applied and verified up
+   to **040** (help_questions, the questions people type into the help chat, so the list of
+   what the walkthroughs failed to explain exists. Insert-only for `authenticated` and
+   nothing else at all: for anon, authenticated and public together the whole grant list is
+   `authenticated=INSERT`, so no role can read the list back, edit a line or remove one
+   through the API; the list is read with the service role, as feedback is. FK to auth.users
+   is ON DELETE CASCADE, so somebody's questions go when their account does. No backup file,
+   creating a table and altering nothing, and its header says so. Exercised as
+   `authenticated` in a transaction ending in a raise: insert OK, read back refused, edit
+   refused, 0 rows after the rollback. **It changes what is stored about people**, so
+   `/privacy` gained a line in the same commit -- that page's own rule. Nothing is written
+   until `NEXT_PUBLIC_HELP_CHAT` is set.) Previously verified up
    to **039** (038: `vat_checks`, the record that a VAT number was checked — one row per
    check, no update and no delete granted, because evidence you can quietly edit is not
    evidence; its FK to `clients` carries `user_id`, which needed a `unique (id, user_id)`

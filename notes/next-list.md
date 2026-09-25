@@ -93,7 +93,9 @@ Nothing here needs a decision from Atanas unless it says so.
    which is also why the chat has to say "I do not know about that part" so often. The frames
    record themselves (`harness/record-help.mjs`), so these do not rot.
 
-7. **Log what people ask the chat.** `notes/help-chat-design.md` is right that it is the
+7. ~~**Log what people ask the chat.**~~ **DONE** — migration-040 run and verified 2026-09-25,
+   branch merged. Insert-only, `anon` nowhere, read with the service role. `/privacy` says so.
+   Original: `notes/help-chat-design.md` is right that it is the
    honest measure of what the walkthroughs failed to explain. Needs a small migration
    (`help_questions`, insert-only, RLS), which I can write; running it is the usual
    two-file, verify-by-content job.
