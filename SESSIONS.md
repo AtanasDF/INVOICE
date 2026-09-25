@@ -4,6 +4,59 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-25 — HMRC, the reverse charge, walkthroughs that record themselves, and five new ways to attack it (Opus 5)
+
+Atanas: "make you a big list to work on for the next few hours, work non stop, and then do
+4 hours testing on everything you can come up with." The list is `notes/tonight-3.md`.
+
+**HMRC, end to end.** Registered on the Developer Hub with him (the account, the
+authenticator and the tax reference are his; everything else was driven from the browser
+pane). Sandbox application live, subscribed to Check a UK VAT number 2.0, credentials in
+`.env.local`, and **verified by calling our own route** rather than trusting the setup: a
+registered number returns its name and address, the two-number form returns a consultation
+number, a number nobody holds is an *answer* rather than an outage, and a typo never leaves
+the machine. The production application is 6 of 7 sections complete; only the tax reference
+is left, and that is his.
+
+**Two traps worth remembering.** HMRC's own sandbox VAT numbers are mostly *not valid VAT
+numbers* — one of 22 passes the real mod-97 check, and `553557881`, the number in HMRC's own
+documentation, is not it. And the server-location question turned up that **the functions
+were running in Washington DC while the database is in Frankfurt**: every server-side query
+crossed the Atlantic twice, and UK accounting records were processed in the US by a function
+holding the service-role key. Nobody chose that — Vercel's Hobby default is `iad1`. Now
+`fra1`, verified live by `x-vercel-id: lhr1::fra1`.
+
+**The VAT reverse charge.** The app could issue an invoice that was not legally a
+reverse-charge invoice: the rate existed and correctly took the VAT off the total, but the
+issued invoice never said why. It now carries the wording the Regulations require and the
+amount HMRC require, on screen, in print, in the PDF and on the customer's link — they are
+all one sheet. There are two reverse-charge rates now, because one could not say whether the
+customer owes 20% or 5%. And because nobody knows the rule exists, the app *asks* when CIS is
+on for a limited company — and stays quiet in the six cases where the answer is no.
+
+**Walkthroughs that record themselves.** `harness/record-help.mjs` drives the real app and
+writes the frames, so a button that moves fails the run instead of leaving a help picture of
+a button that is not there. It took four goes, and each failure is the lesson: it wrote three
+pairs of identical frames and reported success; then seven, because scrolling a page that
+fits on a phone changes nothing; then it ringed the wrong box; then it recorded five frames
+of £0.00 because the history was dated relative to today and the page opens on last quarter.
+
+**Five new ways to attack it.** Money by generation rather than example (4,000 invoices,
+seeded). The same record open in two tabs — impossible until `wire()` was pulled out of
+`launchSignedIn`, because interception is per-page and a second tab reached nothing at all.
+Every API door tried by a stranger, 61 ways, **with a positive control** so a broken stub
+cannot be mistaken for a locked door. The days arithmetic goes wrong on. And documents that
+fight back.
+
+**What I keep getting wrong, written down because it is the same thing every time.** Seven
+of my own checks were wrong before the app was. Three in one suite: I clicked the CIS box and
+turned it *off*, assumed the VAT rate was learned per customer when it is per line
+description, and missed that it is learned on blur. Two reminder checks were vacuous — one
+because the function returns the first match so it *cannot* return two, one because I
+recomputed the windows in the test with the same arithmetic and checked my own sums. Each
+time the app was already doing the better thing, and each time the failure was me testing my
+assumption instead of looking.
+
 ## 2026-09-24 (later) — The text size people already chose, the words for when it goes wrong, and checking a VAT number (Opus 5)
 
 Three pieces, each finished and on `main`.
