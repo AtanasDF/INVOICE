@@ -80,6 +80,60 @@ because it appeared to cover the month roller. When the roller turned out to be 
 measurement error, the pill went back. A change whose justification does not survive
 checking does not get to stay because the reasoning still sounds good.
 
+**Migrations 038 and 039, run and verified.** With him signed in to Supabase in the browser
+pane. Verified by reading the live catalog, not the "Success" message: `vat_checks` with its
+10 columns, 4 indexes, RLS, policy and a composite FK carrying `user_id` (a plain
+`references clients (id)` would have accepted another account's id — FK checks bypass RLS,
+exactly as migration-017 found and wrote down); `clients.reverse_charge_end_user` boolean
+NOT NULL default false, with both of his existing client rows untouched and both false. The
+grants are the thing I most wanted to see: `authenticated` has INSERT and SELECT and nothing
+more, and `anon` does not appear at all — which is the hole 037 shipped by revoking from
+`public, anon` and forgetting `authenticated`.
+
+**Then the table was wired up, because a migration whose table stays empty is worse than no
+migration.** The consultation number — HMRC's dated proof that a supplier's VAT number was
+checked — was being shown under the box and lost on the next page change. Keeping it turned
+up a rate-limit bug that recording would have made much worse: the lookup fires on mount and
+a consultation lookup is deliberately never cached, so merely *opening* thirty contacts'
+edit panels burned the whole 30-an-hour limit and issued thirty references nobody kept. Our
+own number now goes only once somebody has typed in the box. One reference per number per
+day, reckoned in **Europe/London** — slicing the ISO string would have let a second through
+at 00:30 in July and refused one at 23:30, which is the same bug the whole of `today.ts`
+exists for. History keys on the number, not the contact, because a number is often checked
+before the contact exists and the table grants no UPDATE, so those rows could never be
+attached afterwards.
+
+**The help chat, which completes the ladder Atanas described** — first sign-in, each page
+once, a help section, a chat, then him. Off behind `NEXT_PUBLIC_HELP_CHAT`, and off on the
+server too, because a route that answers while the feature is meant to be off is an open
+model endpoint nothing in the UI admits to. It is the first thing in the app that costs
+money every time somebody uses it with no natural limit, so the fences shipped with it and
+not after: signed in, 40 an hour an account, 400 overall, a six-message window trimmed on
+the **server** as well as the browser, and a capped question. Grounded in `HELP_JOURNEYS`
+rather than a hand-written summary, for the same reason the walkthrough frames are recorded
+by the harness: a summary drifts and an answer about a button that has moved is worse than
+no answer.
+
+**Three of my own mistakes, since they are the useful part.** The first version of the help
+page replaced the "Not here? Ask us" line with the chat, hiding the one rung that reaches a
+person behind having typed something into the rung above it. The cap check in
+`test-help-chat-live` passed for the wrong reason: the route says the same words for "your
+account has had a lot this hour" and "the model is busy", so it was reading the model's 429
+as the cap and proving nothing — a passing check that tests nothing is the recurring theme
+of this session. And `test-vat-checks` came back CRASHED in the full run because *I*
+recompiled `gen/` underneath it mid-run; 26/26 alone. The suite that is judged by its own
+summary line is the one to distrust.
+
+Both new suites were mutation-tested rather than trusted: dropping the GB strip, slicing the
+ISO string, and counting an unproven lookup as evidence each make `test-vat-checks` fail, in
+both directions of the London/UTC boundary.
+
+**Left open, and his:** the UTR letter (about 15 days by post) finishes the HMRC production
+application. And **Settings → VAT registered should be off on his own account** — he said he
+is not VAT registered, and with it on his invoices would add VAT he cannot legally charge.
+Nothing in the app writes a `vat_checks` row until `HMRC_CLIENT_ID` is set in production, so
+that half is inert until then.
+
 ## 2026-09-24 (later) — The text size people already chose, the words for when it goes wrong, and checking a VAT number (Opus 5)
 
 Three pieces, each finished and on `main`.
