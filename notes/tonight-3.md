@@ -61,9 +61,9 @@ Not a re-run of the suites — new attacks:
   that reaches the database and loses the reply, a scan that times out mid-read.
 - [x] **D4. Dates that break things.** Leap day, BST boundaries both ways, a quarter end at
   midnight, a due date on 29 February, a tax year boundary.
-- [ ] **D5. Documents that fight back.** A 40-page PDF, a photo with no document in it, a
+- [x] **D5. Documents that fight back.** A 40-page PDF, a photo with no document in it, a
   receipt in another currency with no rate, a credit note bigger than its invoice.
 - [x] **D6. Somebody else's account.** Every route and RPC as the wrong user and as anon.
 - [ ] **D7. A phone in the real world.** 320px, 2x text, dark mode, reduce-motion, one hand,
   keyboard only — together, not one at a time.
-- [ ] **D8. Mutation testing again**, extended past the eight it breaks today.
+- [x] **D8. Mutation testing again**, extended past the eight it breaks today.

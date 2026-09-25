@@ -99,9 +99,14 @@ check("an unregistered account charges nothing and shifts nothing", computeInvoi
 // asking when the answer is no: a wrong prompt on a tax question teaches
 // people to ignore prompts.
 const base = { vatRegistered: true, cisRate: 20, customerIsCompany: true, customerVatNumber: "GB220430231", endUserDeclared: false, items: [line(100, "standard")] };
-check("asks on CIS work for a VAT-registered company", !!reverseChargeAsk(base));
-check("and offers to shift the standard-rated line", reverseChargeAsk(base).becomes[0] === "reverse_charge", JSON.stringify(reverseChargeAsk(base)));
-check("reduced-rated work shifts to the 5% kind", reverseChargeAsk({ ...base, items: [line(100, "reduced")] }).becomes[0] === "reverse_charge_reduced");
+// Read once and guarded: a null here used to throw, which killed the run at
+// check 10 of 47 and printed no summary at all. A suite that dies is worse
+// than one that fails -- it hides every check after it.
+const asked = reverseChargeAsk(base);
+check("asks on CIS work for a VAT-registered company", !!asked);
+check("and offers to shift the standard-rated line", asked?.becomes[0] === "reverse_charge", JSON.stringify(asked));
+const askedReduced = reverseChargeAsk({ ...base, items: [line(100, "reduced")] });
+check("reduced-rated work shifts to the 5% kind", askedReduced?.becomes[0] === "reverse_charge_reduced", JSON.stringify(askedReduced));
 
 check("never when the account is not VAT registered", reverseChargeAsk({ ...base, vatRegistered: false }) === null);
 check("never without CIS: the charge follows the scheme", reverseChargeAsk({ ...base, cisRate: null }) === null);
@@ -116,7 +121,7 @@ check("nor exempt", reverseChargeAsk({ ...base, items: [line(100, "exempt")] }) 
 check("a sole trader with a VAT number counts", !!reverseChargeAsk({ ...base, customerIsCompany: false }));
 // Mixed: only the lines that can shift are offered.
 const mix = reverseChargeAsk({ ...base, items: [line(100, "standard"), line(50, "zero"), line(20, "reduced")] });
-check("only the lines the charge covers are offered", mix.lines.join() === "0,2" && mix.becomes[2] === "reverse_charge_reduced", JSON.stringify(mix));
+check("only the lines the charge covers are offered", mix?.lines.join() === "0,2" && mix?.becomes[2] === "reverse_charge_reduced", JSON.stringify(mix));
 
 // ---- On the document a contractor actually receives -------------------------
 // The logic above is worth nothing if the words never reach the page. This
