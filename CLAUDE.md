@@ -750,6 +750,23 @@ migrations and tests DB state in rolled-back transactions; its briefs land in
 sits under iCloud Desktop sync and sometimes spawns stray `name 2.ext` duplicates; diff
 them against the original before deleting.
 
+**iCloud has now broken git itself (2026-09-25), which is a step past untidy.**
+`git fetch` and `git pull` both died on `fatal: bad object refs/heads/main 2`, then on
+`refs/remotes/origin/main 2`: iCloud had duplicated two **ref files**, and git reads every
+file under `refs/` as a ref, so a name with a space in it is a broken ref and the whole
+fetch refuses. Nothing was lost — both pointed at `c9a8972`, already in main's history, and
+`HEAD` matched `origin/main` throughout. The fix is to move the stray refs out of `.git`
+(moved, not deleted, to `~/icloud-git-strays-2026-09-25/`), after checking with
+`git merge-base --is-ancestor <sha> HEAD` that they hold nothing unique. Find them with
+`find .git/refs -name "* [0-9]*"`.
+
+31 more strays sit in `.git` (2.2 MB: 27 duplicate `index` files and four duplicated
+merge-state files, `MERGE_HEAD 2` and friends). **None of those break anything** — only the
+names under `refs/` are read as refs — so they are flagged and left, per rule 1. The point
+is that this will keep happening and the next one may not be as harmless as a ref pointing
+at a commit we already have: **moving the project off the synced Desktop is no longer a
+tidiness question.**
+
 ## Open items (2026-09-20)
 
 - (Resolved 2026-09-21: migration-031 run and verified. The six 14-September backup tables
