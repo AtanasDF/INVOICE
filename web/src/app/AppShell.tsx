@@ -255,6 +255,9 @@ function Gate({ children }: { children: React.ReactNode }) {
     // have an account, and telling them to make one first is how a report
     // turns into a tweet.
     pathname === "/security" ||
+    // A statement about whether somebody can use the app is no use behind a
+    // sign-in they may not be able to get through.
+    pathname === "/accessibility" ||
     pathname === "/how-to-invoice" ||
     // Shown by the service worker when there is no signal, which is exactly
     // when the sign-in check cannot be made.
@@ -351,6 +354,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/how-to-invoice" className="underline">How to invoice</Link>
           <Link href="/privacy" className="underline">Your information</Link>
           <Link href="/terms" className="underline">Terms</Link>
+          <Link href="/accessibility" className="underline">Accessibility</Link>
           <Link href="/security" className="underline">Security</Link>
           <Link href="/feedback" className="underline">Tell us something</Link>
         </div>

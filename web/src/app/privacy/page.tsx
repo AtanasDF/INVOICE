@@ -44,9 +44,10 @@ export default function Privacy() {
         <li className={LI}><strong>Vercel</strong> runs the website itself.</li>
         <li className={LI}><strong>Resend</strong> sends the emails — confirming your address, and any invoice or document you choose to email.</li>
         <li className={LI}>
-          <strong>Google</strong> and <strong>Anthropic</strong> read the documents you scan. When you photograph a
-          receipt, that picture is sent to one of them to be read, and what comes back is what fills in the form. They
-          do not use it to train anything.
+          <strong>Google</strong> reads the documents you scan. When you photograph a receipt, that picture is sent to
+          be read, and what comes back is what fills in the form. It is not used to train anything.{" "}
+          <strong>Anthropic</strong> can read them instead, but only on a device where you have turned that on
+          yourself — it is not what happens by default.
         </li>
       </ul>
       <p className={P}>
@@ -59,11 +60,12 @@ export default function Privacy() {
         Economic Area. Nothing about your account is stored outside it.
       </p>
       <p className={P}>
-        The one thing that leaves is a document you scan: the picture is sent to Google or Anthropic in the
-        <strong> United States</strong> to be read, and what comes back fills in the form. The picture itself stays with
+        The one thing that leaves is a document you scan: the picture is sent to Google in the{" "}
+        <strong>United States</strong> to be read, and what comes back fills in the form. The picture itself stays with
         us; they are not given your account, your name, or anything else you have here, and they do not use it to train
-        anything. If you would rather nothing left the EEA, type your receipts in by hand — every screen that takes a
-        scan also takes typing.
+        anything. Google is certified under the UK-US Data Bridge, which is the arrangement that makes that transfer
+        lawful. If you would rather nothing left the EEA, type your receipts in by hand — every screen that takes a scan
+        also takes typing.
       </p>
 
       <h2 className={H}>Why we are allowed to keep it</h2>

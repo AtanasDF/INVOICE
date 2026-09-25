@@ -25,7 +25,7 @@ try {
   check("a stranger can read the privacy page", new URL(page.url()).pathname === "/privacy", page.url());
   let text = await bodyText(page);
   check("it says what is kept, in plain words", /Your invoices, receipts and photographs are yours/.test(text), text.slice(0, 300));
-  check("it admits the pictures are sent away to be read", /read the documents you scan/.test(text) && /Google/.test(text) && /Anthropic/.test(text), text.slice(0, 1200));
+  check("it admits the pictures are sent away to be read", /reads? the documents you scan/.test(text) && /Google/.test(text) && /Anthropic/.test(text), text.slice(0, 1200));
   check("it names who stores the records", /Supabase/.test(text) && /Vercel/.test(text) && /Resend/.test(text), text.slice(0, 1200));
   check("it mentions the flyer code, since that is the one thing tracked", /flyer/i.test(text), text.slice(0, 900));
   check("it says how to get everything deleted", /deleted/.test(text) && /Feedback/.test(text), text.slice(0, 1500));

@@ -40,10 +40,10 @@ polish. Tick as they land, with the commit.
 - [ ] **C1. Keep the consultation number** from an HMRC VAT check against the supplier, so
   a check leaves a record. Needs a migration → feature branch, does not merge before it is
   applied.
-- [ ] **C2. The privacy policy overstates the scanner.** It names "Google and Anthropic" as
+- [x] **C2. The privacy policy overstates the scanner.** It names "Google and Anthropic" as
   though both read everybody's documents; Gemini is the default and Claude is a per-device
   opt-in, and only Google is certified under the UK-US Data Bridge.
-- [ ] **C3. An accessibility statement**, in Starling's candid style, naming what we fail —
+- [x] **C3. An accessibility statement**, in Starling's candid style, naming what we fail —
   the research says no competitor does this and `notes/accessibility-spec.md` already holds
   the honest list.
 

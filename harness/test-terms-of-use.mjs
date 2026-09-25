@@ -63,6 +63,32 @@ try {
   const expires = /Expires:\s*(\S+)/.exec(txt);
   check("it has an Expires that is still in the future", !!expires && new Date(expires[1]) > new Date(), expires?.[1]);
 
+  // ---- Saying what we fail ---------------------------------------------------
+  // notes/competitor-research.md: not one of the twelve apps publishes an
+  // accessibility statement for their app. The value is entirely in the
+  // failures, so a statement that only lists successes is worse than none --
+  // it is marketing wearing the clothes of a disclosure.
+  await page.goto(`${BASE}/accessibility`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  const a11y = await bodyText(page);
+  check("a stranger can read the accessibility statement", /How usable this is/.test(a11y), a11y.slice(0, 120));
+  check("it names the standard it aims at", /WCAG|Web Content Accessibility Guidelines/i.test(a11y) && /AA/.test(a11y));
+  check("it says nobody independent has checked it", /not audited|nobody independent/i.test(a11y));
+  check("it names what is NOT good enough", /not good enough yet/i.test(a11y));
+  // The specific admissions, because a vague "some things may not work" is
+  // how everybody else writes this.
+  check("including the button size we fail", /36 pixels/.test(a11y) && /44/.test(a11y), a11y.slice(0, 200));
+  check("including that no screen reader has been tried", /VoiceOver/.test(a11y) && /TalkBack/.test(a11y));
+  check("including that the camera has no answer yet", /camera/i.test(a11y) && /type it in/i.test(a11y));
+  check("it says how to tell us, without needing the right words", /Feedback/.test(a11y) && /do not need to know the name/i.test(a11y));
+  check("and where to go if we will not put it right", /Equality Advisory/.test(a11y));
+  check("it is dated", /Last gone through on/.test(a11y));
+  // Linked from every page, or nobody finds it.
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  const linked2 = await page.evaluate(() => [...document.querySelectorAll("footer a")].some((a) => a.getAttribute("href") === "/accessibility"));
+  check("every page's footer links to it", linked2);
+
   // ---- Why we are allowed to keep it (UK GDPR) ----------------------------
   await page.goto(`${BASE}/privacy`, { waitUntil: "networkidle0" });
   await sleep(600);
