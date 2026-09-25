@@ -107,5 +107,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: HELP_CHAT_BROKEN }, { status: 503 });
   }
 
+  // What was asked, and not what was answered.
+  //
+  // Every question that reaches the chat is one the walkthroughs did not
+  // anticipate, and that list is the only honest measure of how good the help
+  // is (notes/help-chat-design.md). The answer is not kept: it is reproducible
+  // from the question, and keeping it would double the amount of somebody's
+  // text held for a purpose they did not ask for.
+  //
+  // Written as THEM, through the anon key with their own bearer, so the row
+  // lands under their user_id and row level security applies. The route holds
+  // no service key and reads nothing of theirs.
+  //
+  // Awaited, because a serverless function can be torn down the moment it
+  // answers and an un-awaited insert would be lost -- but wrapped, because a
+  // log nobody asked for must never cost somebody their answer. A database
+  // without the table yet behaves exactly like a database that is down: the
+  // answer still goes back.
+  try {
+    const asThem = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false },
+    });
+    await asThem.from("help_questions").insert({ user_id: user.id, question: last.text });
+  } catch {
+    // Deliberately silent: see above.
+  }
+
   return NextResponse.json({ answer });
 }

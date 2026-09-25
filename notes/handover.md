@@ -1,6 +1,15 @@
 ## Waiting on Atanas (2026-09-25)
 
-1. **HMRC production credentials.** The application is complete except one field:
+1. **migration-040, written and NOT run** (`web/supabase/migration-040-help-questions.sql`,
+   on branch `feature/help-questions`, not merged — rule 4). One new table, `help_questions`,
+   insert-only for `authenticated`, RLS on, `anon` revoked explicitly along with
+   `public` and `authenticated`. No backup file: it creates a table and alters nothing, and
+   its header says so. **It changes what is stored about people** — the questions they type
+   into the help chat, so the list of what the walkthroughs failed to explain exists — so
+   `/privacy` gains a line in the same commit, which is that page's own rule. The chat's
+   answer is not kept. Nothing happens until the chat itself is switched on
+   (`NEXT_PUBLIC_HELP_CHAT`), so there is no rush, and the branch waits for a migration run.
+2. **HMRC production credentials.** The application is complete except one field:
    "Identify your organisation" wants a UTR. His company **FRAGOV LTD** (registered
    15 March 2024) is dormant and he is not VAT registered, so the Corporation Tax UTR is
    the one to use — **requested 25/09, HMRC post it within 15 days** to the registered
@@ -11,18 +20,18 @@
    **The Developer Hub session times out fast** — expect to sign in again each time.
    The production application is named **FRAGOV LTD** to match the organisation; that is
    free of cost because the API is application-restricted, so no customer ever sees it.
-2. ~~Two migrations on branches~~ — **both run and verified 2026-09-25, both merged.**
+3. ~~Two migrations on branches~~ — **both run and verified 2026-09-25, both merged.**
    038 (`vat_checks`) and 039 (`clients.reverse_charge_end_user`). Verified against the live
    catalog rather than the success message: the FK's ON DELETE is SET NULL, `authenticated`
    has INSERT and SELECT only, `anon` appears nowhere, and the two existing client rows were
    untouched.
-3. **Move the project off the iCloud Desktop.** Raised from a preference to a real risk on
+4. **Move the project off the iCloud Desktop.** Raised from a preference to a real risk on
    2026-09-25: iCloud duplicated two git **ref** files and `git fetch`/`git pull` both died
    on `fatal: bad object refs/heads/main 2`. Nothing was lost and it is fixed (the strays
    were moved to `~/icloud-git-strays-2026-09-25/`, both pointing at a commit already in
    main), but 31 more strays sit in `.git` and the next one may not be harmless. A move to
    `~/Developer/INVOICE` was started on 2026-09-23 and stopped by him before anything moved.
-4. **Check Settings → VAT registered is OFF** on his own account. He said on 25/09 that he
+5. **Check Settings → VAT registered is OFF** on his own account. He said on 25/09 that he
    is not VAT registered; with it on, his invoices would add VAT he cannot legally charge.
 
 # Handover
