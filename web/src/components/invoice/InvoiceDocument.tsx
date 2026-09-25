@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { cisApplies, computeDraftTotals, DraftTotals, FreeInvoiceDraft, FreeInvoiceLine } from "@/lib/freeInvoiceDraft";
 import type { InvoiceLineKind } from "@/lib/invoiceTemplate";
 import { VAT_RATE_LABELS } from "@/lib/vat";
+import { REVERSE_CHARGE_WORDING, reverseChargeNote } from "@/lib/reverseCharge";
 
-export const REVERSE_CHARGE_WORDING = "Reverse charge: VAT Act 1994 Section 55A applies";
+export { REVERSE_CHARGE_WORDING } from "@/lib/reverseCharge";
 
 const KIND_LABEL: Record<InvoiceLineKind, string> = { labour: "Labour", materials: "Materials", other: "Other" };
 const KIND_ORDER: InvoiceLineKind[] = ["labour", "materials", "other"];
@@ -194,7 +195,19 @@ function Footer({ d, dense, withVat }: { d: FreeInvoiceDraft; dense?: boolean; w
   return (
     <footer className={`border-t border-neutral-300 text-neutral-500 ${dense ? "mt-4 pt-2 text-[10px]" : "mt-10 pt-3 text-xs"}`}>
       {ids.length > 0 && <p>{ids.join("  ·  ")}</p>}
-      {reverse && <p className="font-medium text-neutral-900">{REVERSE_CHARGE_WORDING}</p>}
+      {/* The wording alone is not enough: HMRC require the invoice to state
+          how much VAT the customer must account for, or at least the rate.
+          The free page printed the section number and stopped there. */}
+      {reverse && (
+        <>
+          <p className="font-medium text-neutral-900">{REVERSE_CHARGE_WORDING}</p>
+          {reverseChargeNote(d.lines.map((l) => ({ quantity: l.quantity, unitPrice: l.unitPrice, vatRate: "reverse_charge" as const }))) && (
+            <p className="text-neutral-900">
+              {reverseChargeNote(d.lines.map((l) => ({ quantity: l.quantity, unitPrice: l.unitPrice, vatRate: "reverse_charge" as const })))}
+            </p>
+          )}
+        </>
+      )}
       {d.footer.trim() && <p className="whitespace-pre-line">{d.footer}</p>}
     </footer>
   );

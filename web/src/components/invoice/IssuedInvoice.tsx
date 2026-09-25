@@ -6,6 +6,7 @@ import { latePaymentLine, showsLatePaymentTerms } from "@/lib/latePayment";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 import { VAT_RATE_LABELS } from "@/lib/vat";
+import { REVERSE_CHARGE_WORDING, reverseChargeNote } from "@/lib/reverseCharge";
 import { creditOffDue, invoiceCharge, labourNet } from "@/lib/cis";
 
 // A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
@@ -139,6 +140,19 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
           </div>
         ))}
       </div>
+
+      {/* The words the VAT Regulations 1995 require, and what they mean, on
+          an invoice that charges no VAT because the customer accounts for
+          it. Without this the invoice is not a valid reverse-charge invoice
+          -- and the app has been able to produce one since the rate existed.
+          Above the amount due, not in a footnote: it is the reason the total
+          looks smaller than the customer expects. */}
+      {vatRegistered && reverseChargeNote(invoice.items) && (
+        <div className="mt-4 rounded-lg border border-neutral-300 px-4 py-3 text-sm">
+          <p className="font-medium">{REVERSE_CHARGE_WORDING}</p>
+          <p className="mt-1 text-neutral-700">{reverseChargeNote(invoice.items)}</p>
+        </div>
+      )}
 
       <div className="mt-4 flex justify-end">
         <div className="rounded-lg bg-neutral-50 px-5 py-3 text-right">

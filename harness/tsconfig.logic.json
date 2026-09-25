@@ -52,6 +52,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/weeklySummary.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/jobs.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/latePayment.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/vatNumber.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/vatNumber.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/reverseCharge.ts"
   ]
 }

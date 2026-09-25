@@ -10,6 +10,7 @@ export const VAT_RATES = {
   zero: 0,
   exempt: 0,
   reverse_charge: 0,
+  reverse_charge_reduced: 0,
 } as const;
 
 export type VatRateKind = keyof typeof VAT_RATES;
@@ -19,7 +20,12 @@ export const VAT_RATE_LABELS: Record<VatRateKind, string> = {
   reduced: "Reduced (5%)",
   zero: "Zero-rated (0%)",
   exempt: "Exempt",
-  reverse_charge: "Reverse charge",
+  // Two of them, because HMRC require the invoice to state the VAT the
+  // customer must account for -- or at least the rate -- and a single
+  // "reverse charge" kind cannot say whether that is 20% or 5%. See
+  // src/lib/reverseCharge.ts.
+  reverse_charge: "Reverse charge (20%)",
+  reverse_charge_reduced: "Reverse charge (5%)",
 };
 
 export const VAT_RATE_KINDS = Object.keys(VAT_RATES) as VatRateKind[];
