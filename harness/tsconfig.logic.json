@@ -58,6 +58,9 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/helpJourneys.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/sameAgain.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/vatCheckRules.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/helpChat.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/navGroups.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/helpFacts.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/helpChat.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/helpPrompt.ts"
   ]
 }

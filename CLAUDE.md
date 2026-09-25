@@ -244,6 +244,16 @@ reckoning, so the year's income read zero). Found on 2026-09-21 at 00:02 BST, by
 checks the lot; `mockdb.mjs` exports the matching `todayISO()` and `day(n)`, and suites
 must use them rather than building dates off the UTC clock.
 
+`harness/test-utc-today.mjs` pins the **pattern** rather than the behaviour, which is the
+part test-midnight cannot reach: a new screen can reintroduce this where no suite happens to
+look, and it is invisible for 23 hours a day. It found one still live on 2026-09-25 —
+`daysFromToday` in `/api/notifications/check` built its 3-day bill window from
+`new Date().toISOString().slice(0, 10)` while `today`, two lines above in the same function,
+was already London, so the window was counted from yesterday and a bill due in exactly three
+days would not have been pushed about. The cron runs at 08:00 and never met that hour, but
+the pattern was there to be copied. `ukDate()` (beside `todayISO`) is how any *other* moment
+is turned into a London date; `someIso.slice(0, 10)` is the UTC one and is the bug.
+
 Europe/London rather than the browser's own zone because these are UK accounting records
 and the app is UK throughout. UTC date **arithmetic** on a date string (`addDays` and
 friends) is correct and stays — the bug was only ever in asking UTC what day it is now.
@@ -574,10 +584,22 @@ costs money every time somebody uses it with no natural limit** — scanning has
 only have so many receipts — so the fences ship with it: signed in only,
 `gemini-3.5-flash-lite`, 40 an hour per account and 400 overall, a six-message window
 (cost grows with what is sent *back*, not with the question), and a 600-character question.
-It is grounded in `HELP_JOURNEYS`, not a hand-written summary, so it cannot describe a
-button that has moved. It is told three things it may not break: say when it does not know,
+It is told three things it may not break: say when it does not know,
 it cannot see their records, and it is not their accountant. Every refusal leads to the
-email, which is the rung below. `harness/test-help-chat.mjs` (37 checks).
+email, which is the rung below. The grounding and the instructions live in
+`src/lib/helpPrompt.ts`, kept apart from `helpChat.ts` because the browser imports that one
+and would otherwise ship a description of every page to every visitor. Two halves:
+`HELP_JOURNEYS`, which cannot drift, and `src/lib/helpFacts.ts`, a line per page, which
+**is** a hand-written summary — allowed only because both ways it drifts are checked, every
+route resolving to a real page file and every page in the header's nav being described. That
+needed the nav out of `AppShell` into `src/lib/navGroups.ts`. `harness/test-help-chat.mjs`
+(55 checks) and `test-help-chat-live.mjs` (25, a stand-in for Gemini via `GEMINI_API_BASE`
+and for Supabase's user endpoint, proving the fences that run before a token is spent).
+**Asking it nine real questions found six things every green suite had missed**, and the
+list is in `notes/help-chat-design.md`: answers cut off mid-sentence because thinking tokens
+come out of the reply's budget and the route only treated `failed` as a failure; markdown
+appearing on screen as typed; an invented address; and a real feature declared absent
+because it was missing from the grounding. Build it, then ask it things.
 `NEXT_PUBLIC_INVITES` (not set: invite-a-friend renders nothing, asks for no code and
 claims nothing without it, so it ships changing nothing. migration-037 is already applied,
 so turning it on is one env var). `SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but

@@ -221,3 +221,73 @@ nowhere to go. The email line now shows either way.
 **Still not done:** logging what people ask. This note is right that it is the honest
 measure of what the walkthroughs failed to explain, but it needs a table and therefore a
 migration. The "Email this to Atanas" button is the manual version of it for now.
+
+
+---
+
+# What asking it actually found (2026-09-25)
+
+The suites were green and the thing was committed. Then it was asked nine real questions
+through the live model, which took ten minutes and found **six** things. None of them could
+have been found any other way, and this is the "press the buttons" lesson in its purest
+form: a passing suite tells you the fences hold, not that the thing is any good.
+
+1. **Answers were cut off mid-sentence.** "the app doesn't do payroll or pays". Thinking
+   tokens come out of the same budget as the reply, so `max_output_tokens: 400` was not 400
+   tokens of answer. Now 1500.
+2. **And the route handed the fragment through as an answer.** It only treated `failed` as a
+   failure; `extractors.ts` had always treated `incomplete` and `budget_exceeded` as failures
+   too. Half a sentence about somebody's accounting reads as an answer, which is worse than
+   no answer.
+3. **The one question needing the most thought came back empty** — all budget spent before a
+   word was written — and the person saw "the chat isn't answering just now". Same cause.
+4. **Markdown leaked into plain text.** It wrote "Make an invoice (at `/invoices/new`)" and
+   "**Mileage**". The reply is rendered as plain text, so the backticks and asterisks appear
+   on screen exactly as typed — and the grounding is full of `##` headings for it to copy.
+   It is now told: plain sentences, no markdown of any kind.
+5. **It invented an address.** Asked where a customer's email is, it said "the invoices page
+   at /invoices/new". Nothing told it not to, and it had four journeys to work from. It is
+   now told never to invent an address and to name only pages it has been given.
+6. **It declared a real feature absent.** "Deposits on quotes are not a feature in the app."
+   Deposits are built. Missing from the grounding is not missing from the app, and telling
+   somebody a feature does not exist sends them away from something they are paying for. The
+   grounding is now framed as *"the parts you have been told about — the app does more than
+   this"*, and it is told explicitly that the two are not the same.
+
+And one from the fix itself: **giving it a phrase gives it something to copy.** Two answers
+recited the instruction at the person — "If you do not know, you can say so plainly and say
+that Atanas, who made the app, can be emailed from this screen." The instructions now
+describe the behaviour without handing over wording, and say not to repeat them.
+
+## The grounding was too thin to be useful
+
+Four walkthroughs against about twenty pages. It answered "I do not know about that part of
+the app" to scanning, quotes, expenses and most of the rest — honest, and nearly useless.
+
+`src/lib/helpFacts.ts` now describes **every page in a line**, and `grounding()` is that list
+plus the four walkthroughs. This is a hand-written summary, which is the thing argued against
+when the walkthrough frames were made to record themselves — so both ways it can drift are
+checked by `test-help-chat`: **every route must resolve to a real page file, and every page in
+the header's own nav must be described.** A new screen fails the suite until somebody writes
+its line; a renamed route fails it immediately. That needed the header's nav to come out of
+`AppShell` into `src/lib/navGroups.ts`, since a list inside a client component cannot be
+imported by a suite or by a server route.
+
+Two facts were then written from reading the code rather than from memory, because they are
+the two questions somebody actually arrives with:
+
+- **A sent invoice is corrected with a credit note**, not by editing it — its number, date,
+  lines and customer are locked once issued, because that is what was actually sent. Asked
+  "I sent an invoice with the wrong amount, what now?" it had previously had nothing to say.
+- **A deposit is set on the quote while it is still a draft**, as a percentage or an amount.
+
+Both now answer correctly. The remaining honest gaps are the parts no line describes yet, and
+the suite will not let a new page join them.
+
+## One thing to know before running this again
+
+Do not spawn a dev server while `run-all.sh` is going. Each `next dev` is CPU-heavy, the
+harness already runs four suites at a time, and testing the chat against the live model three
+times over stretched a fifty-minute run well past eighty. It also cost a suite: recompiling
+`gen/` mid-run left `vatCheckRules.js` briefly importing `./today` with no extension, and
+`test-vat-checks` came back CRASHED for it. 26/26 alone.

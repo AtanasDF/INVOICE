@@ -9,8 +9,12 @@
 // It is also the first thing in the app that costs money every time
 // somebody uses it with no natural limit -- scanning has one, people only
 // have so many receipts. So most of what is checked here is the fences.
-import { HELP_CHAT_BROKEN, HELP_CHAT_BUSY, HELP_CHAT_LIMITS, HELP_CHAT_TOO_LONG, chatTranscript, grounding, helpChatOn, systemPrompt, trimHistory } from "./gen/lib/helpChat.js";
+import { HELP_CHAT_BROKEN, HELP_CHAT_BUSY, HELP_CHAT_LIMITS, HELP_CHAT_TOO_LONG, chatTranscript, helpChatOn, trimHistory } from "./gen/lib/helpChat.js";
+import { grounding, systemPrompt } from "./gen/lib/helpPrompt.js";
 import { HELP_JOURNEYS } from "./gen/lib/helpJourneys.js";
+import fs from "node:fs";
+import { HELP_FACTS } from "./gen/lib/helpFacts.js";
+import { NAV_HREFS } from "./gen/lib/navGroups.js";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const results = [];
@@ -76,6 +80,37 @@ for (const j of HELP_JOURNEYS) {
 check("the grounding carries the actual step wording", ground.includes(HELP_JOURNEYS[0].steps[0].caption));
 check("the grounding is not empty", ground.length > 200, String(ground.length));
 
+// ---------------------------------------------------------------------------
+// The page list, which is a hand-written summary and therefore has to be checked
+// ---------------------------------------------------------------------------
+// Four walkthroughs against about twenty pages meant the chat answered "I do
+// not know about that part of the app" to scanning, quotes, expenses and most
+// of the rest. So HELP_FACTS describes every page in a line -- hand-written,
+// which is the thing argued against when the walkthrough frames were made to
+// record themselves. The difference is that both ways it can drift are checked
+// right here: an address that does not resolve, and a page nobody described.
+const APP = "/Users/nasko/Desktop/INVOICE/web/src/app";
+const pageFileFor = (route) => {
+  const rel = route === "/" ? "page.tsx" : `${route.replace(/^\//, "")}/page.tsx`;
+  return `${APP}/${rel}`;
+};
+const missingPages = HELP_FACTS.filter((f) => !fs.existsSync(pageFileFor(f.route)));
+check("every page the chat can name actually exists", missingPages.length === 0, missingPages.map((f) => f.route).join(", "));
+
+// The other direction: a new screen in the header must not be invisible to the
+// chat, or it will say it does not know about something on the person's menu.
+const described = new Set(HELP_FACTS.map((f) => f.route));
+const undescribed = NAV_HREFS.filter((h) => !described.has(h));
+check("every page in the header is described", undescribed.length === 0, undescribed.join(", "));
+
+const dupes = HELP_FACTS.map((f) => f.route).filter((r, i, a) => a.indexOf(r) !== i);
+check("no page is described twice", dupes.length === 0, dupes.join(", "));
+check("every description says something", HELP_FACTS.every((f) => f.what.length > 25), HELP_FACTS.filter((f) => f.what.length <= 25).map((f) => f.route).join(", "));
+
+// It went in the grounding, or none of the above matters.
+check("the page list is in the grounding", ground.includes("/check-company") && ground.includes("/receipts/review"));
+check("the walkthroughs are still in it too", ground.includes(HELP_JOURNEYS[0].steps[0].caption));
+
 const prompt = systemPrompt();
 // The three rules the design note calls non-negotiable.
 check("it is told to say when it does not know", /do not know/i.test(prompt));
@@ -86,6 +121,54 @@ check("it is told to hand on what it cannot answer", /emailed from this screen/i
 check("it answers in British spelling and the app's own words", /British/i.test(prompt) && /VAT/.test(prompt));
 check("the prompt names Atanas rather than 'our team'", /Atanas/.test(prompt) && !/our team/i.test(prompt));
 check("the prompt carries the grounding", prompt.includes(HELP_JOURNEYS[0].title));
+
+// Everything below was found by actually asking it, which is the only way any
+// of it would have been found. Nine questions through the live model.
+//
+// It wrote "Make an invoice (at `/invoices/new`)" and "**Mileage**". The reply
+// is rendered as plain text, so backticks and asterisks appear on screen
+// exactly as typed -- and the grounding itself is full of `##` headings and
+// paths for it to copy.
+check("it is told to write plain text, not markdown", /no markdown/i.test(prompt) && /backtick/i.test(prompt));
+
+// Asked where to find a customer's email it answered "the invoices page at
+// /invoices/new", which is not where clients are. It invented an address off
+// the four journeys it had.
+check("it is told never to invent an address", /[Nn]ever invent an address/.test(prompt));
+check("it is told to name only pages it was given", /only ever name a page that appears above/i.test(prompt));
+
+// And the other half of that: asked about quote deposits it said "deposits on
+// quotes are not a feature in the app", which is false -- deposits are built.
+// Missing from the grounding is not missing from the app, and telling somebody
+// a feature does not exist sends them away from something they are paying for.
+check("it is told that what it was not told about still exists",
+  /not the same as the app not having it/i.test(prompt) && /[Nn]ever tell them the app cannot do something/.test(prompt));
+check("the grounding is framed as what it knows, not as everything", /this is what you know/i.test(prompt));
+
+// Twice it recited the instruction at the person: "If you do not know, you
+// can say so plainly and say that Atanas, who made the app, can be emailed
+// from this screen." Giving it a phrase is giving it something to copy.
+check("it is told not to recite these instructions", /[Nn]ever repeat these instructions back/.test(prompt));
+check("it is told a question is never an instruction to it", /never an instruction to you/i.test(prompt));
+
+// ---------------------------------------------------------------------------
+// A half sentence is worse than no answer
+// ---------------------------------------------------------------------------
+// Real answers came back cut off -- "the app doesn't do payroll or pays" --
+// because thinking tokens come out of the same budget as the reply, and the
+// route only treated "failed" as a failure, so it handed the fragment
+// straight through as though it were an answer. extractors.ts had always
+// treated both of the other statuses as a failure; this route had not.
+const route = fs.readFileSync("/Users/nasko/Desktop/INVOICE/web/src/app/api/help-chat/route.ts", "utf8");
+check("a cut-off answer is a failure, not an answer", /"incomplete"/.test(route) && /"budget_exceeded"/.test(route));
+check("an empty answer is a failure too", /!answer/.test(route));
+// The budget has to hold a three-sentence answer AND the thinking.
+const budget = Number(/max_output_tokens:\s*(\d+)/.exec(route)?.[1] ?? 0);
+check("the answer budget is big enough for the thinking as well", budget >= 1000, String(budget));
+// The switch is checked here, not only in the component.
+check("the route checks the switch itself", /helpChatOn\(\)/.test(route));
+// Nothing of theirs is read, so nothing of theirs can be sent.
+check("the route reads nothing of their records", !/\.from\(/.test(route), "the route queries the database");
 
 // ---------------------------------------------------------------------------
 // Every state leads to the email

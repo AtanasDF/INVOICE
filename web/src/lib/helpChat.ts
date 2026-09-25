@@ -1,5 +1,3 @@
-import { HELP_JOURNEYS } from "@/lib/helpJourneys";
-
 // A chat people can ask, when the walkthroughs did not anticipate their
 // question.
 //
@@ -35,51 +33,22 @@ export const HELP_CHAT_LIMITS = {
   maxQuestion: 600,
 };
 
+// Naming him is friendlier and more honest than "our team", which is one
+// person. His idea, and he is right.
+//
+// Just the name, because it goes in the middle of sentences. It was
+// "Atanas, who made the app", and a relative clause dropped into a sentence
+// came out without its closing comma every time -- in our own wording ("email
+// Atanas, who made the app from here") and then in the model's, which copied
+// it. Who he is belongs in the prompt, once, as its own sentence.
+export const HIM = "Atanas";
+
 export type HelpMessage = { role: "you" | "app"; text: string };
 
 // Keep the last few messages and no more. Trimming from the end rather than
 // summarising, because a summary is another model call to pay for.
 export function trimHistory(messages: HelpMessage[], window = HELP_CHAT_LIMITS.window): HelpMessage[] {
   return messages.slice(-Math.max(1, window));
-}
-
-// What the bot is allowed to know: the walkthroughs, which are already the
-// written description of what the app does.
-//
-// Grounding it in HELP_JOURNEYS rather than in a hand-written summary is the
-// same argument as recording the frames from the harness instead of by hand:
-// a hand-written summary drifts the moment a screen changes, and a help
-// answer describing a button that is not there any more is worse than no
-// answer. This one cannot drift -- it is built from the words the
-// walkthroughs themselves show, which the suites check.
-export function grounding(): string {
-  return HELP_JOURNEYS.map(
-    (j) => `## ${j.title} (at ${j.start})\n${j.summary}\n${j.steps.map((s, i) => `${i + 1}. ${s.caption}`).join("\n")}`
-  ).join("\n\n");
-}
-
-// Naming him is friendlier and more honest than "our team", which is one
-// person. His idea, and he is right.
-const HIM = "Atanas, who made the app";
-
-export function systemPrompt(): string {
-  return `You answer questions about an invoicing app for people working for themselves in Britain. You are talking to somebody signed in to it.
-
-Here is everything the app does, as the app's own walkthroughs describe it:
-
-${grounding()}
-
-How to answer:
-
-- Short and plain. Two or three sentences. No lists unless they asked for steps.
-- Name the page, and say what it is called in the app, so they can find it.
-- British spelling. Say "VAT", "invoice", "receipt" -- the words the app uses.
-
-Three rules you do not break:
-
-1. If you do not know, say so plainly and say that ${HIM} can be emailed from this screen. Never guess at how a feature works. An invented answer about somebody's accounting is worse than no answer, and they will act on it.
-2. You cannot see their records. You have no access to their invoices, receipts, figures, VAT, what they are owed or who owes it. If they ask what they owe, what their VAT is this quarter, or anything else about their own numbers, say you cannot see their account and point them at the page that shows it.
-3. You are not their accountant. Questions about what they should pay, claim, or declare go to an accountant or HMRC. You can say where the app records something; you cannot say whether it is allowable.`;
 }
 
 // A refusal is not a failure: it says what still works and it leads
@@ -89,7 +58,7 @@ export const HELP_CHAT_BUSY =
   "The chat has had a lot of questions this hour. The walkthroughs above still work, and you can email your question to Atanas from here.";
 export const HELP_CHAT_BROKEN =
   "The chat isn't answering just now. The walkthroughs above still work, and you can email your question to Atanas from here.";
-export const HELP_CHAT_TOO_LONG = `That is longer than the chat can take. Ask it in a sentence or two, or email ${HIM} from here with the whole thing.`;
+export const HELP_CHAT_TOO_LONG = `That is longer than the chat can take. Ask it in a sentence or two, or email the whole thing to ${HIM} from here.`;
 
 // The conversation as the email he receives. The question is the point, so
 // it leads; the bot's attempts follow, because what it got wrong is why

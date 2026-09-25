@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_MODEL } from "@/lib/extractors";
-import { HELP_CHAT_BROKEN, HELP_CHAT_BUSY, HELP_CHAT_LIMITS, HELP_CHAT_TOO_LONG, helpChatOn, systemPrompt, trimHistory, type HelpMessage } from "@/lib/helpChat";
+import { HELP_CHAT_BROKEN, HELP_CHAT_BUSY, HELP_CHAT_LIMITS, HELP_CHAT_TOO_LONG, helpChatOn, trimHistory, type HelpMessage } from "@/lib/helpChat";
+import { systemPrompt } from "@/lib/helpPrompt";
 import { allow, release } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -81,7 +82,13 @@ export async function POST(req: Request) {
         ...window.map((m) => ({ type: "text" as const, text: `${m.role === "you" ? "Them" : "You"}: ${m.text}` })),
         { type: "text", text: "Answer their last message." },
       ],
-      generation_config: { max_output_tokens: 400, thinking_level: "low" },
+      // 400 was not enough and it showed: thinking tokens come out of the
+      // same budget, so real answers were cut off mid-sentence -- "the app
+      // doesn't do payroll or pays" -- and the one question that needed the
+      // most thought came back with no text at all, which the person saw as
+      // the chat being broken. A help answer is three sentences; the budget
+      // is generous so the thinking cannot eat it.
+      generation_config: { max_output_tokens: 1500, thinking_level: "low" },
     });
   } catch (err) {
     const status = (err as { status?: number }).status;
@@ -91,8 +98,14 @@ export async function POST(req: Request) {
 
   const answer = (interaction.output_text ?? "").trim();
   // An empty answer is a failure that would otherwise render as a blank
-  // reply bubble, which reads as the app ignoring them.
-  if (!answer || interaction.status === "failed") return NextResponse.json({ error: HELP_CHAT_BROKEN }, { status: 503 });
+  // reply bubble, which reads as the app ignoring them. And a truncated one
+  // is worse than none: half a sentence about somebody's accounting reads as
+  // an answer. extractors.ts already treats both of these statuses as a
+  // failure; this route was only checking "failed" and handed the half
+  // sentence straight through.
+  if (!answer || interaction.status === "failed" || interaction.status === "incomplete" || interaction.status === "budget_exceeded") {
+    return NextResponse.json({ error: HELP_CHAT_BROKEN }, { status: 503 });
+  }
 
   return NextResponse.json({ answer });
 }

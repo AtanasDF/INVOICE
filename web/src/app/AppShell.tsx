@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GROUPS, NAV_HREFS, type Group } from "@/lib/navGroups";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
@@ -12,52 +13,7 @@ import { SITE_NAME } from "@/lib/siteName";
 import { rememberSource } from "@/lib/source";
 import { rememberInvite } from "@/lib/invites";
 
-type Group = { label: string; links: [string, string][] };
-
-// The whole app in three groups (Atanas, 2026-09-22: "make it as one whole
-// app not two different apps"): money coming in, money going out, and the
-// tools, the free ones among them. Every page has a place here, so there
-// is no "More pages" drawer any more, and a phone shows one Menu button
-// instead of nine links wrapping to three rows.
-const GROUPS: Group[] = [
-  {
-    label: "Money in",
-    links: [
-      ["/invoices", "Invoices"],
-      ["/quotes", "Quotes"],
-      ["/money", "Money"],
-      ["/jobs", "Jobs"],
-      ["/clients", "Customers & suppliers"],
-      ["/recurring/invoices", "Recurring invoices"],
-    ],
-  },
-  {
-    label: "Money out",
-    links: [
-      ["/receipts", "Receipts & bills"],
-      ["/receipts/review", "Needs review"],
-      ["/expenses", "Expenses"],
-      ["/mileage", "Mileage"],
-      ["/recurring", "Recurring expenses"],
-    ],
-  },
-  {
-    label: "Tools",
-    links: [
-      ["/scan", "Scan"],
-      ["/copy", "Copy a document"],
-      ["/convert", "Change a file"],
-      ["/check-company", "Check a company"],
-      ["/vat", "VAT"],
-      ["/files", "Files"],
-      // Before Feedback on purpose: most questions should be answered by a
-      // walkthrough rather than by asking somebody.
-      ["/help", "How it works"],
-      ["/feedback", "Feedback"],
-    ],
-  },
-];
-const HREFS = ["/", "/settings", ...GROUPS.flatMap((g) => g.links.map(([href]) => href))];
+const HREFS = NAV_HREFS;
 
 // The page you are on is the longest address that matches it, so
 // /receipts/review marks Needs review rather than Receipts & bills.
