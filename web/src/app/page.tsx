@@ -437,7 +437,7 @@ function Dashboard() {
           </span>
           <div className="flex items-center gap-3">
             <Link href="/invoices?status=overdue" className="font-medium underline">Review</Link>
-            <button onClick={() => setBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
+            <button onClick={() => setBannerDismissed(true)} className="text-amber-800" aria-label="Dismiss">✕</button>
           </div>
         </div>
       )}
@@ -449,7 +449,7 @@ function Dashboard() {
           </span>
           <div className="flex items-center gap-3">
             <Link href="/recurring" className="font-medium underline">Review</Link>
-            <button onClick={() => setRecurringBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
+            <button onClick={() => setRecurringBannerDismissed(true)} className="text-amber-800" aria-label="Dismiss">✕</button>
           </div>
         </div>
       )}
@@ -459,7 +459,7 @@ function Dashboard() {
           <span>
             {billsDueSoon} {billsDueSoon === 1 ? "bill needs" : "bills need"} paying soon — see <a href="#bills-to-pay" className="font-medium underline">Bills to pay</a>
           </span>
-          <button onClick={() => setBillsBannerDismissed(true)} className="text-amber-600" aria-label="Dismiss">✕</button>
+          <button onClick={() => setBillsBannerDismissed(true)} className="text-amber-800" aria-label="Dismiss">✕</button>
         </div>
       )}
 

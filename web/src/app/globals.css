@@ -153,6 +153,40 @@
   --accent-soft: #1b2030;
   --paper: #191b1f;
   --background: var(--n-50);
+
+  /* The neutral scale inverts for dark mode; red, amber, green and blue did
+     not, because they are Tailwind's own and nothing here had redefined
+     them. So "£2,450.50 late" was #bf000f on a near-black card -- 2.69:1,
+     where 4.5 is the floor. Every one of those utilities compiles to
+     `color: var(--color-red-700)`, so the whole class of failure is fixed
+     here rather than in the ninety-odd components that use them.
+
+     Lightened until each one clears 4.5:1 on --paper (#191b1f) and on
+     --n-100 (#17181c), which are the two things text of this kind ever sits
+     on. Measured by test-worst-phone, not chosen by eye. */
+  --color-red-400: #ff9d9d;
+  --color-red-600: #ff8080;
+  --color-red-700: #ff8f8f;
+  --color-red-800: #ffa3a3;
+  --color-amber-600: #f0b429;
+  --color-amber-700: #f5c451;
+  --color-amber-800: #ffd479;
+  --color-green-700: #5bd98a;
+  --color-green-800: #7ee3a3;
+  --color-blue-800: #8fb8ff;
+
+  /* The pale backgrounds go the other way, and BOTH halves have to move
+     together: lightening the ink while leaving bg-amber-50 pale turned a
+     2.69:1 failure into a 1.35:1 one, which is how the overdue banner
+     briefly became light-on-light. The 50s matter as much as the 100s --
+     bg-amber-50 is the most used of the lot. */
+  --color-red-50: #2a1618;
+  --color-red-100: #3a1d20;
+  --color-amber-50: #2b2212;
+  --color-amber-100: #3a2e17;
+  --color-green-100: #16301f;
+  --color-blue-100: #1a2537;
+  --color-neutral-100: var(--n-100);
 }
 
 @theme inline {

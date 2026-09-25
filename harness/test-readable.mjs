@@ -38,7 +38,27 @@ const CONTRAST = `(() => {
     const [r, g, b] = c.map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
-  const parse = (s) => { const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const p = m[1].split(",").map((x) => parseFloat(x)); return p[3] === 0 ? null : [p[0], p[1], p[2]]; };
+  // Any CSS colour, not just rgb(). Tailwind v4 serialises as lab(), and
+  // this returned null for those -- so every amber, red, green and blue in
+  // the app was SKIPPED rather than measured, and this suite reported green
+  // while never looking at the overdue banner, the paid badge or the
+  // needs-review pill. Found on 2026-09-25 by a suite that measured them.
+  const __c = document.createElement("canvas");
+  __c.width = 1; __c.height = 1;
+  const __x = __c.getContext("2d", { willReadFrequently: true });
+  const parse = (s) => {
+    if (!s || /transparent/.test(s)) return null;
+    const m = s.match(/rgba?\\(([^)]+)\\)/);
+    if (m) { const p = m[1].split(/[,\\s\\/]+/).filter(Boolean).map(Number); return p[3] === 0 ? null : [p[0], p[1], p[2]]; }
+    __x.clearRect(0, 0, 1, 1);
+    __x.fillStyle = "#000";
+    const before = __x.fillStyle;
+    __x.fillStyle = s;
+    if (__x.fillStyle === before && s !== "#000000" && s !== "black") return null;
+    __x.fillRect(0, 0, 1, 1);
+    const d = __x.getImageData(0, 0, 1, 1).data;
+    return d[3] === 0 ? null : [d[0], d[1], d[2]];
+  };
   const behind = (el) => {
     for (let n = el; n; n = n.parentElement) {
       const c = parse(getComputedStyle(n).backgroundColor);
