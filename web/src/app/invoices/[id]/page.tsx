@@ -582,7 +582,7 @@ export default function InvoiceViewPage() {
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs text-neutral-500" htmlFor="draft-invoice-date">Invoice date</label>
               <input id="draft-invoice-date" type="date" className="w-full rounded-lg border px-3 py-2" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
@@ -772,7 +772,9 @@ export default function InvoiceViewPage() {
             that it&apos;s been sent, since they&apos;re what was actually issued. Use a credit note below for
             anything that needs a financial correction.
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          {/* One column until there is room for two: at 320px with the text
+              turned up, "Payment terms" alone is wider than half the screen. */}
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs text-neutral-500">Due date</label>
               <input type="date" aria-label="Due date" className="w-full rounded-lg border px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
@@ -894,7 +896,7 @@ export default function InvoiceViewPage() {
         </div>
         {showPayForm && (
           <form onSubmit={addPayment} className="mt-3 space-y-2">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3">
               <input type="date" aria-label="Date received" className="rounded-lg border px-3 py-2 text-sm" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
               <input
                 aria-label="Amount received"
@@ -955,7 +957,7 @@ export default function InvoiceViewPage() {
         </div>
         {showCnForm && (
           <form onSubmit={addCreditNote} className="mt-3 space-y-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <input type="date" aria-label="Credit note date" className="rounded-lg border px-3 py-2 text-sm" value={cnDate} onChange={(e) => setCnDate(e.target.value)} />
               <input aria-label="Amount to credit (£)"
                 className="rounded-lg border px-3 py-2 text-sm"

@@ -169,8 +169,13 @@ function Header() {
   if (path.startsWith("/i/") || path.startsWith("/q/") || path.startsWith("/r/")) return null;
   return (
     <header className="border-b bg-white text-neutral-900 print:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <Link href="/" className="text-lg font-semibold">
+      {/* The whole row wraps, not just the nav inside it. At 320px with the
+          text at twice the size the name and the menu together are wider
+          than the screen, and because neither would shrink the row simply
+          ran off the side -- taking the menu's own panel with it, since that
+          is positioned against the row's right edge. */}
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
+        <Link href="/" className="min-w-0 wrap-anywhere text-lg font-semibold">
           {SITE_NAME}
         </Link>
         {/* The signed-in header wraps: at twice the text size somebody has

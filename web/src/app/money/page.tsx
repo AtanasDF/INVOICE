@@ -99,7 +99,7 @@ export default function MoneyPage() {
           {row.dueDate ? `due ${shortDate(row.dueDate)}` : ""}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-3">
+      <span className="flex flex-wrap items-center justify-end gap-x-3">
         <span className="font-medium">{money(row.amount)}</span>
         {side === "in" ? (
           <Link href={`/invoices/${row.id}`} className="inline-block py-1 text-sm font-medium text-neutral-700 underline">Chase</Link>

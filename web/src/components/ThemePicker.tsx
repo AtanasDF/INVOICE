@@ -27,12 +27,16 @@ export default function ThemePicker() {
               role="radio"
               aria-checked={on}
               onClick={() => saveTheme(t.id)}
-              className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left ${on ? "border-neutral-900 bg-neutral-50" : "hover:bg-neutral-50"}`}
+              // min-w-0: a grid item will not shrink below its own content
+              // unless it is told to, so on a narrow phone with the text
+              // turned up this card pushed the whole page sideways rather
+              // than letting "Follow my phone" wrap.
+              className={`flex min-w-0 items-center gap-3 rounded-lg border px-4 py-3 text-left ${on ? "border-neutral-900 bg-neutral-50" : "hover:bg-neutral-50"}`}
             >
               <span aria-hidden className="size-7 shrink-0 rounded-full border" style={{ background: t.swatch }} />
               <span className="min-w-0">
-                <span className="block text-sm font-medium">{t.name}</span>
-                <span className="block text-xs text-neutral-500">{t.note}</span>
+                <span className="block wrap-anywhere text-sm font-medium">{t.name}</span>
+                <span className="block wrap-anywhere text-xs text-neutral-500">{t.note}</span>
               </span>
               {on && <span className="ml-auto text-xs font-medium text-neutral-500">On</span>}
             </button>

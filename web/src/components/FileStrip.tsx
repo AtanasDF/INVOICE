@@ -79,7 +79,9 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
     });
   }, [all, mode, when, range]);
 
-  const SWITCH = "flex-1 rounded-md px-3 py-1.5 text-sm font-medium";
+  // min-w-0: a flex-1 button still will not go below its own words, so at
+  // 320px with the text turned up this switch pushed the page sideways.
+  const SWITCH = "min-w-0 flex-1 rounded-md px-3 py-1.5 text-sm font-medium";
 
   return (
     <section aria-label="Your file library" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

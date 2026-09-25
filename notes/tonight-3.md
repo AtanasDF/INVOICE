@@ -64,6 +64,6 @@ Not a re-run of the suites — new attacks:
 - [x] **D5. Documents that fight back.** A 40-page PDF, a photo with no document in it, a
   receipt in another currency with no rate, a credit note bigger than its invoice.
 - [x] **D6. Somebody else's account.** Every route and RPC as the wrong user and as anon.
-- [ ] **D7. A phone in the real world.** 320px, 2x text, dark mode, reduce-motion, one hand,
+- [x] **D7. A phone in the real world.** 320px, 2x text, dark mode, reduce-motion, one hand,
   keyboard only — together, not one at a time.
 - [x] **D8. Mutation testing again**, extended past the eight it breaks today.

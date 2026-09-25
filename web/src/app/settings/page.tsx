@@ -653,7 +653,10 @@ export default function SettingsPage() {
           <h2 className="font-semibold">VAT</h2>
           <fieldset>
             <legend className="sr-only">VAT</legend>
-            <div className="inline-flex rounded-lg border p-0.5">
+            {/* Wraps: a segmented control is a row until the words in it are
+                wider than the phone, and at 320px with the text turned up
+                "Not registered" alone is most of the screen. */}
+            <div className="inline-flex max-w-full flex-wrap rounded-lg border p-0.5">
               {VAT_CHOICES.map((c) => (
                 <label key={c.label} className="cursor-pointer">
                   <input type="radio" name="vat" className="peer sr-only accent-neutral-900" checked={vatRegistered === c.on} onChange={() => setVatRegistered(c.on)} />
@@ -684,7 +687,7 @@ export default function SettingsPage() {
           <div>
             <h2 className="font-semibold">Invoice numbering</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              The next invoice will be <span className="font-medium text-neutral-900">{invoicePrefix}{invoiceNextNumber}</span>.
+              The next invoice will be <span className="wrap-anywhere font-medium text-neutral-900">{invoicePrefix}{invoiceNextNumber}</span>.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -740,7 +743,11 @@ export default function SettingsPage() {
 
           <div className="space-y-2">
             {categories.map((c, i) => (
-              <div key={i} className="flex items-center gap-2">
+              // Wraps: the arrows, the name and Remove are a row until the
+              // text is turned up on a narrow phone, and then Remove is off
+              // the side -- which is the one control in the row that cannot
+              // be reached any other way.
+              <div key={i} className="flex flex-wrap items-center gap-2">
                 <div className="flex flex-col gap-1">
                   <button
                     type="button"
@@ -834,8 +841,11 @@ export default function SettingsPage() {
                     it is a token people have already typed into their saved
                     reminder text, and changing it would silently stop those
                     substituting. */}
-                <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>, <code>{"{{amount_due}}"}</code>,{" "}
-                <code>{"{{due_date}}"}</code> and <code>{"{{pay_by}}"}</code> (a week from the day it&apos;s sent) anywhere in
+                {/* wrap-anywhere: these are single unbreakable words and at a
+                    large text size one of them is wider than a narrow phone. */}
+                <code className="wrap-anywhere">{"{{client_name}}"}</code>, <code className="wrap-anywhere">{"{{invoice_number}}"}</code>,{" "}
+                <code className="wrap-anywhere">{"{{amount_due}}"}</code>, <code className="wrap-anywhere">{"{{due_date}}"}</code> and{" "}
+                <code className="wrap-anywhere">{"{{pay_by}}"}</code> (a week from the day it&apos;s sent) anywhere in
                 the text.
               </p>
             </details>
@@ -996,7 +1006,7 @@ export default function SettingsPage() {
         <div>
           <h2 className="font-semibold">Your account</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            You&apos;re signed in as <span className="font-medium text-neutral-900">{user?.email ?? "—"}</span>. That address
+            You&apos;re signed in as <span className="wrap-anywhere font-medium text-neutral-900">{user?.email ?? "—"}</span>. That address
             is the one reminders and invoice emails come back to when a customer replies.
           </p>
         </div>

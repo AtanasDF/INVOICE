@@ -113,7 +113,11 @@ export default function TextCustomer({
       </div>
       {!storedWorks && (
         <div>
-          <label className="text-xs text-neutral-500" htmlFor="text-customer-phone">{first}&apos;s mobile</label>
+          {/* wrap-anywhere: this label is built from the customer's own name,
+              and a business can be called Llanfairpwllgwyngyllgogerychwyrn-
+              drobwllllantysiliogogogoch Construction Ltd. One unbreakable
+              word pushed the whole page to 713px on a 320px phone. */}
+          <label className="wrap-anywhere text-xs text-neutral-500" htmlFor="text-customer-phone">{first}&apos;s mobile</label>
           <input id="text-customer-phone" type="tel" className="w-full rounded-lg border px-3 py-2 text-base sm:text-sm" placeholder="07700 900123" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <p className="mt-1 text-xs text-neutral-500">
             {client.phone ? "The number saved for them doesn't look right; check it here, and in Customers & suppliers." : "Add it to the customer in Customers & suppliers to skip this next time."}

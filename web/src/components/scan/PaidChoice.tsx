@@ -5,7 +5,7 @@ export default function PaidChoice({ paid, onChange }: { paid: boolean; onChange
     <button
       type="button"
       onClick={() => onChange(value)}
-      className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium ${paid === value ? "bg-neutral-900 text-white" : "text-neutral-700"}`}
+      className={`min-w-0 flex-1 rounded-md px-3 py-1.5 text-sm font-medium ${paid === value ? "bg-neutral-900 text-white" : "text-neutral-700"}`}
     >
       {label}
     </button>

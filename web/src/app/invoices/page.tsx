@@ -289,7 +289,11 @@ function InvoicesPage() {
             const notes = creditNotesByInvoice.get(inv.id) ?? [];
             const creditedAmount = credited(inv);
             return (
-              <div key={inv.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              // The whole card wraps, not just the buttons in it: at 320px
+              // with the text turned up the details and the actions together
+              // are wider than the card, and wrapping only the inner row
+              // still left Remove off the side.
+              <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 wrap-anywhere font-medium">
                     {displayInvoiceNumber(inv)} · {clientName(inv.clientId)}
@@ -330,7 +334,10 @@ function InvoicesPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex shrink-0 gap-3">
+                // Wraps rather than shrink-0: at a large text size on a narrow phone
+                // "View / print" and "Remove" together are wider than the card,
+                // and Remove went off the side.
+                <div className="flex flex-wrap justify-end gap-x-3">
                   <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-neutral-700 underline">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
                   </Link>

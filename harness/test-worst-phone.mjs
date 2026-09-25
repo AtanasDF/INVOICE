@@ -63,7 +63,9 @@ try {
         .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > w + 1 && !scrollable(el); })
         .map((el) => { let d = 0; for (let n = el; (n = n.parentElement); ) d++; return { el, d }; })
         .sort((a, b) => b.d - a.d).slice(0, 3)
-        .map(({ el }) => `${el.tagName}.${(el.className || "").toString().slice(0, 30)}`);
+        // The words too, not just the class: "LABEL.text-xs text-neutral-500"
+        // matches a dozen labels on a page and names none of them.
+        .map(({ el }) => `${el.tagName}.${(el.className || "").toString().slice(0, 26)} :: ${(el.textContent || "").trim().slice(0, 26)}`);
 
       // Anything a person has to hit, hidden under something else.
       const buried = [];
@@ -73,6 +75,19 @@ try {
         const details = b.closest("details");
         if (details && !details.open) continue;
         if (r.bottom < 0 || r.top > window.innerHeight) continue;
+        // Scrolled out of view inside a scroller still has an on-screen
+        // rect, so elementFromPoint finds whatever is painted there and the
+        // control looks "buried" when it is simply not showing. The file
+        // library's month roller is three of these, and they were the only
+        // thing this check ever reported.
+        let clipped = false;
+        for (let n = b.parentElement; n && !clipped; n = n.parentElement) {
+          const o = getComputedStyle(n);
+          if (!/auto|scroll|hidden/.test(o.overflowY + o.overflowX)) continue;
+          const p = n.getBoundingClientRect();
+          if (r.bottom <= p.top + 1 || r.top >= p.bottom - 1 || r.right <= p.left + 1 || r.left >= p.right - 1) clipped = true;
+        }
+        if (clipped) continue;
         const mid = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
         if (mid && !b.contains(mid) && !mid.contains(b)) buried.push((b.textContent || "").trim().slice(0, 20));
       }
