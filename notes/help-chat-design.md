@@ -178,3 +178,46 @@ logging for exactly that reason.
 
 So: **help first, chat second, and the chat is the thing that tells us what the help is
 missing.**
+
+
+---
+
+# Built (2026-09-25)
+
+The ladder as it now stands:
+
+| Rung | State |
+|---|---|
+| 1. When they first sign in | `dashboard-welcome`; still no walkthrough |
+| 2. Each page, once | Built — `Tip` |
+| 3. A Help section, feature by feature | **Built** — `/help`, `HELP_JOURNEYS`, `Walkthrough`, frames recorded by `harness/record-help.mjs` |
+| 4. A chat to ask anything | **Built, behind `NEXT_PUBLIC_HELP_CHAT`** |
+| 5. Anything else emails him | Built — `/api/feedback`, Reply-to the sender |
+
+Rung 4 went in as this note argued for: **explanations first, chat second, and off by
+default.** Without the env var `/help` ends at the walkthroughs, mentions no chat, and asks
+nothing of any model — and the route answers 404, because a route that replies while the
+feature is meant to be off is an open model endpoint nothing in the UI admits to.
+
+What was decided, of the things this note left open:
+
+- **Where it appears:** the help page only, as recommended. Not on every screen. That is a
+  bigger bill and a bigger commitment, and it can follow if it earns it.
+- **Does it know his name:** yes. "Atanas, who made the app", because "our team" is one
+  person and saying so is friendlier and more honest.
+- **Grounding:** `HELP_JOURNEYS`, not a hand-written summary. Same argument as recording the
+  frames from the harness rather than by hand — a summary drifts the moment a screen
+  changes, and a help answer describing a button that is not there any more is worse than no
+  answer. This one is built from the words the walkthroughs themselves show, which the
+  suites check.
+- **The window:** six messages, trimmed **on the server as well as in the browser**. A
+  spending limit enforced only by the page that sends the request is not a limit.
+
+One thing this note did not anticipate, found while building it: the first version replaced
+the "Not here? Ask us" line with the chat when the switch was on. That hid rung 5 behind
+having typed something into rung 4 — leaving somebody who cannot think what to ask with
+nowhere to go. The email line now shows either way.
+
+**Still not done:** logging what people ask. This note is right that it is the honest
+measure of what the walkthroughs failed to explain, but it needs a table and therefore a
+migration. The "Email this to Atanas" button is the manual version of it for now.

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { HELP_JOURNEYS } from "@/lib/helpJourneys";
 import Walkthrough from "@/components/help/Walkthrough";
 import Link from "next/link";
+import HelpChat from "@/components/help/HelpChat";
+import { helpChatOn } from "@/lib/helpChat";
 
 // What the app can do, listed, each one openable.
 //
@@ -42,6 +44,14 @@ export default function Help() {
         )}
       </div>
 
+      {/* Off by default. Without NEXT_PUBLIC_HELP_CHAT the page ends at the
+          walkthroughs, mentions no chat, and asks nothing of any model. */}
+      {helpChatOn() && <HelpChat />}
+
+      {/* Always, chat or no chat. This is the last rung of the ladder and the
+          only one that reaches a person; hiding it behind having typed
+          something into the chat would leave somebody who does not know what
+          to type with nowhere to go. */}
       <p className="mt-6 text-sm text-neutral-600">
         Not here?{" "}
         <Link href="/feedback" className="font-medium underline">Ask us</Link> and we will answer, and add it.

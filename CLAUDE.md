@@ -566,6 +566,18 @@ challenge — it renders, then sits pending for ever with no error. That is the 
 not the app. An hour was lost to diagnosing a hostname problem that did not exist; the
 Cloudflare API showed the config had been right all along, and a real Chrome solved it
 first time. Verify this one in a real browser, or not at all.
+`NEXT_PUBLIC_HELP_CHAT` (**not set**: `/help` ends at the walkthroughs, mentions no chat
+and asks nothing of any model; the route itself answers 404 while it is off, because a route
+that replies when the feature is meant to be off is an open model endpoint nothing in the UI
+admits to). It is the last rung of the help ladder and the **first thing in the app that
+costs money every time somebody uses it with no natural limit** — scanning has one, people
+only have so many receipts — so the fences ship with it: signed in only,
+`gemini-3.5-flash-lite`, 40 an hour per account and 400 overall, a six-message window
+(cost grows with what is sent *back*, not with the question), and a 600-character question.
+It is grounded in `HELP_JOURNEYS`, not a hand-written summary, so it cannot describe a
+button that has moved. It is told three things it may not break: say when it does not know,
+it cannot see their records, and it is not their accountant. Every refusal leads to the
+email, which is the rung below. `harness/test-help-chat.mjs` (37 checks).
 `NEXT_PUBLIC_INVITES` (not set: invite-a-friend renders nothing, asks for no code and
 claims nothing without it, so it ships changing nothing. migration-037 is already applied,
 so turning it on is one env var). `SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
@@ -618,7 +630,18 @@ answer is cached for six hours; **a consultation number never is**, because hand
 yesterday's reference would be a reference to a check that did not happen. A 403 on the
 two-number form means *our* number was refused, not theirs, so the route falls back to the
 plain lookup rather than telling somebody nothing. The number is shown under the box and
-**not yet stored** — keeping it against a supplier needs a migration (queued). VIES
+**kept** (migration-038, wired 2026-09-25): `vatChecksStore.recordDaily` writes one row per
+number per day, from the two client forms, after the contact is saved. Three things make
+that work. Our own number is sent **only once somebody has typed in the box** — the lookup
+fires on mount, and a consultation lookup is never cached, so merely opening thirty edit
+panels used to burn the whole 30-an-hour IP limit on references nobody kept. The day is
+reckoned in **Europe/London** (`ukDate`, beside `todayISO`), or a second reference would
+slip through at 00:30 in July and be refused at 23:30. And history keys on the **number**,
+not the contact, because a number is often checked before the contact exists and the table
+grants no UPDATE, so those rows could never be attached later. The rules are in
+`src/lib/vatCheckRules.ts` — not in the store, the helper and the component — so
+`harness/test-vat-checks.mjs` (26 checks) holds the real ones; `KeptVatChecks` shows the
+latest under the box, since a reference nobody sees is the same as no reference. VIES
 cannot stand in for it: GB numbers left VIES after Brexit and only Northern Ireland's XI
 numbers are still there. **Without the credentials the boxes still catch a typo** — a UK
 VAT number carries its own check digits (`src/lib/vatNumber.ts`, mod 97 and mod 97-55, both
