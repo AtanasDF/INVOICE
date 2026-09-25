@@ -39,3 +39,29 @@ export function ukDate(when: string | Date): string {
   const d = typeof when === "string" ? new Date(when) : when;
   return Number.isNaN(d.getTime()) ? "" : UK_DATE.format(d);
 }
+
+// Date arithmetic on a date string, anchored at UTC midnight.
+//
+// This is correct and deliberate, and is NOT the bug the rest of this file is
+// about: asking UTC what day it is *now* is wrong, but moving a known date by
+// a known number of days has no timezone in it. Mixing the two -- UTC parsing
+// with local getDate/setDate before a toISOString round-trip -- is a real
+// off-by-one that breaks in either direction depending on the viewer.
+//
+// There were FOUR copies of this (reminderTemplates, freeInvoiceDraft, and a
+// local one each in invoices/new and invoices/[id]) and they did not agree:
+// two threw a RangeError on a date that would not parse, two returned the
+// input untouched. Not reachable today -- invoices coerce an empty due date to
+// null and receipts' due dates never come through here -- but four functions
+// of one name behaving two ways is how the next caller picks the wrong one.
+//
+// Unified on the forgiving behaviour, because that is the one currently
+// reachable: the Free-invoice draft can hold a half-typed date, and throwing
+// there would white-screen the page somebody is typing into.
+export function addDays(iso: string, days: number): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}

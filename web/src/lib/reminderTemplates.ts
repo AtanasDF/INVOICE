@@ -31,11 +31,10 @@ export const SUBJECT: Record<ReminderKind, string> = {
   final: "final reminder",
 };
 
-export function addDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+// One implementation, in today.ts. Re-exported here because six files import
+// it from this module and the name belongs to dates, not to reminders.
+import { addDays } from "@/lib/today";
+export { addDays };
 
 export function longDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);

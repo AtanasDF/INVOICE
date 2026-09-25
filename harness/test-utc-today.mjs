@@ -73,6 +73,24 @@ check("ukDate is exported from it, for any other moment", /export function ukDat
 // start producing "21/09/2026" and every date comparison would break.
 check("it formats in ISO order", /"en-CA"/.test(today));
 
+// ---------------------------------------------------------------------------
+// One addDays, not four
+// ---------------------------------------------------------------------------
+// There were four, and they did not agree: reminderTemplates and the two
+// page-local copies threw a RangeError on a date that would not parse, while
+// freeInvoiceDraft returned the input untouched. Every one of them was right
+// about real dates, which is exactly why they all survived. Not a live bug --
+// invoices coerce an empty due date to null and receipts' never reach it --
+// but four functions of one name behaving two ways is how the next caller
+// picks the wrong one.
+const defines = files.filter((f) => /^\s*(export )?function addDays\b/m.test(fs.readFileSync(f, "utf8")));
+check("addDays is defined in exactly one place", defines.length === 1, defines.map((f) => path.relative(APP, f)).join(", "));
+check("...and that place is today.ts", defines[0]?.endsWith("lib/today.ts"), defines.map((f) => path.relative(APP, f)).join(", "));
+// It must not throw on a date it cannot read: the Free-invoice draft holds a
+// half-typed date while somebody is typing, and a throw there white-screens
+// the page under their hands.
+check("it guards a date it cannot parse", /if \(!\/\^\\d\{4\}/.test(today) || /test\(iso\)/.test(today), "no guard in addDays");
+
 // Anything that needs today should be importing it rather than rolling its
 // own. This is a floor, not a ceiling: it only proves the helper is in real use.
 const usesToday = files.filter((f) => /todayISO\s*\(/.test(fs.readFileSync(f, "utf8"))).length;

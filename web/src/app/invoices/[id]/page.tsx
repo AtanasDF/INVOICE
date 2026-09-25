@@ -20,16 +20,9 @@ import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
 import { celebratePaid } from "@/components/PaidCelebration";
 import { loadFailed, saveFailed } from "@/lib/errorText";
-import { todayISO } from "@/lib/today";
+import { todayISO, addDays } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import { logoSrc } from "@/lib/logo";
-
-function addDays(dateStr: string, days: number): string {
-  // Same UTC-safe pattern as everywhere else in the app.
-  const d = new Date(dateStr);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 

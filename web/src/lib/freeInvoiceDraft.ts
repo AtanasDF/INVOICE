@@ -74,12 +74,11 @@ export function todayIso(): string {
   return todayISO();
 }
 
-export function addDays(iso: string, days: number): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return iso;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+// One implementation, in today.ts. This copy built its Date from local parts
+// while the other anchored at UTC; they agreed on every real date, which is
+// exactly why two of them survived this long.
+import { addDays } from "@/lib/today";
+export { addDays };
 
 export function termsDays(terms: string): number | null {
   if (terms === "Upon receipt") return 0;

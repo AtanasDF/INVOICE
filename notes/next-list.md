@@ -89,7 +89,16 @@ Nothing here needs a decision from Atanas unless it says so.
 
 ## C. Tidying that is worth the time
 
-8. **Two `addDays`, two implementations.** `reminderTemplates.ts` anchors at
+8. ~~**Two `addDays`, two implementations.**~~ **DONE — there were FOUR**, and they did not
+   agree. `reminderTemplates` and the two page-local copies (`invoices/new`, `invoices/[id]`)
+   threw a RangeError on a date that would not parse; `freeInvoiceDraft` returned the input
+   untouched. **Not a live bug** — invoices coerce an empty due date to null before it is
+   stored, and receipts' due dates never reach `addDays` — and I checked that rather than
+   claiming it. One implementation now, in `today.ts`, unified on the forgiving behaviour
+   because that is the reachable one: a Free-invoice draft holds a half-typed date, and a
+   throw there would white-screen the page under somebody's hands. `test-utc-today` fails if
+   a fifth copy appears.
+   Original: `reminderTemplates.ts` anchors at
    `${iso}T00:00:00Z` and does UTC arithmetic; `freeInvoiceDraft.ts` builds a local-time
    Date from the parts. **Checked: neither is wrong** — London's DST moves at 01:00, so
    local midnight always exists — but two functions of the same name doing the same job

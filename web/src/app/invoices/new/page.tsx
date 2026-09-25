@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { addDays } from "@/lib/today";
 import { money } from "@/lib/money";
 import { pricesFor, savedPrices } from "@/lib/savedPrices";
 import { useRouter } from "next/navigation";
@@ -25,16 +26,6 @@ import ContactField, { type Usage } from "@/components/ContactField";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
 import { saveFailed, SIGNED_OUT } from "@/lib/errorText";
-
-function addDays(dateStr: string, days: number): string {
-  // UTC methods throughout -- see the comment on the equivalent helper in
-  // expenses/page.tsx for why: mixing UTC parsing with local getDate/setDate
-  // before a toISOString round-trip is a real off-by-one-day bug depending
-  // on the viewer's timezone offset, confirmed to break in either direction.
-  const d = new Date(dateStr);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 type ScanLineItem = { description: string; quantity: number; unitPrice: number };
 type ScanApiResult = {
