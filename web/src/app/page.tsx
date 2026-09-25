@@ -529,6 +529,24 @@ function Dashboard() {
           &ldquo;Create an invoice&rdquo; photographs an old one and fills the next in for you, or{" "}
           <Link href="/invoices/new" className="font-medium text-neutral-800 underline">write one by hand</Link>.
         </p>
+        {/* What the app still needs before an invoice is right: shown only
+            while something is missing, and put away for good by anyone who
+            would rather get on with it.
+            It used to sit near the foot of the page. Measured on a brand new
+            account, that put it 1.8 screens down a 4.1-screen dashboard,
+            below a file library reading "0 of 0" and "No pictures that year"
+            -- so the one card that says what to do next, on the one account
+            that needs it, was the last thing anybody saw. It is above the
+            upload panel and the library now, and still below the tiles,
+            because the big scan coming first is his decision and pinned by
+            test-dashboard. */}
+        {profile && (
+          <GettingStarted
+            profile={profile}
+            customers={contacts.filter((c) => c.kind === "client" && !c.archived).length}
+            documents={allReceipts.length + allInvoices.length}
+          />
+        )}
         <UploadPanel
           href="/scan"
           inboxAddress={inbox}
@@ -561,17 +579,6 @@ function Dashboard() {
           <Link href="/quotes/new" className="inline-block py-1 font-medium text-neutral-700 underline">Make a quote</Link>
         </div>
       </section>
-
-      {/* What the app still needs before an invoice is right: shown only
-          while something is missing, and put away for good by anyone who
-          would rather get on with it. */}
-      {profile && (
-        <GettingStarted
-          profile={profile}
-          customers={contacts.filter((c) => c.kind === "client" && !c.archived).length}
-          documents={allReceipts.length + allInvoices.length}
-        />
-      )}
 
       {/* Three panels, one page. */}
       <div role="tablist" aria-label="What to look at" className="flex gap-1 rounded-xl border bg-white p-1 shadow-sm">

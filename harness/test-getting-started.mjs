@@ -47,6 +47,26 @@ try {
   check("the progress is announced, not only drawn", await page.evaluate(() =>
     !!document.querySelector('[role="progressbar"][aria-valuenow="0"][aria-valuemax="6"]')), "no progressbar");
 
+  // Where it sits, not just that it exists. It used to be near the foot of the
+  // dashboard: measured on a brand new account that put it 1.8 screens down a
+  // 4.1-screen page, below a file library reading "0 of 0" and "No pictures
+  // that year" -- the one card telling somebody what to do next, on the one
+  // account that needs it, was the last thing they would ever reach.
+  //
+  // Still below the four tiles, because the big scan coming first is Atanas's
+  // own ordering and test-dashboard pins it.
+  const where = await page.evaluate(() => {
+    const at = (t) => {
+      const e = [...document.querySelectorAll("h1,h2,h3,span,a,p")].filter((x) => x.children.length === 0 && (x.textContent || "").trim().includes(t))[0];
+      return e ? Math.round(e.getBoundingClientRect().top + window.scrollY) : null;
+    };
+    return { scan: at("Scan a receipt"), setup: at("Setting up"), upload: at("Upload a document"), library: at("Your file library"), screens: +(at("Setting up") / window.innerHeight).toFixed(1) };
+  });
+  check("setting up comes before the upload panel and the file library",
+    where.setup !== null && where.upload !== null && where.setup < where.upload && where.setup < where.library, JSON.stringify(where));
+  check("...and still after the big scan", where.scan !== null && where.scan < where.setup, JSON.stringify(where));
+  check("...so a new account meets it within a screen of arriving", where.screens <= 1.2, JSON.stringify(where));
+
   // Each unfinished step is a link somebody can follow.
   //
   // Scoped to the step LIST, not the whole section. It used to count every
