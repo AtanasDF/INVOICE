@@ -85,6 +85,16 @@ can show the same thing (details in `notes/claude-notes.md`).
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **The app still
    does nothing with any of it until `SCAN_LIMITS=on` in Vercel.** Applied and verified up
+   to **039** (038: `vat_checks`, the record that a VAT number was checked — one row per
+   check, no update and no delete granted, because evidence you can quietly edit is not
+   evidence; its FK to `clients` carries `user_id`, which needed a `unique (id, user_id)`
+   on clients, because FK checks bypass RLS exactly as 017 found. 039: `clients.
+   reverse_charge_end_user`, the customer's written end-user declaration that turns the VAT
+   reverse charge off. Both run 2026-09-25 and verified against the live catalog: table,
+   columns, indexes, RLS, policies, the FK's ON DELETE, and the grants — `authenticated`
+   has INSERT and SELECT only on vat_checks and `anon` appears nowhere; the two existing
+   client rows were untouched and both defaulted to false. Neither needed a backup file and
+   both say so in their headers.) Previously verified up
    to **037** (invite a friend: `invite_codes`, `invite_claims`, `scan_bonuses`, and
    `my_invite_code` / `claim_invite` / `reward_invite_if_due`, with `take_scans` and
    `scan_allowance` redefined to count bonuses; 037 needed no backup, altering no existing

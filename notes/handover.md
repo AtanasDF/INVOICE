@@ -11,10 +11,11 @@
    **The Developer Hub session times out fast** — expect to sign in again each time.
    The production application is named **FRAGOV LTD** to match the organisation; that is
    free of cost because the API is application-restricted, so no customer ever sees it.
-2. **Two migrations, both on branches, neither merged** (rule 4):
-   `feature/vat-check-record` (038: keep HMRC's consultation number) and
-   `feature/end-user-declaration` (039: the written end-user declaration that turns the
-   reverse charge off). Both are additive, need no backup file, and say so in their headers.
+2. ~~Two migrations on branches~~ — **both run and verified 2026-09-25, both merged.**
+   038 (`vat_checks`) and 039 (`clients.reverse_charge_end_user`). Verified against the live
+   catalog rather than the success message: the FK's ON DELETE is SET NULL, `authenticated`
+   has INSERT and SELECT only, `anon` appears nowhere, and the two existing client rows were
+   untouched.
 3. **Check Settings → VAT registered is OFF** on his own account. He said on 25/09 that he
    is not VAT registered; with it on, his invoices would add VAT he cannot legally charge.
 
