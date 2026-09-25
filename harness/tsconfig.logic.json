@@ -53,6 +53,7 @@
     "/Users/nasko/Desktop/INVOICE/web/src/lib/jobs.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/latePayment.ts",
     "/Users/nasko/Desktop/INVOICE/web/src/lib/vatNumber.ts",
-    "/Users/nasko/Desktop/INVOICE/web/src/lib/reverseCharge.ts"
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/reverseCharge.ts",
+    "/Users/nasko/Desktop/INVOICE/web/src/lib/reverseChargePrompt.ts"
   ]
 }

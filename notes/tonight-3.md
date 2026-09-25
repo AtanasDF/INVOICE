@@ -8,7 +8,7 @@ polish. Tick as they land, with the commit.
 
 ## A. Wrong numbers and wrong documents (a bug here costs real money)
 
-- [ ] **A1. VAT domestic reverse charge for construction.** The app already does CIS, so it
+- [x] **A1. VAT domestic reverse charge for construction.** (275d6e7, and the prompt after it) The app already does CIS, so it
   already serves the exact audience this applies to — and today it puts VAT on an invoice
   that legally must not carry it. HMRC's rules, read 2026-09-25 from their own guidance:
   applies when supplier and customer are both UK VAT registered, the payment is reported
@@ -20,10 +20,11 @@ polish. Tick as they land, with the commit.
   disregard: if the reverse-charge part is 5% or less of the whole, normal VAT applies.
   Zero-rated work is out. Supplier enters the NET only on their return — no output tax.
   Credit notes need their own wording.
-- [ ] **A2. The end-user declaration.** A flag per customer ("they have told me in writing
+- [~] **A2. The end-user declaration.** The ASK is built and shipped; STORING their written declaration per customer needs a migration, so it stays on the list as a branch.
+- [ ] **A2b. The end-user declaration, stored.** A flag per customer ("they have told me in writing
   they are an end user / intermediary supplier"), because that single fact flips the whole
   treatment and it is the customer's statement, not ours to guess.
-- [ ] **A3. The VAT return under reverse charge** — `src/lib/vatReturn.ts` must not put
+- [x] **A3. The VAT return under reverse charge** — already correct by construction, now pinned. — `src/lib/vatReturn.ts` must not put
   reverse-charge sales in box 1, and must still put the net in box 6.
 
 ## B. The part of his brief nothing has been built for

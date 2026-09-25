@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
 import { VAT_RATES, VAT_RATE_KINDS, VAT_RATE_LABELS, VatRateKind, computeInvoiceTotals } from "@/lib/vat";
+import { reverseChargeAsk, REVERSE_CHARGE_ASK_TITLE, REVERSE_CHARGE_ASK_BODY, REVERSE_CHARGE_ASK_UNLESS } from "@/lib/reverseChargePrompt";
 import { draftPlaceholderNumber, suggestedInvoiceNumber } from "@/lib/invoiceNumber";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { FreeInvoiceDraft, clearFreeInvoiceDraft, readFreeInvoiceDraft, termsDays, todayIso } from "@/lib/freeInvoiceDraft";
@@ -127,6 +128,9 @@ export default function NewInvoicePage() {
       : [{ ...BLANK_ITEM }]
   );
   const [cisRate, setCisRateState] = useState<number | null>(() => (draft?.cis.enabled ? draft.cis.rate : null));
+  // Answered once per invoice, either way: an amber box that comes back
+  // after every keystroke is not a question, it is nagging.
+  const [reverseChargeDismissed, setReverseChargeDismissed] = useState(false);
   // Once CIS is set by hand, picking a client or copying an invoice leaves it.
   const cisTouchedRef = useRef(!!draft?.cis.enabled);
   // CIS a scanned invoice showed: picking the customer afterwards keeps it
@@ -837,6 +841,48 @@ export default function NewInvoicePage() {
         />
 
         <CisToggle rate={cisRate} onChange={setCisRate} />
+
+        {/* The rate has been in the picker for years and nobody picked it,
+            because nobody knows the rule exists. Switching CIS on for a
+            limited company describes, in the app's own words, exactly the
+            situation the reverse charge covers -- so ask. It asks rather
+            than decides: whether they are really VAT registered, and whether
+            they have sent an end-user declaration, are things only the
+            person knows. */}
+        {(() => {
+          const client = clients.find((c) => c.id === clientId);
+          const ask = reverseChargeAsk({
+            vatRegistered: profile?.vatRegistered ?? false,
+            cisRate,
+            customerIsCompany: client?.isCompany ?? false,
+            customerVatNumber: client?.vatNumber ?? "",
+            endUserDeclared: false,
+            items,
+          });
+          if (!ask || reverseChargeDismissed) return null;
+          return (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-neutral-900">
+              <p className="font-medium">{REVERSE_CHARGE_ASK_TITLE}</p>
+              <p className="mt-1">{REVERSE_CHARGE_ASK_BODY}</p>
+              <p className="mt-1 text-neutral-700">{REVERSE_CHARGE_ASK_UNLESS}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setItems((was) => was.map((it, i) => (ask.becomes[i] ? { ...it, vatRate: ask.becomes[i] } : it)));
+                    setReverseChargeDismissed(true);
+                  }}
+                  className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+                >
+                  They pay the VAT
+                </button>
+                <button type="button" onClick={() => setReverseChargeDismissed(true)} className="text-sm font-medium text-neutral-700 underline">
+                  No, charge VAT as usual
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="space-y-2">
           <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">

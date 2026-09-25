@@ -18,6 +18,7 @@
 //   gov.uk/guidance/vat-reverse-charge-technical-guide
 import { reverseChargeBreakdown, reverseChargeVat, reverseChargeNote, hasReverseCharge, isReverseCharge, REVERSE_CHARGE_WORDING, reverseChargeCreditNote } from "./gen/lib/reverseCharge.js";
 import { computeInvoiceTotals, VAT_RATE_KINDS, VAT_RATE_LABELS } from "./gen/lib/vat.js";
+import { reverseChargeAsk } from "./gen/lib/reverseChargePrompt.js";
 import { vatFigures } from "./gen/lib/vatReturn.js";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -92,6 +93,31 @@ check("and the whole net of both", mixedFigures.box6 === 1500, JSON.stringify(mi
 check("an unregistered account charges nothing and shifts nothing", computeInvoiceTotals(both, false).totalVat === 0 && computeInvoiceTotals(both, false).total === 1200);
 
 
+// ---- Asking, when the app can see the situation ----------------------------
+// The rate sat in the picker for years and almost nobody chose it, because
+// almost nobody knows the rule exists. What must NOT happen is the app
+// asking when the answer is no: a wrong prompt on a tax question teaches
+// people to ignore prompts.
+const base = { vatRegistered: true, cisRate: 20, customerIsCompany: true, customerVatNumber: "GB220430231", endUserDeclared: false, items: [line(100, "standard")] };
+check("asks on CIS work for a VAT-registered company", !!reverseChargeAsk(base));
+check("and offers to shift the standard-rated line", reverseChargeAsk(base).becomes[0] === "reverse_charge", JSON.stringify(reverseChargeAsk(base)));
+check("reduced-rated work shifts to the 5% kind", reverseChargeAsk({ ...base, items: [line(100, "reduced")] }).becomes[0] === "reverse_charge_reduced");
+
+check("never when the account is not VAT registered", reverseChargeAsk({ ...base, vatRegistered: false }) === null);
+check("never without CIS: the charge follows the scheme", reverseChargeAsk({ ...base, cisRate: null }) === null);
+check("never for a private customer", reverseChargeAsk({ ...base, customerIsCompany: false, customerVatNumber: "" }) === null);
+check("never once they have declared they are an end user", reverseChargeAsk({ ...base, endUserDeclared: true }) === null);
+check("never twice: silent once the lines are already reverse charge", reverseChargeAsk({ ...base, items: [line(100, "reverse_charge")] }) === null);
+// Zero-rated and exempt work is outside the charge, so there is nothing to
+// offer and nothing to ask.
+check("nothing to ask when every line is zero-rated", reverseChargeAsk({ ...base, items: [line(100, "zero")] }) === null);
+check("nor exempt", reverseChargeAsk({ ...base, items: [line(100, "exempt")] }) === null);
+// A sole trader with a VAT number is still a business.
+check("a sole trader with a VAT number counts", !!reverseChargeAsk({ ...base, customerIsCompany: false }));
+// Mixed: only the lines that can shift are offered.
+const mix = reverseChargeAsk({ ...base, items: [line(100, "standard"), line(50, "zero"), line(20, "reduced")] });
+check("only the lines the charge covers are offered", mix.lines.join() === "0,2" && mix.becomes[2] === "reverse_charge_reduced", JSON.stringify(mix));
+
 // ---- On the document a contractor actually receives -------------------------
 // The logic above is worth nothing if the words never reach the page. This
 // is the whole bug: the rate existed, the VAT came off, and the invoice
@@ -103,6 +129,8 @@ Object.assign(db.tables, { receipts: [], receipt_pages: [], credit_notes: [], in
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, address: "1 Test Street", vat_number: "GB220430231", custom_categories: null });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Big Builders Ltd", email: "a@b.c", kind: "client", archived: false, is_company: true, address: "", vat_number: "GB660454836", payment_terms: "", default_currency: "", contact_person: "", phone: "", reminders_enabled: true, company_number: null });
+const NEW_CLIENT = newId();
+db.tables.clients.push({ id: NEW_CLIENT, user_id: "x", name: "Fresh Contractors Ltd", email: "f@b.c", kind: "client", archived: false, is_company: true, address: "", vat_number: "GB660454836", payment_terms: "", default_currency: "", contact_person: "", phone: "", reminders_enabled: true, company_number: null });
 const RC = newId(), PLAIN = newId();
 db.tables.invoices.push(
   { id: RC, user_id: "x", client_id: C, date: day(-3), number: "INV-000011", items: [{ description: "Plastering, first floor", quantity: 1, unitPrice: 2400, vatRate: "reverse_charge", kind: "labour" }, { description: "Bonding and scrim", quantity: 1, unitPrice: 300, vatRate: "reverse_charge_reduced", kind: "materials" }], notes: "", due_date: day(25), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: 20 },
@@ -133,9 +161,79 @@ try {
 
   // The picker offers both, in words somebody can choose between.
   await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
-  await sleep(1600);
+  await sleep(1800);
   const options = await page.evaluate(() => [...document.querySelectorAll("select option")].map((o) => o.textContent.trim()));
   check("the invoice form offers both reverse-charge rates", options.includes("Reverse charge (20%)") && options.includes("Reverse charge (5%)"), JSON.stringify(options.filter((o) => /Reverse/.test(o))));
+
+  // Writing the invoice the rule is about: does the app say anything?
+  const asked = await page.evaluate(async (clientId) => {
+    const setNative = (el, v) => {
+      const proto = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value").set.call(el, v);
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const pick = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === clientId));
+    if (!pick) return { noPicker: true };
+    setNative(pick, clientId);
+    await new Promise((r) => setTimeout(r, 500));
+    const cis = [...document.querySelectorAll("input[type=checkbox]")].find((c) => (c.closest("label")?.textContent ?? "").includes("CIS subcontractor"));
+    if (!cis) return { noCis: true };
+    cis.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const price = [...document.querySelectorAll("input")].find((i) => (i.getAttribute("aria-label") ?? "") === "Unit price");
+    if (price) setNative(price, "1000");
+    await new Promise((r) => setTimeout(r, 700));
+    return { text: document.body.innerText };
+  }, NEW_CLIENT);
+  check("it asks whether the invoice should charge VAT at all", /Should this invoice charge VAT at all\?/.test(asked.text ?? ""), JSON.stringify(asked).slice(0, 200));
+  check("and explains what happens if they charge it anyway", /cannot reclaim it/.test(asked.text ?? ""));
+  check("and names the one thing that turns it off", /end user/i.test(asked.text ?? ""));
+
+  // Saying yes must actually change the lines, not just dismiss the box.
+  const after = await page.evaluate(async () => {
+    const btn = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "They pay the VAT");
+    if (!btn) return { noButton: true };
+    btn.click();
+    await new Promise((r) => setTimeout(r, 700));
+    const vat = [...document.querySelectorAll("select")].map((s) => s.options[s.selectedIndex]?.textContent?.trim()).filter(Boolean);
+    return { vat, stillAsking: /Should this invoice charge VAT at all\?/.test(document.body.innerText) };
+  });
+  check("saying yes switches the lines to reverse charge", (after.vat ?? []).includes("Reverse charge (20%)"), JSON.stringify(after));
+  check("and the question does not come back", after.stillAsking === false, JSON.stringify(after));
+
+  // What the form really learns from a past invoice. The first version of
+  // this test assumed the VAT rate came back with the customer; it does not
+  // -- the rate is learned per LINE DESCRIPTION, and the CIS rate per
+  // customer. Worth pinning both, because a plasterer billing the same
+  // contractor for the same work every month is the whole use case.
+  await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
+  await sleep(1800);
+  const learned = await page.evaluate(async (clientId) => {
+    const setNative = (el, v) => {
+      const proto = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value").set.call(el, v);
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const pick = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === clientId));
+    setNative(pick, clientId);
+    await new Promise((r) => setTimeout(r, 900));
+    const cisOn = [...document.querySelectorAll("select")].map((s) => s.options[s.selectedIndex]?.textContent?.trim()).includes("20% (registered)");
+    const desc = [...document.querySelectorAll("input")].find((i) => i.getAttribute("aria-label") === "Description");
+    setNative(desc, "Plastering, first floor");
+    // On blur, not on input: the app waits for a finished description
+    // rather than guessing from a half-typed prefix.
+    desc.focus();
+    desc.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    desc.blur();
+    await new Promise((r) => setTimeout(r, 900));
+    const vat = [...document.querySelectorAll("select")].map((s) => s.options[s.selectedIndex]?.textContent?.trim()).filter(Boolean);
+    return { cisOn, vat, asking: /Should this invoice charge VAT at all\?/.test(document.body.innerText) };
+  }, C);
+  check("CIS comes back on by itself for a customer billed that way before", learned.cisOn === true, JSON.stringify(learned));
+  check("and the same line of work comes back reverse-charged", (learned.vat ?? []).includes("Reverse charge (20%)"), JSON.stringify(learned));
+  check("so there is nothing left to ask", learned.asking === false, JSON.stringify(learned));
 } catch (e) { console.log("ERROR", e.message); results.push(false); }
 finally { await browser.close(); }
 
