@@ -240,6 +240,12 @@ export default function NewClientPage() {
             Individual
           </label>
         </div>
+        {/* A visible label, not just a placeholder: the box carries an id so a
+            refusal can point at it, and an id with no label is a box with no
+            name at all -- which is how the accessibility fix broke this one. */}
+        <label className="text-xs text-neutral-500" htmlFor="new-contact-name">
+          {isCompany ? "Company name" : "Full name"}
+        </label>
         {isCompany ? (
           <CompanyNameInput
             id="new-contact-name"
@@ -259,7 +265,7 @@ export default function NewClientPage() {
             }}
           />
         ) : (
-          <input aria-label="Full name"
+          <input
             id="new-contact-name"
             aria-invalid={error === NO_NAME || undefined}
             aria-describedby={error === NO_NAME ? "new-contact-error" : undefined}

@@ -16,6 +16,7 @@ const NO_TIP = {
   "reset-password": "one box and a button, reached from an email",
   "privacy": "a legal page, read once, by somebody who came looking for it",
   "terms": "a legal page, read once, by somebody who came looking for it",
+  "security": "read once, by a researcher who came looking for it; the page IS the explanation",
   "how-to-invoice": "the whole page is the explanation; a note on top of it would be explaining the explaining",
   "offline": "shown when there is no signal; a note about how to use it would be cruel",
   "i/[token]": "a customer's copy of an invoice. They do not have the app and never will",
