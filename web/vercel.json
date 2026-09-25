@@ -5,6 +5,9 @@
       "main": true
     }
   },
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/notifications/check",

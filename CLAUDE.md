@@ -25,6 +25,15 @@ can show the same thing (details in `notes/claude-notes.md`).
   `receipts@` still forwards to Gmail. The Vercel CLI is signed in too (`atanasdf`,
   project `invoice`; `web/.vercel/` is ignored).
 - Live at https://invoice-omega-rust.vercel.app, auto-deployed from `main` by Vercel.
+  **The functions run in `fra1` (Frankfurt), set by `regions` in `web/vercel.json`** — the
+  same place as the Supabase database, which is in AWS `eu-central-1`. Found on 2026-09-25
+  by resolving `db.<ref>.supabase.co` (IPv6 in `2a05:d014::/35`) against Amazon's published
+  ip-ranges.json, because Supabase's REST host sits behind Cloudflare and gives nothing away.
+  Before that the functions were on Vercel's Hobby default, `iad1` (Washington DC): every
+  database query crossed the Atlantic twice, and UK accounting records were processed in the
+  US by a function holding the service role key. `x-vercel-id: <edge>::<function>` on any API
+  response is how to check it — the first code is only the edge that answered, not where the
+  work happened.
   Only `main` deploys (`web/vercel.json` `git.deploymentEnabled`): the Hobby plan allows
   100 deployments a day, and branch previews used them up on 2026-09-19.
   Supabase project `wecfwjxzyzzrcwbwnwpo`.
