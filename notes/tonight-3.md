@@ -50,20 +50,20 @@ polish. Tick as they land, with the commit.
 ## D. Then four hours of testing, on everything I can think of
 
 Not a re-run of the suites — new attacks:
-- [ ] **D1. Money that does not add up.** Property-based: random invoices, credit notes,
+- [x] **D1. Money that does not add up.** Property-based: random invoices, credit notes,
   payments, deposits, CIS rates and VAT rates; assert the invariants (what is owed never
   goes negative, credit notes never make a refund out of thin air, the VAT return's boxes
   agree with the invoices, penny-exactness end to end).
-- [ ] **D2. Two tabs, one record.** Every concurrent path: the same invoice issued twice,
+- [x] **D2. Two tabs, one record.** Every concurrent path: the same invoice issued twice,
   a quote accepted online while the owner invoices it, a payment recorded twice, a deposit
   claimed in two windows.
 - [ ] **D3. The half-connection.** Not "offline", but slow, flaky and truncated: a save
   that reaches the database and loses the reply, a scan that times out mid-read.
-- [ ] **D4. Dates that break things.** Leap day, BST boundaries both ways, a quarter end at
+- [x] **D4. Dates that break things.** Leap day, BST boundaries both ways, a quarter end at
   midnight, a due date on 29 February, a tax year boundary.
 - [ ] **D5. Documents that fight back.** A 40-page PDF, a photo with no document in it, a
   receipt in another currency with no rate, a credit note bigger than its invoice.
-- [ ] **D6. Somebody else's account.** Every route and RPC as the wrong user and as anon.
+- [x] **D6. Somebody else's account.** Every route and RPC as the wrong user and as anon.
 - [ ] **D7. A phone in the real world.** 320px, 2x text, dark mode, reduce-motion, one hand,
   keyboard only — together, not one at a time.
 - [ ] **D8. Mutation testing again**, extended past the eight it breaks today.
