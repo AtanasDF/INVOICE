@@ -86,6 +86,7 @@ export async function loadPublicQuote(token: string): Promise<PublicQuote | null
           contactPerson: client.contact_person ?? "",
           phone: "",
           companyNumber: "",
+          endUserDeclared: false,
           remindersEnabled: true,
           archived: false,
         }

@@ -56,6 +56,10 @@ export default function NewClientPage() {
   const [contactPerson, setContactPerson] = useState("");
   const [phone, setPhone] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(true);
+  // Their statement, not our guess: the one thing that turns the VAT
+  // domestic reverse charge off for a customer is them telling you, in
+  // writing, that they are an end user. Off until somebody says otherwise.
+  const [endUserDeclared, setEndUserDeclared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A file picked with "Upload a file" on the list is read instead of
@@ -171,6 +175,7 @@ export default function NewClientPage() {
         contactPerson,
         phone,
         companyNumber: pickedCompany?.number ?? "",
+        endUserDeclared,
         remindersEnabled,
       });
       if (pickedCompany) rememberCompany(created.id, pickedCompany);
@@ -303,8 +308,22 @@ export default function NewClientPage() {
         </details>
         {kind === "client" && (
           <label className="flex items-center gap-2 text-sm text-neutral-700">
-            <input type="checkbox" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
-            Send automatic payment reminders to this customer
+            <input type="checkbox" className="shrink-0" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
+            <span className="wrap-anywhere">Send automatic payment reminders to this customer</span>
+          </label>
+        )}
+        {/* Only where it can apply: a private customer cannot be VAT
+            registered, so the reverse charge cannot reach them. */}
+        {kind === "client" && isCompany && (
+          <label className="flex items-start gap-2 text-sm text-neutral-700">
+            <input type="checkbox" className="mt-1 shrink-0" checked={endUserDeclared} onChange={(e) => setEndUserDeclared(e.target.checked)} />
+            <span className="wrap-anywhere">
+              They have told me in writing that they are an end user
+              <span className="block text-xs text-neutral-500">
+                For CIS work, this is what means you charge them VAT as normal instead of the reverse charge. Only tick it if they
+                have actually said so.
+              </span>
+            </span>
           </label>
         )}
         {error && <p id="new-contact-error" role="alert" className="text-sm text-red-600">{error}</p>}

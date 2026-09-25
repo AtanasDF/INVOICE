@@ -134,6 +134,8 @@ Object.assign(db.tables, { receipts: [], receipt_pages: [], credit_notes: [], in
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Plastering Ltd", vat_registered: true, invoice_prefix: "INV-", invoice_next_number: 10, address: "1 Test Street", vat_number: "GB220430231", custom_categories: null });
 const C = newId();
 db.tables.clients.push({ id: C, user_id: "x", name: "Big Builders Ltd", email: "a@b.c", kind: "client", archived: false, is_company: true, address: "", vat_number: "GB660454836", payment_terms: "", default_currency: "", contact_person: "", phone: "", reminders_enabled: true, company_number: null });
+const DECLARED = newId();
+db.tables.clients.push({ id: DECLARED, user_id: "x", name: "End User Homes Ltd", email: "e@u.c", kind: "client", archived: false, is_company: true, address: "", vat_number: "GB660454836", payment_terms: "", default_currency: "", contact_person: "", phone: "", reminders_enabled: true, company_number: null, reverse_charge_end_user: true });
 const NEW_CLIENT = newId();
 db.tables.clients.push({ id: NEW_CLIENT, user_id: "x", name: "Fresh Contractors Ltd", email: "f@b.c", kind: "client", archived: false, is_company: true, address: "", vat_number: "GB660454836", payment_terms: "", default_currency: "", contact_person: "", phone: "", reminders_enabled: true, company_number: null });
 const RC = newId(), PLAIN = newId();
@@ -206,6 +208,36 @@ try {
   });
   check("saying yes switches the lines to reverse charge", (after.vat ?? []).includes("Reverse charge (20%)"), JSON.stringify(after));
   check("and the question does not come back", after.stillAsking === false, JSON.stringify(after));
+
+  // ---- The customer who has told you they are an end user --------------------
+  // One sentence from them turns the whole thing off, and it is a fact about
+  // THEM, not about one invoice. Before this was kept, the app asked again on
+  // every invoice to that customer for ever -- and a question asked too often
+  // is a question people stop reading, which is how somebody ends up
+  // answering it wrongly on the one that mattered.
+  await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
+  await sleep(1800);
+  const declared = await page.evaluate(async (clientId) => {
+    const setNative = (el, v) => {
+      const proto = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value").set.call(el, v);
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const pick = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === clientId));
+    if (!pick) return { noPicker: true };
+    setNative(pick, clientId);
+    await new Promise((r) => setTimeout(r, 600));
+    const cis = [...document.querySelectorAll("input[type=checkbox]")].find((c) => (c.closest("label")?.textContent ?? "").includes("CIS subcontractor"));
+    if (cis && !cis.checked) cis.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const price = [...document.querySelectorAll("input")].find((i) => i.getAttribute("aria-label") === "Unit price");
+    if (price) setNative(price, "1000");
+    await new Promise((r) => setTimeout(r, 900));
+    return { asking: /Should this invoice charge VAT at all\?/.test(document.body.innerText), cisOn: !!cis?.checked };
+  }, DECLARED);
+  check("CIS work for a customer who has declared is set up the same way", declared.cisOn === true, JSON.stringify(declared));
+  check("but they are never asked about the reverse charge again", declared.asking === false, JSON.stringify(declared));
 
   // What the form really learns from a past invoice. The first version of
   // this test assumed the VAT rate came back with the customer; it does not

@@ -167,6 +167,7 @@ export default function ContactField({
         // The register pick's number goes on the row, so every device
         // checks the right company, not just this one.
         companyNumber: pending.number,
+        endUserDeclared: false,
         remindersEnabled: true,
       });
       rememberCompany(created.id, pending);

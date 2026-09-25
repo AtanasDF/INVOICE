@@ -55,6 +55,7 @@ type ClientDraft = {
   // being that company.
   companyNumber: string;
   remindersEnabled: boolean;
+  endUserDeclared: boolean;
 };
 
 function draftFor(c: Client): ClientDraft {
@@ -70,6 +71,7 @@ function draftFor(c: Client): ClientDraft {
     phone: c.phone,
     companyNumber: c.companyNumber ?? "",
     remindersEnabled: c.remindersEnabled,
+    endUserDeclared: c.endUserDeclared,
   };
 }
 
@@ -384,6 +386,25 @@ export default function ClientsPage() {
                           onChange={(e) => setDraft({ ...draft, remindersEnabled: e.target.checked })}
                         />
                         Send automatic payment reminders for invoices to them
+                      </label>
+                    )}
+                    {/* Their statement, not our guess. Only for a business:
+                        a private customer cannot be VAT registered, so the
+                        reverse charge cannot reach them. */}
+                    {c.kind === "client" && c.isCompany && (
+                      <label className="flex items-start gap-2 text-sm text-neutral-700">
+                        <input
+                          type="checkbox"
+                          className="mt-1 shrink-0"
+                          checked={draft.endUserDeclared}
+                          onChange={(e) => setDraft({ ...draft, endUserDeclared: e.target.checked })}
+                        />
+                        <span className="wrap-anywhere">
+                          They have told me in writing that they are an end user
+                          <span className="block text-xs text-neutral-500">
+                            For CIS work, this is what means you charge them VAT as normal instead of the reverse charge.
+                          </span>
+                        </span>
                       </label>
                     )}
                     <div className="flex gap-3">
