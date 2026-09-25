@@ -216,6 +216,36 @@ the same day (23 bugs). Review three's 11 were still open when this file was wri
   research.md`), then a design he reacts to, then the build. Today's page opens with "How
   do you want to start?" and four choices with a paragraph each.
 
+## Who is actually certified under the UK-US Data Bridge (checked 2026-09-25)
+
+The HMRC form's "outside the EEA with adequacy agreements" rests on the US firms we send
+data to being certified under the **UK Extension to the EU-US Data Privacy Framework**.
+Looked each one up on the Department of Commerce's own list (dataprivacyframework.gov),
+with Google as a control so an empty search could not be mistaken for an answer:
+
+| | On the list | UK Extension |
+|---|---|---|
+| **Google LLC** | yes, Active | **yes** |
+| **Vercel Inc.** | yes, Active | **yes** |
+| **Anthropic** | **not listed** | — |
+| Supabase | not listed | — (data is in Frankfurt, so nothing transfers) |
+
+So the default path is covered: **Gemini (Google) is the scanner unless somebody has set
+`scan-engine` to claude on their own device**, and Vercel, which runs the app, is certified
+too. Supabase does not need to be — the database is in the EEA.
+
+**Anthropic is not on the list**, so a transfer to it rests on standard contractual
+clauses in their terms rather than on adequacy. Two things follow:
+
+1. The privacy policy names "Google and Anthropic" as if both read everybody's documents.
+   They do not: Gemini is the default and Claude is a per-device opt-in. The wording should
+   say so, because as written it overstates where an ordinary user's receipt goes.
+2. If the Claude engine is ever made the default, or offered in the interface to everyone,
+   the transfer basis changes and the HMRC answer with it. Worth a line in the scan notes.
+
+Neither is urgent and neither is a breach; both are the difference between a true statement
+and a roughly true one.
+
 ## Where the data is actually processed (found 2026-09-25, needs Atanas)
 
 HMRC's production-credentials form asks "Where are your servers that process customer
