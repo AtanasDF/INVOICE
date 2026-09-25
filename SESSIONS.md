@@ -48,6 +48,9 @@ Every API door tried by a stranger, 61 ways, **with a positive control** so a br
 cannot be mistaken for a locked door. The days arithmetic goes wrong on. And documents that
 fight back.
 
+**Final state: 168 suites, 3052/3053.** The one is `test-public-links`, which is 31/31 on
+its own every time — the four-at-a-time load, as `CLAUDE.md` warns. All 27 mutations caught.
+
 **What I keep getting wrong, written down because it is the same thing every time.** Seven
 of my own checks were wrong before the app was. Three in one suite: I clicked the CIS box and
 turned it *off*, assumed the VAT rate was learned per customer when it is per line
@@ -56,6 +59,26 @@ because the function returns the first match so it *cannot* return two, one beca
 recomputed the windows in the test with the same arithmetic and checked my own sums. Each
 time the app was already doing the better thing, and each time the failure was me testing my
 assumption instead of looking.
+
+Later the same night it happened four more times, and the pattern never varied. A contrast
+reading of 1.10:1 was my parser treating `lab(37.88 …)` as RGB. Three "buried" buttons were
+scrolled out of view inside their own scroller. A trap for a lost reply caught the CORS
+preflight instead of the write, so both halves of that suite passed for the wrong reason.
+And I asserted a lost reply should leave the screen showing the truth — it should not; the
+app was told the write failed and has no way to know better, and saying so is the honest
+thing.
+
+**The one that matters most is not mine.** `test-readable` has been reporting green while
+never looking at a single amber, red, green or blue element in the app — its colour parser
+returned null for anything that was not `rgb()`, and null meant skip. Tailwind v4 writes
+everything else as `lab()`. Fixing it found dark-mode text at 2.69:1 and a dismiss button
+at 3.09:1 in all five light themes. **A check that silently skips is worse than no check,
+because it reports success.**
+
+One change was reverted on those grounds: I had hidden the Feedback pill on narrow screens
+because it appeared to cover the month roller. When the roller turned out to be a
+measurement error, the pill went back. A change whose justification does not survive
+checking does not get to stay because the reasoning still sounds good.
 
 ## 2026-09-24 (later) — The text size people already chose, the words for when it goes wrong, and checking a VAT number (Opus 5)
 
