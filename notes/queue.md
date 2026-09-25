@@ -82,7 +82,8 @@ page. Ask him: which screen, and a phone or a trackpad?
 
 ## Correctness
 
-20. `migration-036` has never been parsed by a database. No Postgres on this Mac; the first
+20. ~~`migration-036` has never been parsed by a database.~~ **Run and verified** (see
+    CLAUDE.md rule 2). Original: No Postgres on this Mac; the first
     real check is running it. **[his]**, with me watching.
 21. ~~A browser suite for the wall~~ **done**: `test-scan-wall`, 18 checks, which found
     three real bugs of its own (see the 2026-09-23 entry in `SESSIONS.md`).

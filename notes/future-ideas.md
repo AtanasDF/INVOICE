@@ -49,8 +49,10 @@ holds before it is built.
 3. **[done 2026-09-24]** **Saved prices.** The things he charges for, with his usual price, so a quote or an
    invoice is a few taps: pick, set the quantity, done. Learns from what he has already
    invoiced rather than asking him to type a price list.
-4. **Jobs.** A job or site holds its quote, its invoices, its receipts and its photos
-   together, so a whole job can be looked at (and its profit seen) in one place.
+4. **[done]** **Jobs.** A job or site holds its quote, its invoices, its receipts and its
+   photos together, so a whole job can be looked at (and its profit seen) in one place.
+   Built: `/jobs`, `src/lib/jobs.ts`, `harness/test-jobs.mjs` in `run-all.sh`. The note above
+   calling it "the one left" was stale.
 5. **[done 2026-09-24]** **Monday morning summary.** One push on a Monday: what came in last week, what's
    overdue, what's due this week, whose quote is waiting. Short enough to read on the way
    to a job.
