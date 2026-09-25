@@ -154,12 +154,24 @@ so a bill due in exactly three days would not have been pushed about. The cron r
 and never met that hour — but the pattern was sitting there to be copied, which is how this
 class of bug spreads. test-midnight pins the behaviour; nothing had pinned the pattern.
 
-**Three suites came back CRASHED and all three were my fault**, in two runs. I recompiled
-`gen/` while the harness was running, which left a module briefly importing `./today` with no
-extension, and I edited a suite's imports mid-flight. Each was green on its own. I also
-stretched a fifty-minute run past eighty by testing the chat against the live model beside
-it — four dev servers competing with four suites. **Do not touch `gen/`, `.next` or a suite
-while `run-all.sh` is going**, and do not start a dev server next to it.
+**Four suites came back CRASHED in every full run, and I misdiagnosed it twice before
+reading the evidence.** The cause was mundane: `run-one.sh` finds a suite's result by grepping
+for `{"passed":N,"total":N}`, and all four new suites printed only a friendly `26/26 passed`.
+They were reported as crashes in every full run while passing perfectly on their own, and they
+always would have been.
+
+The bad part is the diagnosis. `gen/` had been recompiled during the first of those runs — a
+real hazard — so it got the blame, and I wrote that into `SESSIONS.md`, `harness/README.md`
+and `notes/help-chat-design.md`, and told Atanas it was my own interference. **The evidence was
+in the output the whole time:** `run-one.sh` greps a crashed suite for
+`Error|Cannot find|ENOENT` and prints what it finds, and it printed nothing at all, which no
+module-resolution failure ever does. I accepted a plausible story instead of reading the log.
+That is the same mistake as trusting a green summary line, running the other way, and this
+project has now made both. All three files are corrected.
+
+Separately and still true: do not recompile `gen/`, rebuild, or edit a queued suite while
+`run-all.sh` is going, and do not start a dev server beside it — four of them against four
+parallel suites stretched a fifty-minute run past eighty.
 
 **Left open, and his:** the UTR letter (about 15 days by post) finishes the HMRC production
 application. And **Settings → VAT registered should be off on his own account** — he said he

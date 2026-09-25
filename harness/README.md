@@ -166,18 +166,30 @@ Wait on the output instead, which is written only at the end:
 until [ -s /tmp/harness.log ]; do sleep 20; done
 ```
 
+## A new suite MUST print `{"passed":N,"total":N}`
+
+`run-one.sh` finds a suite's result by grepping its output for exactly that line. Without it
+the suite is reported `CRASHED -- no summary line`, however green it is.
+
+Four new suites on 2026-09-25 printed only a friendly `26/26 passed` and nothing else, so
+**every one of them was reported as a crash in every full run while passing perfectly on its
+own.** Worse, the first time it happened it was misdiagnosed: `gen/` had been recompiled
+during that run, which is a real hazard (below), so that got the blame and was written into
+three files before anybody checked. It was wrong. The tell was in the output all along —
+`run-one.sh` greps a crashed suite for `Error|Cannot find|ENOENT` and prints what it finds,
+and it printed **nothing**, which no module-resolution failure ever does. A plausible story
+was accepted in place of the evidence, which is the same mistake as trusting a summary line,
+pointing the other way.
+
 ## Don't touch `gen/`, `.next` or a suite while a run is going
 
-Three suites came back `CRASHED` on 2026-09-25 and all three were self-inflicted, in two
-separate runs:
+Still true, and worth avoiding — just not what caused the four crashes above.
 
-- **`gen/` was recompiled mid-run.** The build is two steps — `tsc`, then a rewrite that adds
-  `.js` to the import specifiers Node insists on — and in the gap between them
-  `vatCheckRules.js` imported `./today` with no extension. Whichever suite happened to start
-  in that window died on `ERR_MODULE_NOT_FOUND`. `test-vat-checks` was 26/26 on its own a
-  minute later.
-- **A suite's own imports were edited while it was queued**, pointing at a module `gen/` did
-  not have yet.
+- **`gen/` is built in two steps** — `tsc`, then a rewrite that adds the `.js` extensions Node
+  insists on. In the gap between them a compiled module imports `./today` with no extension,
+  and a suite starting in that window dies on `ERR_MODULE_NOT_FOUND`. (Seen for real, but from
+  a hand-run recompile, not inside a run.)
+- **Editing a suite that has not started yet** can point it at a module `gen/` does not have.
 
 Add to that: a `next dev` started alongside a run competes with it. Testing the help chat
 against the live model three times over stretched a fifty-minute run past eighty minutes —

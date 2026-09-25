@@ -288,6 +288,7 @@ the suite will not let a new page join them.
 
 Do not spawn a dev server while `run-all.sh` is going. Each `next dev` is CPU-heavy, the
 harness already runs four suites at a time, and testing the chat against the live model three
-times over stretched a fifty-minute run well past eighty. It also cost a suite: recompiling
-`gen/` mid-run left `vatCheckRules.js` briefly importing `./today` with no extension, and
-`test-vat-checks` came back CRASHED for it. 26/26 alone.
+times over stretched a fifty-minute run well past eighty. (A suite came back CRASHED in that run too, and the
+recompile got the blame — wrongly. The real cause was that the new suites printed a friendly
+`26/26 passed` and not the `{"passed":N,"total":N}` line `run-one.sh` greps for, so they were
+reported as crashes in every full run while passing alone. `harness/README.md` has it.)

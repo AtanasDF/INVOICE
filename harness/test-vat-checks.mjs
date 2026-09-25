@@ -102,4 +102,9 @@ check("an unparseable kept date does not match today",
 
 const passed = results.filter(Boolean).length;
 console.log(`\n${passed}/${results.length} passed`);
+// run-one.sh finds a suite's result by grepping for exactly this line, and
+// reports "CRASHED -- no summary line" without it. All four of these suites
+// printed only the human-readable line above, so every one of them was
+// reported as a crash in a full run while passing on its own.
+console.log(JSON.stringify({ passed, total: results.length }));
 process.exit(passed === results.length ? 0 : 1);
