@@ -167,8 +167,20 @@ const budget = Number(/max_output_tokens:\s*(\d+)/.exec(route)?.[1] ?? 0);
 check("the answer budget is big enough for the thinking as well", budget >= 1000, String(budget));
 // The switch is checked here, not only in the component.
 check("the route checks the switch itself", /helpChatOn\(\)/.test(route));
-// Nothing of theirs is read, so nothing of theirs can be sent.
-check("the route reads nothing of their records", !/\.from\(/.test(route), "the route queries the database");
+// Nothing of theirs is READ. It writes one row -- the question, so the list of
+// what the walkthroughs failed to explain exists -- and that is the only table
+// it may touch. This check used to forbid `.from(` outright, which was a blunt
+// way of saying the same thing and would have been satisfied by deleting the
+// log rather than by keeping the route honest.
+const tables = [...route.matchAll(/\.from\("([^"]+)"\)/g)].map((m) => m[1]);
+check("the route touches one table and only one", tables.length === 1 && tables[0] === "help_questions", JSON.stringify(tables));
+check("...and only inserts into it", !/help_questions"\)\s*\.(select|update|delete)/.test(route) && /\.from\("help_questions"\)\s*\.insert/.test(route), "it does more than insert");
+// The service key would let it read anybody's anything. It does not have one.
+check("the route holds no service key", !/SERVICE_ROLE/.test(route), "the route can reach the service role");
+// The answer is not kept: reproducible from the question, and twice the text.
+check("it logs the question, not the answer", /question: last\.text/.test(route) && !/question: answer|answer,\s*\}\)/.test(route), "the answer is being stored");
+// A log nobody asked for must never cost somebody their answer.
+check("a failed log cannot break the answer", /catch \{[\s\S]{0,120}\}\s*\n\s*return NextResponse\.json\(\{ answer \}\)/.test(route), "the insert is not guarded");
 
 // ---------------------------------------------------------------------------
 // Every state leads to the email

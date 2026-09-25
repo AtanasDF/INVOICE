@@ -33,6 +33,11 @@ export default function Privacy() {
         <li className={LI}>What you put in: invoices, quotes, customers, suppliers, expenses and your business details.</li>
         <li className={LI}>The photographs and files you scan or upload, and what was read from them.</li>
         <li className={LI}>If you arrived from a flyer, the short code on it — so we know which flyer worked. Nothing else about where you came from.</li>
+        <li className={LI}>
+          If you ask the help chat a question, the question itself — so we can see what the app failed to explain and
+          explain it properly. What the chat answered is not kept. Don&apos;t type anything into it you would rather we
+          did not read.
+        </li>
       </ul>
 
       <h2 className={H}>Who else sees it</h2>
