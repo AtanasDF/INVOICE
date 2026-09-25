@@ -425,6 +425,11 @@ function Dashboard() {
         <p className="mt-1 text-neutral-600">Photograph the paper, and the rest fills itself in.</p>
       </div>
 
+      {/* The way to the walkthroughs went in here first, and a suite caught it:
+          "the big scan comes before everything else you can do" pins Atanas's
+          own ordering, and a link inside this tip sits above the scan tile. It
+          lives in GettingStarted instead, which is below the tiles and is what
+          a new account is reading anyway. */}
       <Tip id="dashboard-welcome">
         Point the camera at a receipt, a bill or an old invoice. Anything you photograph is read for you &mdash;
         customers, suppliers and expenses appear as you go.

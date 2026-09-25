@@ -67,6 +67,28 @@ try {
   // The empty states themselves: each list has to say what to do next.
   const says = (path, ...words) => words.some((w) => (seen[path] ?? "").toLowerCase().includes(w.toLowerCase()));
   check("the dashboard welcomes a new account", says("/", "new here", "nothing here yet", "get started", "first invoice"), seen["/"]?.slice(0, 500));
+  // Rung 1 of the help ladder Atanas described: "everything should be explained
+  // -- first when they log in ... then when they click on help". Rungs 2 to 5
+  // were built and this one was a paragraph about the camera, so a first-time
+  // account was never told the walkthroughs existed. The point of the check is
+  // that the first rung must reach the third: it is the only place somebody who
+  // has just arrived is looking.
+  //
+  // The tip's counter is reset and the dashboard opened again on purpose: the
+  // sweep above has already used one of its three showings, and the first
+  // version of this check read whatever page that loop happened to end on.
+  await page.evaluate(() => localStorage.setItem("tip:dashboard-welcome", "0"));
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(900);
+  // Scoped to main, and matched on the tip's own wording. The first version of
+  // this check looked for any link to /help whose text matched "how it works"
+  // -- which is the HEADER's own nav link, on every page of the app. It passed
+  // with the tip's link deleted, proving nothing at all. Found by deleting the
+  // link on purpose; it would never have been found any other way.
+  const toHelp = await page.evaluate(() =>
+    [...(document.querySelector("main") ?? document.body).querySelectorAll("a")]
+      .some((a) => a.getAttribute("href") === "/help" && /see how it works/i.test(a.innerText)));
+  check("a new account is shown the way to the walkthroughs", toHelp, (await bodyText(page)).slice(0, 600));
   check("...and shows no £0.00 for figures it doesn't have", !seen["/"].includes("£0.00"), seen["/"]?.slice(0, 500));
   // Once the tip's three showings are used up, the welcome must still be there.
   await page.evaluate(() => localStorage.setItem("tip:dashboard-welcome", "3"));

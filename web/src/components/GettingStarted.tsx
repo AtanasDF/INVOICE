@@ -72,6 +72,18 @@ export default function GettingStarted({ profile, customers, documents }: {
           </li>
         ))}
       </ul>
+
+      {/* Rung 1 of the help ladder Atanas described: "everything should be
+          explained -- first when they log in, every time they click on a page
+          explained once, then when they click on help...". Rungs 2 to 5 were
+          built and this one was not: nothing on a brand new account said the
+          walkthroughs existed. Here rather than in the welcome tip because
+          that tip sits above the scan tile, and the scan coming first is his
+          decision and pinned by test-dashboard. */}
+      <p className="border-t pt-3 text-sm text-neutral-600">
+        New to it?{" "}
+        <Link href="/help" className="font-medium underline">See how it works</Link> &mdash; a few steps each, at your pace.
+      </p>
     </section>
   );
 }

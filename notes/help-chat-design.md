@@ -188,7 +188,7 @@ The ladder as it now stands:
 
 | Rung | State |
 |---|---|
-| 1. When they first sign in | `dashboard-welcome`; still no walkthrough |
+| 1. When they first sign in | **Built 2026-09-25** — the Setting up panel points at the walkthroughs |
 | 2. Each page, once | Built — `Tip` |
 | 3. A Help section, feature by feature | **Built** — `/help`, `HELP_JOURNEYS`, `Walkthrough`, frames recorded by `harness/record-help.mjs` |
 | 4. A chat to ask anything | **Built, behind `NEXT_PUBLIC_HELP_CHAT`** |
