@@ -182,6 +182,16 @@ export default function NewInvoicePage() {
   }, []);
 
   function discardImport() {
+    // It does not only drop the imported bits: it clears the lines, the notes,
+    // the terms and the dates, and clearFreeInvoiceDraft() throws away the only
+    // copy of what was read off a photographed invoice. Anything typed since
+    // the import goes with it, and none of it can be got back.
+    //
+    // So it asks, and names what goes -- the house rule for anything that
+    // removes something, and this removes work somebody did.
+    const typedSomething =
+      items.some((i) => i.description.trim() || Number(i.unitPrice) > 0) || notes.trim() || paymentTerms.trim();
+    if (typedSomething && !window.confirm("Discard this invoice? The lines, notes and dates go, and the invoice you photographed is not kept.")) return;
     clearFreeInvoiceDraft();
     setItems([{ ...BLANK_ITEM }]);
     cisTouchedRef.current = false;

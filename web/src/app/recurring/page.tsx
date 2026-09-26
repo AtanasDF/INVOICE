@@ -42,6 +42,10 @@ export default function RecurringExpensesPage() {
   // A ref, not the `disabled` state: React applies `disabled` on the render
   // AFTER the first press, and both handlers close over the same state, so two
   // presses in one tick both go through -- and this one writes the same expense into the record twice.
+  // The neighbouring action in this same file already keeps a ref, and this one
+  // did not: two presses in one tick both passed the state check, because React
+  // applies `disabled` on the render AFTER the first press. Here a duplicate schedule doubles the reminder for a cost that only happens once.
+  const addingNow = useRef(false);
   const logging = useRef(false);
   // "Log it" wrote a real expense and said nothing: the row's reminder moved
   // on and that was the whole of the feedback.
@@ -82,6 +86,8 @@ export default function RecurringExpensesPage() {
   async function addRecurring(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim() || !totalAmount) return;
+    if (addingNow.current) return;
+    addingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -107,6 +113,7 @@ export default function RecurringExpensesPage() {
     } catch (err) {
       setError(saveFailed(err, "Couldn't save."));
     } finally {
+      addingNow.current = false;
       setSaving(false);
     }
   }

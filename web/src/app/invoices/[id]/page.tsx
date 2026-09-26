@@ -65,6 +65,14 @@ export default function InvoiceViewPage() {
   // twice. State cannot guard this; a ref set before the await can.
   const payingNow = useRef(false);
   const settlingNow = useRef(false);
+  // The same guard, for the third money-moving action in this file. It was the
+  // one that got missed when the other two were fixed: two presses wrote two
+  // credit notes, so the invoice was credited twice and the customer was told
+  // -- on the printed sheet, in the /i/ link and in the chase email -- that
+  // they owed less than they did. Worse, both handlers close over the same
+  // array, so the screen showed one note while the database held two, and the
+  // "Remove" that would undo it was not reachable until a reload.
+  const creditingNow = useRef(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
@@ -497,7 +505,8 @@ export default function InvoiceViewPage() {
 
   async function addCreditNote(e: React.FormEvent) {
     e.preventDefault();
-    if (!invoice || !cnAmount) return;
+    if (!invoice || !cnAmount || creditingNow.current) return;
+    creditingNow.current = true;
     setCnError(null);
     setCnSaving(true);
     try {
@@ -516,6 +525,7 @@ export default function InvoiceViewPage() {
     } catch (err) {
       setCnError(saveFailed(err, "Couldn't save credit note."));
     } finally {
+      creditingNow.current = false;
       setCnSaving(false);
     }
   }

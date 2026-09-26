@@ -86,6 +86,11 @@ export default function SettingsPage() {
   const [migrationPending, setMigrationPending] = useState(false);
   const [signInBusy, setSignInBusy] = useState(false);
   const [signInNote, setSignInNote] = useState<string | null>(null);
+  // Kept apart from the note. Both used to be the same string in the same grey
+  // styling, so Supabase's own words ("For security purposes, you can only
+  // request this after 51 seconds", or worse) were shown to somebody as though
+  // the email had been sent.
+  const [signInError, setSignInError] = useState<string | null>(null);
   const [vatNumber, setVatNumber] = useState("");
   const [address, setAddress] = useState("");
   const [showOverdueReminders, setShowOverdueReminders] = useState(true);
@@ -455,9 +460,11 @@ export default function SettingsPage() {
   async function emailSignInLink() {
     if (!user?.email) return;
     setSignInNote(null);
+    setSignInError(null);
     setSignInBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/reset-password` });
-    setSignInNote(error ? error.message : `Sent to ${user.email}. The link signs you in and lets you set a new password.`);
+    if (error) setSignInError(saveFailed(error, "Couldn't send the email just now. Try again in a minute."));
+    else setSignInNote(`Sent to ${user.email}. The link signs you in and lets you set a new password.`);
     setSignInBusy(false);
   }
 
@@ -1020,7 +1027,8 @@ export default function SettingsPage() {
           <button type="button" onClick={emailSignInLink} disabled={signInBusy || !user?.email} className={`mt-2 ${SMALL_BUTTON}`}>
             {signInBusy ? "Sending…" : "Email me a sign-in link"}
           </button>
-          {signInNote && <p className="mt-2 text-sm text-neutral-600">{signInNote}</p>}
+          {signInNote && <p role="status" className="mt-2 text-sm text-neutral-600">{signInNote}</p>}
+          {signInError && <p role="alert" className="mt-2 text-sm text-red-600">{signInError}</p>}
         </div>
 
         <div className="border-t pt-3">

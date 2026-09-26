@@ -8,6 +8,7 @@ import { storeImageForUser } from "@/lib/receiptImagesServer";
 import { pdfWithPages } from "@/lib/pdfPages";
 import { todayISO } from "@/lib/today";
 import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
+import { allowShared } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -109,6 +110,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unknown import address." }, { status: 404 });
     }
     const userId = profile.user_id as string;
+
+    // The only route in the app with no limit of any kind, until now -- and the
+    // most expensive one per call: every attachment is a claude-opus-5 read on
+    // Atanas's key.
+    //
+    // The webhook secret keeps strangers off this address, but it is not the
+    // real trigger. The Worker forwards every email arriving at somebody's
+    // u-<token>@invoiceover.com without counting anything, and that address is
+    // handed out to suppliers. Anyone who learns one can post mail all night,
+    // five attachments at a time, and nothing anywhere would have stopped it.
+    //
+    // Counted per MAILBOX rather than per request, because the request is the
+    // Worker and is always the same caller. A real person forwarding receipts
+    // sends a handful a day; sixty an hour is far past that and still far short
+    // of a bill worth noticing.
+    const HOUR = 60 * 60 * 1000;
+    if (!(await allowShared(`inbox:user:${userId}`, 60, HOUR))) {
+      console.error("inbox: mailbox over its hourly limit,", userId);
+      return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
+    }
+    if (!(await allowShared("inbox:global", 600, HOUR))) {
+      console.error("inbox: overall hourly limit reached");
+      return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
+    }
 
     // A PDF or photo a mail gateway labelled application/octet-stream is
     // still one; the Worker recovers the type the same way, this is for

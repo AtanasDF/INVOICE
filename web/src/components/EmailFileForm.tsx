@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SITE_NAME } from "@/lib/siteName";
 
@@ -30,11 +30,17 @@ export default function EmailFileForm({
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  // Two presses in one tick send the document to a third party twice. React
+  // applies `disabled` on the render AFTER the first press, so the state alone
+  // cannot stop it -- and an email, unlike a saved row, cannot be taken back.
+  const sendingNow = useRef(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
+    if (sendingNow.current) return;
+    sendingNow.current = true;
     setSending(true);
     setError(null);
     setNote(null);
@@ -55,6 +61,7 @@ export default function EmailFileForm({
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "It couldn't be sent. Try again in a minute.");
     } finally {
+      sendingNow.current = false;
       setSending(false);
     }
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { money } from "@/lib/money";
 import { PriceKind, priceKindOf, searchPlaces, webSearch } from "@/lib/priceSearch";
 import type { PriceGuide } from "@/lib/priceGuide";
@@ -30,6 +30,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
   // ("above the usual range") about a price it was never asked about.
   const [fetched, setFetched] = useState<{ for: string; guide: PriceGuide } | null>(null);
   const [loading, setLoading] = useState(false);
+  const askingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const askedFor = `${description}\u0000${priced ?? ""}`;
@@ -37,7 +38,11 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
 
   const places = searchPlaces(description, kind, want);
 
+  // Each press is a Gemini call on his key. `disabled={loading}` is applied on
+  // the render after the first press, so two taps spend twice.
   async function ask() {
+    if (askingNow.current) return;
+    askingNow.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -53,6 +58,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
     } catch (err) {
       setError(errorText(err, "Couldn't work out a price guide."));
     } finally {
+      askingNow.current = false;
       setLoading(false);
     }
   }

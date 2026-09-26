@@ -44,6 +44,11 @@ export default function RecurringInvoicesPage() {
   // A ref, not the `disabled` state: React applies `disabled` on the render
   // AFTER the first press, and both handlers close over the same state, so two
   // presses in one tick both go through -- and this one makes a second draft invoice to the same customer.
+  // The neighbouring action in this same file already keeps a ref, and this one
+  // did not: two presses in one tick both passed the state check, because React
+  // applies `disabled` on the render AFTER the first press. Here a duplicate schedule makes a duplicate draft invoice EVERY month from the
+  // daily cron, until somebody notices two identical drafts and works out why.
+  const addingNow = useRef(false);
   const generating = useRef(false);
   // Pressing "Make it now" made a draft invoice and left you here, with the
   // button simply gone: nothing said it had worked, and there was no way to
@@ -101,6 +106,8 @@ export default function RecurringInvoicesPage() {
   async function addRecurring(e: React.FormEvent) {
     e.preventDefault();
     if (!clientId || lineItems.every((it) => !it.description.trim())) return;
+    if (addingNow.current) return;
+    addingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -123,6 +130,7 @@ export default function RecurringInvoicesPage() {
     } catch (err) {
       setError(saveFailed(err, "Couldn't save."));
     } finally {
+      addingNow.current = false;
       setSaving(false);
     }
   }
