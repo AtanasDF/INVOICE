@@ -877,8 +877,15 @@ tidiness question.**
   and the shared rate limit for the free scanner.)
 - (Done 2026-09-19: payments are recorded per invoice; reminders chase the balance of
   part-paid invoices.)
-- Accuracy pass on both engines with Atanas's real documents; decide whether Gemini can
-  carry everything.
+- (Half done 2026-09-26, `notes/engine-accuracy.md`: both engines read the ten benchmark
+  documents with **no missed field at all** — 10/10 each on type, vendor, date, total, VAT,
+  invoice number and line count. Gemini is **1.6× faster** (4.3s median against 7.0s), so it
+  can carry everything and already does; Claude stays as the second opinion behind
+  `?engine=claude`. Still open: the same run against Atanas's **real** documents. These ten
+  are synthetic — flat, square, evenly lit — and a creased till receipt on a worktop is a
+  different problem. `BENCH_DIR` points the tool at a folder of real ones. The useful thing
+  it already proves is that the READING is not the weak part of scanning, which is why the
+  night of 2026-09-26 went to the camera instead.)
 - (Done 2026-09-19: duplicate warning, line-total check and usual category per supplier
   on saving scans. The shared rate limiter is on the branch above.)
 - (Done 2026-09-19: receipt photos/PDFs go to the private `receipts` bucket, rows keep
