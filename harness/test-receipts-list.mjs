@@ -186,6 +186,67 @@ try {
   await sleep(200);
   check("Edit still opens the form", await page.evaluate(() => !!document.querySelector('main input[placeholder="Shop or supplier"]')));
 
+  // A foreign receipt, opened and saved without a figure being touched.
+  //
+  // PROVED FALSIFIABLE: with draftForReceipt put back as it was, the first
+  // three of these go red -- the boxes show "60.00"/"10.00" while the select
+  // says EUR, the save stores 42.855 net and 8.571 VAT, and original_amount is
+  // overwritten with 60, a figure never on the document.
+  //
+  // r9 is the seeded one: EUR 70.00 incl EUR 14.00 VAT at 0.8571, stored as
+  // GBP 50.00 net + 10.00 VAT. The form's boxes are labelled in the currency
+  // the select shows and draftGbpAmounts converts them at save, but the draft
+  // was filled with the GBP figures while leaving EUR and the rate set -- so
+  // Save multiplied by 0.8571 a SECOND time. Correcting a vendor's spelling
+  // took the expense from 50.00 to 39.43 and reclaimable VAT from 10.00 to
+  // 12.00 -> 12.00*0.8571, and overwrote original_amount with the GBP figure,
+  // so the "from EUR ..." line then quoted a number never on the document.
+  // Every further edit shrank it again.
+  await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  await clickInCard(page, "Shell", "Edit");
+  await sleep(300);
+  const fx = await page.evaluate(() => {
+    const get = (label) => [...document.querySelectorAll(`[aria-label="${label}"]`)].pop();
+    return { total: get("Total (incl. VAT)")?.value, vat: get("Of which VAT")?.value, currency: get("Currency")?.value };
+  });
+  check("editing a EUR receipt shows the figures in EUR, as its own box is labelled", fx.total === "70.00" && fx.vat === "14.00" && fx.currency === "EUR", JSON.stringify(fx));
+  // React controlled inputs ignore a plain value assignment, so the change has
+  // to go through the native setter or the save tests nothing.
+  const typeInto = (label, value) => page.evaluate((l, v) => {
+    const el = [...document.querySelectorAll(`[aria-label="${l}"]`)].pop();
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, v);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, label, value);
+  const saveEdit = async () => {
+    await page.evaluate(() => [...document.querySelectorAll("main button")].find((b) => b.textContent.trim() === "Save")?.click());
+    await sleep(700);
+  };
+  await typeInto("Shop or supplier", "Shell UK");
+  await saveEdit();
+  const once = db.tables.receipts.find((r) => r.id === R.r9);
+  check("...the spelling correction lands, so this is a save that really happened", once.vendor === "Shell UK", String(once.vendor));
+  // EUR 70.00 incl 14.00 at 0.8571 is 59.997 gross, 11.9994 VAT, 47.9976 net.
+  // Converted twice it would have been 42.855 net and 8.571 VAT.
+  check("...and the GBP figures are the EUR ones converted ONCE", Math.abs(Number(once.amount) - 47.9976) < 0.0005 && Math.abs(Number(once.vat_amount) - 11.9994) < 0.0005, JSON.stringify({ a: once.amount, v: once.vat_amount }));
+  check("...and what the document said in EUR is still what is recorded", Number(once.original_amount) === 70 && Number(once.original_vat_amount) === 14 && once.original_currency === "EUR" && Number(once.fx_rate) === 0.8571, JSON.stringify({ oa: once.original_amount, ov: once.original_vat_amount, c: once.original_currency, r: once.fx_rate }));
+  // The compounding is the part that made this dangerous: each edit shrank it
+  // again, so a JPY receipt would have gone to nearly nothing in one save and a
+  // euro one would drift down every time somebody touched it. Editing twice
+  // must leave the same figures.
+  // Reloaded first, on purpose: without it the list re-reads its own
+  // in-memory row and a second save repeats the first one exactly, so the
+  // check passed even against the bug. Coming back fresh from the database is
+  // what he actually does, and it is the path that compounded.
+  await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
+  await sleep(700);
+  await clickInCard(page, "Shell UK", "Edit");
+  await sleep(300);
+  await typeInto("Shop or supplier", "Shell UK Ltd");
+  await saveEdit();
+  const twice = db.tables.receipts.find((r) => r.id === R.r9);
+  check("...and editing it a second time does not shrink it again", Number(twice.amount) === Number(once.amount) && Number(twice.vat_amount) === Number(once.vat_amount) && twice.vendor === "Shell UK Ltd", JSON.stringify({ first: once.amount, second: twice.amount, vendor: twice.vendor }));
+
   const I = (n, status, due) => ({ id: newId(), user_id: "x", client_id: C1, date: day(-20), number: n, items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: null, due_date: due, payment_terms: "30 days", status, tags: [], vat_registered: status === "draft" ? null : true });
   db.tables.invoices.push(I("D-1", "draft", day(10)), I("S-1", "sent", day(10)), I("S-2", "sent", day(-3)), I("P-1", "partial", day(5)), I("PD-1", "paid", day(-1)));
   db.tables.credit_notes = []; db.tables.invoice_payments = [];

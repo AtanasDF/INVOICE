@@ -33,17 +33,32 @@ type ReceiptDraft = {
 
 // Credit notes are stored negative; the form holds positive figures and
 // the sign is put back on save.
+//
+// The form's figures are in the currency its own box is labelled with, and
+// draftGbpAmounts converts them at save. This used to fill them with the GBP
+// amounts -- which is what the row stores -- while leaving the currency and the
+// rate set, so saving a foreign receipt multiplied by the rate a SECOND time.
+// Opening a EUR bill of 1450.00 at 0.86 only to correct the vendor's spelling
+// and pressing Save took the expense from 1032.00 to 887.52 and the reclaimable
+// VAT from 215.00 to 184.90, overwrote the original figures with the GBP ones
+// so the "(from EUR ... @ ...)" line then quoted a number that was never on the
+// document, and did it again on every further edit.
+//
+// A row from before the original figures were kept has nothing to show in its
+// own currency, so it is edited as the GBP it is -- which is also what the
+// needs-review screen does ("Edit the GBP figures above if that looks off").
 function draftForReceipt(r: Receipt): ReceiptDraft {
   const sign = r.documentType === "credit_note" ? -1 : 1;
+  const original = r.originalCurrency !== null && r.originalAmount !== null && r.originalVatAmount !== null && r.fxRate !== null ? { total: Math.abs(r.originalAmount), vat: Math.abs(r.originalVatAmount), currency: r.originalCurrency, rate: r.fxRate } : null;
   return {
     clientId: r.clientId,
     vendor: r.vendor,
     date: r.date,
     category: r.category,
-    totalAmount: (sign * (r.amount + r.vatAmount)).toFixed(2),
-    vatAmount: (sign * r.vatAmount).toFixed(2),
-    currency: r.originalCurrency ?? "GBP",
-    fxRateInput: r.fxRate != null ? String(r.fxRate) : "",
+    totalAmount: (original ? original.total : sign * (r.amount + r.vatAmount)).toFixed(2),
+    vatAmount: (original ? original.vat : sign * r.vatAmount).toFixed(2),
+    currency: original ? original.currency : "GBP",
+    fxRateInput: original ? String(original.rate) : "",
     notes: r.notes,
     invoiceNumber: r.invoiceNumber ?? "",
     dueDate: r.dueDate ?? "",
