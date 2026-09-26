@@ -35,7 +35,15 @@ was verified, not just written.
     nobody finds out. 3,386 passing checks cannot tell us that. Half a day.
 
 ### What he asked for
-14. **Scan a document from a company that is not his** — read it, send or
+14. ~~**Scan a document from a company that is not his**~~ **DONE.** Half already
+    worked (the supplier box leaves on "No supplier / general expense" and makes
+    no contact); the other half is `JustTheFile` on the scan walk — "Not yours?
+    Just keep the file" turns the pages into a PDF on the device to save, share
+    or email, with **no receipt row, no contact and no upload**. Before it, the
+    only ways out of the walk were Save, which writes a receipt, and Skip, which
+    threw the photograph away. `test-just-the-file` (19) pins the guarantee at
+    the source: no store, no supabase, no fetch of its own.
+    Original: — read it, send or
     download it, create no contact. `/copy` does most of it; the gap is reaching
     it from the scanner.
 15. **Passkey / Touch ID sign-in**, and settle what "sends you to a different

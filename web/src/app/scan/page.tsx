@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import JustTheFile from "@/components/scan/JustTheFile";
 import { amount, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
@@ -1633,6 +1634,12 @@ export default function ScanPage() {
               {saveAllButton}
               {blockedReason && !saving && <span className="text-xs text-neutral-500">{blockedReason}</span>}
             </div>
+            {/* A document that is nobody's supplier and nobody's expense. Until
+                now the only ways out of this walk were Save, which writes a
+                receipt, and Skip, which throws the photograph away -- so a
+                delivery note or somebody else's invoice could be photographed
+                and then not kept at all. (Atanas, 2026-09-26.) */}
+            {doc && <JustTheFile pages={doc.pages} suggestedName={form.vendor?.trim() || "document"} />}
           </>
         )}
       </fieldset>
