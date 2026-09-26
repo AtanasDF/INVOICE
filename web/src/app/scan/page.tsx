@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { misreadYear, noTotalRead } from "@/lib/scanSanity";
 import JustTheFile from "@/components/scan/JustTheFile";
 import { amount, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
@@ -236,7 +237,16 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
       // with nothing on screen suggesting it should be checked.
       dateConf: result.date ? result.dateConfidence : "low",
       dateAsPrinted: result.dateAsPrinted,
-      dateAlternative: askOrder && result.date && result.dateAmbiguous ? result.dateAlternative : null,
+      // An ambiguous date (08/09/26 -- which is it?) asks already. A misread
+      // YEAR parses cleanly and never asked, which is how a receipt dated 2012
+      // got into his real books in September 2026 and fell out of every VAT
+      // quarter. Offered through the same confirmation, so it is one tap either
+      // way.
+      dateAlternative: askOrder && result.date && result.dateAmbiguous
+        ? result.dateAlternative
+        : result.date
+          ? misreadYear(result.date, todayISO())
+          : null,
     }),
     ...unless("dueDate", {
       dueDate: result.dueDate ?? "",
@@ -1508,6 +1518,17 @@ export default function ScanPage() {
                   inputMode="decimal"
                 />
                 <FieldFlag confidence={form.totalConf} />
+                {/* A document saved as costing nothing is almost always a
+                    reading that found no total, not a document that was free --
+                    and £0.00 in the books is indistinguishable from a receipt
+                    nobody checked. There is one in his real records, saved
+                    beside a real £8.50 from the same supplier on the same day.
+                    Said, not blocked: a genuinely free item exists. */}
+                {noTotalRead(parseFloat(form.totalAmount) || 0, parseFloat(form.vatAmount) || 0) && (
+                  <p className="mt-1 text-xs text-amber-700">
+                    Nothing was read as the total. Put in what the document says, or it goes into your records as costing nothing.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-xs text-neutral-500">Of which VAT ({form.currency}, optional)</label>
