@@ -95,6 +95,32 @@ session log what was added so he knows what to clear.
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **The app still
    does nothing with any of it until `SCAN_LIMITS=on` in Vercel.** Applied and verified up
+   to **041** (the London day in SQL: `public.uk_today()`, and
+   `respond_to_quote_link`, `generate_recurring_invoice` and
+   `submit_quote_request_response` redefined to call it instead of
+   `current_date`. Postgres runs in UTC on Supabase, so a quote could be
+   accepted for an hour after it expired while the customer's own page had said
+   expired since midnight; a recurring invoice raised in that hour was dated
+   YESTERDAY, into the previous VAT quarter on the first of one; and a supplier
+   could send prices an hour past the deadline. Run 2026-09-26 and verified
+   against the live catalog: uk_today returns the London date and is STABLE, no
+   function in `public` still contains `current_date`, all three call it,
+   `authenticated` and `anon` cannot call uk_today at all and `anon` cannot call
+   either public function. Exercised as `authenticated` in a transaction ending
+   in the function's own raise -- "Recurring invoice ... not found" rather than
+   "permission denied for function uk_today", which is what proves the SECURITY
+   DEFINER path reaches it as the owner. No backup file: it creates one function
+   and replaces three, altering no table, and its header says so. The
+   `default current_date` on `quotes.date` and `invoice_payments.date` is
+   knowingly left -- the app always sends a date -- and `test-utc-today` now
+   reads the SQL folder so a new `current_date` in a function body fails there.
+   **SQL can now be proved before it is run**: `harness/test-migration-041.mjs`
+   applies the whole file to a real Postgres (pglite, not a project dependency,
+   skips cleanly without it) and exercises every gate. It earned itself at once
+   -- the "no function still asks UTC" check in the migration's own header threw
+   `array_agg is an aggregate function`, because `pg_get_functiondef` refuses an
+   aggregate, so the check meant to be run afterwards would have errored rather
+   than answered.) Previously verified up
    to **040** (help_questions, the questions people type into the help chat, so the list of
    what the walkthroughs failed to explain exists. Insert-only for `authenticated` and
    nothing else at all: for anon, authenticated and public together the whole grant list is
