@@ -73,6 +73,12 @@ check("...and an unreadable attachment is not reported as too large", /not a kin
 // ---- Nothing is dropped in silence -----------------------------------------
 check("the route records every attachment it decides not to read", /const dropped = \[/.test(route), "no dropped list");
 check("...and files them where somebody will see them", /tags: \["via-email", "not-imported"\]/.test(route) && /needs_review: true/.test(route), "not filed for review");
-check("...on both paths out of the route", (route.match(/await fileDropped\(\)/g) ?? []).length >= 2, String((route.match(/await fileDropped\(\)/g) ?? []).length));
+// On the path where documents WERE read, a row of its own. On the path where
+// nothing could be used, the route already files a row that IS the email, so
+// the reasons go in its notes instead of a second row beside it -- which is
+// what this check first got wrong, by counting calls rather than asking what
+// each path actually says.
+check("...where documents were read, in a row of their own", (route.match(/await fileDropped\(\)/g) ?? []).length === 1, String((route.match(/await fileDropped\(\)/g) ?? []).length));
+check("...and where nothing could be used, in the notes of the email's own row", /Not imported:\\n\$\{dropped\.join/.test(route), "the no-attachment row does not carry the reasons");
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

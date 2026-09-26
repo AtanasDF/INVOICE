@@ -9,18 +9,10 @@ import { REPO } from "./repo.mjs";
 // role that does not exist is found in production, on his real database.
 //
 // pglite is a real Postgres compiled to WASM, so it can be found here instead.
-// It is NOT a project dependency: install it in a scratchpad and point Node at
-// it, which is one line and keeps a 100MB WASM build out of the app's
-// package.json:
-//
-//   mkdir -p /tmp/pg && cd /tmp/pg && npm init -y && npm i @electric-sql/pglite
-//   PGLITE=/tmp/pg/node_modules/@electric-sql/pglite node test-migration-041.mjs
-//
-// (PGLITE is an absolute path, not NODE_PATH: NODE_PATH does nothing for an
-// ESM import.)
-//
-// Without it the suite says so and passes, rather than failing a full run on a
-// machine that was never set up for it.
+// It is a devDependency of the harness (25 MB, and nothing the app ships), so
+// the suite just runs. PGLITE=<path to the package> points it at a copy
+// installed somewhere else; without either it says so and passes rather than
+// failing a run on a machine that was never set up for it.
 //
 // The tables below are SCAFFOLDING: the few columns each function touches, and
 // nothing else. The point is to compile the functions and exercise the three
