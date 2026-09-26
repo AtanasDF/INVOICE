@@ -136,3 +136,42 @@ was verified, not just written.
     module error ever is.
 58. **Do not run anything beside the harness.** Dev servers and recompiles cost
     three crashed suites and about thirty minutes.
+
+---
+
+## FINALLY — four hours of testing, once the list above is done
+
+His instruction, 2026-09-26: *"after you finish all this start with testing and
+more testing for 4 hours straight."*
+
+Written out so it is not improvised at 3am. The order is deliberate: the things
+that have actually found bugs this week come first, and the harness run comes
+last, because a green run is a floor and not a finding.
+
+**Hour 1 — use it as a person, which is what keeps working.**
+Every journey end to end, looking rather than asserting: sign up, set up,
+scan, invoice, send, get paid, credit, quote, deposit, VAT quarter, mileage,
+statement. Screenshots opened and read. Four of this week's real bugs came
+from looking at a picture, not from a check.
+
+**Hour 2 — the sweeps, everywhere rather than on three pages.**
+Every page in all six themes for contrast, now that inputs are measured too.
+Every control named, on all thirty pages. Keyboard only. 320 pt at twice the
+text. Reduced motion. Each of these has a suite that covers part of the app;
+the bugs were found in the part it did not cover.
+
+**Hour 3 — money and the hostile edges.**
+Property-based money invariants across invoices, credit notes, payments,
+deposits and CIS together. The hardest invoice printed. Recurring dates over
+month ends and the BST boundaries. Non-GBP. Two tabs on one record. A half
+connection. Documents that fight back. Every route and RPC as the wrong user
+and as anon.
+
+**Hour 4 — judge the tests themselves, then the whole thing.**
+Full mutation run, each new mutation proved alone rather than in the crowd.
+Reading accuracy on all ten benchmark documents, both engines. Then the full
+harness, then a live signed-out pass over production, and only then call it.
+
+**The rule for the whole four hours:** anything that comes back green gets
+broken on purpose before it is believed. Three vacuous checks turned up this
+week and two of them were mine.
