@@ -758,11 +758,20 @@ as `COMPANIES_HOUSE_API_BASE` does, for `harness/test-address-stubbed.mjs`.
 **"I'm using the app from an iPhone and everything I'm telling you I see there.
 Rarely on the MacBook."**
 
-So every report he makes is **iPhone Safari**, and that changes how each one
-reads. The scanner being slow is 3.6 MB of page-finder over a phone connection
-and Safari's camera, not Chrome on a desktop. "It doesn't ask for my
-fingerprint" is Face ID or Touch ID, which means passkeys on iOS. A colour or
-layout complaint is a 390-point screen, possibly at twice the text size.
+So almost every report he makes is **iPhone Safari**, and that changes how each
+one reads. The scanner being slow is 3.6 MB of page-finder over a phone
+connection and Safari's camera, not Chrome on a desktop. A colour or layout
+complaint is a 390-point screen, possibly at twice the text size.
+
+**The exception, and he corrected me on it: the fingerprint one is the Mac.**
+*"the fingerprint was from the computer."* So "it doesn't ask you to prove it's
+you via fingerprint and sends you to a different page" is **Touch ID on the
+MacBook** — which still means passkeys (WebAuthn), but tested in macOS Safari
+or Chrome rather than on iOS. Worth watching live with him to see which page he
+lands on: the six-digit code screen is the obvious candidate, but a Turnstile
+challenge or a Supabase re-verification would look the same to somebody signing
+in. He signs in on the Mac rarely, which is itself a clue — a long gap is
+exactly when a session expires and a fresh check is demanded.
 
 It also means **he is the real-device test this project has never had** -- the
 harness is headless Chrome against synthetic camera clips, and nothing else
