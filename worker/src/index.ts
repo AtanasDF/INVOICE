@@ -51,6 +51,11 @@ function textFromHtml(html: string): string {
 // A PDF or photo that a mail gateway has labelled application/octet-stream
 // is still a PDF or photo: the route keeps only the types the reader takes.
 const BY_EXTENSION: Record<string, string> = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif" };
+// ALLOWED_TYPES in web/src/lib/scanExtraction.ts is the source of truth; this
+// Worker cannot import from the app, so the list is repeated. Both halves are
+// checked against each other by harness/test-inbox-worker-types.mjs, because a
+// list that drifts here starts throwing away invoices the reader would take.
+const READABLE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
 function realType(mimeType: string, filename: string | null | undefined): string {
   if (mimeType !== "application/octet-stream") return mimeType;
   const ext = /\.([a-z0-9]+)$/i.exec(filename ?? "")?.[1]?.toLowerCase();
@@ -92,27 +97,49 @@ export default {
       const usable = (parsed.attachments || []).filter((a) => a.mimeType && a.content);
       const isInline = (a: (typeof usable)[number]) =>
         (a as { related?: boolean }).related === true || (a.disposition === "inline" && a.mimeType.startsWith("image/"));
+      const readable = (a: (typeof usable)[number]) => READABLE_TYPES.includes(realType(a.mimeType, a.filename));
       const real = usable.filter((a) => !isInline(a));
-      const chosen = real.length ? real : usable;
+      // Prefer the non-inline parts, but only if there is something readable
+      // among them: an email whose only real attachment is a .docx, with the
+      // invoice pasted into the body as an image, would otherwise come out
+      // with nothing.
+      const chosen = real.some(readable) ? real : usable;
 
       const attachments: { filename: string; mimeType: string; base64: string }[] = [];
-      const leftOut: string[] = [];
+      const tooBig: string[] = [];
+      const notReadable: string[] = [];
       let budget = BODY_BUDGET;
       for (const a of chosen) {
+        const name = a.filename || "attachment";
+        const mimeType = realType(a.mimeType, a.filename);
+        // Checked BEFORE the budget, because the route throws these away
+        // anyway and they must not be allowed to spend the room a real invoice
+        // needs. A 2MB terms.docx ahead of a 1.2MB invoice.pdf used to eat it:
+        // the docx was posted and dropped at the far end, the PDF was pushed
+        // out, and the note told the owner the PDF was too large to import --
+        // which was untrue, and pointed them at the wrong file.
+        if (!READABLE_TYPES.includes(mimeType)) {
+          notReadable.push(name);
+          continue;
+        }
         const bytes = (a.content as ArrayBuffer).byteLength;
         const encoded = Math.ceil(bytes / 3) * 4;
         if (encoded > budget) {
-          leftOut.push(`${a.filename || "attachment"} (${(bytes / 1_048_576).toFixed(1)} MB)`);
+          tooBig.push(`${name} (${(bytes / 1_048_576).toFixed(1)} MB)`);
           continue;
         }
         budget -= encoded;
-        attachments.push({ filename: a.filename || "attachment", mimeType: realType(a.mimeType, a.filename), base64: arrayBufferToBase64(a.content as ArrayBuffer) });
+        attachments.push({ filename: name, mimeType, base64: arrayBufferToBase64(a.content as ArrayBuffer) });
       }
 
       const text = parsed.text?.trim() || (parsed.html ? textFromHtml(parsed.html) : "");
-      // The row the app files says which files were too big to come with
-      // it, so nothing about the email is silently missing.
-      const textBody = leftOut.length ? `${text}\n\n[Too large to import by email, not attached: ${leftOut.join(", ")}. Scan or upload these in the app.]`.trim() : text;
+      // The row the app files says what did not come with it AND why, so
+      // nothing about the email is silently missing and the reason is true.
+      const left = [
+        tooBig.length ? `too large to send on: ${tooBig.join(", ")}` : null,
+        notReadable.length ? `not a kind that can be read: ${notReadable.join(", ")}` : null,
+      ].filter(Boolean);
+      const textBody = left.length ? `${text}\n\n[Not attached — ${left.join("; ")}. Scan or upload these in the app.]`.trim() : text;
 
       const res = await fetch(env.APP_INGEST_URL, {
         method: "POST",
@@ -131,6 +158,17 @@ export default {
 
       if (!res.ok) {
         console.error(`Ingest failed: ${res.status} ${await res.text()}`);
+        // Cloudflare accepted this message at SMTP, so the sender already
+        // believes it was delivered. Returning quietly here DESTROYS the
+        // document: no bounce, no retry, nothing in the app, and the only
+        // trace a `wrangler tail` line nobody is watching. Rejecting hands it
+        // back to the sending server, which retries for days and tells the
+        // sender if it never gets through. Every reachable case is one where
+        // the document did not land -- the hour's cap (429), the secret
+        // missing or rotated (401, which is the state this Worker was
+        // deployed in for its first evening), a Supabase blip (500), or the
+        // read running past the function's time (504).
+        message.setReject("Could not take this document in just now. Please send it again shortly.");
       }
     } catch (err) {
       // Best-effort: a processing failure here shouldn't bounce the email

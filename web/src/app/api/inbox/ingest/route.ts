@@ -11,6 +11,13 @@ import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 import { allowShared } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
+// The same reader /api/scan needs 300s for, run once per attachment, up to
+// MAX_ATTACHMENTS of them in one request. Without this the function is killed
+// at the platform default -- and because the loop saves as it goes, the owner
+// was left with a partial import that looks complete: rows for the first
+// attachment or two, nothing at all for the rest, and no way to know they
+// existed. The Worker saw a 504 and threw the email away.
+export const maxDuration = 300;
 
 // Called by the Cloudflare Worker (worker/) after it parses an inbound
 // email at u-<token>@invoiceover.com. Every receipt this creates starts
@@ -144,13 +151,47 @@ export async function POST(req: Request) {
       const ext = /\.([a-z0-9]+)$/i.exec(a.filename ?? "")?.[1]?.toLowerCase();
       return ext && BY_EXTENSION[ext] ? { ...a, mimeType: BY_EXTENSION[ext] } : a;
     };
-    const usableAttachments = (body.attachments ?? [])
-      .map(typed)
-      .filter((a) => ALLOWED_TYPES.includes(a.mimeType as (typeof ALLOWED_TYPES)[number]))
-      .filter((a) => (a.base64.length * 3) / 4 <= MAX_FILE_BYTES)
-      .slice(0, MAX_ATTACHMENTS);
+    const named = (a: IngestAttachment) => a.filename || "attachment";
+    const allAttachments = (body.attachments ?? []).map(typed);
+    const readable = allAttachments.filter((a) => ALLOWED_TYPES.includes(a.mimeType as (typeof ALLOWED_TYPES)[number]));
+    const smallEnough = readable.filter((a) => (a.base64.length * 3) / 4 <= MAX_FILE_BYTES);
+    const usableAttachments = smallEnough.slice(0, MAX_ATTACHMENTS);
+    // Every attachment this route decides not to read, and why. All three of
+    // these used to happen in silence: a supplier emailing eight invoices got
+    // five rows and {created: 5}, with three missing from a real accounting
+    // record and nothing anywhere saying so. The Worker already makes the
+    // opposite promise for the one case it handles -- an attachment too big for
+    // the request body is named in the text it sends -- so the owner has been
+    // taught to expect a note when something is left out.
+    const dropped = [
+      ...allAttachments.filter((a) => !readable.includes(a)).map((a) => `${named(a)} — not a kind that can be read`),
+      ...readable.filter((a) => !smallEnough.includes(a)).map((a) => `${named(a)} — larger than ${Math.round(MAX_FILE_BYTES / 1024 / 1024)}MB`),
+      ...smallEnough.slice(MAX_ATTACHMENTS).map((a) => `${named(a)} — more than ${MAX_ATTACHMENTS} documents in one email`),
+    ];
 
     const created: string[] = [];
+    // Filed as its own row rather than appended to one of the others: which
+    // receipt would it belong to? It lands in needs-review beside them, which
+    // is where somebody is looking.
+    const fileDropped = async () => {
+      if (!dropped.length) return;
+      await admin.from("receipts").insert({
+        user_id: userId,
+        client_id: null,
+        date: todayISO(),
+        vendor: (body.subject || body.from || "Emailed documents").slice(0, 200),
+        category: null,
+        amount: 0,
+        vat_amount: 0,
+        image_data_url: null,
+        notes: `${dropped.length} document${dropped.length === 1 ? "" : "s"} in this email ${dropped.length === 1 ? "was" : "were"} not imported:\n\n${dropped.join("\n")}\n\nScan or upload ${dropped.length === 1 ? "it" : "them"} in the app, then discard this note.\n\nFrom: ${body.from || "unknown"}\nSubject: ${body.subject || ""}`,
+        starred: false,
+        needs_review: true,
+        warranty_months: null,
+        tags: ["via-email", "not-imported"],
+        line_items: [],
+      });
+    };
 
     // A document that could not be read must still be visible. The reader
     // fails for ordinary reasons -- the model is busy (429), overloaded
@@ -212,7 +253,8 @@ export async function POST(req: Request) {
         .single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       created.push(data.id);
-      return NextResponse.json({ created: created.length, note: "no usable attachment, filed the email itself" });
+      await fileDropped();
+      return NextResponse.json({ created: created.length, dropped: dropped.length, note: "no usable attachment, filed the email itself" });
     }
 
     for (const attachment of usableAttachments) {
@@ -327,7 +369,8 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ created: created.length });
+    await fileDropped();
+    return NextResponse.json({ created: created.length, dropped: dropped.length });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error." }, { status: 500 });
   }
