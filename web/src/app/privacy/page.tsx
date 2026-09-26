@@ -38,6 +38,11 @@ export default function Privacy() {
           explain it properly. What the chat answered is not kept. Don&apos;t type anything into it you would rather we
           did not read.
         </li>
+        <li className={LI}>
+          If the app breaks, what broke and which page you were on — so it can be fixed. Not what was on your screen,
+          not what you had typed, and not who you are. A private link you were looking at is stripped out of the report
+          before it is sent.
+        </li>
       </ul>
 
       <h2 className={H}>Who else sees it</h2>

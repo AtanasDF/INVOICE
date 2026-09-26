@@ -61,6 +61,7 @@
     "../web/src/lib/navGroups.ts",
     "../web/src/lib/helpFacts.ts",
     "../web/src/lib/helpChat.ts",
+    "../web/src/lib/errorReport.ts",
     "../web/src/lib/helpPrompt.ts"
   ]
 }

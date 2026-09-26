@@ -3,6 +3,7 @@ import "./globals.css";
 import AppShell from "./AppShell";
 import { SITE_NAME } from "@/lib/siteName";
 import { THEME_BOOT } from "@/lib/theme";
+import ReportErrors from "@/components/ReportErrors";
 import { SITE_URL } from "@/lib/siteUrl";
 
 export const metadata: Metadata = {
@@ -63,6 +64,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body className="min-h-screen bg-neutral-50 text-neutral-900">
+        {/* Listening before anything else renders: an error thrown by the
+            app itself is exactly the one nobody would otherwise hear about. */}
+        <ReportErrors />
         <div className="flex min-h-screen flex-col">
           <AppShell>{children}</AppShell>
         </div>

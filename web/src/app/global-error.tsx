@@ -1,9 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportError } from "@/lib/reportError";
+
 // error.tsx only catches what breaks inside the layout. If the layout itself
 // throws there is no header, no styles and no app left -- so this one brings
 // its own <html> and its own colours, and assumes nothing.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  // This is the one place ReportErrors cannot help: if the layout threw, it was
+  // never mounted. The digest shown below used to be the end of the story --
+  // a reference number for a report nobody ever received.
+  useEffect(() => {
+    reportError({ message: error.message || "layout failed to render", stack: error.stack ?? "", kind: "render", digest: error.digest });
+  }, [error]);
+
   return (
     <html lang="en">
       <body style={{ margin: 0, fontFamily: "Arial, Helvetica, sans-serif", background: "#fafafa", color: "#171717" }}>
