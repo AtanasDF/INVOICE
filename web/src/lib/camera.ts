@@ -5,6 +5,18 @@ export type CameraPermission = "granted" | "denied" | "prompt" | "unknown";
 
 // A website can't make Safari remember a camera "Allow"; only the phone's
 // settings can. Shown when Safari had to ask, and when it's blocked.
+// Has this browser ever actually had the camera? The dashboard warms the
+// 13 MB page-finder up, and the only person that is worth doing for is one who
+// scans -- not somebody on their first visit, who pays for it and may never
+// open the camera at all.
+export function hasUsedCamera(): boolean {
+  try {
+    return localStorage.getItem("camera-allowed") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export const SAFARI_CAMERA_TIP =
   "Asked for the camera every time? Set it once: iPhone Settings → Safari (under Apps) → Camera → Allow. Or in Safari: aA → Website Settings → Camera → Allow.";
 

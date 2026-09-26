@@ -94,5 +94,6 @@ try {
   await ready.waitForFunction(() => !/Getting ready/i.test(document.body.innerText), { timeout: 60000 }).catch(() => {});
   const after = await ready.evaluate(() => document.body.innerText);
   check("once the page-finder is here the message goes", !/Getting ready/i.test(after), after.replace(/\s+/g, " ").slice(0, 200));
+
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

@@ -18,9 +18,11 @@ const db = makeDb();
 db.tables.business_profile.push({ user_id: "x", business_name: "Harness Ltd", vat_registered: false, invoice_prefix: "INV-", invoice_next_number: 1 });
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-measure" });
+await page.setCacheEnabled(false);
 
-// Transfer size is what the phone pays for; a served-from-cache response is
-// counted as nothing, which is why the cache is cleared before each page.
+// The cache is disabled for the whole run, not cleared between pages: a
+// clear-then-navigate still served from the memory cache, and every page after
+// the first read as 0 KB, which looked like an answer and was not.
 const seen = new Map();
 page.on("response", async (res) => {
   const url = res.url();
@@ -38,9 +40,6 @@ try {
   await signIn(page, BASE);
   for (const path of PAGES) {
     seen.clear();
-    const client = await page.createCDPSession();
-    await client.send("Network.clearBrowserCache").catch(() => {});
-    await client.detach().catch(() => {});
     await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" }).catch(() => {});
     await sleep(1200);
     const total = [...seen.values()].reduce((a, b) => a + b, 0);

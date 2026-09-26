@@ -28,6 +28,7 @@ import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
 import { loadOpenCV } from "@/lib/opencv";
+import { hasUsedCamera } from "@/lib/camera";
 import { useAuth } from "@/lib/authContext";
 import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
@@ -203,8 +204,17 @@ function Dashboard() {
   // screen then resolves instantly. Failures are its problem to report.
   useEffect(() => {
     if (!user || readScannerMode() === "native") return;
-    // Not on a slow connection or with data saving on: the script is 13MB,
-    // and nobody asked for it yet (Atanas, 2026-09-22: the app felt slow).
+    // Only for somebody who actually scans. This is 13 MB, measured off the
+    // wire on the dashboard, and it was guarded only by navigator.connection
+    // -- which is a Chrome API that SAFARI DOES NOT IMPLEMENT. So the one
+    // protection here never applied on the device the app is mostly used
+    // from: every first visit on an iPhone downloaded 13 MB two seconds after
+    // the dashboard appeared, which is its own answer to "the app felt slow"
+    // and "takes ages to start actually scanning" (Atanas, 2026-09-22 and
+    // 2026-09-26). Somebody who has had the camera before has the script in
+    // cache anyway and loses nothing; somebody on their first visit no longer
+    // pays for a screen they have not opened.
+    if (!hasUsedCamera()) return;
     const link = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     if (link?.saveData || /2g$/.test(link?.effectiveType ?? "")) return;
     const warm = () => {

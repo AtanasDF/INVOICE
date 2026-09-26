@@ -233,6 +233,53 @@ try {
   check("writing an invoice by hand is offered beside the tile that opens the camera",
     offer.tile && offer.byHand && offer.gap >= 0 && offer.gap < 260, JSON.stringify(offer));
 
+  // ---- who pays for the page-finder ------------------------------------
+  //
+  // The dashboard warms up the 13 MB OpenCV page-finder so the scanner opens
+  // instantly when it is tapped. Worth doing -- for somebody who scans. It was
+  // guarded only by navigator.connection (save-data, 2G), which is a CHROME
+  // API THAT SAFARI DOES NOT IMPLEMENT, so the guard never applied on the
+  // device the app is mostly used from: every first visit on an iPhone fetched
+  // 13 MB two seconds after the dashboard appeared. Measured off the wire with
+  // harness/measure-dashboard.mjs, not guessed, and it is its own answer to
+  // "the app felt slow" (Atanas, 2026-09-22).
+  //
+  // Now it waits until this browser has actually had the camera. Somebody who
+  // scans has it cached and loses nothing.
+  const opencvRequests = async (usedCameraBefore) => {
+    const hits = [];
+    const onReq = (r) => { if (/opencv/.test(r.url())) hits.push(r.url()); };
+    page.on("request", onReq);
+    await page.setCacheEnabled(false);
+    try {
+      // scanner-mode is forced: the warm-up is skipped entirely on the native
+      // path, and an earlier check in this suite may have switched it.
+      await page.evaluate((used) => {
+        localStorage.setItem("scanner-mode", "inapp");
+        if (used) localStorage.setItem("camera-allowed", "1");
+        else localStorage.removeItem("camera-allowed");
+      }, usedCameraBefore);
+      await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+      // The warm-up runs on idle, or two seconds later where there is no idle
+      // callback -- which is the Safari case.
+      await sleep(5000);
+      return hits.length;
+    } finally {
+      page.off("request", onReq);
+      await page.setCacheEnabled(true);
+    }
+  };
+  check("a first visit does not download 13 MB of page-finder", (await opencvRequests(false)) === 0);
+  // The other half -- that somebody who HAS used the camera still gets it
+  // warmed up -- is not checked here and deliberately so. By this point the
+  // suite has opened the scanner, so the script is in the service worker's
+  // cache and no request is made whatever the app decides; the check would
+  // pass or fail for reasons that have nothing to do with the rule. It was
+  // verified separately against two fresh browser profiles: no request on a
+  // first visit, opencv-5.0.0.js on one that had used the camera. If the gate
+  // is ever removed, the check above goes red, which is the direction that
+  // matters -- the harm is charging somebody 13 MB they did not ask for.
+
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);
