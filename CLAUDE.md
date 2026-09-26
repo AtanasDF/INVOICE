@@ -753,6 +753,29 @@ a postcode with no houses in the free data lists its streets. `POSTCODES_API_BAS
 `PHOTON_API_BASE` and `IDEAL_POSTCODES_API_BASE` point the three services at stand-ins,
 as `COMPANIES_HOUSE_API_BASE` does, for `harness/test-address-stubbed.mjs`.
 
+## Which device he is actually using (2026-09-26)
+
+**"I'm using the app from an iPhone and everything I'm telling you I see there.
+Rarely on the MacBook."**
+
+So every report he makes is **iPhone Safari**, and that changes how each one
+reads. The scanner being slow is 3.6 MB of page-finder over a phone connection
+and Safari's camera, not Chrome on a desktop. "It doesn't ask for my
+fingerprint" is Face ID or Touch ID, which means passkeys on iOS. A colour or
+layout complaint is a 390-point screen, possibly at twice the text size.
+
+It also means **he is the real-device test this project has never had** -- the
+harness is headless Chrome against synthetic camera clips, and nothing else
+has ever run on an iPhone. His reports are the only evidence from the device
+the app is built for, so they are worth more than a passing suite, and anything
+he mentions should be reproduced at 390pt in Safari's shape before being
+called fixed.
+
+And a per-device setting he may be carrying: `scan-engine` in localStorage is
+**per device**. If his iPhone has it on `claude` from the engine testing, every
+scan there goes through the slow reader. Opening `/scan?engine=gemini` on that
+phone once sets it back.
+
 ## Who else works here
 
 "Cowork" is another Claude Code session (possibly another machine) that reviews, runs
