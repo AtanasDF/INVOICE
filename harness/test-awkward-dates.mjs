@@ -13,6 +13,8 @@ import { quarterOf, previousQuarter } from "./gen/lib/vatReturn.js";
 import { todayISO } from "./gen/lib/today.js";
 import { addMonths, nextDueFromDay } from "./gen/lib/recurrence.js";
 import { taxYearOf } from "./gen/lib/taxEstimate.js";
+import fs from "node:fs";
+import { REPO } from "./repo.mjs";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
@@ -102,18 +104,58 @@ check("an invoice due on a leap day is still chased", leapFired.length >= REMIND
 check("an invoice due on 31 December is chased into the new year", reminderDueToday("2026-12-31", "2027-01-30") !== null, String(reminderDueToday("2026-12-31", "2027-01-30")));
 
 // ---- Recurring --------------------------------------------------------------
-// A monthly bill dated the 31st is the classic one. JavaScript's setMonth
-// rolls over rather than clamping, so 31 January plus a month is 3 March in
-// a normal year -- worth knowing about and pinning, because a recurring
-// expense that lands on the 3rd of March is not obviously wrong until
-// somebody looks at a year of them.
-check("a month after 31 January is the 3rd of March, not the 31st of February", addMonths("2026-01-31", 1) === "2026-03-03", addMonths("2026-01-31", 1));
-check("and in a leap year, the 2nd", addMonths("2024-01-31", 1) === "2024-03-02", addMonths("2024-01-31", 1));
+// A monthly bill dated the 31st is the classic one, and this suite used to
+// pin the WRONG answer. `setUTCMonth` rolls over: 31 January plus a month
+// became 3 March, and the comment here called that "worth knowing about and
+// pinning". What it did not know is that the same column is advanced by two
+// different things -- `addMonths` when somebody presses the button on the
+// recurring page, and `next_due_date + interval '1 month'` inside
+// generate_recurring_invoice (migration-013, line 89) when the nightly cron
+// does it -- and Postgres CLAMPS. So the two paths disagreed on any day past
+// the 28th and whichever ran last won. Postgres's answer is the right one and
+// `addMonths` now gives it; checked by running the migration's own expression
+// in a real Postgres 18 over every day of 2024-2027 by seven different
+// offsets, 10,227 comparisons, no disagreements.
+//
+// The day picker clamps the chosen day to 28, which is the only reason this
+// never showed on a schedule. The warranty date on the receipts list had no
+// such clamp and was reading a one-month warranty from 31 January as 31 days.
+check("a month after 31 January is the last day of February, not the 3rd of March", addMonths("2026-01-31", 1) === "2026-02-28", addMonths("2026-01-31", 1));
+check("and in a leap year that is the 29th", addMonths("2024-01-31", 1) === "2024-02-29", addMonths("2024-01-31", 1));
 check("a month after the 28th is always safe", addMonths("2026-01-28", 1) === "2026-02-28", addMonths("2026-01-28", 1));
-check("twelve months from a leap day is the 1st of March", addMonths("2024-02-29", 12) === "2025-03-01", addMonths("2024-02-29", 12));
+check("twelve months from a leap day is the 28th of February", addMonths("2024-02-29", 12) === "2025-02-28", addMonths("2024-02-29", 12));
+check("a month from 31 March is 30 April", addMonths("2026-03-31", 1) === "2026-04-30", addMonths("2026-03-31", 1));
 check("a month across the spring clock change keeps its day", addMonths("2026-03-15", 1) === "2026-04-15", addMonths("2026-03-15", 1));
 check("and across the autumn one", addMonths("2026-10-15", 1) === "2026-11-15", addMonths("2026-10-15", 1));
 check("a month from 31 December is 31 January", addMonths("2026-12-31", 1) === "2027-01-31", addMonths("2026-12-31", 1));
+// Adding a month never lands in a month it was not asked for, whatever the
+// starting day -- the failure the rollover made invisible.
+let neverSkips = true, skipped = "";
+for (let m = 1; m <= 12; m++) {
+  for (const d of [28, 29, 30, 31]) {
+    const from = `2026-${String(m).padStart(2, "0")}-${d}`;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || Number(from.slice(8)) !== d) continue;
+    const got = addMonths(from, 1);
+    const want = (m % 12) + 1;
+    if (Number(got.slice(5, 7)) !== want) { neverSkips = false; skipped = `${from} -> ${got}`; }
+  }
+}
+check("a month later is always the next month, from any day of any month", neverSkips, skipped);
+// What the cron actually walks: it clamps once and then keeps the clamped
+// day. Pinned as it is rather than as it might ideally be, because the app
+// must agree with the database, and this is what the database does.
+let cron = "2026-01-31";
+const walk = [cron];
+for (let i = 0; i < 6; i++) { cron = addMonths(cron, 1); walk.push(cron); }
+check("a schedule clamped at a month end keeps the clamped day after that", walk.join(" ") === "2026-01-31 2026-02-28 2026-03-28 2026-04-28 2026-05-28 2026-06-28 2026-07-28", walk.join(" "));
+// The receipts list prints "Warranty: N months (until X)" straight from this.
+check("a one-month warranty bought on 31 January runs to the end of February", addMonths("2026-01-31", 1) === "2026-02-28", addMonths("2026-01-31", 1));
+check("a six-month warranty bought on 31 August runs to the end of February", addMonths("2026-08-31", 6) === "2027-02-28", addMonths("2026-08-31", 6));
+// The two rules must stay one rule. If the migration's month-add is ever
+// changed to something other than Postgres's clamping `interval '1 month'`,
+// every check above is pinning the wrong thing and nothing else would notice.
+const sql = fs.readFileSync(`${REPO}/web/supabase/migration-013-generate-recurring-invoice-function.sql`, "utf8");
+check("the cron still advances the date with Postgres's own clamping month-add", /next_due_date\s*=\s*\(v_row\.next_due_date \+ interval '1 month'\)::date/.test(sql), sql.split("\n").filter((l) => l.includes("next_due_date =")).join(" | "));
 // Every month of a year, repeated, stays a real date.
 let rolling = "2026-01-15", allReal = true;
 for (let i = 0; i < 24; i++) { rolling = addMonths(rolling, 1); if (!/^\d{4}-\d{2}-\d{2}$/.test(rolling)) allReal = false; }

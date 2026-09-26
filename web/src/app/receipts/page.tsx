@@ -14,6 +14,7 @@ import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { addMonths } from "@/lib/recurrence";
 
 type ReceiptDraft = {
   clientId: string;
@@ -854,13 +855,4 @@ export default function Page() {
       <ReceiptsPage />
     </Suspense>
   );
-}
-
-function addMonths(dateStr: string, months: number): string {
-  // UTC methods throughout -- mixing a UTC-parsed date with local
-  // setMonth/getMonth before an toISOString round-trip shifts the result
-  // by a day whenever the viewer's timezone offset isn't zero.
-  const d = new Date(dateStr);
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().slice(0, 10);
 }
