@@ -742,7 +742,7 @@ export default function DocumentCapture({
   // page that opened the camera by itself uses this to get out of the way
   // and show what the person actually asked for; a page where they tapped
   // the camera on purpose leaves it to them.
-  onUnavailable?: (why: "denied" | "unsupported") => void;
+  onUnavailable?: (why: "denied" | "unsupported" | "failed") => void;
   pageNumber?: number;
   failureMessage?: string;
   // "copy": photos for one file (Copy a document); the review says so.
@@ -1200,11 +1200,20 @@ export default function DocumentCapture({
         rafRef.current = requestAnimationFrame(loop);
       } catch {
         if (cancelled) return;
-        // Permission was already settled by openCamera, which answers
-        // "denied" itself. Anything thrown here is the stream failing to
-        // start -- most often play() rejecting -- so saying access was
-        // denied names the wrong cause and offers the wrong remedy.
+        // Permission was already settled by openCamera, which answers "denied"
+        // itself. Anything thrown here is the stream failing to start -- most
+        // often play() rejecting, or a stream that cannot be attached at all --
+        // so saying access was denied names the wrong cause and offers the
+        // wrong remedy on this screen.
+        //
+        // But the PAGE still has to be told, and dropping that call was a real
+        // loss: onUnavailable is how /scan and the Free page learn the camera
+        // is no use and offer the upload, the by-hand form and the invoice the
+        // person actually came for. Saying so without lying about why is what
+        // "failed" is for; both callers ignore the reason and only act on
+        // being told.
         setStatus("stalled");
+        onUnavailableRef.current?.("failed");
       }
     }
 

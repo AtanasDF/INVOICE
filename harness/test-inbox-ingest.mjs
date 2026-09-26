@@ -108,6 +108,11 @@ try {
   check("an email with no usable attachment files the email itself for review", res.status === 200 && rows().length === 1 && r?.needs_review === true, JSON.stringify({ status: res.status, rows: rows().length }));
   check("...named by its subject, with the sender and text in the notes", r?.vendor === "Your statement" && /From: ap@supplier.example/.test(r?.notes) && /Total £120.00/.test(r?.notes) && r?.image_data_url === null, JSON.stringify({ vendor: r?.vendor, notes: r?.notes?.slice(0, 80) }));
   check("...and the reader was never called for it", stub.calls.length === 0, String(stub.calls.length));
+  // The attachment it could not use is named IN that row rather than in a
+  // second one beside it: this row already is the email. Silence was the bug --
+  // the type filter, the size filter and the five-per-email cap all dropped
+  // attachments with no row, no note and nothing in the response.
+  check("...with the attachment it could not use named in the same row", /Not imported:/.test(r?.notes ?? "") && /not a kind that can be read/.test(r?.notes ?? ""), (r?.notes ?? "").slice(-160));
 
   // A readable invoice.
   reset();
@@ -169,7 +174,14 @@ try {
   for (let i = 0; i < 5; i++) stub.script.push(reply([{ ...INVOICE, invoiceNumber: `INV-${i}` }]));
   const six = [...Array(6)].map((_, i) => ({ filename: `inv-${i}.pdf`, mimeType: "application/pdf", base64: one }));
   res = await post({ token: TOKEN, subject: "Bulk", attachments: [{ filename: "notes.csv", mimeType: "text/csv", base64: "YSxi" }, ...six] });
-  check("a spreadsheet is skipped and only the first five documents are read", stub.calls.length === 5 && rows().length === 5, JSON.stringify({ calls: stub.calls.length, rows: rows().length }));
+  // Five read, plus ONE row saying what was left out -- the spreadsheet the
+  // reader cannot take and the documents past the fifth. An email of eight
+  // invoices used to give five rows and {created: 5}, with three missing from
+  // a real accounting record and nothing anywhere saying so.
+  check("a spreadsheet is skipped and only the first five documents are read", stub.calls.length === 5 && rows().length === 6, JSON.stringify({ calls: stub.calls.length, rows: rows().length }));
+  const leftOut = rows().find((x) => (x.tags ?? []).includes("not-imported"));
+  check("...and one row says what was left out, and why", !!leftOut && leftOut.needs_review === true && /not a kind that can be read/.test(leftOut.notes ?? "") && /more than 5 documents in one email/.test(leftOut.notes ?? ""), JSON.stringify({ found: !!leftOut, notes: leftOut?.notes?.slice(0, 200) }));
+  check("...and it carries no figures of its own, so it cannot be mistaken for a receipt", !leftOut || (Number(leftOut.amount) === 0 && Number(leftOut.vat_amount) === 0 && leftOut.image_data_url === null), JSON.stringify({ a: leftOut?.amount, v: leftOut?.vat_amount }));
 
   // A PDF a gateway labelled application/octet-stream is still a PDF.
   reset();

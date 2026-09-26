@@ -119,7 +119,12 @@ check("an octet-stream PDF is posted as application/pdf, by its name", p?.body.a
 const BIG = Buffer.alloc(3_600_000, 1).toString("base64");
 p = await send({ attachments: [{ name: "scan.pdf", body: BIG }, "invoice-1043.pdf"] });
 check("an attachment too big for the route is left out, the rest still posted", JSON.stringify(names(p)) === JSON.stringify(["invoice-1043.pdf"]), JSON.stringify(names(p)));
-check("...and the body says which file and how big", /Too large to import by email, not attached: scan\.pdf \(3\.4 MB\)/.test(p?.body.textBody ?? ""), JSON.stringify(p?.body.textBody));
+// The reason has to be TRUE as well as present. It used to say "too large to
+// import by email" for everything left behind, including a perfectly
+// importable PDF that a .docx ahead of it had pushed out of the body budget --
+// which pointed the owner at the wrong file.
+check("...and the body says which file and how big", /too large to send on: scan\.pdf \(3\.4 MB\)/.test(p?.body.textBody ?? ""), JSON.stringify(p?.body.textBody));
+check("...and says it was not attached, so nothing about the email is silently missing", /Not attached/.test(p?.body.textBody ?? "") && /Scan or upload these in the app/.test(p?.body.textBody ?? ""), JSON.stringify(p?.body.textBody));
 check("...so the JSON stays under Vercel's limit", JSON.stringify(p?.body ?? "").length < 4_500_000, String(JSON.stringify(p?.body ?? "").length));
 
 p = await send({ to: "receipts@invoiceover.com", attachments: ["invoice-1043.pdf"] });

@@ -21,6 +21,18 @@ db.tables.invoices.push({ id: INV, user_id: "x", client_id: C, date: day(-10), n
 db.tables.receipts.push({ id: newId(), user_id: "x", client_id: null, date: day(-4), vendor: "Jewson", category: "Supplies", amount: 100, vat_amount: 20, image_data_url: null, notes: "", starred: false, needs_review: false, warranty_months: null, tags: [], line_items: [], document_type: "receipt", invoice_number: null, due_date: null, paid: true, details: {}, credit_of_receipt_id: null, original_amount: null, original_vat_amount: null, original_currency: null, fx_rate: null });
 
 const PAGES = [
+  // Added 2026-09-26: the newer screens, which this suite had never walked.
+  // /help is the whole help ladder, /copy and /convert are two of the four
+  // tools on the dashboard's first row, and /jobs groups a whole job's money.
+  // A tool nobody can reach without a mouse is not a tool for everybody.
+  ["/help", "How it works"],
+  ["/copy", "Copy a document"],
+  ["/convert", "Change a file"],
+  ["/jobs", "Jobs"],
+  ["/feedback", "Feedback"],
+  ["/check-company", "Check a company"],
+  ["/quotes/requests", "Quote requests"],
+  ["/recurring/invoices", "Recurring invoices"],
   ["/", "Dashboard"],
   ["/invoices", "Invoices"],
   [`/invoices/${INV}`, "One invoice"],

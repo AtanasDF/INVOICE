@@ -242,7 +242,7 @@ export async function POST(req: Request) {
           amount: 0,
           vat_amount: 0,
           image_data_url: null,
-          notes: `From: ${body.from || "unknown"}\nSubject: ${body.subject || ""}\n\n${(body.textBody || "").slice(0, 2000)}`,
+          notes: `From: ${body.from || "unknown"}\nSubject: ${body.subject || ""}\n\n${(body.textBody || "").slice(0, 2000)}${dropped.length ? `\n\nNot imported:\n${dropped.join("\n")}` : ""}`,
           starred: false,
           needs_review: true,
           warranty_months: null,
@@ -253,7 +253,9 @@ export async function POST(req: Request) {
         .single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       created.push(data.id);
-      await fileDropped();
+      // No second row here: this one IS the email, and the reasons are already
+      // in its notes. A row of its own is for the case where documents WERE
+      // read and something else was left out beside them.
       return NextResponse.json({ created: created.length, dropped: dropped.length, note: "no usable attachment, filed the email itself" });
     }
 
