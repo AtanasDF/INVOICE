@@ -97,6 +97,72 @@ check("it guards a date it cannot parse", /if \(!\/\^\\d\{4\}/.test(today) || /t
 const usesToday = files.filter((f) => /todayISO\s*\(/.test(fs.readFileSync(f, "utf8"))).length;
 check("todayISO is what the app actually uses", usesToday >= 10, String(usesToday));
 
+// ---------------------------------------------------------------------------
+// The other side of the boundary: SQL
+// ---------------------------------------------------------------------------
+// This suite reads TypeScript, and for that reason it could not see the same
+// bug sitting in four database functions. Supabase runs Postgres in UTC, so
+// `current_date` inside a function is the UTC date, and it was being used as
+// though it were today:
+//
+//   respond_to_quote_link         a quote could be ACCEPTED for an hour after
+//                                 it expired, while the customer's own page
+//                                 had said "expired" since midnight.
+//   generate_recurring_invoice    an invoice raised in that hour was DATED
+//                                 YESTERDAY, into the wrong VAT quarter on the
+//                                 first of one -- the same damage today.ts was
+//                                 written to stop.
+//   submit_quote_request_response a supplier could send prices for an hour
+//                                 after needed_by had passed.
+//
+// migration-041 replaces all three (and 013, which 016 already superseded)
+// with `public.uk_today()`. What is checked here is that nothing brings it
+// back: a `current_date` in a function body must be in a file this list says
+// has been superseded, and adding one anywhere else fails here. A column
+// DEFAULT is allowed and listed separately -- the app always sends a date, so
+// those are a fallback nothing reaches, and changing them would alter existing
+// tables for no behavioural gain (migration-041's header says so too).
+const SQL_DIR = `${REPO}/web/supabase`;
+// Superseded, with the migration that did it. Nothing new belongs here without
+// the same kind of reason written beside it.
+const SUPERSEDED = {
+  "migration-013-generate-recurring-invoice-function.sql": "superseded by 016, then by 041",
+  "migration-016-skip-archived-client-in-recurring-invoice.sql": "superseded by 041",
+  "migration-026-quote-links.sql": "superseded by 041",
+  "migration-028-quote-requests.sql": "superseded by 041",
+};
+const sqlFiles = fs.readdirSync(SQL_DIR).filter((f) => f.endsWith(".sql"));
+const sqlOffenders = [];
+let sqlDefaults = 0;
+for (const f of sqlFiles) {
+  const sqlLines = fs.readFileSync(path.join(SQL_DIR, f), "utf8").split("\n");
+  sqlLines.forEach((line, n) => {
+    // Strip -- comments AND single-quoted literals: migration-041's own
+    // comment on the function explains the bug in prose, and the word inside
+    // a string is not the database asking anything.
+    const sqlCode = line.split("--")[0].replace(/'[^']*'/g, "''");
+    if (!/current_date/.test(sqlCode)) return;
+    if (/default\s+current_date/i.test(sqlCode)) { sqlDefaults += 1; return; }
+    if (SUPERSEDED[f]) return;
+    sqlOffenders.push(`${f}:${n + 1} ${sqlCode.trim().slice(0, 70)}`);
+  });
+}
+check("no SQL asks UTC what day it is, outside the files recorded as superseded", sqlOffenders.length === 0, sqlOffenders.join(" | "));
+check("the superseded files are all still there, so the list is about something real", Object.keys(SUPERSEDED).every((f) => sqlFiles.includes(f)), Object.keys(SUPERSEDED).filter((f) => !sqlFiles.includes(f)).join(", "));
+// The column sqlDefaults are knowingly left, so their number is pinned: a new one
+// is a decision somebody should make on purpose, not inherit.
+check("the column defaults that still say current_date are the two known ones", sqlDefaults === 2, String(sqlDefaults));
+
+const sqlFix = sqlFiles.find((f) => f.startsWith("migration-041"));
+check("a migration exists that puts the London day into SQL", !!sqlFix, "migration-041 is missing");
+if (sqlFix) {
+  const sql = fs.readFileSync(path.join(SQL_DIR, sqlFix), "utf8");
+  check("...it defines one place that answers it, as the app has one place", /create or replace function public\.uk_today\(\)/.test(sql) && /now\(\) at time zone 'Europe\/London'/.test(sql), "uk_today is not defined there");
+  check("...marked STABLE, so it is never folded into an index or cached across a statement", /returns date\s+language sql\s+stable/.test(sql), "not stable");
+  check("...and every function it replaces now calls it", ["respond_to_quote_link", "generate_recurring_invoice", "submit_quote_request_response"].every((fn) => new RegExp(`create or replace function public\\.${fn}`).test(sql)) && (sql.match(/public\.uk_today\(\)/g) ?? []).length >= 5, "a function is missing or does not call uk_today");
+  check("...and it grants uk_today to nobody it need not", /revoke all on function public\.uk_today\(\) from public, anon, authenticated;/.test(sql), "the revoke is not there");
+}
+
 const passed = results.filter(Boolean).length;
 console.log(`\n${passed}/${results.length} passed`);
 // run-one.sh finds a suite's result by grepping for exactly this line, and
