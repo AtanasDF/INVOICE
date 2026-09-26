@@ -198,6 +198,38 @@ keeping:** a guard written against an API the target device lacks is not a guard
 measuring tool was itself wrong first time (clearing the cache between pages still served
 from memory, so every page after the first read 0 KB and looked like an answer).
 
+**Four more, while he was away from the keyboard.**
+
+- **The accuracy pass, open since 2026-09-19, is done for the synthetic set.** Both engines
+  read all ten benchmark documents with **no missed field at all** — type, vendor, date,
+  total, VAT, number and line count, 10/10 each. Gemini is 1.6× faster (4.3s median against
+  7.0s), so it can carry everything, which it already does. What it does *not* say is that
+  the reader is good at his post; these ten are flat, square and evenly lit. What it does say
+  is that **the reading is not the weak part of scanning** — which is why the night went to
+  the camera. `notes/engine-accuracy.md`.
+- **`mutate.mjs` was broken and had been** since the harness was made path-independent:
+  `const REPO = REPO;`, so the one tool whose job is to check the suites would not even parse.
+  Nothing noticed, because it is deliberately not in `run-all.sh`. Fixed, ten mutations added
+  for the night's work, and it can now apply **one at a time** — which the project's own note
+  says is the point, since a red suite otherwise proves only that it caught *at least one* of
+  the mutations aimed at it. Four were then applied singly and all four were caught.
+- **Row-level security is tested against a real Postgres now**, which closes the gap that
+  produced the wrong finding in migration-031. `test-rls-live.mjs` builds the whole schema
+  from nothing and attacks it: asking for another account's row by id, inserting one for
+  somebody else, updating theirs, reading as a visitor with no account. All refused; proved
+  by turning RLS off on one table and watching four go red. **It also proves something nobody
+  has ever checked — that the schema applies from an empty database at all.** Every migration
+  has only ever been run once, by hand, on a database that already had the one before it.
+  40 of 40, 25 tables, 32 policies, RLS on every one. That is the restore rehearsal in all
+  but name.
+- **Touch ID: nothing is broken, because it was never built.** No WebAuthn anywhere in the
+  app; Touch ID today can only come from the browser filling a password it already saved. The
+  sign-in markup was the first suspicion and is already exactly right, so that is written down
+  to stop the next person changing those attributes on a hunch. The "different page to prove
+  it's you" is most likely the Cloudflare Managed challenge. `notes/touch-id.md` has what
+  passkeys would actually cost, and why it is not started: its whole value is on a device this
+  session cannot reach.
+
 **Open / for Atanas.**
 - **`npx wrangler deploy` from `worker/` is still not done.** He said to go ahead; the
   permission layer refuses it as a production deploy, and that was not worked around. He runs
