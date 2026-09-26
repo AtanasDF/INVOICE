@@ -65,6 +65,13 @@ try {
     /first time/i.test(waiting), waiting.replace(/\s+/g, " ").slice(0, 250));
   check("it does not claim anything is wrong",
     !/unavailable|failed|error|problem/i.test(waiting), waiting.replace(/\s+/g, " ").slice(0, 250));
+  // Atanas, 2026-09-26: "Takes ages to start actually scanning." It does not --
+  // the shutter works from the moment the camera is live, and nothing in this
+  // component is ever disabled. Only the AUTOMATIC lock-on waits for the
+  // page-finder to download. Somebody watching a viewfinder that will not fire
+  // by itself has no way of knowing that, so the message now says it.
+  check("and says you do not have to wait for it",
+    /take the photo yourself/i.test(waiting), waiting.replace(/\s+/g, " ").slice(0, 250));
 
   // Big enough to read at arm's length in daylight, and white on the dark
   // viewfinder rather than the neutral scale, which inverts with the theme.

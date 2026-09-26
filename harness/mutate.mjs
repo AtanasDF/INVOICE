@@ -157,8 +157,8 @@ const MUTATIONS = [
     what: "the free page tells strangers it needs no account, while the gate turns them away",
     expect: ["test-free-draft"] },
 
-  { file: "components/DocumentCapture.tsx", find: 'cvStatus === "loading" ? "Getting ready\u2026 the first time takes a moment"',
-    replace: 'false ? "Getting ready\u2026 the first time takes a moment"',
+  { file: "components/DocumentCapture.tsx", find: 'cvStatus === "loading" ? "Getting ready \u2014 the first time takes a moment. You can take the photo yourself now."',
+    replace: 'false ? "Getting ready \u2014 the first time takes a moment. You can take the photo yourself now."',
     what: "the scanner's cold start says nothing while the page-finder starts",
     expect: ["test-cold-start"] },
   { file: "app/receipts/page.tsx", find: "highlight === r.id ? \" ring-2 ring-neutral-900\" : \"\"",

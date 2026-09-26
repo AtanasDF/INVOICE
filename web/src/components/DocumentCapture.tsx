@@ -1860,7 +1860,7 @@ export default function DocumentCapture({
   // camera shows and nothing is found, which read as "the scanner shows
   // nothing" (Atanas, 2026-09-22). Say so, in words, at a readable size.
   const cvLine =
-    cvStatus === "loading" ? "Getting ready… the first time takes a moment" : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
+    cvStatus === "loading" ? "Getting ready — the first time takes a moment. You can take the photo yourself now." : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
 
   // iOS: the in-page live-detection camera fundamentally can't win here.
   // getUserMedia on iOS Safari returns a low-resolution, fixed-focus
