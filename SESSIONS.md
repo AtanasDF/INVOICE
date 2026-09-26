@@ -118,16 +118,65 @@ fixed, and one of them opened onto something much bigger.
   it. `test-utc-today` now reads the SQL too (10 → 18 checks), with the superseded files listed
   by name so a new `current_date` in a function body fails.
 
+**A phantom bug, and the hour it took to name it.** `test-check-company` failed every time in
+the working tree — the page throwing *"Lazy element type must resolve to a class or
+function"* ten times over. It looked exactly like a regression from the night's work. It was
+not: the same commits under `/private/tmp`, **with every source change applied**, passed
+54/54 with no page error. Bisected in three groups against the base commit, then `.next`
+ruled out, and the difference turned out to be the tree itself. **iCloud is corrupting the
+harness's Chrome profiles** — a freshly made one picked up **346 duplicated entries inside a
+single run** (`Default 2`, `SingletonLock 3`, `SingletonSocket 2`). Profiles now live under
+the OS temp directory (`profileDir()` in `repo.mjs`, twelve call sites, `HARNESS_PROFILES`
+overrides); with that one change the suite is 54/54 here. **This is probably the engine of
+the whole iCloud problem: 10 GB of the repo's 11 GB was Chrome profile churn being synced
+continuously**, which is the load that duplicated the git refs and broke `git fetch` on
+2026-09-25. Those 10 GB are flagged, not deleted.
+
+**Three more real faults, from auditing by hand what the parallel runs kept stalling on.**
+
+- **An exchange rate of "0" saved a receipt worth nothing.** All three forms that take a
+  hand-typed rate checked only that the box was not *empty*, then did `parseFloat(x) || 0`.
+  So "0" and "abc" became a rate of zero and stored **£0.00** in the accounting record, and a
+  negative rate stored **negative VAT**, which comes off box 4 of a VAT return. Three copies
+  of the same weak check. `rateProblem` in `fx.ts` is now the only one, with 11 checks.
+  `test-currency` had named this risk in its own header since it was written — it just never
+  typed a zero, only left the box empty, which was the one case that was handled.
+- **Check-a-company promised what the Gate refuses.** Its page *description* — the text a
+  search result shows — said "Free, no account needed", while every page but the front door,
+  the legal ones and the customer links has been behind sign-in since 2026-09-22.
+  `robots.ts` already agreed it was not public. The same staleness as the free-invoice
+  heading found on 2026-09-25, in the one place quoted to people who have not arrived yet.
+- **Four cron jobs could be killed half-done** — the same shape as the email import, and just
+  as silent. One line each, and `test-crons` now has a tenth check.
+
+**The route table came back clean**, which is worth recording as much as a finding: all five
+cron routes fail **closed** when `CRON_SECRET` is unset; the four public service-role routes
+validate a 43-character token before anything else, limit guessing per IP, and hand it to an
+RPC that does its own scoping rather than querying by id; and the open address lookup keeps
+strangers on the free service, gating the paid one behind a signed-in user and four separate
+shared limits.
+
+**And SQL is tested for real now.** pglite is a harness devDependency (25 MB, nothing the app
+ships), so `test-migration-041` runs its 16 checks against a real Postgres on every run
+rather than reporting `{"passed":0,"total":0}`.
+
+**One regression of the night's own making, caught by the run:** splitting "the camera
+stopped" out of "access was denied" also stopped calling `onUnavailable`, which is how /scan
+and the Free page learn the camera is no use and offer the upload, the by-hand form and the
+invoice the person came for. Six checks went red and said so.
+
 **Open / for Atanas.**
-- **`npx wrangler deploy` from `worker/` is not done** — held back on purpose. Rejecting means a
-  supplier gets a bounce where they used to get silence: right, but visible to somebody else.
-- **`migration-041` needs running** in the Supabase SQL editor, then `feature/sql-london-day`
-  merges. Its header carries the checks. It is already proved against a real Postgres, so it
-  should apply first time.
-- Three audit dimensions have now stalled twice and remain unaudited: **non-GBP on save**,
-  **every route's front door as one table**, and **the dashboard's first-load weight**. They are
-  the three that need the most reading, which is presumably why. Worth doing by hand, or split
-  finer still.
+- **`npx wrangler deploy` from `worker/` is still not done.** He said to go ahead; the
+  permission layer refuses it as a production deploy, and that was not worked around. He runs
+  it, or allows that command. Until then a failed email import still destroys the document.
+- **10 GB of dead `harness/profile-*` directories** can go whenever he says so. They are
+  unused since the profiles moved, and they are what iCloud has been churning.
+- (Done: `migration-041` was run in the SQL editor and verified against the live catalog,
+  and `feature/sql-london-day` is merged.)
+- Two of the three stalled dimensions are now done by hand (non-GBP on save, the route
+  table). **The dashboard's first-load weight is parked**: Next 16's build output no longer
+  prints per-route sizes, so it needs measuring in a live browser rather than read off a
+  manifest.
 - The scanner is still slow to start (3.6 MB of page-finder over a phone connection) and still
   silent when it finds nothing. A "can't find it — hold it further back, or tap the button"
   line after a few seconds would help, but it would weaken two checks that currently assert
