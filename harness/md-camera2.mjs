@@ -1,5 +1,6 @@
 // Headless Chrome, fresh profile, Chrome's own fake camera playing an MJPEG clip.
 import puppeteer from "puppeteer-core";
+import { profileDir } from "./repo.mjs";
 const OUT = new URL(".", import.meta.url).pathname;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const url = (p) => (process.env.BASE ?? "http://localhost:3000") + p;
@@ -8,7 +9,7 @@ export async function launch(clip) {
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: true,
-    userDataDir: OUT + "profile-md-" + clip.replace(/\W/g, ""),
+    userDataDir: profileDir("profile-md-" + clip.replace(/\W/g, "")),
     args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${OUT}${clip}`, "--no-first-run", "--autoplay-policy=no-user-gesture-required"],
   });
   const page = await browser.newPage();

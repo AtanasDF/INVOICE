@@ -10,8 +10,36 @@
 // wherever it goes, and does not depend on where anything was run from.
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 export const HARNESS = dirname(fileURLToPath(import.meta.url));
 export const REPO = dirname(HARNESS);
 export const APP = join(REPO, "web");
 export const SRC = join(APP, "src");
+
+// Where a suite's Chrome profile goes, and why it is NOT in the harness folder.
+//
+// The profiles lived beside the suites, and on an iCloud-synced Desktop that is
+// not a safe place to put a directory Chrome writes constantly: a freshly made
+// profile picked up 346 duplicated entries within one run -- "Default 2",
+// "SingletonLock 3", "SingletonSocket 2". Chrome then behaves oddly in ways
+// that look exactly like an app bug. test-check-company was the visible
+// casualty: it failed every time in the working tree with the page throwing
+// "Lazy element type must resolve to a class or function", and passed 54/54
+// from a checkout of the same commits under /private/tmp -- with every one of
+// tonight's source changes applied. Hours could go into the wrong file.
+//
+// So they go under the OS temp directory, keyed by the repo path so two
+// checkouts do not share one. They are disposable, gitignored and rebuilt on
+// demand; nothing was ever gained by keeping them in the tree. HARNESS_PROFILES
+// overrides it, and setting it back to the harness folder restores the old
+// behaviour exactly.
+export const PROFILES =
+  process.env.HARNESS_PROFILES ?? join(tmpdir(), `invoicer-harness-profiles-${createHash("sha1").update(REPO).digest("hex").slice(0, 10)}`);
+
+export function profileDir(name) {
+  mkdirSync(PROFILES, { recursive: true });
+  return join(PROFILES, name.replace(/^\/+/, ""));
+}

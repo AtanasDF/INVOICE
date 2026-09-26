@@ -1,6 +1,7 @@
 // Headless Chrome, fresh profile, Chrome's own fake camera playing an MJPEG clip.
 import puppeteer from "puppeteer-core";
 import { installFakeSession } from "./fake-session.mjs";
+import { profileDir } from "./repo.mjs";
 const OUT = new URL(".", import.meta.url).pathname;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const url = (p) => (process.env.BASE ?? "http://localhost:3000") + p;
@@ -19,7 +20,7 @@ export async function launch(clip) {
     // Was keyed on the clip name, so every suite playing large.mjpeg shared
     // one profile directory and they knocked each other over when run
     // together. Keyed on the suite instead.
-    userDataDir: OUT + "profile-" + ((process.argv[1] ?? "run").split("/").pop().replace(/\.mjs$/, "").replace(/\W/g, "") || "run") + "-" + clip.replace(/\W/g, ""),
+    userDataDir: profileDir("profile-" + ((process.argv[1] ?? "run").split("/").pop().replace(/\.mjs$/, "").replace(/\W/g, "") || "run") + "-" + clip.replace(/\W/g, "")),
     args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${OUT}${clip}`, "--no-first-run", "--autoplay-policy=no-user-gesture-required"],
   });
   const page = await browser.newPage();

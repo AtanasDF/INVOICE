@@ -5,7 +5,7 @@ import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
 import { startFixtures } from "./ch-fixtures.mjs";
 import { fakeSession } from "./mockdb.mjs";
-import { REPO } from "./repo.mjs";
+import { REPO, profileDir } from "./repo.mjs";
 
 const OUT = new URL(".", import.meta.url).pathname;
 // The app this suite starts. It used to point at
@@ -57,7 +57,7 @@ const fixtures = await startFixtures(FIX);
 const browser = await puppeteer.launch({
   executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true,
-  userDataDir: OUT + "profile-check-company",
+  userDataDir: profileDir("profile-check-company"),
   args: ["--no-first-run"],
 });
 const page = await browser.newPage();

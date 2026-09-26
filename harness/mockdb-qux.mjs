@@ -2,6 +2,7 @@
 // be clicked through headless without touching the real database. Every
 // request to the Supabase host is answered here; nothing leaves the machine.
 import puppeteer from "puppeteer-core";
+import { profileDir } from "./repo.mjs";
 
 export const SUPA = "https://wecfwjxzyzzrcwbwnwpo.supabase.co";
 export const UID = "00000000-0000-4000-8000-000000000001";
@@ -132,7 +133,7 @@ export async function launchSignedIn(db, { width = 375, base = "http://localhost
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: true,
-    userDataDir: OUT + profile,
+    userDataDir: profileDir(profile),
     args: ["--no-first-run", "--no-default-browser-check"],
   });
   const page = await browser.newPage();

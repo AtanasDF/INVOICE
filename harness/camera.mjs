@@ -1,6 +1,7 @@
 // Headless Chrome, fresh profile, fake camera drawn from a canvas the test controls.
 import puppeteer from "puppeteer-core";
 import { installFakeSession } from "./fake-session.mjs";
+import { profileDir } from "./repo.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const OUT = new URL(".", import.meta.url).pathname;
@@ -9,7 +10,7 @@ export async function launch() {
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: true,
-    userDataDir: OUT + "profile",
+    userDataDir: profileDir("profile"),
     args: ["--use-fake-ui-for-media-stream", "--no-first-run", "--no-default-browser-check", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--autoplay-policy=no-user-gesture-required"],
   });
   const page = await browser.newPage();

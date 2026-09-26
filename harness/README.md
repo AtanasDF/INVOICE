@@ -86,8 +86,25 @@ Chrome comes from `/Applications/Google Chrome.app`. Each suite keeps its own
 `profile-*` directory so they don't tread on each other — those, `gen/` and the clips are
 all disposable, which is why only source is kept here.
 
-Run it from a scratchpad copy rather than from the repo if you don't want profile
-directories and screenshots landing in the working tree.
+**Profiles live outside the repo** (`repo.mjs`, `profileDir()`): under the OS temp
+directory, keyed by the repo path so two checkouts don't share one. `HARNESS_PROFILES`
+overrides it, and pointing it at this folder restores the old behaviour.
+
+They were moved on 2026-09-26 for a reason worth knowing. This project sits on an
+iCloud-synced Desktop, and a directory Chrome writes constantly is not a safe thing to
+put there: a freshly created profile picked up **346 duplicated entries inside one run**
+— `Default 2`, `SingletonLock 3`, `SingletonSocket 2`. Chrome then misbehaves in ways
+that look exactly like an app bug. `test-check-company` was the visible casualty: it
+failed every time in the working tree, the page throwing *"Lazy element type must resolve
+to a class or function"* ten times over, and passed 54/54 from a checkout of the same
+commits under `/private/tmp` — with every source change applied. It was bisected against
+the base commit, then against each group of changes, before the tree itself turned out to
+be the difference. **If a browser suite fails only in this checkout, suspect the
+environment before the app**, and 10 GB of old `profile-*` directories are still sitting
+here from before the move (flagged, not deleted).
+
+Run it from a scratchpad copy rather than from the repo if you don't want screenshots and
+downloads landing in the working tree.
 
 ## Writing one
 

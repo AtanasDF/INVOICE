@@ -1,6 +1,7 @@
 // Fake camera (MJPEG clip) + the mocked signed-in database, for /scan.
 import puppeteer from "puppeteer-core";
 import { handle, UID } from "./mockdb.mjs";
+import { profileDir } from "./repo.mjs";
 const OUT = new URL(".", import.meta.url).pathname;
 const SUPA = "https://wecfwjxzyzzrcwbwnwpo.supabase.co";
 const user = () => ({ id: UID, aud: "authenticated", role: "authenticated", email: "harness@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", app_metadata: { provider: "email" }, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" });
@@ -13,7 +14,7 @@ export async function launchCameraSignedIn(db, clip, base) {
   const browser = await puppeteer.launch({
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: true,
-    userDataDir: OUT + "profile-camsigned-" + clip.replace(/\W/g, ""),
+    userDataDir: profileDir("profile-camsigned-" + clip.replace(/\W/g, "")),
     args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${OUT}${clip}`, "--no-first-run", "--autoplay-policy=no-user-gesture-required"],
   });
   const page = await browser.newPage();
