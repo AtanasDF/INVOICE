@@ -7,11 +7,21 @@ Invoice and expense tracker for a UK freelancer (Atanas, GitHub AtanasDF). The d
 it is his real accounting record. Read this file before doing anything. Two accounts
 matter: **`fragov@hidefield.co.uk` (Hidefield) is his real record; `atanaschoo@gmail.com`
 is the test account, free for any test or upload.** From 2026-09-22 04:10 he allows
-testing on Hidefield too ("use my account, it doesn't matter, just don't delete what you
-have"), within these limits: never delete or change a row that was already there; what a
-test adds is removed afterwards; never issue an invoice there (numbers are sequential and
-never reused); Settings values are put back exactly; use the gmail account whenever it
-can show the same thing (details in `notes/claude-notes.md`).
+testing on Hidefield too, and on **2026-09-26 he widened it**: *"use my Hidefield account
+for testing and also you can see there some real data. Once we done testing I'll start
+again and scan any invoice need scanning again or delete anything that doesn't have to be
+there."* So test there freely, look at the real rows, and leave the tidying to him.
+
+**Two lines stay, and they are not his to waive casually:**
+1. **Never issue an invoice there.** Numbers are sequential and never reused, so an issued
+   test invoice burns a number out of his real books for ever — the one thing he cannot
+   undo by deleting a row afterwards. Drafts are fine; sending is not.
+2. **Never delete a row that was already there.** He has said he will remove what should
+   not be there; that is a different thing from me removing it, and hard rule 1 stands.
+
+Everything else — adding receipts, quotes, contacts, drafts, changing Settings — is his to
+offer and he has offered it. Put Settings back anyway, out of courtesy, and say in the
+session log what was added so he knows what to clear.
 
 ## Layout and stack
 

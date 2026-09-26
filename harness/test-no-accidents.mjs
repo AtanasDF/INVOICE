@@ -2,9 +2,52 @@
 // Remove must ask first, saying what goes, and saying No must leave the
 // record exactly as it was.
 import { makeDb, launchSignedIn, signIn, sleep, clickText, newId, todayISO } from "./mockdb.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { REPO } from "./repo.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
+
+// ---------------------------------------------------------------------------
+// Every removal in the app asks first -- checked at the source, not by tapping
+// ---------------------------------------------------------------------------
+// The clicking below covers the paths it can reach. This covers the rest: a
+// new Remove added to a screen nobody drives here would otherwise ship without
+// a confirm and nothing would say so.
+//
+// The rule from CLAUDE.md: "anything that removes a record asks first with
+// window.confirm, naming what goes." Checked on 2026-09-26 and every one of
+// them already did -- this is here so that stays true.
+{
+  const APP = `${REPO}/web/src`;
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const f = path.join(dir, e.name);
+    return e.isDirectory() ? walk(f) : /\.tsx?$/.test(e.name) ? [f] : [];
+  });
+  const unasked = [];
+  for (const file of walk(APP)) {
+    const src = fs.readFileSync(file, "utf8");
+    if (!/Store\.remove\(/.test(src)) continue;
+    // Take each function that calls a store's remove(), and look for a confirm
+    // inside it. Functions are found by their opening line and closed at the
+    // next one at the same indent, which is how this codebase is written.
+    const lines = src.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (!/^\s*(async )?function \w+/.test(lines[i])) continue;
+      const indent = (lines[i].match(/^\s*/) || [""])[0].length;
+      let end = lines.length;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (lines[j].trim() === "}" && (lines[j].match(/^\s*/) || [""])[0].length === indent) { end = j; break; }
+      }
+      const body = lines.slice(i, end + 1).join("\n");
+      if (!/Store\.remove\(/.test(body)) continue;
+      if (/window\.confirm\(/.test(body)) continue;
+      unasked.push(`${file.replace(APP + "/", "")}: ${lines[i].trim().slice(0, 60)}`);
+    }
+  }
+  check("every function that removes a record asks first", unasked.length === 0, unasked.join(" | "));
+}
 
 const db = makeDb();
 Object.assign(db.tables, { receipts: [], receipt_pages: [], credit_notes: [], invoice_payments: [], invoice_links: [], quote_links: [], recurring_expenses: [], recurring_invoices: [] });
