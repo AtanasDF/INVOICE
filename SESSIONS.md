@@ -4,6 +4,101 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-09-26 — His iPhone found the scanner bugs, and a parallel audit found six more (Opus 5)
+
+Working the merged list in `notes/everything.md`, interrupted twice by Atanas actually using
+the app on his phone — which was worth more than the list.
+
+**The month end.** The same column, `next_due_date`, is advanced by two different things:
+`addMonths()` when the button on the recurring page is pressed, and `next_due_date + interval
+'1 month'` in `generate_recurring_invoice` when the cron does it. Postgres clamps, JavaScript
+rolls over, so 31 January plus a month was 28 February or 3 March depending on which got
+there first, and whichever ran last won. `test-awkward-dates` had pinned the rollover as
+correct with a comment calling it "worth knowing about", not knowing the database disagreed.
+The day picker clamps to 28, which is the only reason it never showed on a schedule — but the
+warranty line on the receipts list had its own second copy of `addMonths` and no clamp, so a
+one-month warranty bought on 31 January printed "until 3 March". **Verified by running the
+migration's own expression in a real Postgres 18** (pglite in a scratchpad, since there is no
+psql on this Mac) over every day of 2024-2027 by seven offsets: 10,227 comparisons, no
+disagreements.
+
+**His iPhone, scanning real documents.** Three reports, two fixed.
+
+*"The camera, it wouldn't take a photo, it all came black. And then I couldn't turn the camera
+back on."* Nothing noticed: the frame loop returns early on an unready video, so it span doing
+nothing while the screen showed black, the status still said "live", and the only way out was
+leaving the scanner and losing the batch. **The torch still working was the clue** — a torch is
+a property of a live track, so the track was fine and the video element was paused, which iOS
+does when a full-screen sheet covers it, and nothing ever called `play()` again. The video is
+now watched for frames that stop arriving; paused with a live track gets `play()` again,
+anything else reopens the camera but only if that stream had produced frames, so a camera
+that is really gone cannot loop. Closing the review sheet asks for frames at once rather than
+waiting for the watchdog. A stall that cannot be recovered says so and **offers the scans
+already taken**, which the other failure screens hide. And a stream that fails to start no
+longer reports itself as "denied", which named the wrong cause and offered the wrong remedy.
+
+*"He scans the tiles in my kitchen and he takes the picture of that... you shouldn't be able to
+scan tiles just because it has an edge."* A four-corner shape bigger than `MIN_CONTOUR_AREA`
+was taken for a page on its size alone. What a document has and a wall hasn't is printing on
+it, so that is measured now (`inkInside`, `MIN_INK`): a wall reads 0 per 1000, an A4 invoice
+111, a receipt on a patterned floor 253. Small shapes are left alone — across the five far
+clips their printing measures as low as 6. **The first version of the fix left the whole bug in
+place by another door**: it skipped the ink test while `requirePaper` was set, and auto-zoom
+zooms towards whatever it thinks is the page, so a tile grows past the threshold and sails
+through. Found by reading the coverage in the readout, not the capture count, which said 0
+either way. `test-tiles.mjs` (12) + `gen-tiles.py`, **and the suite was vacuous at the first
+attempt** — a drifting clip with small tiles captured nothing, so every check passed with
+`MIN_INK` at 0 too. The clip now holds still with one 320px tile inside the visible strip, and
+the wall IS photographed without the fix.
+
+*"Each second picture fails."* Chased it to a real, separate hole — the re-arm test after a
+capture is purely geometric, so sliding the next document into the same spot never re-arms,
+and the one clip covering batching shows 21 empty frames between its pages. Built
+`gen-swap-inplace.py`, which reproduces it, and a 64-sample page fingerprint that fixed that
+clip. **Threw the fingerprint away**: the same receipt on a patterned floor reads 16, exactly
+what a genuine swap reads, because the samples are in page coordinates and a wobbling outline
+moves them across the print. A missed second document is an annoyance; a duplicated receipt
+goes into an accounting record. `notes/batch-rearm.md` has the measurements and what to try
+next — and the note that his symptom was most likely the paused video, which would explain it
+without this at all.
+
+**A parallel audit of nine dimensions**, each finding sent to a skeptic told to refute it. Six
+of nine agents were killed for running too long; the three that finished produced six findings
+that survived, all fixed tonight:
+
+- **Editing a euro receipt converted it to pounds a second time.** The edit form is filled with
+  the figures the row stores, which are GBP, while the currency select stays on EUR and the
+  rate stays in its box — and the save converts what is in the form. Correcting a vendor's
+  spelling on a EUR 70 bill at 0.8571 wrote 42.855 net and 8.571 VAT in place of 47.9976 and
+  11.9994, and overwrote `original_amount` with the GBP figure so the provenance line quoted a
+  number never on the document. Five checks added; three seen to go red.
+- **The free page asked the customer for more than the invoice total.** Its own copy of the CIS
+  sum was missing the clamp `cis.ts` carries with the comment explaining exactly this case, so
+  a "Less deposit paid" line of -500 marked labour against 300 of labour gave a deduction of
+  MINUS 40 and "Net payment due" printed 840 on an 800 invoice — and `SendByEmail` uses that
+  figure as the amount due. The copy is gone. `test-free-totals.mjs` (13) is new, and the
+  reason this was there to find: `computeDraftTotals` had **no suite at all**.
+- **Four ways an emailed invoice was destroyed rather than delayed.** No `maxDuration` on the
+  ingest route, so it is killed part-way through the reads and the owner is left with a partial
+  import that looks complete. The Worker returned quietly on any non-2xx, which after
+  Cloudflare has accepted at SMTP is permanent loss with no bounce — it rejects now. Attachments
+  dropped by the type filter, the size filter or the five-per-email cap vanished in silence;
+  each is named with its reason in a needs-review row. And the Worker spent its 4MB budget
+  without looking at the type, so a 2MB .docx ate the room a 1.2MB invoice needed and the note
+  said the *invoice* was too large. `test-inbox-worker-types.mjs` (15) holds the boundary no
+  import can cross.
+
+**Open / for Atanas.**
+- **`npx wrangler deploy` from `worker/` is not done** — held back on purpose. Rejecting means a
+  supplier gets a bounce where they used to get silence: right, but visible to somebody else.
+- Six audit dimensions relaunched narrower and still running when this was written: non-GBP
+  (save and consumers), email escaping, email recipients, public links, server logs, the route
+  table, dashboard weight.
+- The scanner is still slow to start (3.6 MB of page-finder over a phone connection) and still
+  silent when it finds nothing. A "can't find it — hold it further back, or tap the button"
+  line after a few seconds would help, but it would weaken two checks that currently assert
+  *no* hint on clips where nothing should be found, so it is a decision rather than a fix.
+
 ## 2026-09-25 — HMRC, the reverse charge, walkthroughs that record themselves, and five new ways to attack it (Opus 5)
 
 Atanas: "make you a big list to work on for the next few hours, work non stop, and then do
