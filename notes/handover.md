@@ -30,8 +30,11 @@
    were moved to `~/icloud-git-strays-2026-09-25/`, both pointing at a commit already in
    main), but 31 more strays sit in `.git` and the next one may not be harmless. A move to
    `~/Developer/INVOICE` was started on 2026-09-23 and stopped by him before anything moved.
-4. **Check Settings → VAT registered is OFF** on his own account. He said on 25/09 that he
-   is not VAT registered; with it on, his invoices would add VAT he cannot legally charge.
+4. ~~**Check Settings → VAT registered is OFF**~~ **DONE 2026-09-26: it already
+   was.** Hidefield (`fragov@hidefield.co.uk`) reads `vat_registered = false` with
+   0 invoices. The account with VAT on is the gmail TEST account, which is a
+   sandbox. This sat here as the urgent item for days and was one query away.
+
 
 # Handover
 

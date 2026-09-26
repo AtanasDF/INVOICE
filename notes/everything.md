@@ -85,9 +85,15 @@ was verified, not just written.
 
 ## WAITING ON HIM
 
-41. **Settings → VAT registered OFF** on his own account. He is not VAT
-    registered; with it on, his invoices add VAT he cannot legally charge.
-    **The only one with a correctness risk attached.**
+41. ~~**Settings → VAT registered OFF** on his own account.~~ **ALREADY OFF —
+    checked 2026-09-26, and it had been all along.** Read from the live database:
+    `fragov@hidefield.co.uk` (Hidefield, his real record) has `vat_registered =
+    false` and 0 invoices. The account with VAT switched ON is
+    `atanaschoo@gmail.com`, the **test** account — business name "PLACEHOLDER",
+    VAT number `GB000000000` — which is a sandbox and does not matter.
+    This was on the handover as the one urgent item and was repeated to him
+    several times. It came from `notes/handover.md`, which said it needed
+    checking; nobody had checked. **Reading the two rows took one query.**
 42. **The file library's dates and layout** — he is designing it himself and will
     send pictures. Not to be touched until then.
 43. **The UTR letter** (~15 days by post) finishes the HMRC production application.
