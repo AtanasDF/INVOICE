@@ -7,7 +7,7 @@ import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileS
 import { CATEGORIES, effectiveCategories, withCurrent, withUsed } from "@/lib/categories";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
-import { CURRENCIES, getFxRate } from "@/lib/fx";
+import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
 import { money } from "@/lib/money";
 import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } from "@/lib/supplierLinks";
 import { DocumentIcon } from "@/components/icons";
@@ -363,8 +363,9 @@ function ReceiptsPage() {
 
   async function saveEditReceipt(r: Receipt) {
     if (!editDraft) return;
-    if (editDraft.currency !== "GBP" && !editDraft.fxRateInput) {
-      setEditError("Enter an exchange rate before saving (or wait for it to load).");
+    const rateSays = rateProblem(editDraft.currency, editDraft.fxRateInput);
+    if (rateSays) {
+      setEditError(rateSays);
       return;
     }
     setEditError(null);

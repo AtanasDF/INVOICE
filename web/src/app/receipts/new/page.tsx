@@ -7,7 +7,7 @@ import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, Category, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
-import { CURRENCIES, getFxRate } from "@/lib/fx";
+import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
 import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { findDuplicate } from "@/lib/duplicates";
@@ -210,8 +210,9 @@ export default function NewReceiptPage() {
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
     if (!totalAmount) return setError(MISSING_TOTAL);
-    if (currency !== "GBP" && !fxRateInput) {
-      setError("Enter an exchange rate before saving (or wait for it to load).");
+    const rateSays = rateProblem(currency, fxRateInput);
+    if (rateSays) {
+      setError(rateSays);
       return;
     }
 

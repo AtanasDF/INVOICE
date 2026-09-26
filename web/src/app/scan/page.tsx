@@ -7,7 +7,7 @@ import { amount, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
-import { CURRENCIES, getFxRate } from "@/lib/fx";
+import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
 import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
 import type { ScanEngine } from "@/lib/extractors";
 import { documentDetailsFromScan, extractPages, mergeScanResults } from "@/lib/scanClient";
@@ -293,7 +293,8 @@ function gbpAmounts(f: Form) {
 function saveProblem(f: Form): string | null {
   const mode = modeOf(f);
   if (mode !== "archival" && !f.totalAmount) return "Enter a total before saving.";
-  if (f.currency !== "GBP" && !f.fxRateInput) return "Enter an exchange rate before saving (or wait for it to load).";
+  const rateSays = rateProblem(f.currency, f.fxRateInput);
+  if (rateSays) return rateSays;
   if (mode === "invoice" && !f.paid && !f.dueDate) return "A bill to be paid needs a due date.";
   return null;
 }

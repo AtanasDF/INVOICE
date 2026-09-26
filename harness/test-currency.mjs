@@ -3,9 +3,33 @@
 // down -- and a receipt saved at a rate of nothing would silently record
 // £0.00 of costs.
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, clickText } from "./mockdb.mjs";
+import { rateProblem, MAX_RATE } from "./gen/lib/fx.js";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
+
+// ---- The rate itself, before any of it is typed into a form ----------------
+//
+// The header above has said since this suite was written that "a receipt saved
+// at a rate of nothing would silently record £0.00 of costs". It was only ever
+// half true in the code: all three forms that take a rate checked that the box
+// was not EMPTY and nothing else, then did `parseFloat(input) || 0`. So "0"
+// and "abc" became a rate of zero and saved a receipt worth nothing, and a
+// negative rate saved one with NEGATIVE VAT, which comes off box 4 of a VAT
+// return. One rule now, in fx.ts, used by all three.
+check("a sensible rate is accepted", rateProblem("EUR", "0.86") === null && rateProblem("JPY", "0.0052") === null);
+check("GBP needs no rate at all", rateProblem("GBP", "") === null && rateProblem("GBP", "nonsense") === null);
+check("an empty box asks for a rate", /Enter an exchange rate/.test(rateProblem("EUR", "") ?? ""), String(rateProblem("EUR", "")));
+check("...and so does a box of spaces", /Enter an exchange rate/.test(rateProblem("EUR", "   ") ?? ""), String(rateProblem("EUR", "   ")));
+check("a rate of zero is refused", !!rateProblem("EUR", "0"), String(rateProblem("EUR", "0")));
+check("a negative rate is refused, which would have stored negative VAT", !!rateProblem("EUR", "-0.86"), String(rateProblem("EUR", "-0.86")));
+check("something that is not a number at all is refused", !!rateProblem("EUR", "abc") && !!rateProblem("EUR", "0.8.6"), `${rateProblem("EUR", "abc")} / ${rateProblem("EUR", "0.8.6")}`);
+check("an absurd rate is refused, which is a decimal point in the wrong place", !!rateProblem("EUR", String(MAX_RATE + 1)), String(rateProblem("EUR", String(MAX_RATE + 1))));
+check("...but a real one just under the ceiling is not", rateProblem("EUR", String(MAX_RATE - 1)) === null);
+// The refusal has to say what to type, not just that it is wrong.
+check("the refusal names the currency and what the number means", /how many pounds one EUR is worth/.test(rateProblem("EUR", "0") ?? ""), String(rateProblem("EUR", "0")));
+check("...and never shows the word NaN", !/NaN/.test(rateProblem("EUR", "abc") ?? ""), String(rateProblem("EUR", "abc")));
+
 const flat = (t) => t.replace(/\s+/g, " ");
 
 const db = makeDb();
