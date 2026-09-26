@@ -21,7 +21,6 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync, chmodSy
 import { execSync } from "node:child_process";
 import { REPO } from "./repo.mjs";
 
-const REPO = REPO;
 const MARKER = `${REPO}/.git/MUTATED`;
 const HOOK = `${REPO}/.git/hooks/pre-commit`;
 
@@ -43,6 +42,34 @@ const APP = `${REPO}/web/src`;
 
 // Each one breaks something a person would actually notice.
 const MUTATIONS = [
+  // ---- The night of 2026-09-26 ------------------------------------------
+  // Everything below was written that night, and most of it was already seen
+  // to go red once by hand. Pinning it here is what stops that being a story
+  // somebody has to take on trust a month from now.
+  { file: "lib/recurrence.ts", find: "return onDay(target.getUTCFullYear(), target.getUTCMonth(), d);",
+    replace: "return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);",
+    what: "a month end rolls over again, so the app and the cron disagree", expect: ["test-awkward-dates"] },
+  { file: "lib/fx.ts", find: "if (!Number.isFinite(rate) || rate <= 0)", replace: "if (false)",
+    what: "an exchange rate of zero or a negative saves a receipt worth nothing", expect: ["test-currency"] },
+  { file: "lib/freeInvoiceDraft.ts", find: "cisDeductionOf(lines, d.cis.rate)",
+    replace: "round((labourNet * d.cis.rate) / 100)",
+    what: "the free page's CIS is unclamped, so net payment due exceeds the total", expect: ["test-free-totals"] },
+  { file: "lib/photoAgeing.ts", find: 'export const EMAILABLE_TYPES = ["application/pdf", "image/png", "image/jpeg"];',
+    replace: 'export const EMAILABLE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"];',
+    what: "a webp photograph is emailed, which throws out of the middle of the run", expect: ["test-photo-ageing"] },
+  { file: "components/DocumentCapture.tsx", find: "const MIN_INK = 0.015;", replace: "const MIN_INK = 0;",
+    what: "a kitchen wall is a document again", expect: ["test-tiles"] },
+  { file: "components/DocumentCapture.tsx", find: 'onUnavailableRef.current?.("failed");', replace: "",
+    what: "a camera that cannot start no longer offers the upload or the by-hand form", expect: ["test-camera-refusal"] },
+  { file: "app/page.tsx", find: "if (!hasUsedCamera()) return;", replace: "",
+    what: "the dashboard downloads 13 MB of page-finder on a first visit again", expect: ["test-dashboard"] },
+  { file: "app/receipts/page.tsx", find: "totalAmount: (original ? original.total : sign * (r.amount + r.vatAmount)).toFixed(2),",
+    replace: "totalAmount: (sign * (r.amount + r.vatAmount)).toFixed(2),",
+    what: "editing a euro receipt converts it to pounds a second time", expect: ["test-receipts-list"] },
+  { file: "app/api/inbox/ingest/route.ts", find: "export const maxDuration = 300;", replace: "",
+    what: "the email import can be killed part-way through its reads", expect: ["test-inbox-worker-types"] },
+  { file: "app/api/reminders/send/route.ts", find: "export const maxDuration = 300;", replace: "",
+    what: "a cron job that emails customers can be killed half-done", expect: ["test-crons"] },
   { file: "lib/today.ts", find: 'timeZone: "Europe/London"', replace: 'timeZone: "UTC"',
     // Not test-dates: that one covers reading a printed date and date
     // arithmetic, neither of which asks what day it is now. Naming it here
@@ -225,13 +252,37 @@ if (cmd === "revert") {
   process.exit(0);
 }
 
+// One at a time, by number or by a word from its description. The suites are
+// judged on whether they notice each mutation ON ITS OWN: applying all fifty
+// and seeing a suite go red proves only that it caught AT LEAST ONE of the
+// ones aimed at it, and on 2026-09-25 that distinction nearly hid five
+// unproven mutations behind one red suite. Until now doing it singly meant
+// editing this file by hand, which is why it mostly was not done.
+//
+//   node mutate.mjs list                 every mutation, numbered
+//   node mutate.mjs apply 7              just number 7
+//   node mutate.mjs apply "kitchen wall" every one whose description matches
+const filter = process.argv[3] ?? "";
+// A number means that one and only that one. Matching the text as well let
+// `apply 4` also take a mutation whose description happened to contain a "4",
+// so two went in where one was asked for -- which is precisely the confusion
+// applying them singly exists to avoid.
+const byNumber = /^\d+$/.test(filter);
+const chosen = MUTATIONS.map((m, i) => ({ ...m, n: i + 1 })).filter((m) =>
+  !filter || (byNumber ? String(m.n) === filter : m.what.toLowerCase().includes(filter.toLowerCase()) || m.file.includes(filter))
+);
+if (filter && !chosen.length) {
+  console.log(`Nothing matches ${JSON.stringify(filter)}. \`node mutate.mjs list\` shows them all.`);
+  process.exit(1);
+}
+
 let applied = 0;
-for (const m of MUTATIONS) {
+for (const m of chosen) {
   const path = `${APP}/${m.file}`;
   let text;
   try { text = readFileSync(path, "utf8"); } catch { console.log(`SKIP ${m.file} (no such file)`); continue; }
   if (!text.includes(m.find)) { console.log(`SKIP ${m.file}: cannot find ${JSON.stringify(m.find)}\n    Either the code moved and the mutation needs fixing, or an EARLIER mutation in this run already rewrote that line -- two mutations on one line always leave the second skipped. Check before assuming the first.`); continue; }
-  console.log(`${cmd === "apply" ? "BREAK" : "would break"}: ${m.what}\n    ${m.file}: ${JSON.stringify(m.find)} -> ${JSON.stringify(m.replace)}\n    expect red: ${m.expect.join(", ")}`);
+  console.log(`${m.n}. ${cmd === "apply" ? "BREAK" : "would break"}: ${m.what}\n    ${m.file}: ${JSON.stringify(m.find)} -> ${JSON.stringify(m.replace)}\n    expect red: ${m.expect.join(", ")}`);
   if (cmd === "apply") { writeFileSync(path, text.replace(m.find, m.replace)); applied++; }
 }
 if (cmd === "apply" && applied) {
