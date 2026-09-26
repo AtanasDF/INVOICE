@@ -1919,6 +1919,13 @@ export default function DocumentCapture({
       onKeepScanning={() => {
         resetStable();
         setReviewing(false);
+        // The sheet covering the video is what paused it, so ask for frames
+        // again the moment it goes rather than leaving the watchdog to notice
+        // 1.8 seconds later. This is the exact path he described: "if you
+        // look at the scans, and then you click on keep scanning, it doesn't
+        // open the camera... although the flashlight works, just the camera."
+        const video = videoRef.current;
+        if (video?.paused) video.play().catch(() => {});
       }}
       onAccept={acceptBatch}
       purpose={purpose}
