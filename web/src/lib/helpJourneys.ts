@@ -129,6 +129,12 @@ export function journey(id: string): HelpJourney | null {
 
 // Where a recorded frame lives. The recorder writes to web/public on this
 // same path, so a missing file is a missing file in one place only.
-export function frameSrc(journeyId: string, step: number): string {
-  return `/help/${journeyId}/${String(step + 1).padStart(2, "0")}.webp`;
+//
+// Two sets, light and dark, because the frames are pictures OF the app: six
+// bright white rectangles on a dark phone is a picture of a different app,
+// which is the same objection that made them light-only in the first place.
+// Only one set is ever fetched -- whichever matches the reader's own theme --
+// so nobody downloads more than before.
+export function frameSrc(journeyId: string, step: number, dark = false): string {
+  return `/help/${journeyId}/${String(step + 1).padStart(2, "0")}${dark ? "-dark" : ""}.webp`;
 }

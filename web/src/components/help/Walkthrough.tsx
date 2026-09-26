@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { frameSrc, type HelpJourney } from "@/lib/helpJourneys";
+import { readTheme, subscribeTheme } from "@/lib/theme";
 import { useReducedMotion } from "@/lib/reducedMotion";
 
 // One walkthrough, stepped by hand.
@@ -20,6 +21,13 @@ export default function Walkthrough({ journey }: { journey: HelpJourney }) {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const reduced = useReducedMotion();
+  // The resolved theme, not the phone's: somebody who picked Dark on a light
+  // phone must get the dark frames, and the theme is the only thing that knows
+  // both. Subscribed rather than read into state in an effect, so changing the
+  // colour while a walkthrough is open swaps the pictures with it. The server
+  // has no theme, so it renders the light set and the browser corrects it --
+  // frames only load once a journey is opened, so nothing flashes.
+  const dark = useSyncExternalStore(subscribeTheme, () => readTheme() === "dark", () => false);
   const [broken, setBroken] = useState(false);
   const last = journey.steps.length - 1;
 
@@ -42,7 +50,7 @@ export default function Walkthrough({ journey }: { journey: HelpJourney }) {
       {!broken && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={frameSrc(journey.id, step)}
+          src={frameSrc(journey.id, step, dark)}
           alt=""
           loading="lazy"
           onError={() => setBroken(true)}

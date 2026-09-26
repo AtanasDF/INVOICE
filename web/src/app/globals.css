@@ -23,7 +23,11 @@
    warned about was real -- white text on a white button -- which is why the
    screens that are black by nature use `text-ink-on-dark`, always white,
    never inverted. */
+/* The light themes are light whatever the phone is set to, so say so: without
+   it, a dark-OS browser paints native controls dark inside a light page. */
 :root {
+  color-scheme: light;
+
   --n-50: #fafafa;
   --n-100: #f5f5f5;
   --n-200: #e5e5e5;
@@ -138,6 +142,16 @@
    Colour and darkness are not yet combined: picking Dark sets aside the tint.
    Five dark scales for five hues is a bigger job than it is worth today. */
 [data-theme="dark"] {
+  /* Native controls -- the date picker above all -- are painted by the
+     browser, not by us. Without this they keep their light-mode chrome while
+     inheriting the theme's light ink, so a date input rendered WHITE TEXT ON
+     WHITE: measured at 1.1:1 against 15.64:1 for every other input on the same
+     page, which is invisible rather than merely hard. That is every invoice
+     date, due date, receipt date and trip date in the app, and a date nobody
+     can read is a date nobody can check. Found by looking at a recorded dark
+     walkthrough frame; the contrast suites walk textContent, and an input's
+     value is not textContent, so they had never looked at one. */
+  color-scheme: dark;
   --n-50: #101114;
   --n-100: #17181c;
   --n-200: #232529;
@@ -389,7 +403,13 @@ input[type="date"] {
   min-height: 2.625rem;
   -webkit-appearance: none;
   appearance: none;
-  background-color: #fff;
+  /* --paper, not #fff. The hard-coded white survived the theming work and made
+     every date in the app invisible in dark mode: the theme's light ink on a
+     white box, measured at 1.1:1 where every other input on the same page was
+     15.64:1. That is the invoice date, the due date, the receipt date and the
+     trip date -- and a date nobody can read is a date nobody can check.
+     "Never hard-code a hex" is in CLAUDE.md for exactly this. */
+  background-color: var(--paper);
 }
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;

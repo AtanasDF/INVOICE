@@ -8,7 +8,8 @@
 // are written again rather than quietly rotting.
 //
 // Run:  BASE=http://localhost:3000 node record-help.mjs
-// Writes web/public/help/<journey>/NN.webp, one per step, and NOTHING else.
+// Writes web/public/help/<journey>/NN.webp and NN-dark.webp, one pair per step,
+// and NOTHING else.
 // It never deletes a directory it did not write.
 import { mkdirSync, writeFileSync, existsSync, readdirSync, unlinkSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -27,6 +28,9 @@ const HEIGHT = 780;
 // budget and a help section that blows it is a help section nobody waits
 // for.
 const MAX_KB = 90;
+// Light first, so a half-finished run still leaves the set everything falls
+// back to.
+const SCHEMES = ["light", "dark"];
 
 const problems = [];
 const db = makeDb();
@@ -181,7 +185,6 @@ try {
   // The app follows the phone's own light/dark setting. A dark frame shown
   // to somebody whose phone is light is a picture of a different app, so the
   // frames are always recorded light.
-  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
 
   for (const journey of HELP_JOURNEYS) {
     const drive = DRIVE[journey.id];
@@ -194,26 +197,39 @@ try {
     const dir = join(OUT, journey.id);
     mkdirSync(dir, { recursive: true });
     // Only ever removes the frames it is about to replace.
-    if (existsSync(dir)) for (const f of readdirSync(dir)) if (/^\d\d\.webp$/.test(f)) unlinkSync(join(dir, f));
+    if (existsSync(dir)) for (const f of readdirSync(dir)) if (/^\d\d(-dark)?\.webp$/.test(f)) unlinkSync(join(dir, f));
+
+   for (const scheme of SCHEMES) {
+    // The app follows the phone unless a colour was picked on purpose, so
+    // emulating the phone is the real path: nothing here sets data-theme by
+    // hand. Both sets are recorded because the reason light-only was chosen --
+    // "a dark frame shown to somebody whose phone is light is a picture of a
+    // different app" -- reads exactly the same the other way round, and six
+    // bright white rectangles is what a dark phone used to get. Nobody
+    // downloads more: a viewer fetches only the set matching their own theme.
+    await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
+    await page.reload({ waitUntil: "networkidle0" });
+    await sleep(600);
 
     for (let i = 0; i < drive.length; i++) {
       await clearRing(page);
       await drive[i](page);
-      const file = join(dir, `${String(i + 1).padStart(2, "0")}.webp`);
+      const file = join(dir, `${String(i + 1).padStart(2, "0")}${scheme === "dark" ? "-dark" : ""}.webp`);
       const shot = await page.screenshot({ type: "webp", quality: 72, captureBeyondViewport: false });
       // A frame identical to the one before it is a step that showed
       // nothing. The first run wrote three such pairs and reported success,
       // because nothing was looking at the pictures -- only at whether files
       // had been written.
       const hash = createHash("sha1").update(shot).digest("hex");
-      if (seen.has(hash)) problems.push(`${journey.id}/${i + 1}: identical to ${seen.get(hash)} -- the step showed nothing new`);
-      seen.set(hash, `${journey.id}/${i + 1}`);
+      if (seen.has(hash)) problems.push(`${journey.id}/${i + 1} (${scheme}): identical to ${seen.get(hash)} -- the step showed nothing new`);
+      seen.set(hash, `${journey.id}/${i + 1} (${scheme})`);
       writeFileSync(file, shot);
       const kb = Math.round(statSync(file).size / 1024);
-      if (kb > MAX_KB) problems.push(`${journey.id}/${i + 1}: ${kb}KB, over the ${MAX_KB}KB budget`);
+      if (kb > MAX_KB) problems.push(`${journey.id}/${i + 1} (${scheme}): ${kb}KB, over the ${MAX_KB}KB budget`);
       wrote++;
     }
-    console.log(`recorded ${journey.id}: ${drive.length} frames`);
+   }
+    console.log(`recorded ${journey.id}: ${drive.length} frames light and dark`);
   }
 } catch (e) {
   problems.push(`ERROR ${e.message}`);

@@ -85,6 +85,31 @@ const CONTRAST = `(() => {
     const got = ratio(fg, behind(el));
     if (got < need) bad.push({ text: text.slice(0, 40), size, got: Math.round(got * 100) / 100, need });
   }
+
+  // Inputs, separately, because the loop above cannot see them: it skips
+  // anything whose textContent is empty, and what somebody typed lives in the
+  // value property, never in textContent. So EVERY input in the app had gone
+  // unmeasured -- and a date input was sitting at 1.1:1 in dark mode, the
+  // theme's light ink on a hard-coded white box, while this suite reported
+  // green. Found by looking at a recorded dark walkthrough frame, not by any
+  // check. (No backticks in here: this whole block is a template literal.)
+  for (const el of document.querySelectorAll("main input, main textarea, main select")) {
+    const st = getComputedStyle(el);
+    if (st.visibility === "hidden" || st.display === "none") continue;
+    if (el.type === "checkbox" || el.type === "radio" || el.type === "hidden") continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) continue;
+    const fg = parse(st.color);
+    if (!fg) continue;
+    // behind() walks ancestors for the first opaque backdrop; an input paints
+    // its own, so prefer that when it is not transparent.
+    const own = st.backgroundColor;
+    const transparent = /rgba\([^)]*,\s*0\s*\)/.test(own) || own === "transparent";
+    const bg = transparent ? behind(el) : (parse(own) || behind(el));
+    const got = ratio(fg, bg);
+    const name = "[" + el.tagName.toLowerCase() + (el.type ? " " + el.type : "") + "] " + (el.getAttribute("aria-label") || el.id || "");
+    if (got < 4.5) bad.push({ text: name.slice(0, 40), size: parseFloat(st.fontSize), got: Math.round(got * 100) / 100, need: 4.5 });
+  }
   return bad;
 })()`;
 
@@ -156,6 +181,23 @@ try {
     const bad = await page.evaluate(CONTRAST);
     check(`the money screen is readable in ${t}`, bad.length === 0, JSON.stringify(bad.slice(0, 4)));
   }
+  // --- a form with dates in it, which is where the INPUTS live ---
+  // The pages above carry almost no inputs, and none with a date, so the
+  // input check could pass while every date in the app was unreadable -- which
+  // is exactly what was happening: a hard-coded white background on
+  // input[type=date] against the dark theme's light ink, 1.1:1. This visits a
+  // page that has four of them.
+  await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.querySelectorAll('input[type="date"]').length > 0, { timeout: 20000 }).catch(() => {});
+  await sleep(900);
+  const dateCount = await page.evaluate(() => document.querySelectorAll('input[type="date"]').length);
+  check("the invoice form really has dates to check", dateCount > 0, String(dateCount));
+  for (const t of THEMES) {
+    await setTheme(t);
+    const bad = await page.evaluate(CONTRAST);
+    check(`what you type into an invoice is readable in ${t}`, bad.length === 0, JSON.stringify(bad.slice(0, 4)));
+  }
+
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(900);
 

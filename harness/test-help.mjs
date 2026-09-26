@@ -42,7 +42,15 @@ check("every step has its words", empty.length === 0, JSON.stringify(empty));
 const recorder = readFileSync(`${REPO}/harness/record-help.mjs`, "utf8");
 check("the recorder refuses two identical frames", /identical to/.test(recorder) && /createHash/.test(recorder));
 check("and refuses a caption with nothing to ring", /nothing to ring for/.test(recorder));
-check("and never deletes a frame it did not write", /\^\\\\d\\\\d\\\\.webp\$/.test(recorder) || /\\d\\d\\.webp/.test(recorder));
+// It clears the frames it is about to replace and nothing else. The pattern
+// has to be ANCHORED: an unanchored one would match any name containing those
+// characters, and this directory is under web/public where somebody's own
+// files could sit. Both namings, since a journey is now recorded light and
+// dark (NN.webp and NN-dark.webp).
+const clearPattern = /if \(existsSync\(dir\)\) for \(const f of readdirSync\(dir\)\) if \((\/[^/]+\/)\.test\(f\)\)/.exec(recorder)?.[1];
+check("and never deletes a frame it did not write",
+  !!clearPattern && clearPattern.startsWith("/^") && /\$\/$/.test(clearPattern) && /-dark/.test(clearPattern) && /webp/.test(clearPattern),
+  String(clearPattern));
 
 // Captions say what a step is FOR. "Click the button" is the failure mode.
 const clicky = HELP_JOURNEYS.flatMap((j) => j.steps.map((s) => s.caption)).filter((c) => /^(click|tap|press) /i.test(c.trim()));
