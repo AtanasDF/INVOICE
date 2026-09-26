@@ -88,12 +88,46 @@ that survived, all fixed tonight:
   said the *invoice* was too large. `test-inbox-worker-types.mjs` (15) holds the boundary no
   import can cross.
 
+**A second audit** of the six dimensions that had stalled, split smaller. Four survived, all
+fixed, and one of them opened onto something much bigger.
+
+- **A webp receipt would have stopped the photo-ageing run for everyone after it.** pdf-lib
+  embeds PNG and JPEG and nothing else, so a `.webp` or `.gif` photograph threw
+  "SOI not found in JPEG" out of the middle of the run: 500, that owner abandoned, and every
+  owner ordered after them, every day, because nothing about the row ever changes. It threw
+  *before* the delete switch was consulted, so it also killed the **dry run** — the report
+  CLAUDE.md says must be read and agreed before deletion is ever enabled. Being unable to
+  email a photograph is now a reason to keep it. The row is also cleared *before* the file is
+  removed, since the other order left a receipt pointing at a file already gone — a dead image
+  and no "Emailed to you", which reads as a lost receipt. And `added` read `created_at` as a
+  UTC date, making a receipt added at 00:30 BST a day older than it is.
+- **`current_date` in SQL, which test-utc-today could not see.** The audit flagged one
+  function; reading every `current_date` in the folder found **four**. Postgres runs in UTC on
+  Supabase, so a quote could be **accepted for an hour after it expired** (while the customer's
+  own page had said expired since midnight), a recurring invoice raised in that hour was
+  **dated yesterday** — into the previous VAT quarter on the first of one, the exact damage
+  `today.ts` was written to stop — and a supplier could send prices an hour after the deadline.
+  `migration-041` gives SQL one place that answers it, `public.uk_today()`. **Not merged and
+  not run** (rule 4): `feature/sql-london-day`.
+- **And SQL can now be proved before it is run,** which this project has never been able to do.
+  `harness/test-migration-041.mjs` runs the whole migration against a real Postgres (pglite in
+  WASM, deliberately *not* a project dependency — one line of setup, skips cleanly without it)
+  and exercises every gate. It earned itself immediately: the "no function still asks UTC"
+  query in the migration's own header **threw** `array_agg is an aggregate function`, because
+  `pg_get_functiondef` refuses an aggregate. That was the check meant to be run after applying
+  it. `test-utc-today` now reads the SQL too (10 → 18 checks), with the superseded files listed
+  by name so a new `current_date` in a function body fails.
+
 **Open / for Atanas.**
 - **`npx wrangler deploy` from `worker/` is not done** — held back on purpose. Rejecting means a
   supplier gets a bounce where they used to get silence: right, but visible to somebody else.
-- Six audit dimensions relaunched narrower and still running when this was written: non-GBP
-  (save and consumers), email escaping, email recipients, public links, server logs, the route
-  table, dashboard weight.
+- **`migration-041` needs running** in the Supabase SQL editor, then `feature/sql-london-day`
+  merges. Its header carries the checks. It is already proved against a real Postgres, so it
+  should apply first time.
+- Three audit dimensions have now stalled twice and remain unaudited: **non-GBP on save**,
+  **every route's front door as one table**, and **the dashboard's first-load weight**. They are
+  the three that need the most reading, which is presumably why. Worth doing by hand, or split
+  finer still.
 - The scanner is still slow to start (3.6 MB of page-finder over a phone connection) and still
   silent when it finds nothing. A "can't find it — hold it further back, or tap the button"
   line after a few seconds would help, but it would weaken two checks that currently assert
