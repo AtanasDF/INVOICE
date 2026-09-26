@@ -1,6 +1,7 @@
 import type { InvoiceLayoutStyle, InvoiceLineKind, InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { computeInvoiceTotals, VAT_RATES, VatRateKind } from "@/lib/vat";
 import { todayISO } from "@/lib/today";
+import { cisDeduction as cisDeductionOf } from "@/lib/cis";
 
 export type FreeInvoiceLine = { description: string; quantity: number; unitPrice: number; vatRate: VatRateKind; kind: InvoiceLineKind };
 
@@ -310,7 +311,16 @@ export function computeDraftTotals(d: FreeInvoiceDraft): DraftTotals {
   const total = round(subtotal + totalVat);
   const net = (kind: InvoiceLineKind) => round(lines.filter((l) => l.kind === kind).reduce((s, l) => s + l.quantity * l.unitPrice, 0));
   const labourNet = net("labour");
-  const cisDeduction = cisApplies(d) ? round((labourNet * d.cis.rate) / 100) : 0;
+  // The app's own function, not a second copy of the sum. This page had one and
+  // it was missing the clamp cis.ts carries with the comment explaining exactly
+  // why: "a deposit or discount taken off as labour can outweigh the labour
+  // lines; there's never a negative deduction". Without it, CIS at 20% with a
+  // "Less deposit paid" line of -500 marked labour against 300 of labour gave a
+  // deduction of -40, so "Net payment due" printed 840 on an 800 invoice -- and
+  // SendByEmail uses that same figure as the amount due, so the customer was
+  // asked for 40 pounds more than the invoice total. Penny-exact this way too,
+  // as an issued invoice is.
+  const cisDeduction = cisApplies(d) ? cisDeductionOf(lines, d.cis.rate) : 0;
   return {
     subtotal,
     vatByRate,

@@ -1,7 +1,7 @@
 import type { InvoiceItem } from "@/lib/storage";
 import { VatLineItem, computeInvoiceTotals } from "@/lib/vat";
 
-type CisLine = VatLineItem & Pick<InvoiceItem, "kind">;
+type CisLine = VatLineItem & { kind?: InvoiceItem["kind"] | "other" };
 
 // Construction Industry Scheme: a contractor paying a subcontractor keeps
 // back 20% of the labour (30% if the subcontractor isn't registered) and
@@ -12,6 +12,10 @@ export const CIS_RATE_LABELS: Record<number, string> = { 20: "20% (registered)",
 
 const pence = (n: number) => Math.round(n * 100);
 
+// "other" is here because the Free-invoice page has a third line kind and its
+// totals use the same deduction function: labourNet asks only whether a line
+// IS labour, so anything else is excluded either way, and one copy of the rule
+// is worth more than a narrow type.
 // Lines as saved on a CIS invoice: each marked, unmarked ones as labour.
 export function withKinds<T extends { kind?: "labour" | "materials" }>(items: T[], rate: number | null): T[] {
   return rate ? items.map((i) => ({ ...i, kind: i.kind ?? "labour" })) : items;
