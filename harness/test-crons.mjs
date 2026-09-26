@@ -71,4 +71,20 @@ const clashes = Object.entries(
 ).filter(([, paths]) => paths.length > 1);
 check("no two jobs are set to the same minute", clashes.length === 0, JSON.stringify(clashes));
 
+// ---------------------------------------------------------------------------
+// Long enough to finish
+// ---------------------------------------------------------------------------
+// Cron work grows with the number of accounts, and being killed part-way is
+// invisible: nobody is watching it, and the half that did not run leaves no
+// trace. /api/inbox/ingest was found doing exactly that -- killed mid-read,
+// leaving rows for the first attachment and nothing for the rest, an import
+// that looked complete. Every one of these loops over accounts, invoices or
+// schedules doing network work per item, so every one needs the same.
+const noLimit = wantsCron.filter((route) => {
+  const src = fs.readFileSync(path.join(WEB, "src/app", route, "route.ts"), "utf8");
+  const declared = Number(/export const maxDuration = (\d+)/.exec(src)?.[1] ?? 0);
+  return declared < 60;
+});
+check("every cron route says how long it may take, and it is not seconds", noLimit.length === 0, JSON.stringify(noLimit));
+
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

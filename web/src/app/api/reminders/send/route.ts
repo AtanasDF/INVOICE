@@ -7,6 +7,13 @@ import { todayISO } from "@/lib/today";
 import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
+// Cron work grows with the number of accounts, and killing it part-way is
+// invisible: nobody is watching, and the half that did not run leaves no trace.
+// Every invoice in a reminder window, each an email to a customer.
+// The same shape as the email import, which was being killed mid-read and
+// leaving a partial result that looked complete (see /api/inbox/ingest).
+export const maxDuration = 300;
+
 
 // Triggered daily by vercel.json's cron config -- same mechanism and same
 // CRON_SECRET as /api/notifications/check, no separate secret needed for

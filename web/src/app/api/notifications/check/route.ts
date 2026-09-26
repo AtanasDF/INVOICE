@@ -7,6 +7,13 @@ import { addDays } from "@/lib/reminderTemplates";
 import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
+// Cron work grows with the number of accounts, and killing it part-way is
+// invisible: nobody is watching, and the half that did not run leaves no trace.
+// Every account with a subscription, each a web-push send.
+// The same shape as the email import, which was being killed mid-read and
+// leaving a partial result that looked complete (see /api/inbox/ingest).
+export const maxDuration = 300;
+
 
 // Triggered daily by vercel.json's cron config. Checks every account for
 // an overdue invoice, a due recurring expense or a supplier bill due
