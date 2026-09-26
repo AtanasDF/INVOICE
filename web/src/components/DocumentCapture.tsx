@@ -31,7 +31,7 @@ type WorkQuad = { pts: Quad; w: number; h: number };
 // and reused: allocating and freeing seven Mats every tick was most of
 // the per-frame cost on a phone.
 type WorkMats = { w: number; h: number; src: Mat; gray: Mat; blurred: Mat; edges: Mat; kernel: Mat; contours: MatVector; hierarchy: Mat; mask: Mat };
-type Status = "starting" | "live" | "denied" | "timeout" | "unsupported";
+type Status = "starting" | "live" | "stalled" | "denied" | "timeout" | "unsupported";
 type CvStatus = "loading" | "ready" | "failed";
 type Coach = "line" | "zooming" | "centre" | "closer" | "hold";
 type ZoomRange = { min: number; max: number; step: number };
@@ -69,6 +69,20 @@ const MAX_ASPECT = 8;
 const MIN_SOLIDITY = 0.85;
 const MIN_RECTANGULARITY = 0.9;
 const MAX_EDGES_AROUND = 0.2;
+// A four-corner shape bigger than MIN_CONTOUR_AREA used to be taken for a
+// page on its size alone, nothing else asked -- so the scanner locked onto a
+// kitchen wall and photographed it (Atanas on an iPhone, 2026-09-26: "he
+// scans the tiles in my kitchen and he takes the picture of that... you
+// shouldn't be able to scan tiles just because it has an edge"). Tiles beat
+// every test the small-shape path applies: large, rectangular, lighter than
+// the grout around them, nothing printed nearby. What a document has and a
+// wall hasn't is printing on it, so that is what is measured -- dilated Canny
+// edges inside the shape, as a fraction of it. Blank paper fails this and
+// that is accepted: it stops the green lock-on and auto-capture, never the
+// shutter, so a blank page is still one tap away.
+const MIN_INK = 0.015;
+// Clear of the shape's own outline, which the dilation thickens.
+const INK_SHRINK = 0.85;
 // Bent paper: the simplified outline of a folded-over corner, a kink or a
 // wavy edge puts a corner somewhere along a side -- the crop comes out skewed
 // and, as the page moves, the corner flips between the two ends of the fold.
@@ -124,6 +138,18 @@ const DARK_LEVEL = 55;
 const TORCH_AFTER_MS = 400;
 const DARK_HINT_MS = 1200;
 const FAILURE_MS = 2500;
+// A live camera's video.currentTime advances every frame. When it stops for
+// this long the camera has stopped sending pictures, which on a phone looks
+// exactly like a working camera pointed at something black. Two causes, and
+// they need different answers: the element has been paused (iOS does this
+// when a full-screen sheet covers it -- the track stays alive, which is why
+// the torch still worked), or the track itself is gone. Anything under a
+// second is a slow first frame or a stalled decode, not a dead camera.
+const STALLED_MS = 1800;
+// Only reopen a camera that was working: a stream that never produced this
+// many frames will not produce them on the second ask either, and a loop of
+// reopens is worse than a screen that says what happened.
+const WORKED_FRAMES = 30;
 const FOCUS_RING_MS = 800;
 // Batch mode: after a capture, auto-capture waits until the page has left
 // the frame (or the detector lost it while pages were swapped) and this
@@ -469,6 +495,15 @@ function looksLikePaper(cv: CVModule, m: WorkMats, pts: Point[]): boolean {
   return inside - around >= PAPER_CONTRAST && printedAround <= MAX_EDGES_AROUND;
 }
 
+function inkInside(cv: CVModule, m: WorkMats, pts: Point[]): number {
+  const cx = pts.reduce((sum, p) => sum + p.x, 0) / pts.length;
+  const cy = pts.reduce((sum, p) => sum + p.y, 0) / pts.length;
+  const inner = pts.map((p) => ({ x: cx + (p.x - cx) * INK_SHRINK, y: cy + (p.y - cy) * INK_SHRINK }));
+  m.mask.setTo(new cv.Scalar(0));
+  fillPolygon(cv, m.mask, inner, 255);
+  return cv.mean(m.edges, m.mask)[0] / 255;
+}
+
 // Every page in m.gray, largest first: four-corner shapes big enough to be
 // a page outright, and smaller ones that look like paper.
 // requirePaper: zoomed in, the frame can be all page, and a text block or a
@@ -478,7 +513,7 @@ function looksLikePaper(cv: CVModule, m: WorkMats, pts: Point[]): boolean {
 // candidate has to look like paper on a table: lighter than what's round
 // it and clear of the edge. A page that has outgrown the frame fails that
 // too, which is what sends the zoom back out.
-function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePaper = false): { pts: Point[]; area: number }[] {
+function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePaper = false): { pts: Point[]; area: number; ink: number }[] {
   cv.GaussianBlur(m.gray, m.blurred, new cv.Size(5, 5), 0);
   cv.Canny(m.blurred, m.edges, 50, 150);
   cv.dilate(m.edges, m.edges, m.kernel);
@@ -496,7 +531,7 @@ function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePap
     c.delete();
   }
   found.sort((a, b) => b.area - a.area);
-  const pages: { pts: Point[]; area: number }[] = [];
+  const pages: { pts: Point[]; area: number; ink: number }[] = [];
   for (const f of found) {
     // Corners are fitted only for shapes that get this far: the live loop
     // stops at the first page.
@@ -504,14 +539,24 @@ function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePap
     const pts = fitCorners(cv, c, f.approx, m.w, m.h);
     c.delete();
     const area = polygonArea(pts);
-    if ((area < frame * MIN_CONTOUR_AREA || requirePaper) && !looksLikePaper(cv, m, pts)) continue;
-    pages.push({ pts, area });
+    const small = area < frame * MIN_CONTOUR_AREA;
+    if ((small || requirePaper) && !looksLikePaper(cv, m, pts)) continue;
+    const ink = inkInside(cv, m, pts);
+    // Every big shape, zoomed in or not. Skipping this while requirePaper was
+    // set left the whole bug in place by another door: auto-zoom zooms towards
+    // whatever it thinks is the page, so a tile grows past MIN_CONTOUR_AREA,
+    // requirePaper comes on, and a tile passes looksLikePaper easily. Measured
+    // on the clips: a wall reads 0, an A4 invoice 110, a receipt on a
+    // patterned floor 253. A small shape is left alone -- across the five far
+    // clips its printing measures as low as 6, too close to call.
+    if (!small && ink < MIN_INK) continue;
+    pages.push({ pts, area, ink });
     if (firstOnly) break;
   }
   return pages;
 }
 
-function findPage(cv: CVModule, m: WorkMats, requirePaper = false): { pts: Point[]; area: number } | null {
+function findPage(cv: CVModule, m: WorkMats, requirePaper = false): { pts: Point[]; area: number; ink: number } | null {
   return pageCandidates(cv, m, true, requirePaper)[0] ?? null;
 }
 
@@ -764,7 +809,7 @@ export default function DocumentCapture({
   // what the detection loop is doing on a phone in the field.
   const [debug, setDebug] = useState(false);
   const [debugText, setDebugText] = useState("");
-  const diagRef = useRef({ ticks: 0, quads: 0, coverage: 0, sharpness: 0, lastTickMs: 0, videoW: 0, videoH: 0 });
+  const diagRef = useRef({ ticks: 0, quads: 0, coverage: 0, sharpness: 0, ink: 0, lastTickMs: 0, videoW: 0, videoH: 0 });
   const [autoOn, setAutoOn] = useState(readAutoCapture);
   const [autoZoomOn, setAutoZoomOn] = useState(readAutoZoom);
   const [flash, setFlash] = useState(false);
@@ -783,6 +828,11 @@ export default function DocumentCapture({
   const [zoom, setZoom] = useState(1);
   const [cssZoom, setCssZoom] = useState(1);
   const [retryKey, setRetryKey] = useState(0);
+  // Reset on every open, so a reopen that produces nothing cannot ask for
+  // another one.
+  const framesRef = useRef(0);
+  const lastFrameTimeRef = useRef(-1);
+  const lastFrameAtRef = useRef(0);
   // OpenCV is loaded the moment the live-camera path mounts. "failed"
   // carries the real error text: it is the diagnostic the user will
   // screenshot, so it is never rewritten into something friendlier.
@@ -991,6 +1041,21 @@ export default function DocumentCapture({
     []
   );
 
+  // The camera has stopped sending pictures. Nothing used to notice: the
+  // frame loop returns early on an unready video, so it span doing nothing
+  // while the screen showed black, the status still said "live", and the only
+  // way out was leaving the scanner and coming back -- losing the batch
+  // (Atanas on an iPhone, 2026-09-26: "the camera, it wouldn't take a photo,
+  // it all came black. And then I couldn't turn the camera back on").
+  const cameraLost = useCallback(() => {
+    if (framesRef.current > WORKED_FRAMES) {
+      setStatus("starting");
+      setRetryKey((k) => k + 1);
+      return;
+    }
+    setStatus("stalled");
+  }, []);
+
   function retry() {
     // Ask the browser again rather than repeating our own remembered no.
     // Without this, Try again on the blocked screen re-reads the refusal we
@@ -1119,13 +1184,27 @@ export default function DocumentCapture({
           hwZoomRef.current = null;
           setZoomRange(null);
         }
+        framesRef.current = 0;
+        lastFrameTimeRef.current = -1;
+        lastFrameAtRef.current = performance.now();
+        // The track says so itself when the system takes the camera away.
+        // Left attached: the track is stopped and dropped on cleanup, and
+        // the handler is guarded by cancelled either way.
+        const lost = () => {
+          if (!cancelled) cameraLost();
+        };
+        track?.addEventListener("ended", lost);
+        track?.addEventListener("mute", lost);
         setStatus("live");
         if (isIOS() && opened.asked) setCameraHint(true);
         rafRef.current = requestAnimationFrame(loop);
       } catch {
         if (cancelled) return;
-        setStatus("denied");
-        onUnavailableRef.current?.("denied");
+        // Permission was already settled by openCamera, which answers
+        // "denied" itself. Anything thrown here is the stream failing to
+        // start -- most often play() rejecting -- so saying access was
+        // denied names the wrong cause and offers the wrong remedy.
+        setStatus("stalled");
       }
     }
 
@@ -1134,6 +1213,7 @@ export default function DocumentCapture({
     function loop(timestamp: number) {
       if (cancelled) return;
       if (statusRef.current === "live") {
+        watchFrames(timestamp);
         drawOverlay();
         if (!detecting && timestamp - lastRunRef.current >= DETECT_INTERVAL_MS) {
           lastRunRef.current = timestamp;
@@ -1144,6 +1224,28 @@ export default function DocumentCapture({
         }
       }
       rafRef.current = requestAnimationFrame(loop);
+    }
+
+    // Paused first, because it is both the likelier one and the cheaper fix:
+    // play() again keeps the stream, the zoom and the torch. rAF doesn't run
+    // in a background tab, so leaving the app and coming back can't trip this.
+    function watchFrames(timestamp: number) {
+      const video = videoRef.current;
+      if (!video) return;
+      if (video.currentTime !== lastFrameTimeRef.current) {
+        lastFrameTimeRef.current = video.currentTime;
+        lastFrameAtRef.current = timestamp;
+        framesRef.current++;
+        return;
+      }
+      if (timestamp - lastFrameAtRef.current < STALLED_MS) return;
+      lastFrameAtRef.current = timestamp;
+      const track = streamRef.current?.getVideoTracks()[0];
+      if (video.paused && track?.readyState === "live") {
+        video.play().catch(() => cameraLost());
+        return;
+      }
+      cameraLost();
     }
 
     function drawOverlay() {
@@ -1276,6 +1378,7 @@ export default function DocumentCapture({
         diagRef.current.lastTickMs = Math.round(performance.now() - tickStart);
         diagRef.current.sharpness = Math.round(sharpness);
         diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
+        diagRef.current.ink = page ? Math.round(page.ink * 1000) : 0;
         if (best) diagRef.current.quads++;
 
         // The page taken counts as gone when it's lost (past the same grace
@@ -1404,7 +1507,7 @@ export default function DocumentCapture({
     // (the state) is deliberately not listed -- processFrame reads cvRef
     // instead precisely so OpenCV arriving mid-effect doesn't need to
     // restart the camera stream just to start detection.
-  }, [stopStream, freeMats, retryKey, useNative]);
+  }, [stopStream, freeMats, retryKey, useNative, cameraLost]);
 
   // Two fingers on the camera zoom the camera, not the page: the browser's
   // own pinch and double-tap zoom are switched off here (touch-action, and
@@ -1829,7 +1932,7 @@ export default function DocumentCapture({
     const id = setInterval(() => {
       const d = diagRef.current;
       setDebugText(
-        `cv:${cvStatus} video:${d.videoW}x${d.videoH} ticks:${d.ticks} quads:${d.quads} cov:${d.coverage}% sharp:${d.sharpness} tick:${d.lastTickMs}ms coach:${coach} auto:${autoRef.current ? "on" : "off"}`
+        `cv:${cvStatus} video:${d.videoW}x${d.videoH} ticks:${d.ticks} quads:${d.quads} cov:${d.coverage}% ink:${d.ink} sharp:${d.sharpness} tick:${d.lastTickMs}ms coach:${coach} auto:${autoRef.current ? "on" : "off"}`
       );
     }, 500);
     return () => clearInterval(id);
@@ -1986,6 +2089,24 @@ export default function DocumentCapture({
             <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-ink-on-dark">
               Try again
             </button>
+            {iOSMode && <NativeCameraEscape onSwitch={() => switchScannerMode("native")} />}
+          </div>
+        )}
+        {status === "stalled" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
+            {/* The scans are the thing to say first. A black screen with no
+                way back reads as "I have lost the ones I already took", and
+                the other failure screens hide the stack, so without this
+                button they really are out of reach. */}
+            <p>The camera stopped sending pictures.{multi && shots.length > 0 ? " Your scans so far are safe." : ""}</p>
+            <button onClick={retry} className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-neutral-900">
+              Turn the camera back on
+            </button>
+            {multi && shots.length > 0 && (
+              <button onClick={openReview} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-ink-on-dark">
+                Check and read {shots.length} scan{shots.length === 1 ? "" : "s"}
+              </button>
+            )}
             {iOSMode && <NativeCameraEscape onSwitch={() => switchScannerMode("native")} />}
           </div>
         )}

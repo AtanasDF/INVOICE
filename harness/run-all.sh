@@ -85,6 +85,7 @@ fi
 # The files the upload suites hand to the app are made, not kept in git.
 [ -d uploads ] || python3 gen-uploads.py >/dev/null
 [ -d multi ] || python3 gen-multi.py >/dev/null
+[ -f tiles.mjpeg ] || python3 gen-tiles.py >/dev/null
 
 # Suites that start their own `next dev` in web/ can't run beside each
 # other: two dev servers in one folder trip over the same build cache, and
