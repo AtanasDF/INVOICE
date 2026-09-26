@@ -1,5 +1,6 @@
 "use client";
 
+import { ukDate } from "@/lib/today";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import QuoteDocument, { money, quoteTotal } from "@/components/quote/QuoteDocument";
 import { longDate } from "@/components/invoice/InvoiceDocument";
@@ -101,7 +102,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
       <div aria-live="polite" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
         {answered === "accepted" ? (
           <p className="text-sm font-medium text-green-800">
-            You accepted this quote{data.response?.at ? ` on ${longDate(data.response.at.slice(0, 10))}` : ""}. {from} has been told and will be in touch.
+            You accepted this quote{data.response?.at ? ` on ${longDate(ukDate(data.response.at))}` : ""}. {from} has been told and will be in touch.
           </p>
         ) : answered === "declined" ? (
           <p className="text-sm text-neutral-700">You declined this quote. {from} has been told.</p>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { pagesToPdf, type DocPage } from "@/lib/documentPdf";
 import { todayISO } from "@/lib/today";
-import { cutoffFor, sortOut, forOwner, emailSubject, emailBody, type AgeableRow } from "@/lib/photoAgeing";
+import { canEmail, cutoffFor, sortOut, forOwner, emailSubject, emailBody, type AgeableRow } from "@/lib/photoAgeing";
 
 // Letting old photographs go (notes/ageing-photos-design.md).
 //
@@ -106,17 +106,22 @@ export async function GET(req: Request) {
 
       const pages: DocPage[] = [];
       const kept: Row[] = [];
+      let unusable = 0;
       for (const r of mine) {
         const page = await pageFor(admin, r.image_data_url!);
-        // A photograph that cannot be fetched is left exactly where it is: it
-        // is the one thing that must not be removed on a guess.
-        if (page) {
+        // A photograph that cannot be fetched, or cannot go into the PDF at
+        // all, is left exactly where it is: that is the one thing that must not
+        // be removed on a guess. canEmail is the second half -- a webp or gif
+        // reached pdf-lib and threw out of the middle of the run.
+        if (page && canEmail(page.mediaType)) {
           pages.push(page);
           kept.push(r);
+        } else {
+          unusable += 1;
         }
       }
       if (!pages.length) {
-        report.push({ owner, skipped: "no photographs could be read" });
+        report.push({ owner, skipped: "no photographs could be read", kept: unusable });
         continue;
       }
 
@@ -125,7 +130,7 @@ export async function GET(req: Request) {
       const pdf = await pagesToPdf(pages, `Receipt photographs ${oldest} to ${newest}`);
 
       if (!DELETING) {
-        report.push({ owner, to, wouldEmail: kept.length, oldest, newest, pdfBytes: pdf.byteLength, removed: 0, note: "PHOTO_AGEING_DELETE is off: nothing was emailed or removed" });
+        report.push({ owner, to, wouldEmail: kept.length, keptUnusable: unusable, oldest, newest, pdfBytes: pdf.byteLength, removed: 0, note: "PHOTO_AGEING_DELETE is off: nothing was emailed or removed" });
         continue;
       }
 
@@ -147,18 +152,26 @@ export async function GET(req: Request) {
         continue;
       }
 
+      // The ROW first, then the file. The other way round, a failed row update
+      // left the receipt pointing at a file that was already gone -- a dead
+      // image and no "Emailed to you", which reads as a lost receipt, the exact
+      // thing this job is written to avoid. This way the worst case is a file
+      // nobody references: it costs a little storage, says nothing untrue, and
+      // is counted here so it is visible rather than guessed at.
       let removed = 0;
+      let filesLeft = 0;
       for (const r of kept) {
         const ref = r.image_data_url!;
-        if (stored(ref)) {
-          const { error: rmError } = await admin.storage.from("receipts").remove([pathOf(ref)]);
-          if (rmError) continue;
-        }
         const details = { ...(r.details ?? {}), photoAgedAt: todayISO() };
         const { error: upError } = await admin.from("receipts").update({ image_data_url: null, details }).eq("id", r.id).eq("user_id", owner);
-        if (!upError) removed += 1;
+        if (upError) continue;
+        removed += 1;
+        if (stored(ref)) {
+          const { error: rmError } = await admin.storage.from("receipts").remove([pathOf(ref)]);
+          if (rmError) filesLeft += 1;
+        }
       }
-      report.push({ owner, to, emailed: true, sent: kept.length, removed, oldest, newest });
+      report.push({ owner, to, emailed: true, sent: kept.length, removed, keptUnusable: unusable, filesLeft, oldest, newest });
     }
 
     return NextResponse.json({

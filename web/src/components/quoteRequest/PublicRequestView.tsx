@@ -1,5 +1,6 @@
 "use client";
 
+import { ukDate } from "@/lib/today";
 import { useRef, useState, useSyncExternalStore } from "react";
 import PriceForm, { draftFrom, readDraft } from "@/components/quoteRequest/PriceForm";
 import { longDate } from "@/components/invoice/InvoiceDocument";
@@ -144,7 +145,7 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
             <p className="text-sm text-neutral-700">You said you can&apos;t quote for this. {data.from || "The sender"} has been told.</p>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm font-medium">{sent ? `Thank you: your prices have gone to ${from}.` : `You sent these prices${data.answer?.at ? ` on ${longDate(data.answer.at.slice(0, 10))}` : ""}.`}</p>
+              <p className="text-sm font-medium">{sent ? `Thank you: your prices have gone to ${from}.` : `You sent these prices${data.answer?.at ? ` on ${longDate(ukDate(data.answer.at))}` : ""}.`}</p>
               <AnswerSummary items={data.items} answer={own} />
               <p className="text-xs text-neutral-500">To change anything, contact {from}.</p>
             </div>

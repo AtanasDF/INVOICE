@@ -7,7 +7,7 @@
 // route's own two locks (PHOTO_AGEING, PHOTO_AGEING_DELETE) and the rule that
 // nothing goes before an email is accepted are checked in test-route-guards
 // and read from the route.
-import { sortOut, forOwner, cutoffFor, emailBody, emailSubject, agedAlready } from "./gen/lib/photoAgeing.js";
+import { sortOut, forOwner, cutoffFor, emailBody, emailSubject, agedAlready, canEmail, EMAILABLE_TYPES } from "./gen/lib/photoAgeing.js";
 import { readFileSync } from "node:fs";
 
 const results = [];
@@ -88,6 +88,27 @@ check("it blames nobody and demands nothing", !/\b(you must|you failed|exceeded|
 check("one photograph reads as English, not as a template", /Here is 1 receipt photograph,/.test(emailBody(1, "2026-01-01", "2026-01-01")), emailBody(1, "2026-01-01", "2026-01-01"));
 check("the subject says what it is without alarming anyone", /^Your receipt photographs from /.test(emailSubject("a", "b")) && !/delet|remov|warning|action required/i.test(emailSubject("a", "b")), emailSubject("a", "b"));
 
+// --- when it arrived, in London ---
+//
+// created_at is a timestamptz, and slicing it took the UTC date: a receipt
+// added at 00:30 on a summer night read as having arrived YESTERDAY, a day
+// older than it is, which could let its photograph go a day early.
+{
+  // 00:30 BST on 1 July is 23:30 UTC on 30 June. Cut off at the 30th: added
+  // on the 1st, so it must be KEPT.
+  const justAfterMidnight = row({ id: "x", date: "2020-01-01", added: "2026-06-30T23:30:00Z" });
+  const out = sortOut([justAfterMidnight], "2026-06-30");
+  check("a receipt added just after midnight BST counts as arriving that day, not the day before", out.candidates.length === 0 && /added/.test(out.skipped[0]?.reason ?? ""), JSON.stringify(out));
+  // 23:30 BST on the 30th is the 30th in London and 22:30 UTC, so it is still
+  // ON the cutoff -- and the boundary favours keeping, exactly as it does for
+  // the printed date.
+  const onTheDay = sortOut([row({ id: "y", date: "2020-01-01", added: "2026-06-30T22:30:00Z" })], "2026-06-30");
+  check("...one added late on the cutoff day itself is kept, as the boundary always does", onTheDay.candidates.length === 0, JSON.stringify(onTheDay));
+  // A day earlier in London really is past it.
+  const before = sortOut([row({ id: "z", date: "2020-01-01", added: "2026-06-29T22:30:00Z" })], "2026-06-30");
+  check("...and one added the evening before that may go", before.candidates.length === 1, JSON.stringify(before));
+}
+
 // --- the two locks, read from the route itself ---
 const route = readFileSync("../web/src/app/api/photos/age/route.ts", "utf8");
 check("the job does nothing at all unless PHOTO_AGEING is on", /PHOTO_AGEING === "on"/.test(route) && /if \(!ON\)/.test(route));
@@ -95,7 +116,39 @@ check("a second switch guards the removal itself", /PHOTO_AGEING_DELETE === "on"
 check("with no email key it removes nothing rather than pressing on", /if \(!resendApiKey\) return NextResponse\.json\(\{ skipped/.test(route));
 check("a failed send keeps the photographs", /send failed[^\n]*photographs kept/.test(route));
 check("the removal happens only after a successful send", route.indexOf("if (!res || !res.ok)") < route.indexOf("storage.from(\"receipts\").remove"));
-check("a photograph that could not even be read is not removed on a guess", /cannot be fetched is left exactly where it is/.test(route));
+check("a photograph that could not even be read is not removed on a guess", /cannot be fetched, or cannot go into the PDF at[\s\S]{0,24}all, is left exactly where it is/.test(route));
+check("...and the route asks canEmail before it counts one in", /if \(page && canEmail\(page\.mediaType\)\)/.test(route));
+
+// --- what can go in the PDF at all ---
+//
+// pdf-lib embeds PNG and JPEG and nothing else, and a webp or gif reached it
+// and threw "SOI not found in JPEG" out of the middle of the run. Nothing
+// caught it: the handler answered 500, that owner was abandoned and so was
+// every owner after them, every day, because nothing about the row changes.
+// It killed the DRY RUN too -- the report that has to be read and agreed
+// before deletion is ever switched on. Reachable through the email import,
+// which accepts both types.
+check("a jpeg and a png can be emailed", canEmail("image/jpeg") && canEmail("image/png"));
+check("a PDF can be emailed, since its pages are copied rather than embedded", canEmail("application/pdf"));
+check("a webp is NOT emailed, so its photograph stays", !canEmail("image/webp"));
+check("nor is a gif", !canEmail("image/gif"));
+check("nor anything the reader never accepted in the first place", !canEmail("image/heic") && !canEmail("text/html") && !canEmail(""));
+check("a content type with parameters on it is still recognised", canEmail("image/jpeg; charset=binary") && canEmail("IMAGE/PNG"));
+// The list is the rule, so it must not quietly grow to something pdf-lib
+// cannot take.
+check("the emailable list is exactly what can be put in a PDF", JSON.stringify([...EMAILABLE_TYPES].sort()) === JSON.stringify(["application/pdf", "image/jpeg", "image/png"]), JSON.stringify(EMAILABLE_TYPES));
+const pdfLib = readFileSync("../web/src/lib/documentPdf.ts", "utf8");
+check("...and documentPdf still only knows those three ways to add a page", /embedPng/.test(pdfLib) && /embedJpg/.test(pdfLib) && /PDFDocument\.load/.test(pdfLib) && !/embedWebp|embedGif/.test(pdfLib));
+
+// --- the row before the file ---
+//
+// The other way round, a failed row update left the receipt pointing at a file
+// that was already gone: a dead image and no "Emailed to you", which reads as
+// a lost receipt -- the exact thing this job exists to avoid. This way the
+// worst case is a file nobody references, which is counted and reported.
+check("the row is cleared before the file is removed", route.indexOf("image_data_url: null, details") < route.indexOf('storage.from("receipts").remove'));
+check("...a failed row update removes nothing", /if \(upError\) continue;/.test(route));
+check("...and a file left behind is counted, not guessed at", /filesLeft/.test(route) && /filesLeft \+= 1/.test(route));
 check("it is a cron route, not something a stranger can set off", /CRON_SECRET/.test(route) && /401/.test(route));
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

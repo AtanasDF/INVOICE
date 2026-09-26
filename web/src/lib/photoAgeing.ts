@@ -6,6 +6,8 @@
 // there is a positive reason it may go, and each refusal carries its reason so
 // a dry run reads as a list of decisions rather than a number.
 
+import { ukDate } from "@/lib/today";
+
 export type AgeableRow = {
   id: string;
   user_id: string;
@@ -18,9 +20,31 @@ export type AgeableRow = {
 
 export type Skip = { id: string; reason: string };
 
+// What can actually go into the PDF that is emailed. pdf-lib embeds PNG and
+// JPEG and nothing else, and documentPdf copies a PDF's own pages -- so a
+// webp or gif photograph threw "SOI not found in JPEG" out of the middle of
+// the run, which nothing caught: the handler answered 500, that owner was
+// abandoned, and so was every owner ordered after them, every day, because
+// nothing about the offending row ever changes. It killed the DRY RUN too,
+// which is the report that has to be read and agreed before deletion is ever
+// switched on.
+//
+// Reachable through the email import, which accepts both types
+// (ALLOWED_TYPES): a supplier emails a .webp receipt, it is approved in
+// needs-review, and ninety days later that account's run stops working.
+//
+// Being unable to email a photograph is a reason to KEEP it, which is the
+// rule this whole file is built on -- never remove on a guess.
+export const EMAILABLE_TYPES = ["application/pdf", "image/png", "image/jpeg"];
+export const canEmail = (mediaType: string) => EMAILABLE_TYPES.includes(mediaType.split(";")[0].trim().toLowerCase());
+
 export const agedAlready = (r: AgeableRow) => !!(r.details as { photoAgedAt?: string } | null)?.photoAgedAt;
 
-const added = (r: AgeableRow): string | null => (r.created_at ? r.created_at.slice(0, 10) : null);
+// created_at is a timestamptz, so slicing it took the UTC date: a receipt
+// added at 00:30 on a summer night read as having arrived YESTERDAY, which
+// makes it a day older than it is and could let its photograph go a day early.
+// The London day is the one the rest of the app reckons in.
+const added = (r: AgeableRow): string | null => (r.created_at ? ukDate(r.created_at) : null);
 
 // A row is a candidate only on every count at once.
 //
