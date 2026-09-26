@@ -184,6 +184,20 @@ the split would scale with the job. The bound is written above `depositGross` as
 accounts. His whole scanning session produced no receipts at all, which is what the camera
 faults above cost him, and the reason to ask him to try again now rather than wait.
 
+**And then the dashboard-weight question answered itself, loudly.** It was parked because
+Next 16 no longer prints per-route sizes; `harness/measure-dashboard.mjs` loads each screen
+against a production build and counts what crosses the wire instead. The signed-in dashboard
+pulled **opencv-5.0.0.js, 12,987 KB**, on top of about 450 KB of everything else. It is a
+deliberate warm-up so the scanner opens instantly — guarded by `navigator.connection`, which
+is **a Chrome API Safari does not implement**, so the one protection never applied on the
+device the app is mostly used from. Every first visit on an iPhone fetched 13 MB two seconds
+after the dashboard appeared. That is its own answer to "the app felt slow" (2026-09-22) and
+"takes ages to start actually scanning" (2026-09-26) — and neither was ever about the scan
+page. It now waits until the browser has actually had the camera. **Two lessons worth
+keeping:** a guard written against an API the target device lacks is not a guard, and the
+measuring tool was itself wrong first time (clearing the cache between pages still served
+from memory, so every page after the first read 0 KB and looked like an answer).
+
 **Open / for Atanas.**
 - **`npx wrangler deploy` from `worker/` is still not done.** He said to go ahead; the
   permission layer refuses it as a production deploy, and that was not worked around. He runs
