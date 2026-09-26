@@ -165,6 +165,25 @@ stopped" out of "access was denied" also stopped calling `onUnavailable`, which 
 and the Free page learn the camera is no use and offer the upload, the by-hand form and the
 invoice the person came for. Six checks went red and said so.
 
+**Deposits, attacked by generating them.** `test-money-invariants` generated 4000 invoices
+and no quotes at all; it now generates 3000 quotes too — deposits by percent and by amount,
+one to four VAT rates, 100% deposits, deposits bigger than the quote, deposits credited in
+part and in full. Eight checks, and six of them failed at first. One was the check itself
+being wrong; the rest looked like bugs and were not, because each half of a deposit is a real
+VAT invoice and rounds on its own. The honest question was *how far out, and is it bounded* —
+and the first measurement (40,000 quotes) gave the wrong answer, saying one rate is never
+more than 1p out, which the suite then disproved with a single-rate case at 2p. A million
+quotes across four seeds settle it: **never more than 2p, whatever the rates and whatever the
+total**, up to £98,000. That flatness is the whole value of the check, since a real error in
+the split would scale with the job. The bound is written above `depositGross` as well.
+
+**Where it ended: 187 suites, all green.** The one red in the final run (`test-free-quote`,
+12/13) is 13/13 on its own — the four-at-a-time load, exactly as the README says.
+
+**Nothing was saved in the app in the 14 hours around his testing** — checked across all
+accounts. His whole scanning session produced no receipts at all, which is what the camera
+faults above cost him, and the reason to ask him to try again now rather than wait.
+
 **Open / for Atanas.**
 - **`npx wrangler deploy` from `worker/` is still not done.** He said to go ahead; the
   permission layer refuses it as a production deploy, and that was not worked around. He runs
