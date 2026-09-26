@@ -1330,21 +1330,21 @@ export default function ScanPage() {
             {pagesStrip}
             <div>
               <label className="text-xs text-neutral-500">Company name</label>
-              <input className="w-full rounded-lg border px-3 py-2" value={form.vendor} onChange={(e) => patch({ vendor: e.target.value })} />
+              <input aria-label="Company name" className="w-full rounded-lg border px-3 py-2" value={form.vendor} onChange={(e) => patch({ vendor: e.target.value })} />
               <FieldFlag confidence={form.vendorConf} />
               <RegisterNote check={cardCheck} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Contact person</label>
-              <input className="w-full rounded-lg border px-3 py-2" value={form.contactPerson} onChange={(e) => patch({ contactPerson: e.target.value })} />
+              <input aria-label="Contact person" className="w-full rounded-lg border px-3 py-2" value={form.contactPerson} onChange={(e) => patch({ contactPerson: e.target.value })} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Email</label>
-              <input type="email" className="w-full rounded-lg border px-3 py-2" value={form.contactEmail} onChange={(e) => patch({ contactEmail: e.target.value })} />
+              <input type="email" aria-label="Email" className="w-full rounded-lg border px-3 py-2" value={form.contactEmail} onChange={(e) => patch({ contactEmail: e.target.value })} />
             </div>
             <div>
               <label className="text-xs text-neutral-500">Notes</label>
-              <textarea className="w-full rounded-lg border px-3 py-2" value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
+              <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
             </div>
             {supplierDuplicate && (
               <p className="text-sm text-amber-700">
@@ -1421,13 +1421,14 @@ export default function ScanPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className={showDueDate ? "" : "col-span-2"}>
                 <label className="text-xs text-neutral-500">{mode === "receipt" ? "Receipt number" : mode === "credit_note" ? "Credit note number" : "Invoice number"}</label>
-                <input className="w-full rounded-lg border px-3 py-2" value={form.invoiceNumber} onChange={(e) => patch({ invoiceNumber: e.target.value })} />
+                <input aria-label="Document number" className="w-full rounded-lg border px-3 py-2" value={form.invoiceNumber} onChange={(e) => patch({ invoiceNumber: e.target.value })} />
               </div>
               {showDueDate && (
                 <div>
                   <label className="text-xs text-neutral-500">Due date</label>
                   <input
                     type="date"
+                    aria-label="Due date"
                     className="w-full rounded-lg border px-3 py-2"
                     value={form.dueDate}
                     onChange={(e) => patch({ dueDate: e.target.value, dueDateAlternative: null })}
@@ -1446,6 +1447,7 @@ export default function ScanPage() {
               <div>
                 <label className="text-xs text-neutral-500">Date</label>
                 <input
+                  aria-label="Date"
                   type="date"
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.date}
@@ -1467,6 +1469,7 @@ export default function ScanPage() {
                   Category{form.categoryUsual && " (usual for this supplier)"}
                 </label>
                 <select
+                  aria-label="Category"
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.category}
                   onChange={(e) => patch({ category: e.target.value, categoryUsual: false })}
@@ -1491,6 +1494,7 @@ export default function ScanPage() {
                   Total ({form.currency}, incl. VAT{mode === "archival" ? ", optional" : ""})
                 </label>
                 <input
+                  aria-label="Total including VAT"
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.totalAmount}
                   // A VAT figure worked out from the printed rate follows a
@@ -1508,6 +1512,7 @@ export default function ScanPage() {
               <div>
                 <label className="text-xs text-neutral-500">Of which VAT ({form.currency}, optional)</label>
                 <input
+                  aria-label="Of which VAT"
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.vatAmount}
                   onChange={(e) => patch({ vatAmount: e.target.value, vatWorkedOut: null })}
@@ -1520,7 +1525,7 @@ export default function ScanPage() {
             <div className="flex flex-wrap items-center gap-3">
               <div>
                 <label className="text-xs text-neutral-500">Currency</label>
-                <select
+                <select aria-label="Currency"
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.currency}
                   onChange={(e) => {
@@ -1563,7 +1568,7 @@ export default function ScanPage() {
 
             <div>
               <label className="text-xs text-neutral-500">Notes</label>
-              <textarea className="w-full rounded-lg border px-3 py-2" value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
+              <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
             </div>
 
             {form.lines.length > 0 && (

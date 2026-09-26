@@ -52,8 +52,21 @@ was verified, not just written.
     every route, RPC and storage path as the wrong user.
 
 ### The sweeps that would have caught this week's bugs earlier
-17. **Name every control on every page.** `test-labels` covers ~20 of ~30 pages.
-18. **Contrast on every page in all six themes.** It checks three pages today.
+17. ~~**Name every control on every page.**~~ **DONE — it found 14.** `test-labels`
+    covered 19 of 36 pages; the 15 reachable ones it had never opened held
+    fourteen controls with no accessible name, announced to a screen reader as
+    just "edit text" or "combo box": seven on `/scan` (company, contact, email,
+    notes, document number, due date, date, category, total, VAT, currency), five
+    on `/recurring/invoices`, two on `/feedback`. All named. 38/38.
+    Original:
+18. ~~**Contrast on every page in all six themes.**~~ **DONE — 30 pages × 6 themes,
+    210 checks**, up from three pages. Two things came out of it, and neither was
+    an app bug: my own input check counted DISABLED controls, which WCAG 1.4.3
+    exempts by name, and it fired on Settings' VAT box in all six themes; and one
+    run failed on /settings in grey with values that never returned, most likely
+    a colour read mid-transition (160ms transition, 250ms settle). The settle is
+    450ms now.
+    Original:
 19. **Keyboard-only** over `/help`, `/copy`, `/convert`, `/money`, `/jobs`.
 20. **Every destructive confirm names what goes** — a house rule, never verified.
 21. **Double-press every once-only action** — that bug has bitten twice.

@@ -218,7 +218,7 @@ export default function RecurringInvoicesPage() {
       <Tip id="recurring-invoices-how">How it works: set the customer and the lines once. Each month a DRAFT invoice is made for you to check and send &mdash; nothing goes out on its own.</Tip>
 
       <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <select className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <select aria-label="Customer" className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Select a customer or company</option>
           {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -234,6 +234,7 @@ export default function RecurringInvoicesPage() {
             <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
               <input
                 className={`col-span-12 ${profile?.vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
+                aria-label="Description"
                 placeholder="Description (e.g. Monthly retainer)"
                 value={it.description}
                 onChange={(e) => updateLineItem(idx, { description: e.target.value })}
@@ -269,11 +270,13 @@ export default function RecurringInvoicesPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <input className="rounded-lg border px-3 py-2" placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+          <input className="rounded-lg border px-3 py-2" aria-label="Payment terms"
+                placeholder="Payment terms (e.g. 30 days)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
           <div>
             <label className="text-xs text-neutral-500">Day of month it&apos;s generated (1-28)</label>
             <input
               type="number"
+              aria-label="Day of month it's generated"
               min={1}
               max={28}
               className="w-24 rounded-lg border px-3 py-2"
@@ -282,7 +285,8 @@ export default function RecurringInvoicesPage() {
             />
           </div>
         </div>
-        <textarea className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional, carried onto each generated invoice)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea className="w-full rounded-lg border px-3 py-2" aria-label="Notes"
+            placeholder="Notes (optional, carried onto each generated invoice)" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
         {profile?.vatRegistered && (
           <div className="text-right text-sm text-neutral-600">Subtotal: {money(totals.subtotal)}</div>

@@ -65,10 +65,11 @@ export default function FeedbackPage() {
       </div>
 
       <form onSubmit={submit} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-        <select className="w-full rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
+        <select aria-label="What it is about" className="w-full rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <textarea
+          aria-label="Your message"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="What's on your mind?"
           value={message}

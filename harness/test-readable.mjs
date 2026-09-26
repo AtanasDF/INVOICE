@@ -97,6 +97,13 @@ const CONTRAST = `(() => {
     const st = getComputedStyle(el);
     if (st.visibility === "hidden" || st.display === "none") continue;
     if (el.type === "checkbox" || el.type === "radio" || el.type === "hidden") continue;
+    // WCAG 1.4.3 exempts an inactive control by name: "text that is part of an
+    // inactive user interface component ... has no contrast requirement". A
+    // disabled box is MEANT to recede, and the app says so deliberately with
+    // disabled:text-neutral-400. Counting it was a fault in this check, not in
+    // the app -- it fired on Settings' VAT number box in all six themes, which
+    // is disabled until the VAT switch is on.
+    if (el.disabled || el.closest("fieldset[disabled]")) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) continue;
     const fg = parse(st.color);
@@ -118,7 +125,14 @@ const setTheme = async (t) => {
     if (id === "grey") { localStorage.removeItem("theme"); document.documentElement.removeAttribute("data-theme"); }
     else { localStorage.setItem("theme", id); document.documentElement.setAttribute("data-theme", id); }
   }, t);
-  await sleep(250);
+  // Longer than the app's own colour transition, which is 160ms
+  // (background-color 160ms ease, globals.css). 250ms left 90ms of headroom,
+  // and on a loaded machine that is not enough: a colour read mid-transition is
+  // a wrong colour, and the sweep failed once on /settings in grey with "Save"
+  // at 1.1:1 and "Dark" at 1.05:1 -- values that have not reappeared in three
+  // runs since. That is the most plausible cause and this removes it; if it
+  // ever comes back, the transition is the first place to look.
+  await sleep(450);
 };
 
 try {
@@ -196,6 +210,32 @@ try {
     await setTheme(t);
     const bad = await page.evaluate(CONTRAST);
     check(`what you type into an invoice is readable in ${t}`, bad.length === 0, JSON.stringify(bad.slice(0, 4)));
+  }
+
+  // --- and every other page, in every colour ---
+  // Three pages were checked before: the front door, the dashboard and the
+  // money screen. The invisible dates lived on a page none of them opened, and
+  // the unnamed Category box on another. A sweep that covers a tenth of the app
+  // finds a tenth of what is wrong with it.
+  //
+  // Signed in, so the gate does not bounce us; /login and /reset-password are
+  // covered by the front-door pass above.
+  const EVERY = [
+    "/invoices", "/invoices/new", "/quotes", "/quotes/new", "/quotes/requests",
+    "/clients", "/clients/new", "/receipts", "/receipts/new", "/receipts/review",
+    "/expenses", "/mileage", "/recurring", "/recurring/invoices", "/vat",
+    "/files", "/scan", "/copy", "/convert", "/check-company", "/help",
+    "/feedback", "/settings", "/jobs", "/free-invoice",
+    "/privacy", "/terms", "/security", "/accessibility", "/how-to-invoice",
+  ];
+  for (const path of EVERY) {
+    await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
+    await sleep(700);
+    for (const t of THEMES) {
+      await setTheme(t);
+      const bad = await page.evaluate(CONTRAST);
+      check(`${path} is readable in ${t}`, bad.length === 0, JSON.stringify(bad.slice(0, 3)));
+    }
   }
 
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });

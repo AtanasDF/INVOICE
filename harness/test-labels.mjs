@@ -30,6 +30,18 @@ const PAGES = [
   ["/expenses", "Expenses"], ["/vat", "VAT"], ["/mileage", "Mileage"], ["/files", "Files"], ["/settings", "Settings"],
   ["/recurring", "Recurring"], ["/check-company", "Check a company"], ["/free-invoice", "Free invoice"],
   ["/receipts/review", "Needs review"],
+  // Added 2026-09-26. Seventeen pages had never been checked for an unnamed
+  // control, which is how a <select> on /receipts/review with no accessible
+  // name -- announced to a screen reader as just "combo box" -- sat there until
+  // a recorded walkthrough frame happened to show it.
+  //
+  // /login and /reset-password are left out on purpose: this suite runs signed
+  // in, and the gate bounces a signed-in visitor away from both.
+  ["/money", "Money"], ["/jobs", "Jobs"], ["/scan", "Scan"], ["/copy", "Copy a document"],
+  ["/convert", "Change a file"], ["/help", "How it works"], ["/feedback", "Feedback"],
+  ["/quotes/requests", "Quote requests"], ["/recurring/invoices", "Recurring invoices"],
+  ["/privacy", "Privacy"], ["/terms", "Terms"], ["/security", "Security"],
+  ["/accessibility", "Accessibility"], ["/how-to-invoice", "How to invoice"], ["/offline", "Offline"],
 ];
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profile-labels" });
