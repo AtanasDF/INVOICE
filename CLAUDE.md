@@ -93,8 +93,9 @@ session log what was added so he knows what to clear.
    `scan_allowance` / `take_scans` / `claim_scan_topup`. Backup verified by content both
    ways (0/0, 2 rows, 22 columns each side, RLS on); the functions exercised as
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
-   confirmed to have left no rows. `anon` has execute on none of them. **The app still
-   does nothing with any of it until `SCAN_LIMITS=on` in Vercel.** Applied and verified up
+   confirmed to have left no rows. `anon` has execute on none of them. **`SCAN_LIMITS=on` was
+   set in Vercel on 2026-09-23, so all of this is LIVE** — see the environment section.
+   Applied and verified up
    to **041** (the London day in SQL: `public.uk_today()`, and
    `respond_to_quote_link`, `generate_recurring_invoice` and
    `submit_quote_request_response` redefined to call it instead of
@@ -679,8 +680,16 @@ appearing on screen as typed; an invented address; and a real feature declared a
 because it was missing from the grounding. Build it, then ask it things.
 `NEXT_PUBLIC_INVITES` (not set: invite-a-friend renders nothing, asks for no code and
 claims nothing without it, so it ships changing nothing. migration-037 is already applied,
-so turning it on is one env var). `SCAN_LIMITS` (not set, and deliberately: the scan limits are written and deployed but
-**do nothing** until it is `on`, which must wait for migration-036 to be run).
+so turning it on is one env var). `SCAN_LIMITS` — **`on` in Production, and has been since
+2026-09-23. This file said "not set" until 2026-09-27, which was wrong for four days.** The
+scan limits are LIVE: a free account gets **300 documents a day for its first seven days** (so
+somebody catching up on a year of receipts does not meet a wall on their first evening), then
+**50 a day and 600 a month**. A `paid` account has no limit, but no paid tier exists and every
+account is `free` (migration-036, `scan_limits()`). `/api/scan` reads the switch,
+`src/lib/scanLimit.ts` enforces it and `ScansLeft` shows people what they have left — a real,
+visible wall, not a dormant feature. Found by reading Vercel rather than this file: `vercel env
+ls production` lists the names, and pulling to a scratch file is the only way to see a value.
+**Check the environment before repeating anything this section says about a switch.**
 `RESEND_API_BASE` is only for the harness's stand-in. `vercel env ls
 production` from `web/` lists the names without values.
 `RESEND_API_KEY` set in Production on 2026-09-19 (Resend account atanaschoo, key "Invoicer
