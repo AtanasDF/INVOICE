@@ -825,11 +825,31 @@ phone once sets it back.
 
 "Cowork" is another Claude Code session (possibly another machine) that reviews, runs
 migrations and tests DB state in rolled-back transactions; its briefs land in
-`Claude outputs/` (untracked). Check `git log` before assuming you are alone. The folder
-sits under iCloud Desktop sync and sometimes spawns stray `name 2.ext` duplicates; diff
-them against the original before deleting.
+`Claude outputs/` (untracked). Check `git log` before assuming you are alone.
 
-**iCloud has now broken git itself (2026-09-25), which is a step past untidy.**
+## The folder is `~/INVOICE`, and is no longer in iCloud (2026-09-27)
+
+**The project left the synced Desktop on 2026-09-27.** It had been argued for since
+2026-09-23 and called off twice. What finally made it happen, all in one night:
+
+- `git fetch` and `git pull` broke outright (below);
+- iCloud corrupted the harness's Chrome profiles — a freshly made one picked up **346
+  duplicated entries inside a single run** — and `test-check-company` failed in the
+  working tree while passing 54/54 from the same commits under `/private/tmp`;
+- a plain `mv` of one 4.6 GB profile directory **hung for eight hours and thirty-nine
+  minutes** with no progress at all;
+- and 12 of the project's 14 GB turned out to be 241 dead Chrome profile directories
+  that iCloud had been syncing continuously. Those were removed first, which is why the
+  move itself took a second.
+
+Verified from the new home afterwards: `git fetch`, `repo.mjs` working out its own
+location, the logic suites, and `npm run build`. The harness needed **no change at
+all** — being made path-independent on 2026-09-25 is what bought that.
+
+If a browser suite ever fails only in one checkout again, suspect the environment
+before the app.
+
+**What iCloud did while it lasted, kept because it explains the scar tissue:**
 `git fetch` and `git pull` both died on `fatal: bad object refs/heads/main 2`, then on
 `refs/remotes/origin/main 2`: iCloud had duplicated two **ref files**, and git reads every
 file under `refs/` as a ref, so a name with a space in it is a broken ref and the whole
@@ -843,8 +863,8 @@ fetch refuses. Nothing was lost — both pointed at `c9a8972`, already in main's
 merge-state files, `MERGE_HEAD 2` and friends). **None of those break anything** — only the
 names under `refs/` are read as refs — so they are flagged and left, per rule 1. The point
 is that this will keep happening and the next one may not be as harmless as a ref pointing
-at a commit we already have: **moving the project off the synced Desktop is no longer a
-tidiness question.**
+at a commit we already have. That argument is now settled: the project moved on
+2026-09-27, and the strays in `.git` went with the old copy.
 
 ## Open items (2026-09-20)
 

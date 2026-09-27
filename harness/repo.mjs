@@ -8,6 +8,9 @@
 //
 // import.meta.url is this file's own address, so the answer follows the folder
 // wherever it goes, and does not depend on where anything was run from.
+//
+// It earned that on 2026-09-27: the folder moved from the Desktop to ~/INVOICE and the
+// harness needed no change at all.
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";

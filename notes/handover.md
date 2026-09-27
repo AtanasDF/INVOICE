@@ -81,10 +81,12 @@ the first thing a new session reads, before `CLAUDE.md` and `SESSIONS.md`.
 
 ## Where things are right now
 
-- **Folder:** `/Users/nasko/Desktop/INVOICE`. A move off the iCloud-synced Desktop to
-  `~/Developer/INVOICE` was started on 2026-09-23 and **stopped by Atanas before anything
-  moved** — nothing was lost, the source was never touched. If the folder is somewhere
-  else when you read this, the move happened; correct the path here and in `CLAUDE.md`.
+- **Folder:** `~/INVOICE`. **The move off the iCloud-synced Desktop happened on
+  2026-09-27**, after two earlier attempts were called off. It took a second, because
+  the 12 GB of dead Chrome profiles were removed first and the destination is on the
+  same volume. Everything was verified from the new home afterwards: `git fetch`
+  (which iCloud had been breaking), the harness working out its own location, and the
+  logic suites.
   iCloud sync is what spawns the `name 2.ext` duplicates; 1,513 of them plus the 1.5 GB
   `web/.next` were cleared on 2026-09-23, and they will come back until the folder leaves
   the Desktop.

@@ -26,7 +26,7 @@ Tick them off as they are used. If the list runs dry before the credit does, add
 ## 1. The component layer, which nothing has ever audited — [ ]
 
 ```
-Read /Users/nasko/Desktop/INVOICE/CLAUDE.md first, then audit web/src/components
+Read CLAUDE.md at the repo root first, then audit web/src/components
 (every file) and the components under web/src/app. Nothing has ever examined this
 layer as a whole.
 
