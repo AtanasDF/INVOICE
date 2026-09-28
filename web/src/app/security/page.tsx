@@ -28,9 +28,16 @@ export default function Security() {
 
       <h2 className={H}>How to tell us</h2>
       <p className={P}>
+        {/* This said "You do not need an account to send it", and that was not
+            true: /feedback is behind sign-in and /api/feedback answers 401
+            without a token. This page is deliberately public so that somebody
+            who finds a hole is not told to sign up first -- and it then told
+            them to sign up first, while promising it had not. Worth fixing
+            properly with a route that takes a report from a stranger; until
+            then it says what actually happens. */}
         Use the <Link href="/feedback" className="font-medium underline">feedback form</Link> and start your message with
-        the word <strong>SECURITY</strong>. It goes straight to a person. You do not need an account to send it, and you
-        will not be charged, thanked in public, or chased for your name.
+        the word <strong>SECURITY</strong>. It goes straight to a person. The form needs an account, which is free and
+        takes a minute; you will not be charged, thanked in public, or chased for your name.
       </p>
       <p className={P}>
         Tell us what you found and how to see it for ourselves. A rough description is worth far more than nothing —

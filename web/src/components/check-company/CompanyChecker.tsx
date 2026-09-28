@@ -121,7 +121,12 @@ export default function CompanyChecker() {
     <div className="space-y-4" ref={top}>
       <div>
         <h1 className="text-[2rem] font-bold leading-tight sm:text-4xl">What is the company called?</h1>
-        <p className="mt-2 text-lg text-neutral-700">See if it is real, still trading, and who runs it. Free, nothing to join.</p>
+        {/* NOT "nothing to join". This page is behind sign-in like the rest of
+            the app, and saying otherwise is the third time a page has promised
+            something the Gate refuses -- the free page's "no sign-in needed"
+            heading, this page's own search description, and now this line. It
+            is free, which is true and worth saying. */}
+        <p className="mt-2 text-lg text-neutral-700">See if it is real, still trading, and who runs it. Free, straight from Companies House.</p>
       </div>
       <Tip id="check-company-how">How it works: type a company&apos;s name or its number. We ask Companies House and show what they hold. Nothing is kept here.</Tip>
 
