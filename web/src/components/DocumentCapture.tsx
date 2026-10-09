@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Mat, MatVector } from "@techstark/opencv-js";
 import { CVModule, loadOpenCV } from "@/lib/opencv";
+import { PRINT_AGREE_TICKS, PRINT_STILL_TICKS, barelyMoved, looksDifferent, nearEnough, pagePrint } from "@/lib/pagePrint";
 import {
   ScannerMode,
   isIOS,
@@ -155,6 +156,10 @@ const FOCUS_RING_MS = 800;
 // the frame (or the detector lost it while pages were swapped) and this
 // long has passed, so one page is never taken twice.
 const REARM_MS = 900;
+// How long the camera waits for the next document before it stops repeating
+// itself and names the shutter instead. Long enough that swapping a receipt
+// normally re-arms first and he never sees it.
+const STUCK_MS = 3000;
 const TAKEN_MOVED = 0.2;
 const TAKEN_SHRUNK = 0.6;
 // Auto-zoom: a page held still while spanning less than AUTO_ZOOM_BELOW
@@ -781,7 +786,20 @@ export default function DocumentCapture({
   const armedRef = useRef(true);
   const seenClearRef = useRef(false);
   // The page a batch capture took, to tell when it has left the frame.
-  const takenRef = useRef<{ pts: Quad; coverage: number } | null>(null);
+  const takenRef = useRef<{ pts: Quad; coverage: number; print: Float32Array | null } | null>(null);
+  // The fingerprint of the page as the last tick saw it, kept so a capture can
+  // take it without re-reading the frame: `capture` runs outside the frame loop
+  // and has no pixels of its own.
+  const lastPrintRef = useRef<Float32Array | null>(null);
+  // The tick before's reading, so a difference that is still MOVING can be told
+  // from one that has settled.
+  const prevPrintRef = useRef<Float32Array | null>(null);
+  const multiRef = useRef(multi);
+  // Consecutive ticks the outline has been steady, and consecutive ticks the
+  // page has read as a different document. Both have to hold before anything
+  // acts on them.
+  const stillTicksRef = useRef(0);
+  const differentTicksRef = useRef(0);
   const lastCoverageRef = useRef(0);
   const rearmAtRef = useRef(0);
   const reviewingRef = useRef(false);
@@ -809,7 +827,7 @@ export default function DocumentCapture({
   // what the detection loop is doing on a phone in the field.
   const [debug, setDebug] = useState(false);
   const [debugText, setDebugText] = useState("");
-  const diagRef = useRef({ ticks: 0, quads: 0, coverage: 0, sharpness: 0, ink: 0, lastTickMs: 0, videoW: 0, videoH: 0 });
+  const diagRef = useRef({ ticks: 0, quads: 0, coverage: 0, sharpness: 0, ink: 0, lastTickMs: 0, videoW: 0, videoH: 0, swap: -1, still: 0 });
   const [autoOn, setAutoOn] = useState(readAutoCapture);
   const [autoZoomOn, setAutoZoomOn] = useState(readAutoZoom);
   const [flash, setFlash] = useState(false);
@@ -860,6 +878,37 @@ export default function DocumentCapture({
   }, [reviewing]);
 
   const [waitingNext, setWaitingNext] = useState(false);
+  // Auto-capture re-arms only when the page it took counts as GONE, and that
+  // test is purely geometric (the `if (!armedRef.current)` block below): lost
+  // for a couple of ticks, its centre moved, or it shrank. Slide the next
+  // document into the same place at the same size and none of those fire, so
+  // the second one is never taken -- notes/batch-rearm.md, where a fingerprint
+  // fix was tried, measured and rejected for firing on a patterned floor.
+  //
+  // The hole is one thing; being given no way out of it is another. The hint
+  // said "Next document…" and went on saying it for as long as he stood there,
+  // while the shutter underneath worked perfectly all along. Atanas, from his
+  // iPhone: "the scanner doesn't pile up photos from when scanning so doesn't
+  // allow you to scan more than one file."
+  //
+  // So after a few seconds of waiting, the hint stops repeating itself and
+  // names the button. It asks whether the document is a different one rather
+  // than telling him to tap: the page in frame may well be the one already
+  // taken, and a DUPLICATED receipt in an accounting record is worse than a
+  // missed one. The judgement is his, which is the whole point of a shutter.
+  const [stuckWaiting, setStuckWaiting] = useState(false);
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Started where the wait starts and cleared where it ends, rather than in an
+  // effect on [waitingNext]: setState inside an effect is what
+  // react-hooks/set-state-in-effect exists to stop, and the two places that
+  // own this wait are the capture and the re-arm.
+  useEffect(() => () => clearTimeout(stuckTimerRef.current), []);
+  function waitForNext(waiting: boolean) {
+    clearTimeout(stuckTimerRef.current);
+    setStuckWaiting(false);
+    setWaitingNext(waiting);
+    if (waiting) stuckTimerRef.current = setTimeout(() => setStuckWaiting(true), STUCK_MS);
+  }
   // processFrame lives inside a long-lived effect that only re-runs on
   // [stopStream, retryKey, useNative] -- it closes over state as it was
   // AT EFFECT-SETUP TIME, so a plain state read there would never observe
@@ -903,6 +952,14 @@ export default function DocumentCapture({
   useEffect(() => {
     reviewingRef.current = reviewing;
   }, [reviewing]);
+
+  // `multi` is derived from a prop, and /scan swaps onBatch in and out as the
+  // kind of capture changes (first, add, retake) while this component stays
+  // mounted -- so processFrame, which closes over its scope at effect-setup
+  // time, must read it through a ref like everything else it checks.
+  useEffect(() => {
+    multiRef.current = multi;
+  }, [multi]);
 
   function addShots(files: CapturedFile[]) {
     setShots((prev) => [...prev, ...files.map((f) => ({ ...f, id: ++shotIdRef.current, joinPrev: false }))]);
@@ -1135,9 +1192,11 @@ export default function DocumentCapture({
         armedRef.current = true;
         seenClearRef.current = false;
         rearmAtRef.current = 0;
+        differentTicksRef.current = 0;
+        stillTicksRef.current = 0;
         setSaving(false);
         setFlash(false);
-        setWaitingNext(false);
+        waitForNext(false);
         resetStable();
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -1384,6 +1443,31 @@ export default function DocumentCapture({
         // enough whatever its area.
         const bigEnough = coverage >= MIN_COVERAGE || span >= AUTO_ZOOM_BELOW;
 
+        // The fingerprint of the page as it is now, and how long the outline
+        // has been steady. Only in batch mode: this is the only thing that
+        // needs it, and it is ~576 bilinear samples a tick.
+        //
+        // `lastQuadRef` is still the PREVIOUS tick's smoothed page here -- it
+        // is not updated until further down -- which is exactly what the
+        // stillness count needs.
+        if (multiRef.current && smooth) {
+          // `lastQuadRef` is still the PREVIOUS tick's smoothed page here -- it
+          // is not updated until further down -- which is what the stillness
+          // count needs. The budget is the fingerprint's own (3px), not
+          // MOVE_TOLERANCE (9.6px), because the sweep showed the margin is
+          // gone by 12px.
+          stillTicksRef.current = barelyMoved(lastQuadRef.current, smooth) ? stillTicksRef.current + 1 : 0;
+          // ~25,600 bilinear samples, so it is read only once the outline has
+          // settled -- which is also the only time it would be believed.
+          prevPrintRef.current = lastPrintRef.current;
+          lastPrintRef.current = stillTicksRef.current >= PRINT_STILL_TICKS ? pagePrint(pixels, workW, workH, smooth) : null;
+        } else if (multiRef.current) {
+          stillTicksRef.current = 0;
+          prevPrintRef.current = null;
+          lastPrintRef.current = null;
+        }
+        diagRef.current.still = stillTicksRef.current;
+
         diagRef.current.lastTickMs = Math.round(performance.now() - tickStart);
         diagRef.current.sharpness = Math.round(sharpness);
         diagRef.current.coverage = best ? Math.round((bestArea / (workW * workH)) * 100) : 0;
@@ -1402,9 +1486,29 @@ export default function DocumentCapture({
             !taken ||
             (ordered !== null && (dist(centre(ordered), centre(taken.pts)) > TAKEN_MOVED * workW || coverage < TAKEN_SHRUNK * taken.coverage));
           if (gone) seenClearRef.current = true;
+
+          // The page has NOT moved, shrunk or gone -- so the geometric test
+          // above has nothing to say, and until now that was the end of it and
+          // the second document was never taken. Ask whether the page in front
+          // of the camera is actually a different document.
+          //
+          // Four consecutive ticks have to agree. A single odd reading is a
+          // misread, and acting on one would photograph the same receipt
+          // twice, which is the one outcome worse than missing it.
+          // Only where the fingerprint means anything: the page has not moved
+          // or shrunk (so geometry has nothing to say), it is sitting within a
+          // few pixels of where it was photographed, and the outline has
+          // settled. Anywhere else this returns null and the camera behaves
+          // exactly as it did before.
+          const judgeable = !gone && ordered !== null && smooth !== null && taken !== null && nearEnough(taken.pts, smooth);
+          const verdict = judgeable ? looksDifferent(taken.print, lastPrintRef.current, prevPrintRef.current, stillTicksRef.current) : null;
+          diagRef.current.swap = verdict ? Math.round(verdict.diff * 100) : -1;
+          differentTicksRef.current = verdict?.different ? differentTicksRef.current + 1 : 0;
+          if (differentTicksRef.current >= PRINT_AGREE_TICKS) seenClearRef.current = true;
+
           if (seenClearRef.current && performance.now() >= rearmAtRef.current) {
             armedRef.current = true;
-            setWaitingNext(false);
+            waitForNext(false);
           }
         }
 
@@ -1801,7 +1905,10 @@ export default function DocumentCapture({
       armedRef.current = false;
       seenClearRef.current = false;
       rearmAtRef.current = Infinity;
-      takenRef.current = quadRef.current ? { pts: quadRef.current.pts, coverage: lastCoverageRef.current } : null;
+      differentTicksRef.current = 0;
+      takenRef.current = quadRef.current
+        ? { pts: quadRef.current.pts, coverage: lastCoverageRef.current, print: lastPrintRef.current }
+        : null;
     }
     let dataUrl: string;
     try {
@@ -1831,7 +1938,7 @@ export default function DocumentCapture({
       setSaving(false);
       // Swapping pages while it saved counts as the page having left.
       rearmAtRef.current = performance.now() + REARM_MS;
-      setWaitingNext(true);
+      waitForNext(true);
       resetStable();
       capturedRef.current = false;
       return;
@@ -1948,7 +2055,7 @@ export default function DocumentCapture({
     const id = setInterval(() => {
       const d = diagRef.current;
       setDebugText(
-        `cv:${cvStatus} video:${d.videoW}x${d.videoH} ticks:${d.ticks} quads:${d.quads} cov:${d.coverage}% ink:${d.ink} sharp:${d.sharpness} tick:${d.lastTickMs}ms coach:${coach} auto:${autoRef.current ? "on" : "off"}`
+        `cv:${cvStatus} video:${d.videoW}x${d.videoH} ticks:${d.ticks} quads:${d.quads} cov:${d.coverage}% ink:${d.ink} sharp:${d.sharpness} tick:${d.lastTickMs}ms coach:${coach} auto:${autoRef.current ? "on" : "off"} swap:${d.swap} still:${d.still}`
       );
     }, 500);
     return () => clearInterval(id);
@@ -1960,7 +2067,9 @@ export default function DocumentCapture({
   const hint = saving
     ? "Hold still — taking the photo…"
     : multi && waitingNext
-      ? `Got it — ${shots.length} scanned. Next document…`
+      ? stuckWaiting && hasQuad
+        ? "If this is a different document, tap the button to scan it."
+        : `Got it — ${shots.length} scanned. Next document…`
       : dark
         ? "It's dark here — more light helps"
         : cvStatus === "failed" || !hasQuad
