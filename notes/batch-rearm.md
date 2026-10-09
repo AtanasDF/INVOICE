@@ -235,3 +235,66 @@ one thing Atanas actually asked for.
 list, because at 3-in-8 it would pass most runs and read as safety. It has its own
 check that runs the clip six times and fails only if EVERY run duplicates — a
 regression guard, not a pass mark. The honest number lives here.
+
+## The root cause, found by tracing (2026-10-09, later)
+
+Atanas raised the budget and said to go for it, so the next step in the list above
+— instrument rather than theorise — was done. It took one trace to answer what
+four hypotheses had not, and the answer explains why all four failed.
+
+```
+4437 fire:auto swap=-1 still=1      <- the shot
+4619 addShots +1
+5552 arm:rearm  swap=-1 still=0     <- armed again, fingerprint SILENT
+7718 fire:auto  swap=-1 still=8     <- the same receipt, a second time
+7891 addShots +1
+```
+
+**`swap=-1` means the page fingerprint had NO OPINION. Every single time.**
+
+The cause is the line above it. **Auto-capture fires once the outline has been
+still for ONE tick by its own `MOVE_TOLERANCE` of 9.6px, while a fingerprint is
+only recorded after THREE consecutive ticks within `PRINT_STILL_PX` of 3px.** So
+for a real capture there is usually no reading at all: `taken.print` is null, and
+every mechanism built on comparing against it is inert.
+
+**That means all four earlier experiments were measured against a no-op.** The one
+that looked like a regression — "un-arming made it 5 in 8" — was noise from a
+veto that could never fire. The one that genuinely changed behaviour (making
+geometry insufficient) did so because it touched the geometric path, the only
+path that was actually live.
+
+### The obvious fix, tried, and not committed
+
+Adopt a settled reading of the same page as its reference a moment after the shot
+(the page is still lying there; the outline settles to `still=8` within a few
+hundred ms), and let a settled same-page reading withdraw the geometric verdict
+AND un-arm. Both are sound and the trace shows them working: `ref=yes`, re-arms
+vetoed, 4 runs out of 4 clean.
+
+**Then a plain run of the same build came back with 5 duplicates in 8.** The
+trace's own overhead moves the timing, so the protection either lands before the
+second shot or it does not, depending on how busy the machine is. A duplicated
+receipt goes into an accounting record. A fix that works on a quiet machine is
+not a fix, so it was reverted with everything else.
+
+(One implementation trap found on the way, worth not repeating: a veto placed
+inside `if (!armedRef.current)` can never undo an arming, because that block only
+runs while un-armed. It has to sit outside.)
+
+### What to do instead
+
+**Make auto-capture wait for the fingerprint's own stillness.** That guarantees a
+reference for every page that gets photographed, which removes the race entirely
+rather than trying to win it — and it is a better photograph anyway: a receipt
+shot at `still=1` was taken before the outline, and probably the lens, had
+settled. Atanas's first real receipt was shot before the lens focused
+(2026-09-22), which is why `STABLE_MS` exists at all; this is the same argument
+one level finer.
+
+It changes capture timing, so it needs the camera suites run — `test-far`,
+`test-autozoom*`, `test-conditions`, `test-fit-*`, `test-bent`, `test-tiles` —
+and that is a session's work, not a tail end of one.
+
+`harness/trace-batch-capture.mjs` is committed, with the instrumentation it needs
+written in its header. Four guesses cost more than that one trace did.

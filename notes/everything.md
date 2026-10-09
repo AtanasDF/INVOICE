@@ -152,10 +152,23 @@ was verified, not just written.
     the page fingerprint disabled -- and was never seen because no clip of a
     SINGLE document had ever been run through batch mode. A duplicated receipt
     goes into the accounting record, which is worse than any missed document, so
-    this outranks everything else on this list. **Four hypotheses were tried and
-    all four were wrong**; `notes/batch-rearm.md` has the measurements, what they
-    rule out (the geometric re-arm path is NOT where the second shot comes from)
-    and the instruction to instrument rather than guess a fifth time.
+    this outranks everything else on this list. **The root cause is now known,
+    found by tracing after four hypotheses had failed:** auto-capture fires once
+    the outline has been still for ONE tick by its own 9.6px tolerance, while the
+    page fingerprint is only recorded after THREE ticks within 3px -- so
+    `taken.print` is null for a real capture and every mechanism built on it is
+    inert. All four experiments had been measured against a no-op.
+    **The fix is to make auto-capture wait for the fingerprint's own stillness**,
+    which guarantees a reference for every photographed page and removes the race
+    instead of trying to win it -- and is a better photograph besides, since a
+    receipt shot at `still=1` was taken before the lens settled. It changes
+    capture timing, so it needs the camera suites (`test-far`, `test-autozoom*`,
+    `test-conditions`, `test-fit-*`, `test-bent`, `test-tiles`) and is a session's
+    work. The obvious alternative -- adopt a reference a moment after the shot --
+    was tried and reverted: 4/4 clean while traced, 5 duplicates in 8 without the
+    trace, because the trace's own overhead moves the timing. A fix that works on
+    a quiet machine is not a fix. `notes/batch-rearm.md` has the trace and the
+    measurements; `harness/trace-batch-capture.mjs` reproduces them.
 
 ## WAITING ON HIM
 
