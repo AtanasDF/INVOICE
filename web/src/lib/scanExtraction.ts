@@ -2,7 +2,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { CURRENCIES } from "@/lib/fx";
 import type { DocumentBox } from "@/lib/documentBox";
 import { type NormalisedDates, normaliseScanDates } from "@/lib/documentDate";
-import { conformToSchema, extractStructured, nullableEnum, type ScanEngine } from "@/lib/extractors";
+import { conformToSchema, extractStructured, nullableEnum, type ReadNote, type ScanEngine } from "@/lib/extractors";
 import { ROUGH_DOCUMENTS } from "@/lib/invoiceTemplate";
 import type { DocumentDetails } from "@/lib/storage";
 
@@ -366,11 +366,13 @@ function tidy(doc: ScanToolOutput, alone: boolean): ScanToolOutput {
 export async function extractDocuments(
   pages: { mediaType: string; base64: string }[],
   categories: string[],
-  engine: ScanEngine = "claude"
+  engine: ScanEngine = "claude",
+  onRead?: (note: ReadNote) => void
 ): Promise<ScanResult[]> {
   const schema = buildExtractionSchema(categories.length ? categories : [...CATEGORIES]);
   const { documents } = await extractStructured<{ documents: ScanToolOutput[] }>({
     engine,
+    onRead,
     name: "record_documents",
     description:
       "Records the structured data read off scanned UK business documents (receipts, supplier invoices, credit notes, or similar), one entry per separate document.",

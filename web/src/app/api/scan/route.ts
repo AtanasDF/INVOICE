@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { allowScans, refusalText, spendScans } from "@/lib/scanLimit";
 import { createClient } from "@supabase/supabase-js";
 import { CATEGORIES } from "@/lib/categories";
-import { SCAN_ENGINES, type ScanEngine, RELAYED_ERRORS } from "@/lib/extractors";
+import { SCAN_ENGINES, type ReadNote, type ScanEngine, RELAYED_ERRORS } from "@/lib/extractors";
 import { ALLOWED_TYPES, MAX_FILE_BYTES, extractDocuments, parseDataUrl } from "@/lib/scanExtraction";
 import { allow, release } from "@/lib/rateLimit";
 
@@ -112,17 +112,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: refusalText(refusal), limit: refusal }, { status: 429 });
   }
 
+  // Which engine answered, and how long the whole read took. Sent back so a
+  // slow read is never invisible: the page can say it took half a minute, and
+  // "the first engine timed out and the other one read it" is a fact somebody
+  // can act on rather than a spinner that eventually stopped.
+  // Held in a box because TypeScript cannot see that the callback below ran.
+  const read: { note: ReadNote | null } = { note: null };
   try {
     // `result` is the first document, for callers that read one (invoices/new).
-    const documents = await extractDocuments(pages, categories, engine);
+    const documents = await extractDocuments(pages, categories, engine, (n) => { read.note = n; });
     // Only what actually came back, and only now: a read that throws never
     // reaches this line, so a failure costs nobody anything.
     await spendScans(token, documents.length);
-    return NextResponse.json({ result: documents[0], documents });
+    return NextResponse.json({ result: documents[0], documents, read: read.note });
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (RELAYED_ERRORS.has(message)) return NextResponse.json({ error: message }, { status: 502 });
-    console.error("scan extraction failed:", message || String(err));
+    // The timing is logged even when the read failed, because "gave up after
+    // 25 seconds having also tried the other engine" is the useful half of a
+    // failure report and the only way to tell a slow read from a broken one.
+    const n = read.note;
+    const where = n ? ` [${n.engine}${n.fellBack ? " after falling back" : ""}, ${n.ms}ms]` : "";
+    if (RELAYED_ERRORS.has(message)) {
+      console.error(`scan: ${message}${where}`);
+      return NextResponse.json({ error: message, read: n }, { status: 502 });
+    }
+    console.error(`scan extraction failed${where}:`, message || String(err));
     return NextResponse.json({ error: "Couldn't read that document. Try again, or type it in by hand." }, { status: 502 });
   }
 }

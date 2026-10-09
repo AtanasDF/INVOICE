@@ -1,4 +1,4 @@
-import type { ScanEngine } from "@/lib/extractors";
+import type { ReadNote, ScanEngine } from "@/lib/extractors";
 import type { ScanDetailKey, ScanDetails, ScanResult } from "@/lib/scanExtraction";
 import type { DocumentDetails } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -33,7 +33,11 @@ export function batchPages<T extends { dataUrl: string }>(pages: T[]): T[][] {
 export async function extractPages(
   pages: { dataUrl: string; mediaType: string }[],
   categories: string[],
-  engine: ScanEngine = "claude"
+  engine: ScanEngine = "claude",
+  // Told how the slowest batch went, so the page can say so. A scan split
+  // across batches is one read as far as the person waiting is concerned, and
+  // the one that held them up is the one worth reporting.
+  onRead?: (note: ReadNote) => void
 ): Promise<ScanResult[]> {
   if (!pages.length) throw new Error("There's nothing to read.");
   if (pages.some((p) => p.dataUrl.length > MAX_BATCH_CHARS)) {
@@ -45,13 +49,15 @@ export async function extractPages(
   if (!session) throw new Error(SIGNED_OUT);
   const batches = batchPages(pages);
   const found: ScanResult[][] = [];
+  let slowest: ReadNote | null = null;
   for (const batch of batches) {
     const res = await fetch("/api/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ images: batch.map((p) => p.dataUrl), categories, engine }),
     });
-    const json = (await res.json().catch(() => ({}))) as { result?: ScanResult; documents?: ScanResult[]; error?: string; limit?: { reason: string; topUpAvailable?: boolean } };
+    const json = (await res.json().catch(() => ({}))) as { result?: ScanResult; documents?: ScanResult[]; error?: string; read?: ReadNote | null; limit?: { reason: string; topUpAvailable?: boolean } };
+    if (json.read && (!slowest || json.read.ms > slowest.ms)) slowest = json.read;
     if (!res.ok || !json.result) {
       const err = new Error(json.error || `Scanning failed (${res.status}).`);
       // A refusal is not a failure: it carries what to offer next, and the
@@ -61,6 +67,10 @@ export async function extractPages(
     }
     found.push(json.documents?.length ? json.documents : [json.result]);
   }
+  // Only on the way out with an answer. A read that failed says so in its own
+  // words ("That took too long to read"), and a note repeating the seconds
+  // underneath it would be the same news twice.
+  if (slowest) onRead?.(slowest);
   if (found.every((docs) => docs.length === 1)) return [mergeScanResults(found.map((docs) => docs[0]))];
 
   // Each batch numbers its pages from 1.

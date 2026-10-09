@@ -9,7 +9,8 @@ import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessP
 import { CATEGORIES, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
 import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
 import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
-import type { ScanEngine } from "@/lib/extractors";
+import type { ReadNote, ScanEngine } from "@/lib/extractors";
+import { readNoteText } from "@/lib/scanBudget";
 import { documentDetailsFromScan, extractPages, mergeScanResults } from "@/lib/scanClient";
 import { type DocumentPart, splitDocuments } from "@/lib/splitDocuments";
 import { matchSupplier, normaliseSupplierName } from "@/lib/supplierMatch";
@@ -387,6 +388,9 @@ type WalkDoc = {
   // Pages that are only the whole shared photo, kept after a crop.
   context: number[];
   splitNote: string | null;
+  // Set only when the read was slow enough to be worth saying, or the second
+  // engine had to finish it. Null on an ordinary read, which is nearly all.
+  readNote: string | null;
   done: "saved" | "skipped" | null;
   // Why Save all left it.
   look: string | null;
@@ -630,7 +634,8 @@ export default function ScanPage() {
     const gen = (readGenRef.current.get(id) ?? 0) + 1;
     readGenRef.current.set(id, gen);
     const latest = () => readGenRef.current.get(id) === gen;
-    const extract = () => extractPages(d.pages, cats, engine);
+    const slow: { note: ReadNote | null } = { note: null };
+    const extract = () => extractPages(d.pages, cats, engine, (n) => { slow.note = n; });
     const read = (limit ? limit(extract) : extract())
       .then((found) => {
         if (!d.joined) return splitDocuments(d.pages, found);
@@ -641,7 +646,7 @@ export default function ScanPage() {
       })
       .then(
         (parts) => {
-          if (latest()) onRead(id, parts);
+          if (latest()) onRead(id, parts, readNoteText(slow.note));
         },
         (err) => {
           if (latest()) {
@@ -653,13 +658,13 @@ export default function ScanPage() {
     readsRef.current.set(id, read);
   }
 
-  function onRead(id: number, parts: DocumentPart[]) {
+  function onRead(id: number, parts: DocumentPart[], readNote: string | null) {
     const w = walkRef.current;
     const at = w ? w.docs.findIndex((d) => d.id === id) : -1;
     if (!w || at < 0) return;
     const d = w.docs[at];
     const splitNote = parts.length > 1 ? `${sourceName(d.pages)} had ${parts.length} documents — they're listed separately.` : d.splitNote;
-    const replaced = parts.map((p, k) => ({ ...d, id: k ? ++idRef.current : id, pages: p.pages, result: p.result, context: p.context, error: null, splitNote }));
+    const replaced = parts.map((p, k) => ({ ...d, id: k ? ++idRef.current : id, pages: p.pages, result: p.result, context: p.context, error: null, splitNote, readNote }));
     setWalk({ ...w, docs: [...w.docs.slice(0, at), ...replaced, ...w.docs.slice(at + 1)] });
     if (w.current === id) show(replaced[0]);
   }
@@ -740,6 +745,7 @@ export default function ScanPage() {
       joined: d.length > 1,
       context: [],
       splitNote: null,
+      readNote: null,
       done: null,
       look: null,
     }));
@@ -1226,6 +1232,10 @@ export default function ScanPage() {
           </p>
         )}
         {doc?.splitNote && <p className="mb-1 text-xs text-neutral-500">{doc.splitNote}</p>}
+        {/* Only a slow read says anything. Before this there was nothing at
+            all: a read could sit for over a minute and the only evidence was
+            somebody watching a spinner and deciding the app was broken. */}
+        {doc?.readNote && <p className="mb-1 text-xs text-neutral-500" data-testid="read-note">{doc.readNote}</p>}
         {doc?.look && <p className="mb-1 text-xs font-medium text-neutral-700">Needs a look: {doc.look}.</p>}
         {uploadNote && <p className="mb-1 text-xs text-amber-700">{uploadNote}</p>}
         <p role="status" className="sr-only">{uploadNote ?? ""}</p>

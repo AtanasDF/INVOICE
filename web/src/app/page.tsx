@@ -27,8 +27,7 @@ import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } f
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
-import { loadOpenCV } from "@/lib/opencv";
-import { hasUsedCamera } from "@/lib/camera";
+import { warmScannerWhenIdle } from "@/lib/warmScanner";
 import { useAuth } from "@/lib/authContext";
 import Welcome from "@/components/Welcome";
 import Tip from "@/components/Tip";
@@ -198,34 +197,16 @@ function Dashboard() {
     reader.readAsDataURL(file);
   }
 
-  // Warm-up for the in-app scanner: fetching the OpenCV script here puts
-  // it in the HTTP cache and initialises the runtime before Scan is
-  // tapped, and loadOpenCV caches its promise module-wide, so the capture
-  // screen then resolves instantly. Failures are its problem to report.
+  // Warm-up for the in-app scanner: fetching the page-finder here puts it in
+  // the HTTP cache and initialises the runtime before Scan is tapped, so the
+  // capture screen then resolves instantly.
+  //
+  // The guards that used to live here are now in src/lib/warmScanner.ts, so
+  // every place a Scan link sits can use the same ones -- which is the point:
+  // this was the only screen that warmed anything, and the scanner was instant
+  // from here and slow from everywhere else, which is most places.
   useEffect(() => {
-    if (!user || readScannerMode() === "native") return;
-    // Only for somebody who actually scans. This is 13 MB, measured off the
-    // wire on the dashboard, and it was guarded only by navigator.connection
-    // -- which is a Chrome API that SAFARI DOES NOT IMPLEMENT. So the one
-    // protection here never applied on the device the app is mostly used
-    // from: every first visit on an iPhone downloaded 13 MB two seconds after
-    // the dashboard appeared, which is its own answer to "the app felt slow"
-    // and "takes ages to start actually scanning" (Atanas, 2026-09-22 and
-    // 2026-09-26). Somebody who has had the camera before has the script in
-    // cache anyway and loses nothing; somebody on their first visit no longer
-    // pays for a screen they have not opened.
-    if (!hasUsedCamera()) return;
-    const link = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-    if (link?.saveData || /2g$/.test(link?.effectiveType ?? "")) return;
-    const warm = () => {
-      loadOpenCV().catch(() => {});
-    };
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(warm);
-      return () => window.cancelIdleCallback(id);
-    }
-    const t = setTimeout(warm, 2000);
-    return () => clearTimeout(t);
+    return warmScannerWhenIdle(!!user);
   }, [user]);
 
   useEffect(() => {

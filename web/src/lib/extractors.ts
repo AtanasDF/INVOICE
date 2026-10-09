@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
+import { TOO_SLOW, fallbackFor, isTimeout, readBudgetMs } from "@/lib/scanBudget";
 
 export type ScanEngine = "claude" | "gemini";
 export const SCAN_ENGINES: readonly ScanEngine[] = ["claude", "gemini"];
@@ -22,7 +23,17 @@ export type ExtractStructuredOptions = {
   // Claude only: how hard it thinks. Copying details off a page needs less
   // than reading amounts that have to add up.
   effort?: "low" | "medium" | "high";
+  // How long the read gets before it is given up on. Defaults to the budget
+  // for these pages (src/lib/scanBudget.ts); a caller only sets it to ask for
+  // less.
+  budgetMs?: number;
+  // Told which engine produced the answer and how long the whole thing took,
+  // so a route can pass that back and a slow read is never invisible. Called
+  // exactly once, on the way out, whether the read worked or not.
+  onRead?: (note: ReadNote) => void;
 };
+
+export type ReadNote = { engine: ScanEngine; ms: number; fellBack: boolean };
 
 type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
 
@@ -43,14 +54,72 @@ export const ENGINE_BUSY = "The scanner is busy right now. Try again in a minute
 // "overloaded_error",...}}`, and a missing key arrives as "GEMINI_API_KEY is
 // not set" -- true, our fault, and nobody's business but ours. Neither belongs
 // in front of somebody holding a phone over a receipt.
-export const RELAYED_ERRORS: ReadonlySet<string> = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
+export const RELAYED_ERRORS: ReadonlySet<string> = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY, TOO_SLOW]);
 
-export async function extractStructured<T>(opts: ExtractStructuredOptions): Promise<T> {
-  return opts.engine === "gemini" ? extractWithGemini<T>(opts) : extractWithClaude<T>(opts);
+// The two faults a second engine can actually answer. A document the model
+// could not make sense of fails the same way twice, so retrying that would
+// cost money to learn nothing.
+export function worthRetrying(message: string): boolean {
+  return message === TOO_SLOW || message === ENGINE_BUSY;
 }
 
-async function extractWithClaude<T>(opts: ExtractStructuredOptions): Promise<T> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const keyFor = (engine: ScanEngine) => (engine === "gemini" ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY);
+
+// The authoritative wall clock. The engine-level timeouts below exist to cut
+// the socket rather than leave it open; this is what guarantees the caller
+// hears something, whatever either SDK decides to do.
+function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const bell = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(TOO_SLOW)), ms);
+  });
+  // Promise.race attaches a handler to `work`, so a rejection arriving after
+  // the bell has already won is handled rather than unhandled.
+  return Promise.race([work, bell]).finally(() => clearTimeout(timer));
+}
+
+async function readOnce<T>(opts: ExtractStructuredOptions, engine: ScanEngine, budgetMs: number): Promise<T> {
+  try {
+    const work = engine === "gemini" ? extractWithGemini<T>(opts, budgetMs) : extractWithClaude<T>(opts, budgetMs);
+    return await withDeadline(work, budgetMs);
+  } catch (err) {
+    // An SDK's own timeout and ours are the same thing to the person waiting.
+    if (isTimeout(err)) throw new Error(TOO_SLOW);
+    throw err;
+  }
+}
+
+export async function extractStructured<T>(opts: ExtractStructuredOptions): Promise<T> {
+  const budgetMs = opts.budgetMs ?? readBudgetMs(opts.pages);
+  const started = Date.now();
+  const since = () => Date.now() - started;
+  try {
+    const out = await readOnce<T>(opts, opts.engine, budgetMs);
+    opts.onRead?.({ engine: opts.engine, ms: since(), fellBack: false });
+    return out;
+  } catch (err) {
+    const second = fallbackFor(opts.engine);
+    if (!worthRetrying(err instanceof Error ? err.message : "") || !keyFor(second)) {
+      opts.onRead?.({ engine: opts.engine, ms: since(), fellBack: false });
+      throw err;
+    }
+    try {
+      const out = await readOnce<T>(opts, second, budgetMs);
+      opts.onRead?.({ engine: second, ms: since(), fellBack: true });
+      return out;
+    } catch (again) {
+      opts.onRead?.({ engine: second, ms: since(), fellBack: true });
+      throw again;
+    }
+  }
+}
+
+async function extractWithClaude<T>(opts: ExtractStructuredOptions, budgetMs: number): Promise<T> {
+  // The SDK's own defaults are a ten-minute timeout and two retries, which is
+  // how a read came to hang for 71 seconds with nothing to stop it. The signal
+  // is what caps the total: the same one is handed to every retry, so once it
+  // has fired the next attempt gives up at once.
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: budgetMs });
   const pageBlocks: Anthropic.ContentBlockParam[] = opts.pages.map((p) =>
     p.mediaType === "application/pdf"
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: p.base64 } }
@@ -72,7 +141,7 @@ async function extractWithClaude<T>(opts: ExtractStructuredOptions): Promise<T> 
     tools: [{ name: opts.name, description: opts.description, input_schema: opts.schema as Anthropic.Tool["input_schema"] }],
     tool_choice: { type: "tool", name: opts.name },
     messages: [{ role: "user", content: [...pageBlocks, { type: "text", text: opts.prompt }] }],
-  });
+  }, { signal: AbortSignal.timeout(budgetMs) });
 
   if (response.stop_reason === "max_tokens") throw new Error(CUT_OFF);
   const toolUse = response.content.find((block): block is Anthropic.ToolUseBlock => block.type === "tool_use");
@@ -143,14 +212,16 @@ export function conformToSchema(schema: unknown, value: unknown): unknown {
   return value;
 }
 
-async function extractWithGemini<T>(opts: ExtractStructuredOptions): Promise<T> {
+async function extractWithGemini<T>(opts: ExtractStructuredOptions, budgetMs: number): Promise<T> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
   // The SDK retries 429/5xx five times with backoff by default, which on
   // a quota error turns into a hang that outlives the route's 60s budget.
+  // Two attempts of half the budget each, so the pair of them lands roughly
+  // where the budget says rather than at twice it.
   const client = new GoogleGenAI({
     apiKey,
-    httpOptions: { timeout: 40_000, retryOptions: { attempts: 2, initialDelay: 1000, maxDelay: 3000 } },
+    httpOptions: { timeout: Math.round(budgetMs / 2), retryOptions: { attempts: 2, initialDelay: 1000, maxDelay: 3000 } },
   });
 
   let interaction;

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { warmScanner } from "@/lib/warmScanner";
 import { useRouter } from "next/navigation";
 import { CameraIcon } from "@/components/icons";
 import UploadFilesButton from "@/components/UploadFilesButton";
@@ -32,10 +33,15 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // The scan pages prefetch nothing heavy, but the camera screen loads
-  // OpenCV -- warming it while the sheet is open makes the tap instant.
+  // Opening this sheet is the clearest signal in the app that somebody is
+  // about to scan, so it is the right moment to fetch both halves: the route
+  // (kilobytes) and the page-finder (13 MB), which is what the camera screen
+  // actually waits for. This comment used to claim it warmed the scanner while
+  // prefetching only the route.
   useEffect(() => {
-    if (open) router.prefetch("/scan");
+    if (!open) return;
+    router.prefetch("/scan");
+    warmScanner(true);
   }, [open, router]);
 
   return (
