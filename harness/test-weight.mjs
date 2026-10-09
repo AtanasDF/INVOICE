@@ -83,7 +83,31 @@ try {
   // Expenses page's chart library, preloaded through the header's link.
   // 1181 KB since; the budget keeps a sixth of headroom.
   check("the dashboard's own JavaScript is under 1.35MB", dash.js - dash.opencv < 1.35 * 1024 * 1024, `${KB(dash.js - dash.opencv)} ${JSON.stringify(dash.top)}`);
-  check("...and the OpenCV it warms up is the immutable vendor copy, not bundled", dash.opencv > 1024 * 1024 && requests.some((r) => /\/vendor\/opencv/.test(r.u)), KB(dash.opencv));
+  // THIS CHECK USED TO DEMAND THE OPPOSITE, and had been failing since
+  // 2026-09-26 without anybody seeing it -- partly because run-all.sh will
+  // happily run the whole harness against a dev server, where every weight
+  // budget here is meaningless anyway (09/10).
+  //
+  // It asserted that opening the dashboard fetches the 13MB page-finder. That
+  // was true when it was written, and on 2026-09-26 it was deliberately made
+  // false: the warm-up is now guarded on `hasUsedCamera()`, because the old
+  // guard was navigator.connection -- a Chrome API SAFARI DOES NOT IMPLEMENT --
+  // so every first visit on an iPhone downloaded 13MB two seconds after the
+  // dashboard appeared, which is its own answer to "the app felt slow".
+  //
+  // So the rule has two halves and both are worth pinning: a FIRST visit pays
+  // nothing, and a browser that has actually had the camera gets it warmed from
+  // the immutable vendor copy rather than out of the bundle.
+  check("a first visit does not pay 13MB for a screen it has not opened", dash.opencv === 0, KB(dash.opencv));
+
+  await page.evaluate(() => localStorage.setItem("camera-allowed", "1"));
+  const warmed = await load("/");
+  check(
+    "...but a browser that has had the camera gets it warmed from the vendor copy",
+    warmed.opencv > 1024 * 1024 && requests.some((r) => /\/vendor\/opencv/.test(r.u)),
+    KB(warmed.opencv)
+  );
+  await page.evaluate(() => localStorage.removeItem("camera-allowed"));
   // "Once" can't be shown on these pages: request interception -- which
   // the mock needs -- makes Chrome bypass its HTTP cache. So the property
   // is proven where it lives: the header on the file, and a plain tab
