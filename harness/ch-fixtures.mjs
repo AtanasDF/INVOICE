@@ -3,9 +3,21 @@
 // points the app's route at it.
 import { createServer } from "node:http";
 
+// N years (and months) ago, landing on the FIRST of the month rather than the
+// fifteenth.
+//
+// The fifteenth made this suite pass for half of every month and fail for the
+// other half, which is how three of its checks were red on 2026-10-09: `at(6)`
+// gave 2020-10-15 against a today of 2026-10-09, so the company was five years
+// eleven months old and the app correctly said "five years" where the suite
+// demanded "six". It would have come right by itself on the 15th, which is the
+// worst kind of failure -- one that heals before anybody looks.
+//
+// The first is always at least `years` ago, whatever today's date: the gap is
+// `years` plus (today's day of the month - 1), which cannot be negative.
 const at = (years, months = 0) => {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear() - years, now.getUTCMonth() - months, 15)).toISOString().slice(0, 10);
+  return new Date(Date.UTC(now.getUTCFullYear() - years, now.getUTCMonth() - months, 1)).toISOString().slice(0, 10);
 };
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 const daysAhead = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
