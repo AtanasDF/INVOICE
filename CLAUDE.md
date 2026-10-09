@@ -58,11 +58,20 @@ session log what was added so he knows what to clear.
   **run-all.sh does not start that server and does not fail when it is missing** --
   the browser suites simply all crash with `ERR_CONNECTION_REFUSED` while the
   pure-logic ones pass, which reads like 135 broken suites rather than one missing
-  process (09/10, an hour). Start it first: `preview_start` with the
-  **`invoicer-built`** entry in `.claude/launch.json` (`npx next start -p 3000`),
-  not `invoicer-dev`, which is the watching dev server. Check it with
-  `curl -o /dev/null -w "%{http_code}" http://localhost:3000/free-invoice` before
-  believing a red run.
+  process (09/10, an hour).
+  **And a 200 from curl proves nothing about WHICH server answered**, which cost a
+  whole run the same day: `preview_start` ignores both the config name and the
+  config order and starts this session's dev server whatever it is asked for, so an
+  hour-and-a-half run went against `next dev`. Six suites failed and thirteen
+  crashed; re-run against a real `next start`, five of the six were green, one was a
+  stale assertion, and eight of the crashes were green. Dev chunks are five times
+  the size, so every weight budget is meaningless, and routes compile on first
+  request, which is what the timeouts were.
+  **Check the process, not the status code**: `ps -eo command | grep "next dev"`
+  must find nothing, and `curl -s http://localhost:PORT/ | grep -c next-devtools`
+  must be 0. Starting it with Bash -- `cd web && npx next start -p 3100`, with
+  `BASE=http://localhost:3100` for the harness -- is the only way I found to get a
+  production server while a preview exists.
   Running a **logic** suite by hand, outside run-all.sh, needs the same prep
   run-all.sh does or it dies on `Cannot find package '@/lib'`: write
   `gen/package.json`, relink `gen/node_modules` at the app's, compile
