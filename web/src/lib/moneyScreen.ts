@@ -1,3 +1,4 @@
+import { isBill } from "@/lib/bills";
 import type { CreditNote, Invoice, InvoicePayment, Receipt } from "@/lib/storage";
 import { invoiceCharge, creditOffDue } from "@/lib/cis";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
@@ -83,7 +84,7 @@ export function moneyScreen(
   // to be checked is left out: nobody should be chased for a figure a
   // machine read and nobody has looked at.
   const youOwe = receipts
-    .filter((r) => r.documentType === "invoice" && !r.paid && !r.needsReview)
+    .filter(isBill)
     .map((r): Owed => ({
       id: r.id,
       who: nameOf(r.clientId) || r.vendor || "Unknown supplier",

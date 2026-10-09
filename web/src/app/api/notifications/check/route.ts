@@ -1,9 +1,9 @@
+import { BILL_COLUMNS, dueSoonBy } from "@/lib/bills";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { selfAssessmentNotice } from "@/lib/taxEstimate";
 import { todayISO } from "@/lib/today";
-import { addDays } from "@/lib/reminderTemplates";
 import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
@@ -28,18 +28,18 @@ function todayStr(): string {
   return todayISO();
 }
 
-// From TODAY as Britain reckons it, not as UTC does. This asked UTC what day
-// it was and then counted from there, while `today` two lines up was already
-// London -- so for the hour after midnight every summer night the two
-// disagreed by a day, and the 3-day bill window was computed from yesterday.
-// A bill due in exactly 3 days would not have been pushed about.
+// The bill window is `dueSoonBy(todayISO())` now (src/lib/bills.ts), and the
+// history is worth keeping because the shape is easy to write again.
 //
-// The cron runs at 08:00, so it never met that hour in practice; the route
-// can be called at any hour with the secret, and the pattern was sitting
-// here to be copied.
-function daysFromToday(days: number): string {
-  return addDays(todayISO(), days);
-}
+// It used to be a local `daysFromToday(3)` that asked UTC what day it was and
+// counted from there, while `today` two lines up was already London -- so for
+// the hour after midnight every summer night the two disagreed by a day and the
+// window was computed from yesterday. A bill due in exactly 3 days would not
+// have been pushed about. The cron runs at 08:00 so it never met that hour in
+// practice; the pattern was sitting here to be copied, which is what
+// test-utc-today now watches for. The bare `3` has gone with it: it was written
+// out in four files, which is how `addMonths` came to print a one-month
+// warranty as running "until 3 March".
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -75,18 +75,18 @@ export async function GET(req: Request) {
       // be overdue, and a paid invoice is done regardless of due date.
       admin.from("invoices").select("user_id").in("status", ["sent", "partial"]).lt("due_date", today),
       admin.from("recurring_expenses").select("user_id").eq("active", true).lte("next_due_date", today),
-      // Unpaid supplier invoices (scanned into receipts) due within 3 days
-      // or already overdue -- the same window the dashboard's Bills card
-      // flags. No lower bound so an overdue bill keeps being mentioned.
+      // Unpaid supplier invoices (scanned into receipts) due within the
+      // window or already overdue -- literally the same rule and the same
+      // number as the dashboard's Bills card, from src/lib/bills.ts, rather
+      // than a second copy that happens to agree. No lower bound, so an
+      // overdue bill keeps being mentioned.
       // Unreviewed (emailed-in) rows are excluded: their due date is an
       // unchecked AI reading, not a bill the account holder knows about.
       admin
         .from("receipts")
         .select("user_id")
-        .eq("document_type", "invoice")
-        .eq("paid", false)
-        .eq("needs_review", false)
-        .lte("due_date", daysFromToday(3)),
+        .match(BILL_COLUMNS)
+        .lte("due_date", dueSoonBy(todayISO())),
     ]);
     const queryErr = invErr ?? recErr ?? billErr;
     if (queryErr) {

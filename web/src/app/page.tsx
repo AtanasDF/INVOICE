@@ -39,6 +39,7 @@ import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { BILL_DUE_SOON_DAYS, daysBetween, dueSoon, isBill } from "@/lib/bills";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 
@@ -105,17 +106,13 @@ function rememberTab(id: DashTab) {
 // one tap away on the page that is built for it.
 const recent = <T extends { date: string }>(rows: T[], n = 8) => [...rows].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, n);
 
-function daysBetween(from: string, to: string): number {
-  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-}
-
 function billDueLabel(dueDate: string | null, today: string): { text: string; className: string } {
   if (!dueDate) return { text: "No due date", className: "text-neutral-500" };
   const days = daysBetween(today, dueDate);
   if (days < 0) return { text: `Overdue by ${-days} ${days === -1 ? "day" : "days"}`, className: "text-red-700" };
   if (days === 0) return { text: "Due today", className: "text-amber-700" };
   if (days === 1) return { text: "Due tomorrow", className: "text-amber-700" };
-  if (days <= 3) return { text: `Due in ${days} days`, className: "text-amber-700" };
+  if (days <= BILL_DUE_SOON_DAYS) return { text: `Due in ${days} days`, className: "text-amber-700" };
   return { text: `Due ${shortDate(dueDate)}`, className: "text-neutral-500" };
 }
 
@@ -267,7 +264,7 @@ function Dashboard() {
       setShowOverdueBanner(profile.showOverdueReminders && overdue.length > 0);
       setDueRecurringCount(recurring.filter((r) => r.active && r.nextDueDate <= today).length);
       setNeedsReviewCount(receipts.filter((r) => r.needsReview).length);
-      setBills(receipts.filter((r) => r.documentType === "invoice" && !r.paid && !r.needsReview));
+      setBills(receipts.filter(isBill));
       const credits = new Map<string, number>();
       for (const r of receipts) {
         if (r.documentType !== "credit_note" || !r.creditOfReceiptId) continue;
@@ -322,7 +319,7 @@ function Dashboard() {
     [bills]
   );
   const billsDueSoon = useMemo(
-    () => bills.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= 3).length,
+    () => bills.filter((b) => dueSoon(b.dueDate, today)).length,
     [bills, today]
   );
 

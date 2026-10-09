@@ -13,6 +13,7 @@ import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } fro
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { daysBetween, dueSoon } from "@/lib/bills";
 import { todayISO } from "@/lib/today";
 import { addMonths } from "@/lib/recurrence";
 
@@ -102,10 +103,6 @@ const TYPE_LABEL: Record<DocumentType, { label: string; className: string }> = {
 
 type BillFilter = "" | "to_pay" | "overdue" | "due_week" | "paid";
 
-function daysBetween(from: string, to: string): number {
-  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-}
-
 function shortDate(iso: string, today: string): string {
   const withYear = iso.slice(0, 4) !== today.slice(0, 4);
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" });
@@ -122,7 +119,7 @@ function billStatus(r: Receipt, today: string): { text: string; className: strin
   const days = daysBetween(today, r.dueDate);
   if (days < 0) return { text: `Overdue · was due ${shortDate(r.dueDate, today)}`, className: "bg-red-100 text-red-800" };
   const when = days === 0 ? "today" : days === 1 ? "tomorrow" : shortDate(r.dueDate, today);
-  return { text: `To pay · due ${when}`, className: days <= 3 ? "bg-amber-100 text-amber-800" : "bg-neutral-100 text-neutral-700" };
+  return { text: `To pay · due ${when}`, className: dueSoon(r.dueDate, today) ? "bg-amber-100 text-amber-800" : "bg-neutral-100 text-neutral-700" };
 }
 
 function matchesBillFilter(r: Receipt, filter: BillFilter, today: string): boolean {
