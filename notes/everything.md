@@ -31,8 +31,17 @@ was verified, not just written.
 ## OPEN — mine, in the order I would do them
 
 ### First, because it changes what we can even know
-13. **Production error reporting.** If something throws on somebody's phone,
-    nobody finds out. 3,386 passing checks cannot tell us that. Half a day.
+13. ~~**Production error reporting.**~~ **DONE — and it was already done.** Built
+    26-27/09 (`src/lib/reportError.ts`, `ReportErrors.tsx`, `/api/error`,
+    `test-error-report`); this list simply never got ticked, and on 09/10 I
+    started rebuilding it before reading the source. It needs no table: every
+    report reaches the Vercel log on one greppable `[app-error]` line and emails
+    itself to FEEDBACK_TO, capped at one email per distinct fault per hour so a
+    render throwing in a loop cannot mail itself hundreds of times. It is
+    deliberately NOT signed-in only -- the failures worth hearing about most are
+    the ones where somebody cannot get in.
+    **The lesson is about the list, not the code: check the tree before building
+    anything on this list.**
 
 ### What he asked for
 14. ~~**Scan a document from a company that is not his**~~ **DONE.** Half already
@@ -72,9 +81,40 @@ was verified, not just written.
 21. **Double-press every once-only action** — that bug has bitten twice.
 
 ### The scanner
-22. **Say which engine read a document**, so a slow read is never invisible.
-23. **Time-box a read and fall back** — give up at ~20s rather than hang for 71.
-24. **Warm OpenCV wherever a Scan link exists**, not only the dashboard.
+22. ~~**Say which engine read a document**~~ **DONE (09/10).** `/api/scan` returns
+    `read: {engine, ms, fellBack}` and logs it on one line even when the read
+    failed, because "gave up after 25s having also tried the other engine" is
+    the useful half of a failure. The scan page says so on screen when it
+    mattered -- "That was slow to read, so the second reader finished it -- 31
+    seconds in all" -- and nothing at all on a normal read, since a note on
+    every scan is how a real one gets ignored. `readNoteText` deliberately
+    states the time and stops: nothing has established whether a slow read is
+    the photograph's fault or the connection's, and this app has shipped three
+    sentences it could not back up already.
+23. ~~**Time-box a read and fall back**~~ **DONE (09/10), and it was worse than
+    the note says.** Nothing time-boxed a read AT ALL. Gemini carried a 40s HTTP
+    timeout with two attempts, so eighty seconds plus backoff; the Anthropic
+    client carried the SDK's own default, which is **ten minutes**, with two
+    retries behind it; and the route allows 300. A read that went wrong did not
+    fail, it hung. Now `src/lib/scanBudget.ts` gives every read a budget (25s
+    for one photograph, a PDF counted as four pages, 100s ceiling so a read AND
+    its fallback both fit inside maxDuration), `withDeadline` in
+    `extractStructured` is the authoritative wall clock, and running out of time
+    hands the document to **the other engine** once rather than giving up. Only
+    for the two faults a second engine can answer -- out of time, or busy --
+    because a document the model could not make sense of fails the same way
+    twice and retrying it pays twice to learn nothing. 63 checks in
+    `test-scan-budget`, all eight mutations of it proved red on their own.
+24. ~~**Warm OpenCV wherever a Scan link exists**~~ **DONE (09/10).** The guards
+    moved out of the dashboard into `src/lib/warmScanner.ts`, so the dashboard
+    was no longer the only screen that warmed anything -- the scanner was
+    instant from there and paid the full 13 MB wait from everywhere else, which
+    is most places, because "+ Add" sits on every list and its Scan row is one
+    tap. AddAnything's own comment already claimed it warmed the scanner; it
+    prefetched the ROUTE, a few kilobytes of page code, and not the 13 MB the
+    camera actually waits for. The claim is now true. Guards kept exactly:
+    signed in, not the OS-camera path, has had the camera before, no data
+    saver, not 2g.
 
 ### Money, which must not be wrong
 25. **Print the hardest invoice**: CIS + reverse charge + deposit + credit note.

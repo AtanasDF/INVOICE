@@ -55,6 +55,21 @@ session log what was added so he knows what to clear.
   about four minutes (`JOBS=1` for serial, `BASE` for the server). **`$BASE` is a
   production build served by `next start`, not a watching dev server**: rebuild and
   restart before running browser suites, or the run tests a bundle nobody wrote.
+  **run-all.sh does not start that server and does not fail when it is missing** --
+  the browser suites simply all crash with `ERR_CONNECTION_REFUSED` while the
+  pure-logic ones pass, which reads like 135 broken suites rather than one missing
+  process (09/10, an hour). Start it first: `preview_start` with the
+  **`invoicer-built`** entry in `.claude/launch.json` (`npx next start -p 3000`),
+  not `invoicer-dev`, which is the watching dev server. Check it with
+  `curl -o /dev/null -w "%{http_code}" http://localhost:3000/free-invoice` before
+  believing a red run.
+  Running a **logic** suite by hand, outside run-all.sh, needs the same prep
+  run-all.sh does or it dies on `Cannot find package '@/lib'`: write
+  `gen/package.json`, relink `gen/node_modules` at the app's, compile
+  `tsconfig.logic.json`, then rewrite `@/lib/x` to `./x.js` in `gen/`. (`gen/` also
+  still holds 26 dead `node_modules` symlinks and a `lib 2` from iCloud, pointing at
+  the old Desktop path. Flagged, not removed -- rule 1. They are harmless; the live
+  link is remade every run.)
   run-all.sh refuses to start when `web/src` is newer than `web/.next/BUILD_ID`
   (`ALLOW_STALE=1` overrides).
   `tsconfig.logic.json` recompiles the app's own tax, reminder, CIS, VAT, date and

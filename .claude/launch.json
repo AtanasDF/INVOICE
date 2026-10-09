@@ -4,7 +4,25 @@
     {
       "name": "invoicer-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "web",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "invoicer-built",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--prefix",
+        "web",
+        "next",
+        "start",
+        "-p",
+        "3000"
+      ],
       "port": 3000
     }
   ]

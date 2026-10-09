@@ -4,6 +4,131 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-09 — A read could hang for ten minutes, and the camera gave him no way out (Opus 5)
+
+Back after eleven days. First job was proving GitHub still worked, since he is signed
+into another account for a different project: the keychain holds exactly one
+`github.com` credential and it is `AtanasDF`, this repo carries its own local identity
+so a global switch cannot reach it, and `git pull` ran clean. A browser sign-in and
+git's credential are separate things; only authenticating the other account from a
+terminal could overwrite it.
+
+**Item 13 was already built, and I started rebuilding it.** Production error reporting
+has existed since 26-27/09 — `reportError.ts`, `ReportErrors.tsx`, `/api/error`,
+`test-error-report` — and `notes/everything.md` simply never got ticked. I got as far
+as designing a `client_errors` table and migration-042 before reading
+`global-error.tsx`, which imports the thing. Nothing was lost but the lesson is cheap
+to state and I have written it into the list: **check the tree before building
+anything on that list.**
+
+**Nothing time-boxed a scan. Nothing at all.** Gemini carried a 40s HTTP timeout with
+two attempts, so eighty seconds plus backoff. The Anthropic client carried the SDK's
+own default, which is **ten minutes**, with two retries behind it. `/api/scan` allows
+`maxDuration = 300`. So a read that went wrong did not fail — it hung, for as long as
+Vercel allowed, while he held a phone over a receipt watching a spinner and concluded
+the app was broken. A 71-second read had already been measured and written down.
+
+`src/lib/scanBudget.ts` now gives every read a budget: 25s for one photograph, a PDF
+counted as four pages because `pages` holds files rather than printed sides, 100s
+ceiling — set so a read AND its fallback both still fit inside the route's own 300.
+`withDeadline` in `extractStructured` is the authoritative wall clock, both SDKs are
+taken off their defaults (`maxRetries: 1`, `timeout: budgetMs`, and an `AbortSignal`
+shared across retries so it caps the total rather than each attempt), and running out
+of time now hands the document to **the other engine** once instead of giving up.
+Only for the two faults a second engine can answer — out of time, or busy — because a
+document the model could not make sense of fails the same way twice, and retrying it
+pays twice to learn nothing. It is inside `extractStructured`, so none of the five
+callers can forget it.
+
+The answer carries `read: {engine, ms, fellBack}`, logged on one line **even when the
+read failed**, because "gave up after 25s having also tried the other engine" is the
+useful half of a failure report. On screen it says so only when it mattered: *"That
+was slow to read, so the second reader finished it — 31 seconds in all."*
+`readNoteText` states the time and stops — nothing has established whether a slow read
+is the photograph's fault or the connection's, and this app has shipped three
+sentences it could not back up already (`test-promises`).
+
+**He reported the batch scanner again mid-session**, after the paused-video fix:
+*"the scanner doesnt pile up photos from when scanning so doesnt allow you to scan more
+than one file."* That answers the open question at the end of `notes/batch-rearm.md`.
+The re-arm hole is real and still open — `gone` is purely geometric, so sliding the
+next receipt into the same spot never re-arms. But three things it was NOT, each
+checked in the source rather than guessed: `capturedRef` IS cleared on the batch
+success path, the shutter carries no `disabled` and never consults `armedRef`, and the
+stack renders with a green count. **The shutter worked the entire time he was stuck.**
+What was wrong is that the hint read `Got it — 1 scanned. Next document…` and went on
+saying exactly that for as long as he stood there, while the one control that would
+have worked sat underneath it unmentioned. After 3s it now says *"If this is a
+different document, tap the button to scan it."* — asking, not instructing, because
+the page in frame may be the one already taken and a **duplicated** receipt in an
+accounting record is worse than a missed one. The geometric re-arm is still the right
+thing to fix (compare after the perspective warp); it is no longer urgent, because
+nobody is trapped.
+
+**The dashboard was the only screen that warmed the page-finder**, so the scanner was
+instant from there and paid the full 13 MB from everywhere else — which is most
+places, since "+ Add" sits on every list and its Scan row is one tap. And
+`AddAnything`'s own comment already claimed it warmed the scanner: it prefetched the
+ROUTE, a few kilobytes, not the 13 MB the camera waits for. The guards moved to
+`src/lib/warmScanner.ts` and the claim is now true. Guards kept exactly as they were,
+including the one that matters: has this browser ever actually had the camera.
+
+`harness/test-scan-budget.mjs`, 63 checks. **All eight mutations of it were applied one
+at a time and each proved red by its own named check** — the ten-minute timeout back,
+Gemini's hard-coded 40s back, the abort signal removed, a fallback returning the same
+engine, a ceiling that no longer fits twice in the route, a slow read saying nothing,
+a first visit paying for 13 MB, and "+ Add" not warming. Then verified nothing leaked
+by grepping for every mutation string.
+
+**Then he said "fix my scan please", so the re-arm hole got closed too.** That is
+the one `notes/batch-rearm.md` had open since 26/09, where a fingerprint was tried,
+measured and reverted for firing on a receipt lying on a patterned floor. It is the
+fingerprint idea again and three things are different, of which only one was my
+hypothesis:
+
+- **Dense cell means, and the density was the whole thing.** The first attempt took
+  64 POINT samples on a lattice; I assumed averaging each cell would fix it, and
+  **my first run failed exactly as the first attempt had** -- same page up to 1.12,
+  different documents down to 0.54, nothing between them. A sweep of 4..10 cells
+  against 4..24 sub-samples (`harness/measure-page-print.mjs`) said the grid size
+  barely matters and the sampling density matters enormously: at 4 sub-samples a
+  ~48px cell is 16 pinpricks ~12px apart and a 7px line of print falls between them,
+  which is the lattice's mistake one level down. 10x10 cells of 16x16 sub-samples is
+  a genuine area mean. Without the sweep I would have shipped the same failure.
+- **It refuses to answer far more often than it answers**, and the measurements are
+  why: the margin is 0.287 at 4px of corner error, 0.156 at 8px and **0.003 at 12px**,
+  while the camera's own MOVE_TOLERANCE allows 9.6px a tick. So the fingerprint keeps
+  its own gates -- outline moved <=3px for 3 ticks, page within 6px of where it was
+  photographed, 8 consecutive ticks agreeing -- and says NOTHING otherwise, leaving
+  the geometric test exactly as it was.
+- **The reading must have SETTLED**, and the clips forced that one. With only the
+  stillness and near gates, swap-inplace reached a stack of **THREE on a
+  two-document clip** -- a receipt photographed twice, the one outcome the whole
+  thing exists to avoid. What moves when a hand crosses a page or a shadow sweeps it
+  is not the outline: the corners sit still while the content changes. A document put
+  down and left alone reads the same tick to tick. `hand.mjpeg` duplicated before
+  this rule and passes after it.
+
+Measured margin: worst same-page 0.271, closest different document 0.732, threshold
+**0.55** -- 0.16 of daylight below, 0.18 above, where the first attempt had none.
+Against the clips: swap-inplace reaches 2 unaided, and pattern, large, far-receipt,
+glare, shadow, hand and tiles all stay at 1, over three consecutive runs because
+`hand` was intermittent before the settled rule. 33 checks in `test-page-print`
+(synthetic frames, hundreds of readings with the wobble controlled) and 14 in
+`test-batch-stuck` (the clips, end to end).
+
+Still not covered and written down rather than glossed: a swap whose new outline
+lands more than 6px from the old one gets no opinion and falls to geometry, which
+needs a 96px move. The hint naming the shutter stays for exactly those.
+
+**Found while in there, not touched (rule 1):** `harness/gen/` holds 26 dead
+`node_modules` symlinks and a `lib 2`, all iCloud duplicates pointing at
+`/Users/nasko/Desktop/INVOICE/web/node_modules`, which no longer exists. They came
+across in the 27/09 move. Harmless — `run-all.sh` relinks the real one every run, and
+`gen/` is gitignored and rebuilt — but it means a logic suite run BY HAND outside
+`run-all.sh` fails on `Cannot find package '@/lib'` until the link is remade. Worth
+knowing before blaming a suite.
+
 ## 2026-09-26 — His iPhone found the scanner bugs, and a parallel audit found six more (Opus 5)
 
 Working the merged list in `notes/everything.md`, interrupted twice by Atanas actually using

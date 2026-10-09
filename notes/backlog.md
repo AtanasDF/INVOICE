@@ -455,3 +455,40 @@ by reading, not by running.
 - [x] **[medium] app-forms** — Nothing these forms say back is ever announced — errors, "Saved.", and the warnings are silent paragraphs. Fixed 2026-09-21: every feedback paragraph in the app (58 in 35 files: red ones `role="alert"`, amber/green ones and "Saved." `role="status"`). `test-announced` checks Settings' "Saved.".
 - [x] **[medium] overlays** — The scan review sheet covers the live camera but leaves every camera control tabbable behind it, including Capture and a Back that discards the batch. Fixed 2026-09-21: the live area and the control bar are `inert` while the sheet is up (both scanner paths), and the sheet is a labelled `aria-modal` dialog whose heading takes focus on open. Camera path, so verified by reading and type-check.
 - [x] **[low] overlays** — The receipt image lightbox cannot be closed from the keyboard except by finding its ✕, and loses your place in the list. Fixed 2026-09-21 (`/files`): a named dialog, Escape closes it, focus starts on the close button and returns to the tile that opened it. `test-announced` checks all four.
+
+## /api/vat-check is open to anybody (found 2026-10-09, needs a decision)
+
+It is a GET with rate limits (30 an hour per IP, 300 overall) and **no sign-in
+check**, while all five of its callers are behind sign-in: Settings, the new and
+edit client forms, and the quote customer picker. Nothing public uses it.
+
+**Why it matters when the credentials go in.** The route spends *our* HMRC quota,
+and the two-number form sends **our own VAT number** to get a consultation
+reference — the one answer that is deliberately never cached, because handing back
+yesterday's reference would be a reference to a check that did not happen. So a
+stranger who finds the address gets a free HMRC lookup service on our credentials
+and can burn the 300/hour for everybody.
+
+**Why it is not urgent.** `HMRC_CLIENT_ID` and `HMRC_CLIENT_SECRET` are not set in
+production, so the route answers `configured: false` without calling anyone. It is
+only an exposure the day the production application is approved (still waiting on
+the UTR letter).
+
+**Why it was not simply fixed.** `harness/test-vat-lookup.mjs` calls the route with
+no token, against a stand-in HMRC on its own port — about twenty checks, including
+the per-IP limit, the 403-falls-back-to-the-plain-lookup path and the sandbox's one
+usable number. Adding a bearer check breaks all of them, and rewriting them to hold
+a real Supabase session is a bigger job than the fix. This is the same class as
+`/api/send-invoice`, which is signed-in only by design because "an open route was an
+invoice-fraud relay", and `/api/invoice-template`, closed on 2026-09-22.
+
+**The decision to make:** close it before the HMRC credentials are set, and rework
+test-vat-lookup to sign in — or accept it, and lower the per-IP limit so the quota
+cannot be drained. It must not still be open on the day the key goes in.
+
+`harness/test-route-guards.mjs` now lists it as open, with this reasoning beside it,
+and the same suite grew a **completeness check**: every `route.ts` on disk must
+appear in one of its lists. Five were in none of them (`/api/error`,
+`/api/feedback`, `/api/help-chat`, `/api/send-document`, `/api/vat-check`), so
+nothing had ever called them as a stranger. All five refuse correctly — being right
+and being tested are different things, and `/api/send-document` sends email.

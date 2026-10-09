@@ -3,6 +3,9 @@
 // that run with the service role must all refuse. The few that are open by
 // design are listed as open, so the list itself is the record of which is
 // which.
+import fs from "node:fs";
+import path from "node:path";
+import { REPO } from "./repo.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -26,6 +29,15 @@ const SIGNED_IN_ONLY = [
   ["/api/send-invoice", { to: "nobody@example.com" }, "sends an invoice by email"],
   ["/api/invoice-template", { images: [] }, "reads an invoice with the AI (signed-in only since 2026-09-22)"],
   ["/api/quote-requests/send", { requestId: "x" }, "emails suppliers"],
+  // All three were on disk and in NO list here, so nothing called them as a
+  // stranger (found 2026-10-09 by comparing the lists against the routes on
+  // disk, which is what the completeness check at the bottom now does every
+  // run). send-document is the one that mattered: it SENDS EMAIL, and an open
+  // email route is a relay -- the same reason /api/send-invoice is signed-in
+  // only by design. All three refused correctly when finally asked; being
+  // right and being untested are different things.
+  ["/api/send-document", { to: "nobody@example.com" }, "emails a copied document"],
+  ["/api/feedback", { message: "hello" }, "saves and emails feedback"],
 ];
 
 // The email import webhook: the Cloudflare Worker posts scanned receipts
@@ -45,6 +57,25 @@ const CRON_ONLY = [
 // Open by design, and safe: they read public data or answer a private
 // link's own token. They must still not blow up on rubbish.
 const OPEN_BY_DESIGN = [
+  // Deliberately NOT signed-in only, and the route says why: the failures
+  // worth hearing about most are the ones where somebody cannot get in, so
+  // requiring a bearer would silence exactly those. Its fences are the rate
+  // limits instead.
+  ["/api/error", "POST", ""],
+  // OPEN, AND THAT IS A QUESTION RATHER THAN A DESIGN. It is a GET with rate
+  // limits (30/hour an IP, 300 overall) and NO sign-in check, while all five
+  // of its callers -- Settings, both client forms, the quote customer picker --
+  // are behind sign-in. With HMRC credentials set it would spend our quota for
+  // anybody who found it, and the consultation form sends OUR VAT number. It
+  // is harmless today because HMRC_CLIENT_ID is not set, so the route answers
+  // `configured: false` without calling anyone. Flagged for Atanas rather than
+  // changed here: closing it breaks test-vat-lookup's 20-odd checks, which call
+  // it with no token against a stand-in HMRC. See notes/backlog.md.
+  ["/api/vat-check", "GET", "?number=GB123456789"],
+  // 404 while NEXT_PUBLIC_HELP_CHAT is unset -- a route that answers when the
+  // feature is meant to be off is an open model endpoint nothing in the UI
+  // admits to. test-help-chat-live covers the fences for when it is on.
+  ["/api/help-chat", "POST", ""],
   ["/api/address-search", "GET", "?postcode=BS14DJ"],
   ["/api/company-search", "GET", "?q=test"],
   ["/api/company-check", "GET", "?number=00000000"],
@@ -94,6 +125,39 @@ try {
   // app/global-not-found.tsx is served at the routing level, outside the
   // layout and therefore outside the Gate, which is the only place it can work
   // from. Found by driving the live site signed out.
+  // ---------------------------------------------------------------------------
+  // EVERY route must be in one of the lists above
+  // ---------------------------------------------------------------------------
+  // The lists were hand-written and nothing kept them level with the routes on
+  // disk, so a route added later was simply never called as a stranger and
+  // nothing said so. Five were missing when this check was written
+  // (/api/error, /api/feedback, /api/help-chat, /api/send-document,
+  // /api/vat-check) -- all correct, none tested.
+  //
+  // A new route now fails this until somebody decides which list it belongs in,
+  // which is the point: the decision is the fence.
+  const apiDir = `${REPO}/web/src/app/api`;
+  const onDisk = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name === "route.ts") onDisk.push("/api/" + path.relative(apiDir, dir).split(path.sep).join("/"));
+    }
+  };
+  walk(apiDir);
+  const listed = new Set([
+    ...SIGNED_IN_ONLY.map(([p]) => p),
+    ...WEBHOOK_ONLY.map(([p]) => p),
+    ...CRON_ONLY.map(([p]) => p),
+    ...OPEN_BY_DESIGN.map(([p]) => p),
+  ]);
+  check("there are routes to check", onDisk.length > 20, String(onDisk.length));
+  const unlisted = onDisk.filter((r) => !listed.has(r));
+  check("every route on disk is in one of the lists above", unlisted.length === 0, `not decided about: ${unlisted.join(", ")}`);
+  const ghosts = [...listed].filter((r) => !onDisk.includes(r));
+  check("...and every list names a route that exists", ghosts.length === 0, `named but gone: ${ghosts.join(", ")}`);
+
   const missing = await fetch(`${BASE}/no-such-page-at-all`, { redirect: "manual" });
   const body = await missing.text();
   check("a mistyped address says so, rather than asking for a sign-in",
