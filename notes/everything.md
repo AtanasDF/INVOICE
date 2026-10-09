@@ -144,6 +144,19 @@ was verified, not just written.
 
 ---
 
+## FOUND 2026-10-09, OPEN, AND IT IS THE MOST IMPORTANT ONE
+
+59. **The batch scanner can photograph the same receipt twice.** A hand reaching
+    across the page is enough: `harness/hand.mjpeg`, one document, ends with two
+    scans about **3 times in 8**. It predates all of this work -- 6-7 in 8 with
+    the page fingerprint disabled -- and was never seen because no clip of a
+    SINGLE document had ever been run through batch mode. A duplicated receipt
+    goes into the accounting record, which is worse than any missed document, so
+    this outranks everything else on this list. **Four hypotheses were tried and
+    all four were wrong**; `notes/batch-rearm.md` has the measurements, what they
+    rule out (the geometric re-arm path is NOT where the second shot comes from)
+    and the instruction to instrument rather than guess a fifth time.
+
 ## WAITING ON HIM
 
 41. ~~**Settings → VAT registered OFF** on his own account.~~ **ALREADY OFF —

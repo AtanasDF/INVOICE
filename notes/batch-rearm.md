@@ -162,3 +162,76 @@ shutter — is what catches those, and it is why that stays even though the hole
 closed. Worth measuring against his real receipts when there are some
 (`BENCH_DIR`-style), because synthetic documents are flat, square and evenly lit and
 his kitchen worktop is not.
+
+## The thing I found while proving the fix: it can photograph the same receipt twice
+
+**This is worse than the bug above and it predates all of today's work.** It was
+never seen because no clip of a SINGLE document had ever been run through batch
+mode — the only batching clip was `batch-swap.mjpeg`, which holds two.
+
+Writing that sweep found it. `hand.mjpeg` — one page, a hand reaching across it —
+**ends with two scans of the same receipt**, intermittently.
+
+Measured against a production build, eight runs each:
+
+| | duplicates |
+|---|---|
+| fingerprint disabled (`PRINT_DIFFERENT = 99`) | 6–7 in 8 (~80%) |
+| as shipped | 3 in 8 (~38%) |
+
+So the page fingerprint roughly halves it, which is why it is worth having, and
+does not cure it.
+
+### Three hypotheses, all wrong
+
+Written down because each was plausible and each cost a build-and-measure cycle,
+and because the next person will think of them too.
+
+1. **"The geometric `gone` test re-arms when a hand hides the page."** `gone` is
+   satisfied by the page merely being LOST for `LOST_GRACE_TICKS`, which a hand
+   does. Tried: let a settled same-page reading WITHDRAW the geometric verdict
+   (`seenClearRef = false`). 4-in-5 → **1 in 6**. Encouraging, so:
+2. **"The veto arrives too late, because the camera armed on an earlier tick and
+   the block stops running once armed."** Tried: let a settled same-page reading
+   un-arm as well. **5 in 8 — worse**, and I could not explain why, which is not a
+   basis for shipping anything.
+3. **"Then make geometry insufficient on its own: require the fingerprint to AGREE
+   that it is a different document before re-arming."** Tried. **6 in 8, AND it
+   broke the in-place swap** so the second document was no longer taken at all.
+
+**What (3) rules out is the useful part: making the `gone` path stricter made the
+duplicate MORE likely, so the second shot is not coming through that path.**
+Something else arms or fires the camera.
+
+4. **"A stream restart arms over a page already photographed."** The chain looked
+   exact: frames stop advancing for `STALLED_MS`, the watchdog calls
+   `cameraLost()`, that bumps `retryKey`, the stream effect re-runs and reaches
+   `armedRef.current = true` — unconditionally, with `takenRef` still holding the
+   page just shot and the page still on the table. Tried
+   `armedRef.current = takenRef.current === null`. **3 in 8 — no change.** Either
+   that path is not being taken on this clip, or it is not the only one.
+
+All four were reverted. The tree holds none of them.
+
+### What to try next, in order
+
+- **Instrument rather than theorise.** Record, per capture, WHICH line armed the
+  camera and what `swap:`/`still:` read at that moment. Four guesses have now cost
+  more than a trace would have. `diagRef` already reaches the readout and the
+  harness can poll it.
+- Check whether the second capture is auto at all: `shutter()` and the native path
+  also reach `capture()`, and `capturedRef` is cleared on the batch success path.
+- Check `onFileChosen` / the review sheet re-entry, which call `addShots` directly.
+- Only then go back to the re-arm logic.
+
+### And the thing that is not a bug
+
+The hint naming the shutter after 3s, and `capturedRef` being cleared so the
+shutter works repeatedly, are both **right** and both verified. Whatever the
+automatic behaviour does, a person can always work a pile by hand — which is the
+one thing Atanas actually asked for.
+
+`harness/test-batch-stuck.mjs` keeps `hand.mjpeg` OUT of the must-not-duplicate
+list, because at 3-in-8 it would pass most runs and read as safety. It has its own
+check that runs the clip six times and fails only if EVERY run duplicates — a
+regression guard, not a pass mark. The honest number lives here.
