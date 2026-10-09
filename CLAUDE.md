@@ -740,6 +740,13 @@ from Companies House's own enumerations, plus prepared web/social searches (neve
 scraped). Without the key that page says so and offers Companies House's own search.
 `COMPANIES_HOUSE_API_BASE` is optional and only points the lookups at the sandbox or a
 test stand-in; it defaults to the live API.
+**`/api/vat-check` is signed-in only and its hourly count is per ACCOUNT (30), not
+per address, since 2026-10-09.** It had no sign-in check at all until then -- only a
+per-IP limit -- which was harmless solely because the credentials were unset: with
+them in place a stranger who found the address would have had lookups on our quota,
+drained the 300-an-hour everybody shares, and on the two-number form had us send OUR
+OWN VAT number for a consultation reference that is deliberately never cached. Per-IP
+was the wrong shape for honest users too, who share an office.
 `HMRC_CLIENT_ID` / `HMRC_CLIENT_SECRET` (**not set**) switch on checking a VAT number
 against HMRC's "Check a UK VAT number" API (`/api/vat-check`, `VatNumberInput`): Settings,
 the new and edit contact forms, and the quote customer picker. The API is

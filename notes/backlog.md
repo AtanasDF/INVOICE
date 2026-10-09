@@ -456,7 +456,7 @@ by reading, not by running.
 - [x] **[medium] overlays** — The scan review sheet covers the live camera but leaves every camera control tabbable behind it, including Capture and a Back that discards the batch. Fixed 2026-09-21: the live area and the control bar are `inert` while the sheet is up (both scanner paths), and the sheet is a labelled `aria-modal` dialog whose heading takes focus on open. Camera path, so verified by reading and type-check.
 - [x] **[low] overlays** — The receipt image lightbox cannot be closed from the keyboard except by finding its ✕, and loses your place in the list. Fixed 2026-09-21 (`/files`): a named dialog, Escape closes it, focus starts on the close button and returns to the tile that opened it. `test-announced` checks all four.
 
-## /api/vat-check is open to anybody (found 2026-10-09, needs a decision)
+## ~~/api/vat-check is open to anybody~~ CLOSED the same day (2026-10-09)
 
 It is a GET with rate limits (30 an hour per IP, 300 overall) and **no sign-in
 check**, while all five of its callers are behind sign-in: Settings, the new and
@@ -482,9 +482,37 @@ a real Supabase session is a bigger job than the fix. This is the same class as
 `/api/send-invoice`, which is signed-in only by design because "an open route was an
 invoice-fraud relay", and `/api/invoice-template`, closed on 2026-09-22.
 
-**The decision to make:** close it before the HMRC credentials are set, and rework
-test-vat-lookup to sign in — or accept it, and lower the per-IP limit so the quota
-cannot be drained. It must not still be open on the day the key goes in.
+**Atanas's decision: close it, properly.** Done the same evening.
+
+- **Signed-in only, the whole route**, not just the half that costs money. A fence
+  with exceptions is a fence with holes, and the cheap answers — the check-digit
+  verdict, whether the lookup is configured at all — are no stranger's business
+  either. Same pattern as `/api/scan` and `/api/help-chat`.
+- **The hourly count is now PER ACCOUNT, not per address.** The old per-IP limit was
+  the wrong shape in both directions: two people in one office shared thirty lookups
+  an hour, while anybody who found the address got an allowance of their own. Now the
+  route knows who is asking, so the count belongs to them. The global 300 stays.
+- **`VatNumberInput` sends its session**, and an expired one falls back to the check
+  digits — exactly what the box already does whenever the lookup is unavailable, so
+  nothing new had to be designed for it.
+- **The suite was the reason not to, so the suite was fixed.** `test-vat-lookup`
+  spawns its own app against a stand-in HMRC with Supabase pointed at
+  `http://localhost:1`; it now points at the same stand-in, which answers
+  `/auth/v1/user` too — the pattern `test-help-chat-live` already used. Checks that
+  varied `x-forwarded-for` to stay out of each other's per-IP count now vary the
+  token, because the count is per account. **30/30**: the original twenty-two, five
+  proving the fence (a stranger refused, a made-up token refused, neither costing a
+  call to HMRC, no "is it configured" leaked, a mistyped number refused too), and
+  three pinning that the box still sends its session — which matters because losing
+  that would not break loudly. The box would read the 401 as "switched off" and fall
+  back to check digits for ever.
+- All three mutations of the fence were proved red on their own, and
+  `test-route-guards` now lists the route as signed-in only rather than open.
+
+One trap for whoever touches that stand-in: the token check is answered BEFORE
+anything is written to `stub.log`, because several checks read that log's length as
+the number of calls made on our credentials. Logging a token check in there made two
+of them fail the moment the route learned to ask who was calling.
 
 `harness/test-route-guards.mjs` now lists it as open, with this reasoning beside it,
 and the same suite grew a **completeness check**: every `route.ts` on disk must

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { checkVatNumberFormat } from "@/lib/vatNumber";
-import { addressKey, allowShared } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 20;
@@ -20,7 +21,12 @@ const ID = process.env.HMRC_CLIENT_ID;
 const SECRET = process.env.HMRC_CLIENT_SECRET;
 
 const HOUR = 60 * 60 * 1000;
-const PER_IP = 30;
+// Per ACCOUNT, not per address. It was 30 an hour per IP, which was the only
+// fence this route had and the wrong shape in both directions: two people in
+// one office shared it, while anybody who found the address had their own
+// allowance of our HMRC quota. Now that the route knows who is asking, the
+// count belongs to them.
+const PER_USER = 30;
 const GLOBAL = 300;
 // A VAT registration changes at most daily, and the same supplier gets
 // looked up every time their invoice is scanned.
@@ -63,7 +69,31 @@ type Lookup = {
 // first version of this read line1 through line8, which no response has.
 const LINES = ["line1", "postcode", "countryCode"];
 
+// SIGNED IN ONLY, and the whole route rather than the expensive half.
+//
+// It had no sign-in check at all -- only a per-IP rate limit -- while all five
+// of its callers (Settings, both client forms, the quote customer picker) are
+// behind sign-in and nothing public has ever used it. That was harmless for as
+// long as HMRC_CLIENT_ID stayed unset, because the route then answers
+// `configured: false` without calling anyone. It stops being harmless the day
+// the production application is approved: a stranger who found the address
+// would get lookups on OUR credentials, drain the 300-an-hour everybody shares,
+// and -- on the two-number form -- have us send OUR OWN VAT number to HMRC for
+// a consultation reference that is deliberately never cached.
+//
+// The check is at the top rather than in front of the HMRC call only. A fence
+// with exceptions is a fence with holes, and the cheap answers here (the
+// check-digit verdict, whether the feature is configured) are no stranger's
+// business either. Same reasoning as /api/send-invoice, where an open route was
+// an invoice-fraud relay, and /api/invoice-template, closed on 2026-09-22.
 export async function GET(req: Request) {
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const auth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data: { user } } = token
+    ? await auth.auth.getUser(token).catch(() => ({ data: { user: null } }))
+    : { data: { user: null } };
+  if (!user) return NextResponse.json({ error: "Sign in to check a VAT number." }, { status: 401 });
+
   const asked = new URL(req.url).searchParams.get("number") ?? "";
   const format = checkVatNumberFormat(asked);
   if (format.kind === "empty") return NextResponse.json({ configured: !!(ID && SECRET), format: "empty" });
@@ -88,8 +118,7 @@ export async function GET(req: Request) {
   const hit = requester ? null : cache.get(vrn);
   if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json(hit.body);
 
-  const ip = addressKey(req.headers.get("x-forwarded-for"));
-  if (!(await allowShared(`vat:ip:${ip}`, PER_IP, HOUR)) || !(await allowShared("vat:global", GLOBAL, HOUR))) {
+  if (!(await allowShared(`vat:user:${user.id}`, PER_USER, HOUR)) || !(await allowShared("vat:global", GLOBAL, HOUR))) {
     return NextResponse.json({ configured: true, busy: true }, { status: 429 });
   }
 

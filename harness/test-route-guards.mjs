@@ -38,6 +38,12 @@ const SIGNED_IN_ONLY = [
   // right and being untested are different things.
   ["/api/send-document", { to: "nobody@example.com" }, "emails a copied document"],
   ["/api/feedback", { message: "hello" }, "saves and emails feedback"],
+  // CLOSED 2026-10-09. It had no sign-in check at all, only a per-IP rate
+  // limit, while all five of its callers are behind sign-in -- so with HMRC
+  // credentials in place a stranger would have had lookups on our quota and
+  // the two-number form would have sent OUR OWN VAT number. A GET, hence the
+  // method on the end.
+  ["/api/vat-check", { }, "asks HMRC about a VAT number", "GET", "?number=GB123456789"],
 ];
 
 // The email import webhook: the Cloudflare Worker posts scanned receipts
@@ -62,16 +68,6 @@ const OPEN_BY_DESIGN = [
   // requiring a bearer would silence exactly those. Its fences are the rate
   // limits instead.
   ["/api/error", "POST", ""],
-  // OPEN, AND THAT IS A QUESTION RATHER THAN A DESIGN. It is a GET with rate
-  // limits (30/hour an IP, 300 overall) and NO sign-in check, while all five
-  // of its callers -- Settings, both client forms, the quote customer picker --
-  // are behind sign-in. With HMRC credentials set it would spend our quota for
-  // anybody who found it, and the consultation form sends OUR VAT number. It
-  // is harmless today because HMRC_CLIENT_ID is not set, so the route answers
-  // `configured: false` without calling anyone. Flagged for Atanas rather than
-  // changed here: closing it breaks test-vat-lookup's 20-odd checks, which call
-  // it with no token against a stand-in HMRC. See notes/backlog.md.
-  ["/api/vat-check", "GET", "?number=GB123456789"],
   // 404 while NEXT_PUBLIC_HELP_CHAT is unset -- a route that answers when the
   // feature is meant to be off is an open model endpoint nothing in the UI
   // admits to. test-help-chat-live covers the fences for when it is on.
@@ -86,10 +82,10 @@ const OPEN_BY_DESIGN = [
 ];
 
 try {
-  for (const [path, body, what] of SIGNED_IN_ONLY) {
-    const bare = await call(path, { body });
+  for (const [path, body, what, method = "POST", query = ""] of SIGNED_IN_ONLY) {
+    const bare = await call(`${path}${query}`, { body, method });
     check(`${path} (${what}) turns away a stranger`, bare.status === 401 || bare.status === 403, `${bare.status} ${bare.text}`);
-    const faked = await call(path, { body, headers: { authorization: "Bearer not-a-real-token" } });
+    const faked = await call(`${path}${query}`, { body, method, headers: { authorization: "Bearer not-a-real-token" } });
     check(`${path} refuses a made-up token`, faked.status === 401 || faked.status === 403, `${faked.status} ${faked.text}`);
   }
 

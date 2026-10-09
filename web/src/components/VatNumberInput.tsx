@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { checkVatNumberFormat, formatVatNumber } from "@/lib/vatNumber";
+import { supabase } from "@/lib/supabaseClient";
 
 // A VAT number box that checks what it can.
 //
@@ -99,7 +100,19 @@ export default function VatNumberInput({
       setLookup({ for: number, kind: "checking" });
       try {
         const ours = touched && mine?.trim() ? `&mine=${encodeURIComponent(mine.trim())}` : "";
-        const res = await fetch(`/api/vat-check?number=${encodeURIComponent(number)}${ours}`, { signal: controller.signal });
+        // The route is signed-in only: it spends our HMRC quota and, on the
+        // two-number form, sends our own VAT number. Every screen that shows
+        // this box is behind sign-in anyway, so a missing session means the
+        // session has expired rather than that somebody is a stranger -- the
+        // box falls back to the check digits, which is what it does whenever
+        // the lookup is unavailable.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (controller.signal.aborted) return;
+        if (!session) return setLookup({ for: number, kind: "off" });
+        const res = await fetch(`/api/vat-check?number=${encodeURIComponent(number)}${ours}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          signal: controller.signal,
+        });
         const body = (await res.json()) as { configured?: boolean; registered?: boolean; name?: string; address?: string; consultationNumber?: string; checkedOn?: string | null };
         if (controller.signal.aborted) return;
         if (!body.configured) setLookup({ for: number, kind: "off" });

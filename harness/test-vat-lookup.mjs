@@ -13,6 +13,7 @@
 // reported as "nobody holds it"; that our own credentials being refused is
 // never said to the person; and that the same number is not asked for
 // twice.
+import fs from "node:fs";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { REPO } from "./repo.mjs";
@@ -31,9 +32,28 @@ const REGISTERED = {
 };
 let mode = "normal";
 let consultations = 1;
+
+// The route is signed-in only (2026-10-09), so the same stand-in answers
+// Supabase's user endpoint as well -- the pattern test-help-chat-live already
+// uses for the fences that run before a token is spent. Without this the suite
+// would need a real Supabase session to exercise a route about HMRC.
+const SESSION = "harness-session-token";
+// Each `harness-session-<n>` is a different signed-in account. The per-hour
+// count used to be per IP, so checks varied x-forwarded-for to stay out of
+// each other's way; it is per account now, so they vary the token.
+const userFor = (bearer) => `11111111-1111-1111-1111-${String(Math.abs([...bearer].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % 1e12).padStart(12, "0")}`;
 const stub = http.createServer((req, res) => {
-  stub.log.push(req.url);
   const send = (status, body) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
+  // The session check is answered BEFORE anything is logged: `stub.log` means
+  // "what HMRC was asked", and several checks read its length as the count of
+  // calls made on our credentials. Logging a token check in there made two of
+  // them fail the moment this route learned to ask who is calling.
+  if ((req.url ?? "").startsWith("/auth/v1/user")) {
+    const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    if (!/^harness-session/.test(bearer)) return send(401, { message: "invalid token" });
+    return send(200, { id: userFor(bearer), aud: "authenticated", role: "authenticated", email: "someone@example.com" });
+  }
+  stub.log.push(req.url);
   if (req.url === "/oauth/token") {
     if (mode === "no-token") return send(401, { code: "INVALID_CREDENTIALS" });
     return send(200, { access_token: "stub-server-token", expires_in: 14400, token_type: "bearer" });
@@ -63,7 +83,7 @@ const app = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], {
   cwd: WEB,
   env: {
     ...process.env,
-    NEXT_PUBLIC_SUPABASE_URL: "http://localhost:1",
+    NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${STUB}`,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: "fake-anon-key",
     SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-key",
     HMRC_API_BASE: `http://127.0.0.1:${STUB}`,
@@ -76,15 +96,47 @@ let serverLog = "";
 app.stdout.on("data", (d) => (serverLog += d));
 app.stderr.on("data", (d) => (serverLog += d));
 
-const ask = (number, ip = "10.0.0.1") =>
-  fetch(`${base}/api/vat-check?number=${encodeURIComponent(number)}`, { headers: { "x-forwarded-for": ip }, signal: AbortSignal.timeout(60000) })
+const signed = (who = "token") => ({ Authorization: `Bearer harness-session-${who}` });
+const ask = (number, who = "token") =>
+  fetch(`${base}/api/vat-check?number=${encodeURIComponent(number)}`, { headers: signed(who), signal: AbortSignal.timeout(60000) })
     .then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
 
 try {
   for (let i = 0; i < 90; i++) {
-    try { if ((await fetch(`${base}/api/vat-check?number=`, { signal: AbortSignal.timeout(3000) })).ok) break; } catch {}
+    try { if ((await fetch(`${base}/api/vat-check?number=`, { headers: signed(), signal: AbortSignal.timeout(3000) })).ok) break; } catch {}
     await sleep(1000);
   }
+
+  // ---- The route is signed-in only -----------------------------------------
+  // It had NO sign-in check until 2026-10-09, only a per-IP rate limit, while
+  // all five of its callers are behind sign-in. Harmless only for as long as
+  // HMRC_CLIENT_ID stayed unset; with credentials in place a stranger who found
+  // the address would get lookups on OUR quota, drain the 300-an-hour everybody
+  // shares, and on the two-number form have us send OUR OWN VAT number for a
+  // reference that is deliberately never cached.
+  const asksBefore = stub.log.filter((u) => u.includes("/lookup/")).length;
+  const stranger = await fetch(`${base}/api/vat-check?number=GB220430231`).then(async (x) => ({ status: x.status, body: await x.json().catch(() => null) }));
+  check("a stranger is turned away", stranger.status === 401, `${stranger.status} ${JSON.stringify(stranger.body)}`);
+  const faked = await fetch(`${base}/api/vat-check?number=GB220430231`, { headers: { Authorization: "Bearer not-a-real-token" } }).then(async (x) => ({ status: x.status, body: await x.json().catch(() => null) }));
+  check("a made-up token is turned away", faked.status === 401, `${faked.status} ${JSON.stringify(faked.body)}`);
+  // The point of the fence: neither of those cost us a call to HMRC.
+  check("...and neither of them spent a call on our credentials", stub.log.filter((u) => u.includes("/lookup/")).length === asksBefore, `${asksBefore} -> ${stub.log.filter((u) => u.includes("/lookup/")).length}`);
+  // Not even the free half -- no check-digit verdict, no "is it configured".
+  check("a stranger is not told whether the lookup is even switched on", stranger.body?.configured === undefined, JSON.stringify(stranger.body));
+  const strangerTypo = await fetch(`${base}/api/vat-check?number=GB220430232`).then((x) => x.status);
+  check("a stranger gets nothing for a mistyped number either", strangerTypo === 401, String(strangerTypo));
+
+  // The route is only useful if the one component that calls it still sends a
+  // session. If that is ever dropped the box does not break loudly -- it gets a
+  // 401, reads it as "the lookup is switched off", and quietly falls back to
+  // the check digits for ever. So it is pinned here, where the route lives.
+  const box = fs.readFileSync(`${REPO}/web/src/components/VatNumberInput.tsx`, "utf8");
+  check("the box sends the signed-in session with its lookup", /Authorization: `Bearer \$\{session\.access_token\}`/.test(box));
+  check("...and asks for the session before it asks the route", box.indexOf("getSession()") < box.indexOf("/api/vat-check"));
+  const callers = fs
+    .readFileSync(`${REPO}/web/src/components/VatNumberInput.tsx`, "utf8")
+    .match(/\/api\/vat-check/g) ?? [];
+  check("...and it is still the only place that calls the route", callers.length === 1, String(callers.length));
 
   let r = await ask("GB 220 4302 31");
   check("a real number comes back with whose it is", r.status === 200 && r.body?.registered === true && /TESCO/.test(r.body?.name ?? ""), JSON.stringify(r));
@@ -135,7 +187,7 @@ try {
   // and it is the evidence HMRC asks for if they query the VAT reclaimed
   // against a supplier who turns out not to have been registered.
   const asked2 = stub.log.filter((u) => u.includes("/lookup/")).length;
-  let v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB660454836`, { headers: { "x-forwarded-for": "10.0.0.9" } }).then(async (x) => ({ status: x.status, body: await x.json() }));
+  let v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB660454836`, { headers: signed("nine") }).then(async (x) => ({ status: x.status, body: await x.json() }));
   check("with our own number too, a reference comes back", v.status === 200 && /^ref-/.test(v.body?.consultationNumber ?? ""), JSON.stringify(v.body));
   check("and the day it was made", /^2026-09-25/.test(v.body?.checkedOn ?? ""), JSON.stringify(v.body?.checkedOn));
   check("it went to the two-number endpoint", stub.log.filter((u) => /\/lookup\/\d+\/\d+$/.test(u)).length === 1, JSON.stringify(stub.log.slice(-2)));
@@ -143,20 +195,20 @@ try {
   // A reference is issued per request and dated. Answering a second request
   // from memory would hand back a reference to a check that did not happen.
   const first = v.body.consultationNumber;
-  v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB660454836`, { headers: { "x-forwarded-for": "10.0.0.9" } }).then(async (x) => ({ status: x.status, body: await x.json() }));
+  v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB660454836`, { headers: signed("nine") }).then(async (x) => ({ status: x.status, body: await x.json() }));
   check("a second check gets its own reference, never the cached one", v.body?.consultationNumber && v.body.consultationNumber !== first, `${first} then ${v.body?.consultationNumber}`);
 
   // Our own number refused is not the customer's problem: the answer they
   // wanted -- is this supplier registered -- is still there to be had.
   mode = "ours-refused";
-  v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB660454836`, { headers: { "x-forwarded-for": "10.0.0.10" } }).then(async (x) => ({ status: x.status, body: await x.json() }));
+  v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB660454836`, { headers: signed("ten") }).then(async (x) => ({ status: x.status, body: await x.json() }));
   check("if OUR number is refused, the plain answer still comes", v.status === 200 && v.body?.registered === true && !v.body?.consultationNumber, JSON.stringify(v.body));
   mode = "normal";
 
   // A mistyped number of our own is simply not sent: it would earn a 403
   // and cost a call.
   const before2 = stub.log.filter((u) => /\/lookup\/\d+\/\d+$/.test(u)).length;
-  v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB123`, { headers: { "x-forwarded-for": "10.0.0.11" } }).then(async (x) => ({ status: x.status, body: await x.json() }));
+  v = await fetch(`${base}/api/vat-check?number=GB220430231&mine=GB123`, { headers: signed("eleven") }).then(async (x) => ({ status: x.status, body: await x.json() }));
   check("a mistyped number of our own is left out rather than sent", stub.log.filter((u) => /\/lookup\/\d+\/\d+$/.test(u)).length === before2 && v.body?.registered === true, JSON.stringify(v.body));
   check("the lookups actually happened", stub.log.filter((u) => u.includes("/lookup/")).length > asked2, String(asked2));
 
@@ -170,20 +222,20 @@ try {
   await sleep(2000);
   const bare = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT + 1)], {
     cwd: WEB,
-    env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: "http://localhost:1", NEXT_PUBLIC_SUPABASE_ANON_KEY: "k", SUPABASE_SERVICE_ROLE_KEY: "k", HMRC_API_BASE: `http://127.0.0.1:${STUB}`, HMRC_CLIENT_ID: "", HMRC_CLIENT_SECRET: "" },
+    env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${STUB}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "k", SUPABASE_SERVICE_ROLE_KEY: "k", HMRC_API_BASE: `http://127.0.0.1:${STUB}`, HMRC_CLIENT_ID: "", HMRC_CLIENT_SECRET: "" },
     stdio: ["ignore", "ignore", "ignore"],
   });
   try {
     for (let i = 0; i < 90; i++) {
-      try { if ((await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=`, { signal: AbortSignal.timeout(3000) })).ok) break; } catch {}
+      try { if ((await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=`, { headers: signed(), signal: AbortSignal.timeout(3000) })).ok) break; } catch {}
       await sleep(1000);
     }
     const asked2 = stub.log.length;
-    const res = await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=220430231`, { signal: AbortSignal.timeout(60000) });
+    const res = await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=220430231`, { headers: signed(), signal: AbortSignal.timeout(60000) });
     const body = await res.json();
     check("with no credentials it says so rather than pretending", body.configured === false && body.format === "ok", JSON.stringify(body));
     check("and asks HMRC nothing at all", stub.log.length === asked2, String(stub.log.length - asked2));
-    const typo = await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=220430232`).then((r2) => r2.json());
+    const typo = await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=220430232`, { headers: signed() }).then((r2) => r2.json());
     check("the check digits still catch a typo with no credentials", typo.format === "wrong", JSON.stringify(typo));
   } finally {
     bare.kill("SIGTERM");
