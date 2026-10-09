@@ -121,6 +121,67 @@ Still not covered and written down rather than glossed: a swap whose new outline
 lands more than 6px from the old one gets no opinion and falls to geometry, which
 needs a 96px move. The hint naming the shutter stays for exactly those.
 
+**Then the harness turned out to have been running against a dev server**, which
+is the one thing CLAUDE.md says invalidates every browser suite. `preview_start`
+ignores both the config name and the config order and starts this session's dev
+server whatever it is asked for, so an hour-and-a-half run went against `next
+dev`. A 200 from curl proves nothing about WHICH server answered; the giveaway was
+`next-devtools` in the chunk list and hydration warnings in the console.
+
+Of the **nineteen** suites that came back not green: **five of the six failures and
+twelve of the thirteen crashes were the dev server**, all green when re-run against
+a real `next start` on its own port. Dev chunks are five times the size, so every
+weight budget was meaningless, and routes compile on first request, which is what
+the timeouts were. Two were real, and both had been red for a while without
+anybody seeing it:
+
+- **test-weight** had demanded that opening the dashboard fetch the 13 MB
+  page-finder -- true when written, and deliberately made false on 2026-09-26 when
+  the warm-up was guarded on `hasUsedCamera()`. A suite asserting the opposite of a
+  decision somebody took on purpose. It now pins both halves: a first visit pays
+  nothing, and a browser that HAS had the camera gets it warmed from the immutable
+  vendor copy. That second half also proves the warmScanner consolidation works
+  end to end.
+- **test-check-company** passed for half of every month. Its Companies House
+  stand-in builds dates relative to today, correctly, but landed them on the
+  FIFTEENTH: `at(6)` gave 2020-10-15 against a today of 2026-10-09, so the company
+  was five years eleven months old, the app rightly said "five years" and the suite
+  demanded "six". On the 15th it would have gone green on its own, which is the
+  worst kind of failure. The first of the month is always at least `years` ago
+  whatever the date. 54/54.
+
+**And a sweep for duplicated rules, which is the class that already bit this
+project.** What counts as a bill was written out three times (the dashboard,
+moneyScreen.ts, and three `.eq()` filters in the push cron) and the three-day
+window four times as a bare literal. They agreed -- so did `addMonths`, until a
+second copy printed a one-month warranty as running "until 3 March".
+`src/lib/bills.ts` now holds `isBill`, `dueSoon`, `BILL_DUE_SOON_DAYS` and
+`BILL_COLUMNS`, the last so the cron matches on shared columns instead of
+restating the rule in SQL. `test-bills` (36 checks) pins the rule, the
+boundaries, and day-counting across both BST changeovers and a leap day; its
+second half reads the source and fails if a screen grows its own copy back, and
+all five mutations of that were proved red on their own. `lib/duplicates.ts`
+keeps its own `<= 3` and is excused BY NAME -- that is how near two receipts must
+be to be possible duplicates, 3 by coincidence, and coupling them would be its own
+bug. Also written down rather than fixed: `daysBetween` exists in four copies that
+are NOT equivalent, since `duplicates.ts` returns an UNSIGNED difference and does
+not round.
+
+**And the route guards had five blind spots.** `test-route-guards` calls every
+server route as a stranger, and its lists were hand-written with nothing keeping
+them level with the routes on disk. Five appeared in no list at all --
+`/api/error`, `/api/feedback`, `/api/help-chat`, `/api/send-document`,
+`/api/vat-check`. All refuse correctly, but `/api/send-document` SENDS EMAIL, and
+an open email route is a relay. The suite now fails if a route on disk is in no
+list, so the decision is forced. **One real finding flagged for Atanas rather than
+changed** (`notes/backlog.md`): `/api/vat-check` has no sign-in check at all, only
+rate limits, while all five of its callers are behind sign-in. Harmless today
+because `HMRC_CLIENT_ID` is unset, so it answers `configured: false` without
+calling anyone -- but it must not still be open the day the production HMRC
+application is approved, because it spends our quota and the consultation form
+sends our own VAT number. Not closed here because `test-vat-lookup`'s twenty-odd
+checks call it with no token.
+
 **Found while in there, not touched (rule 1):** `harness/gen/` holds 26 dead
 `node_modules` symlinks and a `lib 2`, all iCloud duplicates pointing at
 `/Users/nasko/Desktop/INVOICE/web/node_modules`, which no longer exists. They came
