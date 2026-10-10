@@ -93,11 +93,15 @@ the hint names it after three seconds, both verified.
 
 ## Only Atanas's Mac can do these
 
-- **`npx wrangler deploy` from `worker/`.** Commit `1564983` ("An invoice emailed in
-  was destroyed rather than delayed") is in git and **NOT deployed** — Cloudflare still
-  runs the old code, which destroys an emailed invoice instead of delaying it. wrangler
-  is signed in on the Mac only. **This is the most valuable thing he can do in a
-  minute.**
+- ~~`npx wrangler deploy` from `worker/`~~ **DONE 2026-10-09, by Atanas at his own
+  terminal.** Commit `1564983` ("An invoice emailed in was destroyed rather than
+  delayed") had been sitting in git undeployed, so Cloudflare was still destroying an
+  emailed invoice instead of rejecting it where the sender finds out. Now live:
+  `invoice-inbox-worker`, version `61dc60ef-d2e0-46e0-a846-0657467811d3`, with
+  `env.APP_INGEST_URL` bound to the Vercel app. **The lesson is that `worker/` does not
+  deploy with the app**: a push to `main` ships `web/`, and the Worker needs its own
+  `npx wrangler deploy` on the Mac. Anything committed under `worker/` is NOT live until
+  somebody runs that, and nothing in the repo will tell you.
 - Running any migration (his Chrome, Supabase SQL editor).
 - Anything needing `web/.env.local`.
 - The iPhone, which is the only real-device test this project has.

@@ -28,7 +28,14 @@ session log what was added so he knows what to clear.
 - `web/` — Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind v4
   (CSS-first, no tailwind.config), Supabase (Postgres + Auth + RLS). Run every npm
   command from `web/`.
-- `worker/` — separate Cloudflare Worker for email inbox import. First deployed
+- `worker/` — separate Cloudflare Worker for email inbox import. **It does NOT deploy
+  with the app**: a push to `main` ships `web/` through Vercel and nothing else, so
+  anything committed under `worker/` stays dormant until somebody runs
+  `npx wrangler deploy` from `worker/` on this Mac — and nothing in the repo says so.
+  Commit `1564983` sat undeployed from 2026-09-28 to 2026-10-09 for exactly that reason,
+  which meant Cloudflare went on DESTROYING an emailed invoice instead of rejecting it
+  where the sender would find out. Latest deploy 2026-10-09, version
+  `61dc60ef-d2e0-46e0-a846-0657467811d3`. First deployed
   2026-09-21 (`npx wrangler deploy` from `worker/`; wrangler is signed in on this Mac as
   atanaschoo@gmail.com, Cloudflare account 5926bcf52e541589a3003ab4dee95e16). Email
   Routing for invoiceover.com: MX/SPF/DKIM added that day, catch-all → the Worker,
