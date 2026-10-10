@@ -1,3 +1,107 @@
+# Where things stand — 2026-10-09, late
+
+**Read this first.** Everything below the next heading is older and still true unless
+this section contradicts it.
+
+Everything is **committed and pushed** (`b1d4a0b`). `main` deploys to Vercel on push,
+so what is in GitHub is what is live.
+
+## If you are a cloud session, or running from the phone
+
+You have **the repo and nothing else**. Spelled out, because each of these has cost
+somebody an hour:
+
+- **No `web/.env.local`**, so no Supabase, no live database, no Anthropic/Gemini key,
+  no Companies House, no HMRC. Anything that calls out will answer "not configured",
+  which is correct behaviour and not a bug to chase.
+- **No migrations.** They are hand-run in the Supabase SQL editor in Atanas's own
+  Chrome. A cloud session can WRITE one (the two files rule 2 asks for) but cannot
+  run it, and must not claim it did.
+- **No browser suites.** They need Chrome at a macOS path and ~770 MB of generated
+  camera clips (`gen-*.py`, gitignored). The pure-logic suites DO run: see
+  `harness/run-all.sh` for the prep — write `gen/package.json`, link
+  `gen/node_modules` at the app's, compile `tsconfig.logic.json`, then rewrite
+  `@/lib/x` to `./x.js` inside `gen/`. Without that they die on
+  `Cannot find package '@/lib'`.
+- **No iPhone**, which is the only real device this app has ever been tested on.
+- Work on a `wip/<topic>` branch and push it; the merge gets reviewed on the Mac.
+  Never push half-finished work to `main` — Vercel deploys every push to it.
+
+`notes/cloud-queue.md` holds **eight briefs written for exactly these limits**, all
+still unticked and all repo-only. The $250 of cloud credit expires **5 November 2026**
+and does not come out of the weekly plan, so it is a second tank. Atanas: *"Make sure
+we use it all so we don't waste it."* Hand him a brief; he should not have to think of
+the work.
+
+## The one bug that outranks everything else
+
+**The batch scanner can photograph the same receipt twice.** A hand reaching across
+the page is enough — `harness/hand.mjpeg`, one document, ends with two scans roughly
+3 times in 8. It **predates** this week (6–7 in 8 with the page fingerprint disabled)
+and was never seen because no clip of a single document had ever been run through
+batch mode.
+
+**The root cause is known.** Auto-capture fires once the outline has been still for
+ONE tick by its own 9.6 px tolerance, while the page fingerprint is only recorded
+after THREE ticks within 3 px — so `taken.print` is null for a real capture and every
+mechanism built on it is inert. Four separate fixes were measured against a no-op
+before a trace showed this.
+
+**The fix is to make auto-capture wait for the fingerprint's own stillness**, which
+guarantees a reference for every photographed page and removes the race instead of
+trying to win it. It changes capture timing, so it needs the camera suites
+(`test-far`, `test-autozoom*`, `test-conditions`, `test-fit-*`, `test-bent`,
+`test-tiles`) and is a session's work. **It cannot be done by a cloud session** — the
+clips and Chrome are not there. `notes/batch-rearm.md` has the trace and every
+measurement; `harness/trace-batch-capture.mjs` reproduces them.
+
+A duplicated receipt goes into an accounting record, so until it is fixed the safe
+option — not taken, because it is Atanas's call — is to make the second and later
+documents in a batch need a deliberate tap. The shutter already works repeatedly and
+the hint names it after three seconds, both verified.
+
+## Landed 2026-10-09
+
+- **A scan could hang for ten minutes.** Nothing time-boxed a read: the Anthropic
+  client carried the SDK's ten-minute default. Every read now has a budget (25 s for
+  one photograph, 100 s ceiling) and running out of time hands the document to the
+  other engine once. The answer says which engine read it and how long it took.
+- **The second document in the same spot is captured on its own** — the hole
+  `notes/batch-rearm.md` had open since 26/09, closed with a measured margin.
+- **`/api/vat-check` was open to anybody.** Signed-in only now, and its hourly count
+  is per ACCOUNT rather than per IP. Harmless while the HMRC keys are unset; it would
+  not have been once they are.
+- **Five routes were in none of the guard lists**, so nothing had ever called them as
+  a stranger — including `/api/send-document`, which sends email. All refuse
+  correctly; the suite now fails if a route on disk is in no list.
+- **What counts as a bill, and the 3-day window, were each written out four times.**
+  One definition now (`src/lib/bills.ts`), with a suite that fails if a screen grows
+  its own copy back. `daysBetween` still exists in four copies that are NOT
+  equivalent — `lib/duplicates.ts` returns an unsigned difference — and that is
+  written down, not fixed.
+- **The harness had been running against a dev server**, which invalidates every
+  browser suite. Of nineteen suites not green, seventeen were that. **`preview_start`
+  ignores the config name and starts the dev server whatever it is asked for**, and a
+  200 from curl proves nothing: check `ps` for `next dev` and that
+  `curl -s localhost:PORT/ | grep -c next-devtools` is 0. Start a real one with
+  `cd web && npx next start -p 3100` and point `BASE` at it. A full run takes **well
+  over an hour**, not the "four minutes" CLAUDE.md used to claim.
+- **Two suites had been quietly red.** `test-weight` demanded the dashboard download
+  the 13 MB page-finder, which was deliberately switched off on 26/09.
+  `test-check-company` passed for half of every month, because its fixtures were dated
+  to the 15th.
+
+## Only Atanas's Mac can do these
+
+- **`npx wrangler deploy` from `worker/`.** Commit `1564983` ("An invoice emailed in
+  was destroyed rather than delayed") is in git and **NOT deployed** — Cloudflare still
+  runs the old code, which destroys an emailed invoice instead of delaying it. wrangler
+  is signed in on the Mac only. **This is the most valuable thing he can do in a
+  minute.**
+- Running any migration (his Chrome, Supabase SQL editor).
+- Anything needing `web/.env.local`.
+- The iPhone, which is the only real-device test this project has.
+
 ## Waiting on Atanas (2026-09-25)
 
 1. **HMRC production credentials.** The application is complete except one field:

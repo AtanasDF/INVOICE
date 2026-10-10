@@ -11,6 +11,15 @@ and hand him the brief. He should not have to think of the work.
 **How he starts one:** the cloud/remote option when starting a session (from the phone:
 claude.ai/code in the browser, or the Claude app). Then paste a brief below.
 
+**Set up 2026-10-09, before he logged the app out of his Mac.** From the phone the only
+thing that must be true is that **claude.ai/code can see the `AtanasDF/INVOICE`
+repository** — a cloud session clones it, works on a `wip/` branch and pushes. His Mac
+is not involved and does not need to be awake. Everything was pushed first (`b1d4a0b`),
+so a cloud session starts from a tree that matches what is live.
+
+**The first thing any such session should read is `notes/handover.md`**, whose top
+section is written for exactly this case and lists what a cloud session does NOT have.
+
 **What a cloud session has:** the repo, and nothing else. No `web/.env.local`, so no live
 database, no API keys, no Companies House or HMRC calls. No his-Chrome, so no Supabase SQL
 editor. No iPhone. No browser suites — they need Chrome at a macOS path and ~770 MB of
