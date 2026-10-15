@@ -88,6 +88,16 @@ session log what was added so he knows what to clear.
   link is remade every run.)
   run-all.sh refuses to start when `web/src` is newer than `web/.next/BUILD_ID`
   (`ALLOW_STALE=1` overrides).
+  **DO NOT RUN THE FULL HARNESS WHILE HE IS USING THE MAC.** It is four headless
+  Chromes plus a production build on an **8 GB** machine, for well over an hour, and
+  on 2026-10-15 that left swap at **7.5 GB of 8 GB (91%)** with 33% of memory free --
+  which is exactly what "my computer is very slow" means. Nothing was leaking and no
+  process was runaway: live memory came to about 3 GB, so most of that swap was stale
+  pages macOS had written out under pressure and was in no hurry to reclaim. The
+  machine only properly recovers on a restart. So: ask before a full run, or run it
+  when he is away; `JOBS=1` is far gentler if it must happen while he is working, and a
+  handful of named suites is gentler still. The usage ceiling he sets is about tokens,
+  not about his Mac -- they are separate budgets and this one is his afternoon.
   `tsconfig.logic.json` recompiles the app's own tax, reminder, CIS, VAT, date and
   recurrence code into `harness/gen/` every run, so those suites can never drift from the
   source. Only source is kept: Chrome profiles, `gen/` and the ~770MB of synthetic camera
