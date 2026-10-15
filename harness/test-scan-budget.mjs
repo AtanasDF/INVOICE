@@ -20,6 +20,7 @@ import {
   SLOW_READ_MS,
   TOO_SLOW,
   fallbackFor,
+  isEngineUnusable,
   isTimeout,
   readBudgetMs,
   readNoteText,
@@ -30,6 +31,7 @@ import { worthWarming } from "./gen/lib/warmScanner.js";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
+const NOT_STRUCTURED_TEXT = "The model didn't return structured data. Try again.";
 const photo = { mediaType: "image/jpeg" };
 const pdf = { mediaType: "application/pdf" };
 const photos = (n) => Array.from({ length: n }, () => photo);
@@ -91,6 +93,51 @@ check("an overloaded engine is not a timeout", !isTimeout(new Error('529 {"type"
 check("unreadable output is not a timeout", !isTimeout(new Error("The model didn't return structured data. Try again.")));
 check("nothing is not a timeout", !isTimeout(null) && !isTimeout(undefined) && !isTimeout("timed out"));
 check("our own sentence is not re-read as a timeout", !isTimeout(new Error(TOO_SLOW)), TOO_SLOW);
+
+// ---------------------------------------------------------------------------
+// A KEY THAT IS REFUSED, which is ours to fix and nobody else's to see
+// ---------------------------------------------------------------------------
+// 2026-10-15: Atanas was sent a message claiming his Anthropic key was expiring.
+// Genuine or phishing, it exposed two things. THREE paths defaulted to Claude --
+// the email import, scan-to-fill on a new invoice, and the client default -- and
+// the fallback could not catch a dead key at all, because a 401 is neither "too
+// slow" nor "busy". So an expired key would have hard-failed every receipt
+// emailed in, with no second attempt on the engine that was working fine.
+check("a refused key is recognised", isEngineUnusable({ status: 401 }));
+check("so is a forbidden one", isEngineUnusable({ status: 403 }));
+check("so is running out of credit", isEngineUnusable({ status: 402 }));
+check("so is a key that was never set", isEngineUnusable(new Error("GEMINI_API_KEY is not set")));
+check("so is an invalid-api-key message", isEngineUnusable(new Error("invalid_api_key: the key is wrong")));
+check("so is a credit balance message", isEngineUnusable(new Error("Your credit balance is too low")));
+// The other half, and the one that costs money if it is wrong: an ordinary
+// failure must NOT be read as a dead key, or every unreadable document would be
+// paid for twice, on two engines.
+check("a busy engine is not a dead key", !isEngineUnusable({ status: 429 }));
+check("an overloaded engine is not a dead key", !isEngineUnusable({ status: 529 }));
+check("a timeout is not a dead key", !isEngineUnusable(Object.assign(new Error("timed out"), { name: "AbortError" })));
+check("unreadable output is not a dead key", !isEngineUnusable(new Error(NOT_STRUCTURED_TEXT)));
+check("nothing is not a dead key", !isEngineUnusable(null) && !isEngineUnusable(undefined) && !isEngineUnusable("401"));
+
+// It must reach the OTHER ENGINE, and never the person.
+check("a refused key sends the document to the other engine", /worthRetrying\([^)]*unusable\)|worthRetrying\(.*, unusable\)/.test(extractors));
+check("...and it is logged, because nothing else would say so", /key is refused -- falling back/.test(extractors));
+check(
+  "a refused key is NOT one of the sentences shown to a person",
+  !/RELAYED_ERRORS[^=]*=\s*new Set\(\[[^\]]*unusable/i.test(extractors) && !/key is refused[^`]*`[^;]*NextResponse/.test(extractors)
+);
+
+// ---------------------------------------------------------------------------
+// Nothing depends on one engine by default
+// ---------------------------------------------------------------------------
+// Gemini reads the ten benchmark documents with no missed field and 1.6x faster
+// (notes/engine-accuracy.md) and already carries every /scan. Claude is the
+// second opinion behind ?engine=claude. The defaults said otherwise.
+const extraction = fs.readFileSync(`${REPO}/web/src/lib/scanExtraction.ts`, "utf8");
+const client = fs.readFileSync(`${REPO}/web/src/lib/scanClient.ts`, "utf8");
+check("the route defaults to the engine that carries the work", /\?\? "gemini"/.test(route), "the route still defaults to claude");
+check("extractDocuments does too -- the email import names no engine", /engine: ScanEngine = "gemini"/.test(extraction));
+check("...and so does the client", /engine: ScanEngine = "gemini"/.test(client));
+check("no path is left defaulting to claude", !/ScanEngine = "claude"/.test(extraction + client) && !/\?\? "claude"/.test(route));
 
 // ---------------------------------------------------------------------------
 // What the person is told

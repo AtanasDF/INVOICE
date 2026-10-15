@@ -71,6 +71,34 @@ export function readNoteText(note: { ms: number; fellBack: boolean } | null | un
   return note.ms >= SLOW_READ_MS ? `That took ${seconds} seconds to read.` : null;
 }
 
+// Whether an error off an SDK means THIS ENGINE CANNOT BE USED AT ALL -- our
+// key is refused, revoked, expired or out of credit.
+//
+// It is kept apart from `isTimeout` because the two want opposite handling. A
+// timeout is about this document; an unusable key is about us, and the person
+// holding the phone must never see a word of it (CLAUDE.md: a missing key
+// "arrives as 'GEMINI_API_KEY is not set' -- true, our fault, and nobody's
+// business but ours"). What it SHOULD do is send the document to the other
+// engine, because a read on the working key beats a refusal every time.
+//
+// Found on 2026-10-15, when Atanas got a message claiming his Anthropic key was
+// expiring. Whether or not that message was genuine, it showed that three paths
+// defaulted to Claude -- the email import, scan-to-fill on a new invoice, and
+// the client default -- and that the fallback could not catch this, because a
+// 401 is neither "too slow" nor "busy".
+export function isEngineUnusable(err: unknown): boolean {
+  const e = err as { status?: unknown; message?: unknown } | null;
+  if (!e || typeof e !== "object") return false;
+  // 401 our key is wrong, 403 it is not allowed to do this, 402 out of credit.
+  if (e.status === 401 || e.status === 402 || e.status === 403) return true;
+  const message = typeof e.message === "string" ? e.message : "";
+  // The "not set" case this file's own callers throw before any request.
+  // No leading \b: "GEMINI_API_KEY is not set" has no word boundary before
+  // API_KEY, because an underscore is a word character. The check that caught
+  // that is in test-scan-budget.
+  return /(API_KEY is not set|invalid[_ ]api[_ ]key|authentication|unauthorized|permission[_ ]denied|credit balance)/i.test(message);
+}
+
 // Whether an error off an SDK is "it ran out of time" rather than an answer.
 // Each SDK names it differently, none of them documents the name as stable, so
 // every shape is listed and the message is the last resort.

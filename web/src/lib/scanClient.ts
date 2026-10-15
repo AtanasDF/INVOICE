@@ -33,7 +33,7 @@ export function batchPages<T extends { dataUrl: string }>(pages: T[]): T[][] {
 export async function extractPages(
   pages: { dataUrl: string; mediaType: string }[],
   categories: string[],
-  engine: ScanEngine = "claude",
+  engine: ScanEngine = "gemini",
   // Told how the slowest batch went, so the page can say so. A scan split
   // across batches is one read as far as the person waiting is concerned, and
   // the one that held them up is the one worth reporting.

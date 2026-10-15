@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { TOO_SLOW, fallbackFor, isTimeout, readBudgetMs } from "@/lib/scanBudget";
+import { TOO_SLOW, fallbackFor, isEngineUnusable, isTimeout, readBudgetMs } from "@/lib/scanBudget";
 
 export type ScanEngine = "claude" | "gemini";
 export const SCAN_ENGINES: readonly ScanEngine[] = ["claude", "gemini"];
@@ -56,11 +56,16 @@ export const ENGINE_BUSY = "The scanner is busy right now. Try again in a minute
 // in front of somebody holding a phone over a receipt.
 export const RELAYED_ERRORS: ReadonlySet<string> = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY, TOO_SLOW]);
 
-// The two faults a second engine can actually answer. A document the model
-// could not make sense of fails the same way twice, so retrying that would
-// cost money to learn nothing.
-export function worthRetrying(message: string): boolean {
-  return message === TOO_SLOW || message === ENGINE_BUSY;
+// The faults a second engine can actually answer. A document the model could
+// not make sense of fails the same way twice, so retrying that would cost
+// money to learn nothing.
+//
+// `unusable` is the third: our own key refused. It is passed separately from
+// the message because it is the only one that is OUR fault rather than the
+// document's, and it must never reach the person -- it is logged and the other
+// engine is asked instead.
+export function worthRetrying(message: string, unusable = false): boolean {
+  return unusable || message === TOO_SLOW || message === ENGINE_BUSY;
 }
 
 const keyFor = (engine: ScanEngine) => (engine === "gemini" ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY);
@@ -99,7 +104,12 @@ export async function extractStructured<T>(opts: ExtractStructuredOptions): Prom
     return out;
   } catch (err) {
     const second = fallbackFor(opts.engine);
-    if (!worthRetrying(err instanceof Error ? err.message : "") || !keyFor(second)) {
+    const unusable = isEngineUnusable(err);
+    // Loud, because it is ours to fix and nothing in the app will say it: the
+    // scan still succeeds on the other engine, so without this line a dead key
+    // is invisible until the second one dies too.
+    if (unusable) console.error(`scan: the ${opts.engine} key is refused -- falling back to ${second}`);
+    if (!worthRetrying(err instanceof Error ? err.message : "", unusable) || !keyFor(second)) {
       opts.onRead?.({ engine: opts.engine, ms: since(), fellBack: false });
       throw err;
     }

@@ -463,6 +463,24 @@ friends) is correct and stays — the bug was only ever in asking UTC what day i
 
 ## Scanning and extraction
 
+- **Gemini is the default everywhere since 2026-10-15, and a refused key falls back.**
+  Three paths used to default to `claude` -- `/api/scan` when the caller names no engine
+  (which is scan-to-fill on a new invoice), `extractDocuments` (which is the EMAIL
+  IMPORT), and `extractPages` -- while `notes/engine-accuracy.md` had already measured
+  Gemini at no missed field on all ten benchmark documents and 1.6x faster, and `/scan`
+  and `/api/invoice-template` already sent Gemini explicitly. So the two paths nobody
+  looked at used the slower engine on a different key. Found when Atanas was sent a
+  message claiming his Anthropic key was expiring (genuine or phishing, never
+  established). **The same look found that the fallback could not catch a dead key at
+  all**: `worthRetrying` took only "too slow" and "busy", and a refused key is a 401, so
+  an expired key would have hard-failed every receipt emailed in with no second attempt
+  on the engine that was working. `isEngineUnusable` (401/402/403, or a message naming
+  the key) now counts, logs `scan: the <engine> key is refused` -- loud, because the
+  scan then succeeds on the other engine and NOTHING else would say so -- and never
+  reaches the person, since our key being wrong is our business.
+  **So the Anthropic key is still needed**: Claude is no longer the default but it IS
+  the fallback, and Gemini is a prepaid balance, so the day that runs out is the day the
+  fallback matters.
 - `src/lib/extractors.ts` — one `extractStructured()` with two engines: `claude`
   (`claude-opus-5`, forced tool, **not strict**, output passed through `conformToSchema`)
   and `gemini` (`gemini-3.5-flash-lite` via `@google/genai` Interactions API; schema

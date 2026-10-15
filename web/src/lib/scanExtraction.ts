@@ -366,7 +366,7 @@ function tidy(doc: ScanToolOutput, alone: boolean): ScanToolOutput {
 export async function extractDocuments(
   pages: { mediaType: string; base64: string }[],
   categories: string[],
-  engine: ScanEngine = "claude",
+  engine: ScanEngine = "gemini",
   onRead?: (note: ReadNote) => void
 ): Promise<ScanResult[]> {
   const schema = buildExtractionSchema(categories.length ? categories : [...CATEGORIES]);

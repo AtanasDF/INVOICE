@@ -60,7 +60,14 @@ export async function POST(req: Request) {
   if (body.engine !== undefined && !SCAN_ENGINES.includes(body.engine as ScanEngine)) {
     return NextResponse.json({ error: "engine must be \"claude\" or \"gemini\"." }, { status: 400 });
   }
-  const engine = (body.engine as ScanEngine | undefined) ?? "claude";
+  // Gemini by default, not Claude. It reads the ten benchmark documents with no
+  // missed field at all and 1.6x faster (notes/engine-accuracy.md), it already
+  // carries every /scan, and /api/invoice-template has defaulted to it since it
+  // was written. The "claude" default here was a leftover from before that
+  // measurement, and it meant the two callers that name no engine -- the email
+  // import and scan-to-fill on a new invoice -- went to the slower engine on
+  // the key Atanas was warned about on 2026-10-15.
+  const engine = (body.engine as ScanEngine | undefined) ?? "gemini";
   const keyName = engine === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
   if (!process.env[keyName]) {
     return NextResponse.json(
