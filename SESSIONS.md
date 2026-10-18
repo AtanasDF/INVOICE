@@ -4,6 +4,19 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-18 — Audit of the service worker and offline (cloud session)
+
+Read-only: `notes/audit-offline.md`, no behaviour changed. Checked against a production
+build in headless Chromium through a proxy that could drop or hang every connection.
+The worker's own cache holds nothing private, and no `/i/` token or photo is cached by
+it. **What does leak is what sign-out leaves in storage**: the Free page draft (bank
+details, customer, signature) is handed to the next account on the device, and a
+receipt photo left in sessionStorage is read into the next account's scan — both
+observed. Also: the cache name never changes so nothing is ever pruned; `/offline` is
+never shown on a hanging (one-bar) connection; and tapping a link offline throws away a
+half-typed receipt under a page saying "Nothing has been lost". Open: all of it, for him
+to choose what to fix.
+
 ## 2026-10-09 — A read could hang for ten minutes, and the camera gave him no way out (Opus 5)
 
 Back after eleven days. First job was proving GitHub still worked, since he is signed
