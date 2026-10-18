@@ -4,6 +4,37 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-18 — The statement, the VAT return and the supplier split, attacked by generation (cloud session)
+
+`harness/test-more-money-invariants.mjs` (48 checks, under a second, pure logic) does
+for the three money paths `test-money-invariants` did not cover what that suite does
+for invoices and deposits: thousands of seeded cases, and assertions that must hold for
+every one. **Statement**: every row subtracts exactly (charged − credited − paid = owing
+− owed back), the account reconciles to the penny with legacy hand-marked-paid invoices
+set aside, the ageing boxes sum to what is owed and each holds what its name says
+(a third of due dates are put on 0/1/30/31/60/61 days late on purpose), and input order
+changes nothing. **VAT return**: box 5 = box 1 − box 4, boxes are the sums of their
+lines, the invoice basis is exactly the period's invoices less its credit notes, four
+quarters add up to the year (exact on invoice basis, 1p an invoice on cash), drafts and
+unreviewed receipts change nothing, and per invoice the cash basis never declares more
+than the invoice carries, never reclaims what was not declared, and once paid in full
+matches the invoice basis. **Supplier comparison**: the split is checked against a brute
+force over every assignment -- cheapest of all splits, fewest suppliers on a tie, never
+dearer than the best single supplier -- and past twelve suppliers it still beats every
+whole-order one. Every tolerance was measured and the comment says how. Proved by 19
+deliberate mutations of the compiled code, every one caught; two (an ageing boundary,
+the fewest-suppliers tie-break) survived the first draft and made the generator put
+cases on boundaries and exact ties.
+
+**It found one real thing**: a credit note against a DRAFT invoice came off the VAT
+return, on both bases, though the same function skips drafts for sales. The app never
+offers a credit note on a draft (the draft page returns before that section), but the
+database does not forbid it. Guarded in `vatReturn.ts`, its own commit, so it can be
+dropped if he would rather not.
+
+`quoteCompare.ts` is now compiled by `tsconfig.logic.json`; the suite is in run-all.sh.
+Branch `claude/money-invariants-coverage-ku3id4`, not merged.
+
 ## 2026-10-09 — A read could hang for ten minutes, and the camera gave him no way out (Opus 5)
 
 Back after eleven days. First job was proving GitHub still worked, since he is signed

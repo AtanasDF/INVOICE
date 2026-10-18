@@ -67,6 +67,7 @@
     "../web/src/lib/scanBudget.ts",
     "../web/src/lib/warmScanner.ts",
     "../web/src/lib/pagePrint.ts",
-    "../web/src/lib/bills.ts"
+    "../web/src/lib/bills.ts",
+    "../web/src/lib/quoteCompare.ts"
   ]
 }
