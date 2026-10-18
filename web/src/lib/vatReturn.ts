@@ -109,7 +109,9 @@ export function vatFigures(
   for (const note of creditNotes) {
     if (!inRange(note.date, period.from, period.to)) continue;
     const inv = invoices.find((i) => i.id === note.invoiceId);
-    if (!inv) continue;
+    // A draft was never declared, so there is nothing for a note on it to
+    // reverse; the app never offers one, but the database does not forbid it.
+    if (!inv || inv.status === "draft") continue;
     const totals = computeInvoiceTotals(inv.items, invoiceVat(inv, accountVat));
     if (totals.total <= 0) continue;
     let amount = note.amount;
