@@ -4,6 +4,20 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-18 — Audit of the component layer (cloud session)
+
+Read every file in `web/src/components/` and every `.tsx` under `web/src/app/` against
+CLAUDE.md's house rules. **No behaviour changed**; the findings are in
+`notes/audit-components.md`, each with file:line and what a person would see. The worst:
+in dark mode an invoice or quote PDF (including the one emailed to the customer, and the
+customer's own download from `/i/`/`/q/`) is photographed as a black page, because the
+sheets use `bg-white` rather than the never-themed `--sheet`. Also: "Mark as paid" on the
+invoices list and the dashboard can record two payments; a credit note typed as
+"1,200.00" saves as £1; the `/i/` page shows the full amount when the credits/payments
+read fails; mileage is claimed at 45p after a failed load; Clear form on a new contact
+keeps the reverse-charge end-user tick. Nothing fixed: that is the next session's job,
+worst first.
+
 ## 2026-10-09 — A read could hang for ten minutes, and the camera gave him no way out (Opus 5)
 
 Back after eleven days. First job was proving GitHub still worked, since he is signed
