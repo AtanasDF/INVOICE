@@ -4,6 +4,42 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-19 — Reviewing the cloud's money work, and the cloud push that could not land
+
+The first cloud sessions ran, and the first one to finish could not push: GitHub
+refused with "Claude doesn't have GitHub access to AtanasDF/INVOICE". The cause was
+not repository scope but that **the Claude GitHub App was not installed on the account
+at all** -- the install page said "Install & Authorize", not "Configure". Atanas
+installed it (installation 172849754) and the branches landed. Worth knowing for the
+next machine: a cloud session can clone a public repo and still be unable to push to it,
+and the error names access rather than installation.
+
+`claude/money-invariants-coverage-ku3id4` reviewed here and **merged to main** (1f49c87):
+48/48 on the new suite, plus test-vat-cash-basis 18/18, test-vat-boundaries 30/30,
+test-awkward-money 22/22, test-awkward-dates 51/51, test-money-invariants 22/22, and
+test-reverse-charge 57/57 -- the last against a real `next start` on 3100, verified
+production by its zero next-devtools markers, because the cloud had no puppeteer and
+CLAUDE.md is explicit that a dev server invalidates a browser run. tsc, eslint and
+build clean against the **real** .env.local, which the cloud's run could not do.
+
+**The one-line VAT change was checked, not taken on trust**: vatReturn.ts:70 does skip
+drafts for sales, so credit notes were genuinely asymmetric. The commit message said
+"both bases"; on the cash basis the note is scaled by what was paid, and a draft has
+nothing paid, so it was the **invoice basis** where the whole note came off box 1
+ungated. The cloud session corrected its own log accordingly.
+
+**And the branch moved between the test and the merge** -- a `git pull` printed
+`babfeb8..1f49c87` while main was being prepared. The new commit turned out to be
+SESSIONS.md prose only, proved by comparing the `web/src` and `harness` tree hashes
+either side (identical), not by reading the commit message. Check the trees, not the
+subject line: this is the same lesson as verifying backups by content.
+
+Open: two findings-only branches unmerged and unverified --
+`claude/audit-component-layer-yo1epf` (419 lines) and `claude/document-export-audit-ctvabr`.
+Their worst claims are customer-facing (dark-mode PDFs rendering black, including the
+emailed one; a credit note typed "1,200.00" saving as GBP 1; the Free page's Word/text/
+spreadsheet files carrying no totals at all). None verified here yet.
+
 ## 2026-10-18 — The statement, the VAT return and the supplier split, attacked by generation (cloud session)
 
 `harness/test-more-money-invariants.mjs` (48 checks, under a second, pure logic) does
