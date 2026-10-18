@@ -27,7 +27,10 @@ the fewest-suppliers tie-break) survived the first draft and made the generator 
 cases on boundaries and exact ties.
 
 **It found one real thing**: a credit note against a DRAFT invoice came off the VAT
-return, on both bases, though the same function skips drafts for sales. The app never
+return, though the same function skips drafts for sales. On the invoice basis the whole
+note came off box 1 with no gate at all; on the cash basis it was largely self-limiting,
+since the note is scaled by what was paid and a draft has nothing paid (reviewed on the
+Mac, which caught that the commit message's "both bases" overstated it). The app never
 offers a credit note on a draft (the draft page returns before that section), but the
 database does not forbid it. Guarded in `vatReturn.ts`, its own commit, so it can be
 dropped if he would rather not.
