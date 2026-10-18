@@ -94,6 +94,9 @@ try {
   check("the text file holds the invoice, its line and its total", /Invoice/i.test(txt) && txt.includes("Skim two ceilings") && /480/.test(txt), txt.slice(0, 200));
   const csv = read(".csv").toString();
   check("the spreadsheet has a header row and the line, with the words as written", /^Description,Qty,Unit price,Amount$/m.test(csv) && csv.includes("Skim two ceilings"), csv.slice(0, 200));
+  // 480 alone is also the line's own price, which is how a text file with
+  // no totals in it at all passed this suite (notes/audit-documents.md).
+  check("...and the Total due line itself, in the text and the spreadsheet", /^Total due: £480\.00$/m.test(txt) && /^Total due,£480\.00$/m.test(csv), `${txt.slice(-200)} | ${csv.slice(-200)}`);
   const html = read(".html").toString();
   check("the web page is a whole page with a table", html.startsWith("<!doctype html>") && html.includes("<table>") && html.includes("Skim two ceilings"), html.slice(0, 120));
   const word = read(".doc").toString();
