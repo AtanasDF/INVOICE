@@ -4,6 +4,19 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-18 — Audit of Save as: the Free page's files have no totals
+
+Read-only audit of how a document leaves the app; report in `notes/audit-documents.md`,
+probe in `notes/audit-documents-probe/`. Nothing in `web/` changed. The rule (every shape
+but the PDF and pictures is read off the printed sheet) holds at every call site. But
+`readSheet` ignores `<tfoot>`, and the Free page puts every total there, so its Word, web
+page, text and spreadsheet files carry no Subtotal, VAT, Total due, CIS deduction or Net
+payment due; `test-save-as` misses it because the figure it looks for is also the line's
+own price. In-app invoices and quotes lose nothing (CIS, reverse charge, deposit all
+present). Also: statement exports glue "3 days late" onto the invoice number; CSV has no
+BOM and lets `=` formulas run; a 110+ line PDF probably exceeds iOS Safari's canvas area
+(not tried on a device). Fix order is at the end of the report, waiting on Atanas.
+
 ## 2026-10-09 — A read could hang for ten minutes, and the camera gave him no way out (Opus 5)
 
 Back after eleven days. First job was proving GitHub still worked, since he is signed

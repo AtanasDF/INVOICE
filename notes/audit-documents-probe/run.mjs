@@ -1,0 +1,13 @@
+import { chromium } from "playwright-core";
+import fs from "node:fs";
+const css = `.flex{display:flex}.grid{display:grid}.contents{display:contents}.inline-block{display:inline-block}.block{display:block}.whitespace-pre-line{white-space:pre-line}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.w-full{width:100%}.text-right{text-align:right}.uppercase{text-transform:uppercase}.py-2{padding-top:.5rem;padding-bottom:.5rem}.text-sm{font-size:14px;line-height:20px}.border-b{border-bottom:1px solid #ddd}.mt-6{margin-top:1.5rem}.mt-4{margin-top:1rem}.text-2xl{font-size:24px;line-height:32px}.text-lg{font-size:18px;line-height:28px}`;
+const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const p = await b.newPage();
+p.on("pageerror", (e) => console.log("ERR", e.message));
+await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body></body></html>`);
+await p.addScriptTag({ content: fs.readFileSync("bundle.js", "utf8") });
+const out = await p.evaluate(() => window.OUT);
+fs.mkdirSync("out", { recursive: true });
+for (const [k, v] of Object.entries(out)) for (const f of ["innerText", "text", "csv", "html"]) fs.writeFileSync(`out/${k}.${f}`, v[f]);
+console.log(JSON.stringify(Object.fromEntries(Object.entries(out).map(([k, v]) => [k, { children: v.children, height: v.height, width: v.width }]))));
+await b.close();
