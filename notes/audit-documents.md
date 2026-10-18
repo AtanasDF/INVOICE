@@ -190,10 +190,17 @@ the other shapes `Invoice INV-1.*`.
 - The Free page exports its placeholders when a field is empty ("Your business name",
   "Customer name", "Describe the work on the first line") — as the PDF does.
 
-## What I would do, in order (not done: no behaviour changes)
+## What I would do, in order
 
-1. Read `tfoot` in `readTable` (one selector) and add a Free-page check to `test-save-as`
-   that looks for the **Total due** line, not a figure the line also has.
+1. **Done 2026-10-18.** `readSheet` now reads each table's footer as lines after the table
+   ("Total due: £480.00", so the spreadsheet pairs label and figure the way it does for
+   `IssuedInvoice`). `test-save-as` checks for the Total due line in the .txt and .csv.
+   Proved both ways against a production build: 21/21 with the fix, and the new check
+   alone failing (20/21) with `sheetFile.ts` put back to the old one. The CIS Free invoice
+   in the probe now carries Labour, Materials, Subtotal, VAT, the reverse-charge VAT, Total,
+   CIS deduction and Net payment due. The labour/materials group headings are still
+   dropped (that's item 4's cell reading), but the Labour and Materials subtotals now say
+   what the CIS was taken off.
 2. Try a 150-line invoice's PDF on the iPhone.
 3. Prefix the CSV with a BOM, and neutralise a leading `= + - @` in a cell.
 4. Read cells with `innerText` (or join block children with a space) so the statement's

@@ -17,6 +17,18 @@ present). Also: statement exports glue "3 days late" onto the invoice number; CS
 BOM and lets `=` formulas run; a 110+ line PDF probably exceeds iOS Safari's canvas area
 (not tried on a device). Fix order is at the end of the report, waiting on Atanas.
 
+**Item 1 fixed the same day, on his go-ahead.** `readSheet` reads the table footer as
+"Label: figure" lines (`sheetFile.ts`), and `test-save-as` now checks for the Total due
+line itself. tsc, eslint and build clean; the suite ran 21/21 against `next start` with
+the fix, and 20/21 with the old `sheetFile.ts`, the new check the only failure. Ran in the
+cloud container, not on his Mac: a scratch copy of the harness with Chrome pointed at
+`/opt/pw-browsers` (mockdb.mjs hard-codes the Mac's Chrome path), and the app built
+with the real Supabase URL and a dummy anon key, which is all the mocked suites need.
+Trap met on the way: `pkill -f "next start"` kills the shell that runs it, and the
+server shows up in `ps` as `next-server`, so a "fresh" server silently was not. The
+first without-fix run passed 21/21 against the old process; only reading the
+downloaded .txt showed it.
+
 ## 2026-10-09 — A read could hang for ten minutes, and the camera gave him no way out (Opus 5)
 
 Back after eleven days. First job was proving GitHub still worked, since he is signed

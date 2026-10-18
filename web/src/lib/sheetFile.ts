@@ -40,7 +40,13 @@ export function readSheet(sheet: HTMLElement): SheetDoc {
       .filter(Boolean);
     clone.remove();
     if (lines.length) blocks.push({ kind: "text", lines });
-    for (const t of [...child.querySelectorAll("table")] as HTMLTableElement[]) blocks.push({ kind: "table", table: readTable(t) });
+    for (const t of [...child.querySelectorAll("table")] as HTMLTableElement[]) {
+      blocks.push({ kind: "table", table: readTable(t) });
+      // The Free page prints every total in the footer, a label and a figure
+      // a row: read as "Total due: £480.00", the way IssuedInvoice prints them.
+      const foot = [...t.querySelectorAll("tfoot tr")].map((r) => cells(r, "td, th").filter(Boolean)).filter((r) => r.length);
+      if (foot.length) blocks.push({ kind: "text", lines: foot.map((r) => (r.length > 1 ? `${r.slice(0, -1).join(" ")}: ${r[r.length - 1]}` : r[0])) });
+    }
   }
   return { title, blocks };
 }
