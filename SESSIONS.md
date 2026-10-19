@@ -4,6 +4,23 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
+
+Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged
+without a conflict; the suite list, the logic tsconfig and both logs clashed only because
+both appended to the same line, and both sides were kept. **One real clash the merge did
+not show**: part 2 changed SendInvoicePanel's lock from a boolean to the invoice key, and
+part 1's new PDF-failure path, written in parallel, reset it to `false` -- each half
+typechecked alone, the merge did not. Fixed (`eda9f49`). tsc, eslint (excluding the
+`web/.claude/worktrees/` copy a local session left, which lints its own `.next` and is not
+ours) and build clean; 13 logic/source suites green. **Browser suites not yet run** -- about
+fifty named across both halves' logs, which is near a full run on this 8 GB Mac.
+
+Left for Atanas from part 2: whether invoice lines are rounded inside
+`computeInvoiceTotals` (moves an issued invoice with a half-penny line by a penny). Four
+more cloud sessions sent the same evening: converter (brief 2), stale suites (3), dead
+weight (7, report only), and draft autosave for receipts/new and invoices/new.
+
 ## 2026-10-19 (cloud) — Component audit sections 1-4 worked through, on `wip/audit-components-1`
 
 A cloud session: no browser, no `.env.local`, no database. **Not merged.** A second cloud
