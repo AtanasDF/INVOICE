@@ -75,6 +75,11 @@
     "../web/src/lib/publicRead.ts",
     "../web/src/lib/publicInvoice.ts",
     "../web/src/lib/publicQuote.ts",
-    "../web/src/lib/publicQuoteRequest.ts"
+    "../web/src/lib/publicQuoteRequest.ts",
+    "../web/src/lib/money.ts",
+    "../web/src/lib/receiptAmounts.ts",
+    "../web/src/lib/expensePeriod.ts",
+    "../web/src/lib/dates.ts",
+    "../web/src/lib/companyReport.ts"
   ]
 }

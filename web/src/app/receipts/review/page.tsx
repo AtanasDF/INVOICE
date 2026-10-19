@@ -9,6 +9,7 @@ import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import Tip from "@/components/Tip";
+import { rateAfterReview, receiptGbp } from "@/lib/receiptAmounts";
 
 type DraftState = {
   vendor: string;
@@ -105,14 +106,14 @@ export default function ReviewQueuePage() {
     setDone(null);
     setBusyId(r.id);
     try {
-      const total = parseFloat(draft.totalAmount) || 0;
-      const vat = parseFloat(draft.vatAmount) || 0;
+      const gbp = receiptGbp(draft.totalAmount, draft.vatAmount, "GBP", "", isCredit);
       await receiptsStore.update(r.id, {
         vendor: draft.vendor,
         date: draft.date,
         category: draft.category,
-        amount: isCredit ? -(total - vat) : Math.max(0, total - vat),
-        vatAmount: isCredit ? -vat : vat,
+        amount: gbp.netGbp,
+        vatAmount: gbp.vatGbp,
+        fxRate: rateAfterReview(r, gbp),
         notes: draft.notes,
         needsReview: false,
         ...(isInvoice || isCredit ? { invoiceNumber: draft.invoiceNumber } : {}),

@@ -9,6 +9,7 @@ import { CreditNote, Invoice, Receipt, businessProfileStore, creditNotesStore, i
 import { incomeOf } from "@/lib/periodIncome";
 import { loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { spendByCategory, weekOf } from "@/lib/expensePeriod";
 import Tip from "@/components/Tip";
 
 const SpendChart = dynamic(() => import("@/components/SpendChart"), { ssr: false });
@@ -22,24 +23,6 @@ function yearKey(dateStr: string) {
 // <input type="week"> isn't supported on Safari (desktop or iOS), so weeks
 // are picked via a plain date input -- whatever day you pick, we show the
 // Mon-Sun week it falls in.
-//
-// UTC methods throughout: parsing "T00:00:00" (or the (y,m,d) constructor)
-// builds LOCAL midnight, and converting that back with toISOString() (UTC)
-// shifts the result by a day whenever the viewer's timezone offset isn't
-// zero -- confirmed this breaks in both directions depending on the
-// offset, not just for far-flung timezones, so every step here stays UTC.
-function startOfWeek(dateStr: string): string {
-  const d = new Date(dateStr);
-  const day = d.getUTCDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-function endOfWeek(dateStr: string): string {
-  const d = new Date(startOfWeek(dateStr));
-  d.setUTCDate(d.getUTCDate() + 6);
-  return d.toISOString().slice(0, 10);
-}
 export default function ExpensesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -77,8 +60,9 @@ export default function ExpensesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const weekStart = periodMode === "week" ? startOfWeek(weekAnchor) : "";
-  const weekEnd = periodMode === "week" ? endOfWeek(weekAnchor) : "";
+  const week = weekOf(weekAnchor, todayISO());
+  const weekStart = periodMode === "week" ? week.start : "";
+  const weekEnd = periodMode === "week" ? week.end : "";
 
   const inPeriod = useMemo(() => {
     if (periodMode === "week") return (d: string) => d >= weekStart && d <= weekEnd;
@@ -99,37 +83,7 @@ export default function ExpensesPage() {
     [receipts, inPeriod]
   );
 
-  const byCategory = useMemo(() => {
-    const map = new Map<string, { total: number; vat: number }>();
-    for (const r of periodReceipts) {
-      const itemsTotal = r.lineItems.reduce((s, li) => s + li.quantity * li.unitPrice, 0);
-      if (r.lineItems.length === 0 || itemsTotal <= 0) {
-        const entry = map.get(r.category) || { total: 0, vat: 0 };
-        entry.total += r.amount;
-        entry.vat += r.vatAmount;
-        map.set(r.category, entry);
-        continue;
-      }
-      // Split the receipt across each item's own category (uncategorized
-      // items fall back to the receipt's overall category), scaling each
-      // share proportionally so the categories always sum back to exactly
-      // r.amount / r.vatAmount even if the item totals don't quite match
-      // the receipt total (rounding, an AI misread, etc).
-      const perCategoryAmount = new Map<string, number>();
-      for (const li of r.lineItems) {
-        const cat = li.category || r.category;
-        perCategoryAmount.set(cat, (perCategoryAmount.get(cat) ?? 0) + li.quantity * li.unitPrice);
-      }
-      for (const [cat, amt] of perCategoryAmount) {
-        const share = amt / itemsTotal;
-        const entry = map.get(cat) || { total: 0, vat: 0 };
-        entry.total += r.amount * share;
-        entry.vat += r.vatAmount * share;
-        map.set(cat, entry);
-      }
-    }
-    return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
-  }, [periodReceipts]);
+  const byCategory = useMemo(() => spendByCategory(periodReceipts), [periodReceipts]);
 
   const totals = periodReceipts.reduce(
     (acc, r) => ({ total: acc.total + r.amount, vat: acc.vat + r.vatAmount }),
@@ -159,7 +113,7 @@ export default function ExpensesPage() {
 
   const periodLabel =
     periodMode === "week"
-      ? `${startOfWeek(weekAnchor)} to ${endOfWeek(weekAnchor)}`
+      ? `${week.start} to ${week.end}`
       : periodMode === "month"
         ? month
         : periodMode === "year"

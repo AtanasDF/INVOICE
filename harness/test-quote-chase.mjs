@@ -23,7 +23,7 @@ try {
   await sleep(600);
   const t = await bodyText(page);
   const section = await page.evaluate(() => [...document.querySelectorAll("section")].find((x) => x.innerText.includes("Waiting on an answer"))?.innerText ?? "");
-  check("a quiet quote is raised", t.includes("Waiting on an answer") && section.includes("Q-QUIET") && section.includes("sent 9 days ago"), section.slice(0, 200));
+  check("a quiet quote is raised", t.includes("Waiting on an answer") && section.includes("Q-QUIET") && section.includes("dated 9 days ago"), section.slice(0, 200));
   check("a quote sent yesterday is left alone", !section.includes("Q-FRESH"));
   check("drafts, accepted and expired ones are left alone", !section.includes("Q-DRAFT") && !section.includes("Q-ACCEPTED") && !section.includes("Q-EXPIRED"));
   check("the total and how long it holds are shown", section.includes("£600.00") && section.includes("holds until"), section.slice(0, 220));

@@ -1,9 +1,11 @@
 "use client";
 
+import { amountOrNull, roundMoney } from "@/lib/money";
+
 export type EditableLine = { description: string; quantity: string; unitPrice: string; lineTotal: number | null };
 
 export function lineTotalOf(line: EditableLine): number {
-  return line.lineTotal ?? (parseFloat(line.quantity) || 0) * (parseFloat(line.unitPrice) || 0);
+  return line.lineTotal ?? roundMoney((amountOrNull(line.quantity) ?? 0) * (amountOrNull(line.unitPrice) ?? 0));
 }
 
 const cell = "w-full rounded-lg border px-2 py-1.5";

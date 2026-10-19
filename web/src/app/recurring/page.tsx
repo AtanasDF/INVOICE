@@ -11,6 +11,7 @@ import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 function RecurringTabs() {
   return (
@@ -92,13 +93,12 @@ export default function RecurringExpensesPage() {
     setSaving(true);
     try {
       const day = Math.min(28, Math.max(1, parseInt(dayOfMonth, 10) || 1));
-      const total = parseFloat(totalAmount) || 0;
-      const vat = parseFloat(vatAmount) || 0;
+      const { netGbp, vatGbp } = receiptGbp(totalAmount, vatAmount, "GBP", "");
       const created = await recurringExpensesStore.add({
         description,
         category,
-        amount: Math.max(0, total - vat),
-        vatAmount: vat,
+        amount: netGbp,
+        vatAmount: vatGbp,
         supplierId,
         dayOfMonth: day,
         nextDueDate: nextDueFromDay(day),

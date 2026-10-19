@@ -9,6 +9,7 @@ import { pdfWithPages } from "@/lib/pdfPages";
 import { todayISO } from "@/lib/today";
 import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 import { allowShared } from "@/lib/rateLimit";
+import { gbpFigures } from "@/lib/receiptAmounts";
 
 export const runtime = "nodejs";
 // The same reader /api/scan needs 300s for, run once per attachment, up to
@@ -29,12 +30,6 @@ const MAX_ATTACHMENTS = 5;
 
 type IngestAttachment = { filename: string; mimeType: string; base64: string };
 type IngestBody = { token?: string; from?: string; subject?: string; textBody?: string; attachments?: IngestAttachment[] };
-
-function convertToGbp(total: number, vat: number, rate: number) {
-  const totalGbp = total * rate;
-  const vatGbp = vat * rate;
-  return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp };
-}
 
 // Nobody sees the scan screen's "could also be ..." prompt for an emailed
 // document, so the ambiguity has to travel with the row into the review
@@ -286,7 +281,7 @@ export async function POST(req: Request) {
         if (result.currency && result.currency !== "GBP") {
           try {
             const rate = await getFxRate(result.currency, "GBP");
-            const converted = convertToGbp(total, vat, rate);
+            const converted = gbpFigures(total, vat, rate);
             amount = converted.netGbp;
             vatAmount = converted.vatGbp;
             originalAmount = total;
@@ -302,16 +297,14 @@ export async function POST(req: Request) {
             // EUR 1,450 invoice is approved as £1,450 with the VAT on it
             // reclaimed. With it, the reviewer is told the conversion is
             // missing and can put the right figure in.
-            amount = Math.max(0, total - vat);
-            vatAmount = vat;
+            ({ netGbp: amount, vatGbp: vatAmount } = gbpFigures(total, vat, 1));
             originalAmount = total;
             originalVatAmount = vat;
             originalCurrency = result.currency;
             fxRate = null;
           }
         } else {
-          amount = Math.max(0, total - vat);
-          vatAmount = vat;
+          ({ netGbp: amount, vatGbp: vatAmount } = gbpFigures(total, vat, 1));
         }
 
         // Day-first is certain on a UK document; only another currency's might

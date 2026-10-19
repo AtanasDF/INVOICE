@@ -1,3 +1,5 @@
+import { dayOf } from "@/lib/dates";
+
 // The shape of a company report and the bits both the browser and the
 // server format. Nothing here imports the Companies House term tables, so
 // the phone never downloads them.
@@ -87,7 +89,7 @@ export const registerUrl = (number: string) => `https://find-and-update.company-
 
 export function longDate(iso: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso);
+  const d = new Date(`${dayOf(iso)}T00:00:00Z`);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
