@@ -12,7 +12,15 @@ push, so what is in GitHub is what is live.
 tsc and eslint clean on the merged tree, deployed and Ready on Vercel. The borrowed-phone
 leak is closed in production.
 
-## Four cloud audit branches, none merged, none verified
+## Audit findings: nine checked and fixed on `fix/audit-findings`, NOT merged (2026-10-19)
+
+Every finding the brief named was read in the code first; all nine were real. Fixed with a
+suite each (see the top of SESSIONS.md), tsc/eslint/build clean, and the touched suites
+green against `next start`. Includes the cherry-picked totals fix `f9d7fae`. **Waiting on
+Atanas to say merge.** The other ~400 lines of `notes/audit-components.md` are still
+unchecked.
+
+## Four cloud audit branches (older note)
 
 The $250 cloud credit (expires 07:59 GMT 5 Nov) is being spent on audits from
 `notes/cloud-queue.md`. Branches on origin:

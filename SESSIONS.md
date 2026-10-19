@@ -4,6 +4,39 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
+
+Not merged: waiting for Atanas. Each finding was read in the code before it was
+believed; none turned out false. The three audit notes files are now in `notes/`.
+
+- **Dark-mode documents were black**, the PDF emailed to customers included: the sheets
+  were `bg-white text-neutral-900`, which dark mode makes #191b1f with pale writing, and
+  html-to-image copies computed styles. `.paper-sheet` (globals.css) puts paper values back
+  inside the sheet; the print rule now also restores the colours dark mode lightens, so
+  "Paid" no longer prints pale green from a dark phone. `test-paper-sheet`.
+- **Credit note "1,200.00" saved as £1** (`parseFloat`), and "-50" raised the balance.
+  Now `amountOrNull`, must be above zero. `test-payments`.
+- **Paid twice**: the invoices list's Mark as paid had no ref; the dashboard's Mark N paid
+  left an invoice picked with its old balance when the payment landed but the status
+  update failed. `test-double-press`.
+- **/i/, /q/, /r/ threw every read error away**, so a failed credit-note or payment read
+  showed the whole amount owed. `must()` in `lib/publicRead.ts` throws; each route has its
+  own error page that says the link is fine. `test-public-reads`, a stand-in client
+  handed to the loaders (they now take one, optionally).
+- **CSV**: formula cells now text, BOM added, `\r` quoted (`lib/csv.ts`, also used by the
+  receipts export). `test-csv-safety`.
+- **sw.js**: navigations give up after 10 s and show /offline (one bar never failed, so it
+  never fell back); cache renamed v2, which clears v1's months of chunks once, and trimmed
+  to 300 app files. `test-sw-behaviour` runs the worker in a vm: 9/9, and 3/9 on main's.
+- **Unsaved forms**: `useLeaveGuard` on new receipt and new invoice. **iPhone Safari
+  ignores beforeunload**, so this does nothing on the device he actually uses; a real fix
+  there is keeping the draft, which is a feature of its own.
+- `f9d7fae` cherry-picked (the Free page's files lost every total).
+
+Building needed a real node_modules in the worktree: Turbopack refuses a symlinked one
+("points out of the filesystem root"); `cp -cR` from the main checkout is an APFS clone
+and takes six seconds.
+
 ## 2026-10-19 — Merged the account-scoped storage fix
 
 Atanas said merge. `feature/account-scoped-storage` was a straight fast-forward of `main`

@@ -11,7 +11,7 @@
 // must compute to white paper and dark ink, every word on it must be dark
 // enough to read on white, and printing from a dark phone must not leave
 // "Paid" in the pale green dark mode uses.
-import { makeDb, launchSignedIn, sleep, newId, todayISO, clickText } from "./mockdb.mjs";
+import { makeDb, launchSignedIn, signIn, sleep, newId, todayISO, clickText } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -35,8 +35,10 @@ const SHEET_READ = `(() => {
   return [...document.querySelectorAll(".paper-sheet")].map((s) => {
     const cs = getComputedStyle(s);
     const bg = rgb(cs.backgroundColor);
-    // Every element holding words of its own, against white paper.
-    const pale = [...s.querySelectorAll("*")].filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+    // Every element holding words of its own, against white paper -- except
+    // the empty sheet's "Describe the work on the first line", which is
+    // faint (neutral-400) on purpose in light mode too.
+    const pale = [...s.querySelectorAll("*")].filter((el) => !el.classList.contains("text-neutral-400") && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
       .map((el) => ({ t: el.textContent.trim().slice(0, 30), ratio: 1.05 / (lum(rgb(getComputedStyle(el).color)) + 0.05) }))
       .filter((x) => x.ratio < 4.5);
     return { bg, ink: lum(rgb(cs.color)), words: s.innerText.length, pale };
@@ -45,6 +47,7 @@ const SHEET_READ = `(() => {
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-paper-sheet" });
 try {
+  await signIn(page, BASE);
   await page.evaluate(() => { localStorage.setItem("theme", "dark"); });
   await page.goto(`${BASE}/invoices/${INV}`, { waitUntil: "networkidle0" });
   await sleep(1200);

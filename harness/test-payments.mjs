@@ -142,6 +142,9 @@ try {
   check("a credit note typed as 1,200.00 is saved as £1,200, not £1", cn6.length === 1 && Number(cn6[0].amount) === 1200, JSON.stringify(cn6));
   await waitText(page, "Amount due: £1,200.00").catch(() => {});
   check("...and what's owed goes down by £1,200", (await bodyText(page)).includes("Amount due: £1,200.00"), (await bodyText(page)).match(/Amount due: £[\d.,]+/)?.[0]);
+  // Out of the mock again: the dashboard check below counts what is owed in
+  // total, and this invoice's £1,200 would be in it.
+  db.tables.invoices.splice(db.tables.invoices.findIndex((i) => i.id === I6), 1);
 
   // Marked part-paid by hand before payments existed: Mark as paid invents nothing.
   await page.goto(`${BASE}/invoices/${I4}`, { waitUntil: "networkidle0" });
