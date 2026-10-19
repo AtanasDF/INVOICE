@@ -60,7 +60,7 @@ export default function FreeInvoiceBuilder() {
   const [draft, setDraft] = useState<FreeInvoiceDraft | null>(readFreeInvoiceDraft);
   const quote = draft?.docType === "quote";
   const [stage, setStage] = useState<Stage>(draft ? "editor" : "start");
-  const [engine, setEngine] = useState<ScanEngine>("claude");
+  const [engine, setEngine] = useState<ScanEngine>("gemini");
   const [pages, setPages] = useState<CapturedFile[]>([]);
   const isIOS = useIsIOS();
   // The free page's "Start from an old invoice" arrives with ?start=photo:
