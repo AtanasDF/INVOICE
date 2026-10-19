@@ -4,6 +4,57 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-19 — Component audit sections 5–7 and the misc defects, on `wip/audit-components-2` (cloud)
+
+A cloud session, so: no browser, no database, no `.env.local`. **Not merged; nothing here
+is live.** Branch `wip/audit-components-2`, five commits on `f08edea`. A second cloud
+session is doing sections 1–4 at the same time, so expect small conflicts in `scan/page.tsx`
+or `receipts/page.tsx` when both land. Every finding was opened in the code before it was
+believed; each is marked in `notes/audit-components.md` (fixed / false / left, with why).
+
+**Counts: 31 findings looked at. 28 fixed, 1 half-false-half-fixed, 2 left.**
+- Section 7, money and dates (done first): 8 real, 7 fixed, 1 half (quotes "sent N days
+  ago": the wording now says "dated", because quotes keep no send time; counting from the
+  real send needs a `sent_at` migration). Plus worst-one 4, the CIS penny, which section 7
+  points at and which was still live: fixed (`cisAfterCredit`, reproduced first: −£9.57
+  above £86.17). Worst-one 5's own `money` copy in QuoteDocument fixed.
+- **Left for Atanas: worst-one 5's unrounded line amounts.** The only way the printed lines
+  can add up is rounding each line inside `computeInvoiceTotals`, which would move the total
+  of an already-issued invoice with a half-penny line by a penny -- and the balance, a
+  recorded "paid" and a VAT return with it. A decision about the record, not a display fix.
+- Section 5, hex: 1 real (lock-on green in classes) → `--lock-on` token; the rest agreed
+  legitimate.
+- Section 6, camera in dark mode: 13 items, all real, all fixed by one rule --
+  `.camera-screen` on the camera's four panels puts the light values back (the same block
+  as `.paper-sheet`); the review sheet stays outside and follows the theme. Tip's "Got it"
+  is ink-on-dark.
+- Misc: 9 read; 8 real and fixed, the Free-page engine half false (it already started on
+  Gemini, f09e2b5; the picker shown to everyone was real and is fixed).
+
+Shape of the money fixes: `lib/receiptAmounts.ts` (`receiptGbp`, `gbpFigures`,
+`rateAfterReview`, `grossOf`) replaced six copies of the receipt maths -- unrounded, and all
+through `parseFloat`, so "1,200.00" typed as a total saved as **£1**; `lib/expensePeriod.ts`
+(the week box that crashed Expenses, the category split in whole pennies);
+`amountOrNull` moved from a component into `lib/money.ts` (re-exported, so callers are
+unchanged) beside a new `roundMoney`; `shortDate`/`longDate` turn a timestamp into its
+London day.
+
+Checks here: tsc, eslint, build all clean (build needs a placeholder
+`NEXT_PUBLIC_SUPABASE_URL` in the cloud, nothing to do with this branch). New logic suites
+`test-component-money` 61/61, `test-audit-misc` 15/15, `test-camera-dark-source` 11/11;
+every pure-logic suite in run-all green; `test-account-switch` updated for the engine
+change (23/23).
+
+**The Mac must run before merging** (rebuild, `next start`, then): `test-camera-dark`
+(NEW, never run -- needs large.mjpeg), `test-quote-chase` (assertion changed to "dated 9
+days ago"), `test-paper-sheet` (the .paper-sheet CSS block was split), `test-dark-mode`,
+`test-readable`, `test-worst-phone`, `test-tips`, `test-camera-tip`, `test-camera-refusal`,
+`test-file-strip`, `test-free-draft`, `test-mileage`, `test-receipts-list`,
+`test-review-fixes`, `test-currency`, `test-vat-return`, `test-cis`, `test-quotes`,
+`test-quote-requests`, `test-check-company`, `test-inbox-ingest`, `test-settings-save`,
+`test-send-document`, `test-copy-document`, `test-save-as`, `test-dashboard`. And on the
+iPhone, in Dark: open the scanner and look at the shutter, the zoom pills and a failure.
+
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 
 **Merged into `main` on Atanas's say-so** (fast-forward to `32e963d`, exactly the tested
