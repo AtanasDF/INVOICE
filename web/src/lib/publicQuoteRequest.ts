@@ -1,4 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { must } from "@/lib/publicRead";
 import type { LinePrice, RequestItem } from "@/lib/quoteCompare";
 import { todayISO } from "@/lib/today";
 
@@ -22,24 +23,30 @@ export type PublicQuoteRequest = {
 // What a supplier's request link shows, read with the service role on the
 // server and scoped to the link's owner: the list as the email gave it, and
 // nothing else about the owner than their business name.
-export async function loadPublicQuoteRequest(token: string): Promise<PublicQuoteRequest | null> {
+export async function loadPublicQuoteRequest(token: string, client?: SupabaseClient): Promise<PublicQuoteRequest | null> {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const admin = createClient(url, key, { auth: { persistSession: false } });
+  if (!client && (!url || !key)) return null;
+  const admin = client ?? createClient(url!, key!, { auth: { persistSession: false } });
 
-  const { data: row } = await admin
-    .from("quote_request_suppliers")
-    .select("request_id, supplier_id, user_id, status, responded_at, source, responder_name, prices, delivery, vat_included, valid_until, note")
-    .eq("token", token)
-    .maybeSingle();
+  const row = must(
+    await admin
+      .from("quote_request_suppliers")
+      .select("request_id, supplier_id, user_id, status, responded_at, source, responder_name, prices, delivery, vat_included, valid_until, note")
+      .eq("token", token)
+      .maybeSingle(),
+    "link",
+  );
   if (!row) return null;
-  const [{ data: req }, { data: supplier }, { data: bp }] = await Promise.all([
+  const [reqRes, supplierRes, bpRes] = await Promise.all([
     admin.from("quote_requests").select("title, items, notes, needed_by, site_address, status").eq("id", row.request_id).eq("user_id", row.user_id).maybeSingle(),
     admin.from("clients").select("name, contact_person").eq("id", row.supplier_id).eq("user_id", row.user_id).maybeSingle(),
     admin.from("business_profile").select("business_name").eq("user_id", row.user_id).maybeSingle(),
   ]);
+  const req = must(reqRes, "request");
+  const supplier = must(supplierRes, "supplier");
+  const bp = must(bpRes, "business profile");
   if (!req) return null;
 
   const today = todayISO();

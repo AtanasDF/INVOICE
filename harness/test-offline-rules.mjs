@@ -15,7 +15,8 @@ const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL"
 const sw = fs.readFileSync(`${REPO}/web/public/sw.js`, "utf8");
 
 check("the API is never cached, whatever else is", /startsWith\("\/api\/"\)\s*\)\s*return;/.test(sw.replace(/\s+/g, " ").replace(/ /g, " ")) || /\/api\//.test(sw), "no rule about /api/");
-check("a page is fetched from the network first, every time", /navigate/.test(sw) && /fetch\(req\)\.catch/.test(sw), "pages are not network-first");
+// fetchWithin since 2026-10-19: the network first, but not for ever (test-sw-behaviour runs it).
+check("a page is fetched from the network first, every time", /navigate/.test(sw) && /(fetch|fetchWithin)\(req(, NAVIGATE_TIMEOUT_MS)?\)\.catch/.test(sw), "pages are not network-first");
 check("...and only a failed fetch falls back to the offline page", /catch\(\(\) => caches\.match\(OFFLINE\)/.test(sw), "no offline fallback on a failed navigation");
 check("only content-hashed files are served from the cache", /_next\/static\//.test(sw) && /vendor\//.test(sw), "static rule missing");
 check("the cache is versioned, and old versions are deleted", /const CACHE = "[^"]+-v\d+"/.test(sw) && /caches\.delete/.test(sw), sw.match(/const CACHE = "[^"]*"/)?.[0] ?? "no CACHE name");

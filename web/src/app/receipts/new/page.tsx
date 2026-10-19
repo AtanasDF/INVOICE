@@ -3,6 +3,7 @@
 const MISSING_TOTAL = "Enter the total paid before saving.";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLeaveGuard } from "@/lib/leaveGuard";
 import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
@@ -53,6 +54,7 @@ export default function NewReceiptPage() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  useLeaveGuard(!saving && !!(vendor || supplierText || totalAmount || vatAmount || notes || lineItems.length || imageDataUrl));
   const [possibleDuplicate, setPossibleDuplicate] = useState<Receipt | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
 

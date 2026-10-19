@@ -6,6 +6,8 @@
 // it, so every format says exactly what the customer would see and no
 // screen needs its own copy of the totals.
 
+import { CSV_BOM, csvCell } from "@/lib/csv";
+
 export type SheetTable = { head: string[]; rows: string[][] };
 export type SheetBlock = { kind: "text"; lines: string[] } | { kind: "table"; table: SheetTable };
 export type SheetDoc = { title: string; blocks: SheetBlock[] };
@@ -103,8 +105,6 @@ td:not(:first-child), th:not(:first-child) { text-align: right; }
 `;
 }
 
-const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-
 /** The lines and the totals as a spreadsheet. */
 export function sheetCsv(doc: SheetDoc): string {
   const rows: string[][] = [];
@@ -121,5 +121,5 @@ export function sheetCsv(doc: SheetDoc): string {
     }
     rows.push([]);
   }
-  return rows.map((r) => r.map(cell).join(",")).join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  return CSV_BOM + rows.map((r) => r.map(csvCell).join(",")).join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

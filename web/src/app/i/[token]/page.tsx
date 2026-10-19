@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
-  const data = await loadPublicInvoice(token);
+  const data = await loadPublicInvoice(token).catch(() => null);
   const hidden = { robots: { index: false, follow: false }, referrer: "no-referrer" } as const;
   if (!data) return { title: { absolute: "Invoice" }, ...hidden };
   const from = data.profile.businessName ? ` from ${data.profile.businessName}` : "";

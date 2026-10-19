@@ -1,6 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 import { logoForOwner } from "@/lib/logoServer";
+import { must } from "@/lib/publicRead";
 
 export type PublicInvoice = {
   invoice: Invoice;
@@ -15,27 +16,30 @@ export type PublicInvoice = {
 // What the customer's link shows, read with the service role on the server:
 // the issued invoice and only the fields its PDF already carries. Drafts
 // and unknown or malformed tokens get nothing.
-export async function loadPublicInvoice(token: string): Promise<PublicInvoice | null> {
+export async function loadPublicInvoice(token: string, client?: SupabaseClient): Promise<PublicInvoice | null> {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const admin = createClient(url, key, { auth: { persistSession: false } });
+  if (!client && (!url || !key)) return null;
+  const admin = client ?? createClient(url!, key!, { auth: { persistSession: false } });
 
-  const { data: link } = await admin.from("invoice_links").select("invoice_id, user_id").eq("token", token).maybeSingle();
+  const link = must(await admin.from("invoice_links").select("invoice_id, user_id").eq("token", token).maybeSingle(), "link");
   if (!link) return null;
-  const { data: inv } = await admin
-    .from("invoices")
-    .select("id, client_id, date, number, items, notes, due_date, payment_terms, status, vat_registered, cis_rate, user_id")
-    .eq("id", link.invoice_id)
-    .eq("user_id", link.user_id)
-    .maybeSingle();
+  const inv = must(
+    await admin
+      .from("invoices")
+      .select("id, client_id, date, number, items, notes, due_date, payment_terms, status, vat_registered, cis_rate, user_id")
+      .eq("id", link.invoice_id)
+      .eq("user_id", link.user_id)
+      .maybeSingle(),
+    "invoice",
+  );
   if (!inv || inv.status === "draft") return null;
 
-  const [{ data: client }, { data: bp }, { data: notes }, { data: pays }] = await Promise.all([
+  const [clientRes, bpRes, notesRes, paysRes] = await Promise.all([
     inv.client_id
       ? admin.from("clients").select("name, email, address, vat_number, is_company").eq("id", inv.client_id).eq("user_id", link.user_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
     // The whole row, because naming migration-029's columns would break
     // this page on a database that hasn't had it run yet; only the fields
     // the printed invoice shows are passed on below.
@@ -43,6 +47,10 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
     admin.from("credit_notes").select("date, amount, reason").eq("invoice_id", inv.id).eq("user_id", link.user_id),
     admin.from("invoice_payments").select("date, amount").eq("invoice_id", inv.id).eq("user_id", link.user_id).order("date"),
   ]);
+  const customer = must(clientRes, "customer");
+  const bp = must(bpRes, "business profile");
+  const notes = must(notesRes, "credit notes");
+  const pays = must(paysRes, "payments");
 
   return {
     // Record ids are left blank: the page is sent to the customer's browser
@@ -61,14 +69,14 @@ export async function loadPublicInvoice(token: string): Promise<PublicInvoice | 
       vatRegistered: inv.vat_registered ?? null,
       cisRate: inv.cis_rate ?? null,
     },
-    client: client
+    client: customer
       ? {
           id: "",
-          name: client.name,
-          email: client.email ?? "",
-          address: client.address ?? "",
-          vatNumber: client.vat_number ?? "",
-          isCompany: client.is_company ?? true,
+          name: customer.name,
+          email: customer.email ?? "",
+          address: customer.address ?? "",
+          vatNumber: customer.vat_number ?? "",
+          isCompany: customer.is_company ?? true,
           kind: "client",
           paymentTerms: "",
           defaultCurrency: "",

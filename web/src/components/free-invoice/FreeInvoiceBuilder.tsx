@@ -328,7 +328,7 @@ export default function FreeInvoiceBuilder() {
     <div className={`space-y-6 ${stage === "editor" ? "pb-28 sm:pb-0" : ""}`}>
       {(savingOpen || moreOpen) && draft && createPortal(
         <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
-          <div ref={saveSheet} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
+          <div ref={saveSheet} className="paper-sheet bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
             <InvoiceDocument draft={draft} />
           </div>
         </div>,

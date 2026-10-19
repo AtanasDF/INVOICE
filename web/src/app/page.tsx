@@ -349,23 +349,30 @@ function Dashboard() {
     setPayError(null);
     const chosen = awaitingPayment.filter((o) => picked.has(o.invoice.id));
     const failed: string[] = [];
+    // A payment that landed is money in the books even if the status change
+    // after it failed. Left picked, with its old balance, the next press
+    // recorded the whole amount a second time.
+    const unstatused: string[] = [];
+    const done = new Set<string>();
     for (const o of chosen) {
       try {
         await paymentsStore.add({ invoiceId: o.invoice.id, date: today, amount: o.amountDue, method: null, note: "Marked as paid" });
-        await invoicesStore.update(o.invoice.id, { status: "paid" });
       } catch {
         failed.push(`#${o.invoice.number}`);
+        continue;
       }
+      done.add(o.invoice.id);
+      await invoicesStore.update(o.invoice.id, { status: "paid" }).catch(() => unstatused.push(`#${o.invoice.number}`));
     }
     payingRef.current = false;
     setPaying(false);
     // What went through leaves the list; anything that did not stays, with its
     // number named, so nobody has to work out which of five it was.
-    const done = new Set(chosen.filter((o) => !failed.includes(`#${o.invoice.number}`)).map((o) => o.invoice.id));
     setOutstandingInvoices((prev) => prev.filter((o) => !done.has(o.invoice.id)));
-    setAllInvoices((prev) => prev.map((i) => (done.has(i.id) ? { ...i, status: "paid" as const } : i)));
-    if (failed.length) {
-      setPayError(`Couldn't record ${failed.join(", ")}. The others went through.`);
+    setAllInvoices((prev) => prev.map((i) => (done.has(i.id) && !unstatused.includes(`#${i.number}`) ? { ...i, status: "paid" as const } : i)));
+    const unsettled = unstatused.length ? ` The payment for ${unstatused.join(", ")} is recorded but it still says unpaid: open it and press Mark as paid.` : "";
+    if (failed.length || unstatused.length) {
+      setPayError(failed.length ? `Couldn't record ${failed.join(", ")}. The others went through.${unsettled}` : unsettled.trim());
       setPicked((prev) => new Set([...prev].filter((id) => !done.has(id))));
     } else {
       setPicking(false);

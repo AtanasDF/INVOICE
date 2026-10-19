@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
-  const data = await loadPublicQuote(token);
+  const data = await loadPublicQuote(token).catch(() => null);
   if (!data) return { title: { absolute: "Quote" } };
   return { title: { absolute: `Quote ${data.quote.number}${data.profile.businessName ? ` from ${data.profile.businessName}` : ""}` } };
 }

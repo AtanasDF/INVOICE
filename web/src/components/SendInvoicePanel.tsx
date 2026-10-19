@@ -99,7 +99,7 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
   // The printed A4 sheet, unscaled, so the PDF is what the preview shows.
   const sheetPortal = createPortal(
     <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
-      <div ref={sheetRef} className="bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
+      <div ref={sheetRef} className="paper-sheet bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
         {sheet}
       </div>
     </div>,

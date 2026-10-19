@@ -355,7 +355,7 @@ function Compact({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
 export default function InvoiceDocument({ draft }: { draft: FreeInvoiceDraft }) {
   const t = computeDraftTotals(draft);
   return (
-    <article className="invoice-document bg-white text-sm leading-relaxed text-neutral-900" lang="en-GB">
+    <article className="invoice-document paper-sheet bg-white text-sm leading-relaxed text-neutral-900" lang="en-GB">
       {draft.layout === "classic" && <Classic d={draft} t={t} />}
       {draft.layout === "modern" && <Modern d={draft} t={t} />}
       {draft.layout === "compact" && <Compact d={draft} t={t} />}

@@ -121,6 +121,28 @@ try {
     /Settled in full by credit note/.test(settled) && !/Still owed/.test(settled) && !/Marked paid \(no payments recorded\)/.test(settled),
     settled.slice(0, 300));
 
+  // A credit note typed the way people type money. parseFloat read
+  // "1,200.00" as 1, so the customer was told they owed £1,199 more than
+  // they did; "-50" saved a credit that RAISED the balance
+  // (notes/audit-components.md, worst finding 3).
+  const I6 = newId();
+  db.tables.invoices.push(inv(I6, "INV-6", 2000));
+  await page.goto(`${BASE}/invoices/${I6}`, { waitUntil: "networkidle0" });
+  await waitText(page, "New credit note");
+  await clickText(page, "+ New credit note");
+  await sleep(200);
+  await setVal(page, 'input[placeholder="Amount to credit (£)"]', "-50");
+  await clickText(page, "Save credit note");
+  await waitText(page, "Enter the amount to credit");
+  check("a negative credit note is refused, not saved", !db.tables.credit_notes.some((c) => c.invoice_id === I6), JSON.stringify(db.tables.credit_notes.filter((c) => c.invoice_id === I6)));
+  await setVal(page, 'input[placeholder="Amount to credit (£)"]', "1,200.00");
+  await clickText(page, "Save credit note");
+  await settles(() => db.tables.credit_notes.some((c) => c.invoice_id === I6));
+  const cn6 = db.tables.credit_notes.filter((c) => c.invoice_id === I6);
+  check("a credit note typed as 1,200.00 is saved as £1,200, not £1", cn6.length === 1 && Number(cn6[0].amount) === 1200, JSON.stringify(cn6));
+  await waitText(page, "Amount due: £1,200.00").catch(() => {});
+  check("...and what's owed goes down by £1,200", (await bodyText(page)).includes("Amount due: £1,200.00"), (await bodyText(page)).match(/Amount due: £[\d.,]+/)?.[0]);
+
   // Marked part-paid by hand before payments existed: Mark as paid invents nothing.
   await page.goto(`${BASE}/invoices/${I4}`, { waitUntil: "networkidle0" });
   await waitText(page, "Mark as unpaid");

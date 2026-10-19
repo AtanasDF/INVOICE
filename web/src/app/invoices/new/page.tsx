@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLeaveGuard } from "@/lib/leaveGuard";
 import { addDays } from "@/lib/today";
 import { money } from "@/lib/money";
 import { pricesFor, savedPrices } from "@/lib/savedPrices";
@@ -145,6 +146,7 @@ export default function NewInvoicePage() {
 
   // A file picked with "Upload a file" on the list is copied instead of
   // opening the camera.
+  useLeaveGuard(!saving && !!(clientId || customerText || notes || items.some((i) => i.description || i.unitPrice)));
   const [capture, setCapture] = useState<"copy" | "attach" | null>(() => (copyMode && !uploadMarked() ? "copy" : null));
   const [copied, setCopied] = useState<{ currency: string | null } | null>(null);
   const [typed, setTyped] = useState("");

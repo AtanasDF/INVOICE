@@ -14,7 +14,7 @@ import SendInvoicePanel from "@/components/SendInvoicePanel";
 import TextCustomer from "@/components/TextCustomer";
 import { CisSummary, CisToggle, LineKind } from "@/components/invoice/CisFields";
 import { creditOffDue, invoiceCharge, withKinds } from "@/lib/cis";
-import { NumberInput, parseAmount } from "@/components/free-invoice/fields";
+import { NumberInput, amountOrNull, parseAmount } from "@/components/free-invoice/fields";
 import InvoiceReminders from "@/components/invoice/InvoiceReminders";
 import IssuedInvoice from "@/components/invoice/IssuedInvoice";
 import { depositTag } from "@/lib/quoteDeposit";
@@ -506,6 +506,10 @@ export default function InvoiceViewPage() {
   async function addCreditNote(e: React.FormEvent) {
     e.preventDefault();
     if (!invoice || !cnAmount || creditingNow.current) return;
+    // parseFloat read "1,200.00" as 1 and "-50" as a credit that raised the
+    // balance; this is the reading the payment form beside it uses.
+    const amount = Math.round((amountOrNull(cnAmount) ?? NaN) * 100) / 100;
+    if (!(amount > 0)) return setCnError("Enter the amount to credit, like 1,200.00.");
     creditingNow.current = true;
     setCnError(null);
     setCnSaving(true);
@@ -513,7 +517,7 @@ export default function InvoiceViewPage() {
       const created = await creditNotesStore.add({
         invoiceId: invoice.id,
         date: cnDate,
-        amount: parseFloat(cnAmount) || 0,
+        amount,
         reason: cnReason,
       });
       const notes = [created, ...creditNotes];

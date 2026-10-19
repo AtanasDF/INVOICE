@@ -119,6 +119,26 @@ try {
     db.tables.credit_notes.length === creditsBefore + 1,
     JSON.stringify(db.tables.credit_notes.map((c) => c.amount)));
 
+  // ── "Mark as paid" on the invoices list ──
+  // The invoice page guarded this with refs; the list's copy checked
+  // `marking`, the render's state, so two taps in one tick each recorded the
+  // whole balance (notes/audit-components.md, worst finding 2).
+  const LISTED = newId();
+  db.tables.invoices.push({ id: LISTED, user_id: "x", client_id: C, date: todayISO(), number: "INV-77", items: [{ description: "Work", quantity: 1, unitPrice: 100, vatRate: "standard" }], notes: "", due_date: day(14), payment_terms: "", status: "sent", tags: [], vat_registered: true, cis_rate: null });
+  await page.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" });
+  await page.waitForFunction(() => document.body.innerText.includes("INV-77"), { timeout: 20000 }).catch(() => {});
+  await sleep(600);
+  await page.evaluate(() => {
+    const card = [...document.querySelectorAll("div.rounded-xl")].find((d) => d.innerText.includes("INV-77") && d.querySelectorAll("button").length < 20);
+    const b = card && [...card.querySelectorAll("button")].find((x) => x.textContent.trim() === "Mark as paid");
+    if (!b) throw new Error("no Mark as paid on INV-77");
+    b.click();
+    b.click();
+  });
+  await sleep(2500);
+  const listedPays = db.tables.invoice_payments.filter((p) => p.invoice_id === LISTED);
+  check("invoices list: two taps on Mark as paid record one payment", listedPays.length === 1 && Number(listedPays[0].amount) === 120, JSON.stringify(listedPays));
+
   // ── A recurring schedule: a duplicate bills again every month ──
   // The one whose harm compounds: a duplicated schedule makes a duplicate draft
   // from the daily cron for as long as nobody notices.

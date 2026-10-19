@@ -32,7 +32,7 @@ export default function ScaledPreview({ children }: { children: ReactNode }) {
     <div ref={outerRef} className="w-full min-w-0 overflow-hidden" style={fit ? { height: fit.height } : undefined}>
       <div
         ref={innerRef}
-        className="border bg-white text-neutral-900 shadow-sm"
+        className="paper-sheet border bg-white text-neutral-900 shadow-sm"
         style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN, transform: `scale(${fit?.scale ?? 1})`, transformOrigin: "top left" }}
       >
         {children}

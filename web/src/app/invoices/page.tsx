@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { money } from "@/lib/money";
 import ScanOrAdd from "@/components/ScanOrAdd";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
@@ -132,8 +132,12 @@ function InvoicesPage() {
   // invoice marked part-paid by hand before payments existed is just marked
   // paid: its balance is unknown.
   const [marking, setMarking] = useState<string[]>([]);
+  // `marking` is the render's copy, so two taps in one tick both passed it and
+  // both recorded the full balance: the invoice paid twice in the books.
+  const markingNow = useRef(new Set<string>());
   async function quickMarkPaid(inv: Invoice) {
-    if (marking.includes(inv.id)) return;
+    if (markingNow.current.has(inv.id)) return;
+    markingNow.current.add(inv.id);
     setMarking((m) => [...m, inv.id]);
     setError(null);
     try {
@@ -154,6 +158,7 @@ function InvoicesPage() {
     } catch (err) {
       setError(saveFailed(err, "Couldn't update invoice."));
     } finally {
+      markingNow.current.delete(inv.id);
       setMarking((m) => m.filter((id) => id !== inv.id));
     }
   }

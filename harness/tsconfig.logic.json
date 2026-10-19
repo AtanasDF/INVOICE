@@ -69,6 +69,12 @@
     "../web/src/lib/pagePrint.ts",
     "../web/src/lib/bills.ts",
     "../web/src/lib/quoteCompare.ts",
-    "../web/src/lib/accountSwitch.ts"
+    "../web/src/lib/accountSwitch.ts",
+    "../web/src/lib/csv.ts",
+    "../web/src/lib/sheetFile.ts",
+    "../web/src/lib/publicRead.ts",
+    "../web/src/lib/publicInvoice.ts",
+    "../web/src/lib/publicQuote.ts",
+    "../web/src/lib/publicQuoteRequest.ts"
   ]
 }
