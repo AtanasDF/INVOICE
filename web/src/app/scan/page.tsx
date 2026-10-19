@@ -423,6 +423,10 @@ export default function ScanPage() {
   const isIOS = useIsIOS();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  // Kept apart from scanError: the camera opens on arrival, so a failed load
+  // landed behind it, and the first document shown wiped it -- leaving an
+  // empty supplier picker and the built-in categories with nothing to say why.
+  const [listsFailed, setListsFailed] = useState(false);
   // A refusal is not a failure -- it carries what to offer next, which a
   // string cannot. Kept beside the message so the wall can show its button.
   const [refusal, setRefusal] = useState<unknown>(null);
@@ -534,6 +538,7 @@ export default function ScanPage() {
       })
       .catch((err) => {
         setScanning(false);
+        setListsFailed(true);
         setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -570,6 +575,7 @@ export default function ScanPage() {
     const usual = mostUsedCategory(r.map((receipt) => receipt.category));
     if (usual) setForm((f) => (f.category ? f : { ...f, category: usual }));
     listsLoadedRef.current = true;
+    setListsFailed(false);
     return { cats, suppliers: c.filter((x) => x.kind === "supplier" && !x.archived), receipts: r };
   }
 
@@ -757,6 +763,7 @@ export default function ScanPage() {
     // message about the limit, with no Try again anywhere.
     setRefusal(null);
     setWalk({ docs: entries, current: entries[0].id });
+    if (!lists && !listsLoadedRef.current) loadLists().catch(() => {});
     const limit = limiter(READ_CONCURRENCY);
     entries.forEach((e) => readDoc(e, cats, limit));
     openDoc(entries[0]);
@@ -900,9 +907,12 @@ export default function ScanPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const existing = exactSupplier(name, suppliers);
+      // Checked against [] when the lists never loaded, which made a second
+      // supplier of a name already there.
+      const known = listsLoadedRef.current ? suppliers : (await loadLists()).suppliers;
+      const existing = exactSupplier(name, known);
       if (existing) {
-        pickSupplier(existing.id);
+        pickSupplier(existing.id, known);
         setSupplierDuplicate(true);
         return;
       }
@@ -922,7 +932,7 @@ export default function ScanPage() {
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, created]);
-      pickSupplier(created.id, [...suppliers, created]);
+      pickSupplier(created.id, [...known, created]);
       setSupplierSaved(true);
     } catch (err) {
       setSaveError(saveFailed(err, "Couldn't save."));
@@ -1350,6 +1360,11 @@ export default function ScanPage() {
 
       <fieldset disabled={scanning || bulk !== null} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         {errorBanner}
+        {listsFailed && !scanError && (
+          <p role="alert" className="text-sm text-red-600">
+            Couldn&apos;t load your suppliers and categories, so the lists here are missing yours. Check your connection; saving tries again.
+          </p>
+        )}
 
         {mode === "contact" ? (
           <>

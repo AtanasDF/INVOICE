@@ -145,7 +145,8 @@ export default function QuotePage() {
     return (
       <div className="space-y-2">
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <p className="text-sm text-neutral-600">Quote not found.</p>
+        {/* Only when the load worked: a dropped connection is not a missing quote. */}
+        {!error && <p className="text-sm text-neutral-600">Quote not found.</p>}
         <Link href="/quotes" className="text-sm font-medium text-neutral-700 underline">Back to quotes</Link>
       </div>
     );

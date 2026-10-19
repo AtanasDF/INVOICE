@@ -93,7 +93,13 @@ export default function CompanyChecker() {
         else if (body.busy) setError(BUSY);
         else if (body.found === false) setError("No company has that number. Check it against the paperwork.");
       })
-      .catch(() => {});
+      .catch(() => {
+        // A shared link opened on a dropped signal showed the blank form, with
+        // the number it came with gone and nothing said.
+        if (!live || !number) return;
+        setQuery(number);
+        setError("Couldn't load that company just now. Check your connection and try again.");
+      });
     return () => {
       live = false;
     };

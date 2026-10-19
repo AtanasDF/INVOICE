@@ -51,6 +51,10 @@ export default function MileagePage() {
   // plain enough to look at and silent to a screen reader.
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Apart from the form's error, which Save clears. While the trips haven't
+  // loaded the miles already claimed are unknown, and pricing at 0 put every
+  // mile at 45p for somebody already past 10,000.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [measuring, setMeasuring] = useState(false);
   const [measured, setMeasured] = useState<string | null>(null);
 
@@ -58,7 +62,7 @@ export default function MileagePage() {
     receiptsStore
       .all()
       .then(setReceipts)
-      .catch((err) => setError(loadFailed(err, "your trips")));
+      .catch((err) => setLoadError(loadFailed(err, "your trips")));
   }, []);
 
   const trips = (receipts ?? []).filter((r) => tripOf(r));
@@ -112,12 +116,26 @@ export default function MileagePage() {
     setError(null);
     setSaved(null);
     try {
+      let priced = claim;
+      if (!receipts) {
+        let fresh: Receipt[];
+        try {
+          fresh = await receiptsStore.all();
+        } catch (err) {
+          console.error("mileage: trips", err);
+          setError("Couldn't load this tax year's trips, so the rate can't be worked out yet. Check your connection and try again.");
+          return;
+        }
+        setReceipts(fresh);
+        setLoadError(null);
+        priced = claimFor(milesNum, vehicle, milesSoFar(fresh, date, vehicle));
+      }
       const saved = await receiptsStore.add({
         clientId: "",
         date,
         vendor: MILEAGE_VENDOR,
         category: MILEAGE_CATEGORY,
-        amount: claim.amount,
+        amount: priced.amount,
         vatAmount: 0,
         originalAmount: null,
         originalVatAmount: null,
@@ -134,11 +152,11 @@ export default function MileagePage() {
         invoiceNumber: null,
         dueDate: null,
         paid: true,
-        details: { mileage: { miles: milesNum, from, to, vehicle, rate: milesNum ? Math.round((claim.amount / milesNum) * 1000) / 1000 : RATES[vehicle].first, purpose } },
+        details: { mileage: { miles: milesNum, from, to, vehicle, rate: milesNum ? Math.round((priced.amount / milesNum) * 1000) / 1000 : RATES[vehicle].first, purpose } },
         creditOfReceiptId: null,
       });
       setReceipts((prev) => [saved, ...(prev ?? [])]);
-      setSaved(`${milesNum} miles saved as an expense, ${money(claim.amount)}.`);
+      setSaved(`${milesNum} miles saved as an expense, ${money(priced.amount)}.`);
       setMiles("");
       setPurpose("");
       setMeasured(null);
@@ -218,7 +236,7 @@ export default function MileagePage() {
           <label className="text-xs text-neutral-500" htmlFor="m-purpose">What for (optional)</label>
           <input id="m-purpose" className={INPUT} placeholder="e.g. Site visit, collecting materials" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
         </div>
-        {milesNum > 0 && (
+        {milesNum > 0 && receipts && (
           <p className="text-sm text-neutral-700">
             {milesNum} miles × {claim.crosses ? `${claim.atFirst} at ${claim.first * 100}p and ${claim.atAfter} at ${claim.after * 100}p` : `${claim.first === claim.after || !claim.atAfter ? claim.first * 100 : claim.after * 100}p`} ={" "}
             <span className="font-semibold">{money(claim.amount)}</span>
@@ -243,7 +261,7 @@ export default function MileagePage() {
       <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This tax year ({taxYearLabel(year)})</h2>
         {receipts === null ? (
-          <p className="mt-1 text-sm text-neutral-500">Loading…</p>
+          loadError ? <p role="alert" className="mt-1 text-sm text-red-600">{loadError}</p> : <p className="mt-1 text-sm text-neutral-500">Loading…</p>
         ) : thisYear.length === 0 ? (
           <p className="mt-1 text-sm text-neutral-600">No trips yet. Add one above and it goes in with your expenses.</p>
         ) : (

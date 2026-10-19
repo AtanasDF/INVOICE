@@ -64,7 +64,17 @@ export default function StatementPage() {
       <div className="print:hidden">
         <Link href="/clients" className="text-sm text-neutral-500">← Customers &amp; suppliers</Link>
         <h1 className="mt-1 text-2xl font-bold">Statement</h1>
-        <p className="mt-1 wrap-anywhere text-neutral-600">{client ? `Everything ${client.name} has been invoiced, and what's still owed.` : "Loading…"}</p>
+        {/* "Loading…" stood beside a failed load for good, and for ever on an
+            id that is none of this account's contacts. */}
+        <p className="mt-1 wrap-anywhere text-neutral-600">
+          {client
+            ? `Everything ${client.name} has been invoiced, and what's still owed.`
+            : error
+              ? ""
+              : data
+                ? "That customer isn't in your records."
+                : "Loading…"}
+        </p>
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

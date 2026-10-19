@@ -87,6 +87,7 @@ export default function ContactField({
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CompanyMatch[]>([]);
   const [searching, setSearching] = useState(false);
+  const [registerDown, setRegisterDown] = useState(false);
   const [active, setActive] = useState(-1);
   const [pending, setPending] = useState<CompanyMatch | null>(null);
   const [adding, setAdding] = useState(false);
@@ -107,14 +108,19 @@ export default function ContactField({
     const timer = setTimeout(async () => {
       if (!on || !open || query.length < 3) {
         setItems([]);
+        setRegisterDown(false);
         return;
       }
       setSearching(true);
       try {
         setItems(await searchRegister(query, { signal: controller.signal }));
+        setRegisterDown(false);
         setActive(-1);
       } catch {
-        if (!controller.signal.aborted) setItems([]);
+        if (!controller.signal.aborted) {
+          setItems([]);
+          setRegisterDown(true);
+        }
       } finally {
         if (!controller.signal.aborted) setSearching(false);
       }
@@ -285,7 +291,11 @@ export default function ContactField({
               ))}
               {on && searching && <li role="presentation" className="px-3 py-2 text-xs text-neutral-500">Searching Companies House…</li>}
               {on && !searching && !register.length && query.length >= 3 && (
-                <li role="presentation" className="px-3 py-2 text-xs text-neutral-500">Nothing more on the Companies House register.</li>
+                // An unreachable register is not an empty one: "Nothing more"
+                // was a definite answer from a register nobody had asked.
+                <li role="presentation" className="px-3 py-2 text-xs text-neutral-500">
+                  {registerDown ? "Couldn't reach the Companies House register just now, so only your saved contacts are listed." : "Nothing more on the Companies House register."}
+                </li>
               )}
             </ul>
           </div>
