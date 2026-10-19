@@ -6,7 +6,8 @@ and what is left open. Dates are session dates (Europe/London).
 
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 
-Not merged: waiting for Atanas. Each finding was read in the code before it was
+**Merged into `main` on Atanas's say-so** (fast-forward to `32e963d`, exactly the tested
+commit); Vercel production Ready, and the live `sw.js` carries `invoiceover-v2`. Each finding was read in the code before it was
 believed; none turned out false. The three audit notes files are now in `notes/`.
 
 - **Dark-mode documents were black**, the PDF emailed to customers included: the sheets
