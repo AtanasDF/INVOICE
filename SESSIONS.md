@@ -4,6 +4,16 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-19 — Merged the account-scoped storage fix
+
+Atanas said merge. `feature/account-scoped-storage` was a straight fast-forward of `main`
+(`82d1571..13f8c74`), so what deployed is exactly the commit the 22-suite baseline ran
+against; tsc and eslint re-run clean on it, Vercel production Ready. The four cloud audit
+sessions from 18/10 had all finished (last commits 23:26-23:59); their findings live on
+their branches, so the sessions themselves hold nothing more. Three branches still unmerged
+and unverified: component-layer, document-export (which carries the totals fix `f9d7fae`),
+offline-service-worker.
+
 ## 2026-10-19 — A borrowed phone handed over the last person's bank details
 
 `claude/audit-offline-service-worker-4vpjca` (cloud, findings only) reported that

@@ -3,18 +3,14 @@
 **Read this first.** Everything below the next heading is older and still true unless
 this section contradicts it.
 
-Everything is **committed and pushed**. `main` is `82d1571` and deploys to Vercel on
+Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.
 
-## The one decision waiting
+## Merged 2026-10-19
 
-**`feature/account-scoped-storage` (`72bc951`) is finished, pushed and NOT merged.**
-Atanas wanted to be told before a merge, because merging deploys, and it was 3am.
-It fixes a real privacy hole: sign-out cleared only the session, so the next person to
-sign in on the same device opened /free-invoice and had the previous one's sort code,
-account number and signature. All gates green; all 22 suites that touch those keys run
-against `main` first as a baseline and every number matches. Merge it unless he says
-otherwise.
+`feature/account-scoped-storage` fast-forwarded into `main` (`13f8c74`) on Atanas's say-so,
+tsc and eslint clean on the merged tree, deployed and Ready on Vercel. The borrowed-phone
+leak is closed in production.
 
 ## Four cloud audit branches, none merged, none verified
 
