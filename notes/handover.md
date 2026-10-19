@@ -12,6 +12,16 @@ push, so what is in GitHub is what is live.
 listed at the top of SESSIONS.md run on the Mac before it merges. A second cloud branch
 covers sections 5-7 and the misc defects; expect small conflicts where both touched a file.
 
+## Waiting to merge: `wip/audit-components-2` (cloud, 2026-10-19)
+
+Audit sections 5–7 and the misc defects: 34 checked, 31 fixed, 2 half, 1 left for a decision. **Not merged.**
+Before merging, run the browser suites listed at the top of SESSIONS.md on the Mac
+(`test-camera-dark` is new and has never run). **One decision for Atanas:** whether a
+line on an invoice should be rounded to the penny before the total is added up -- it
+would change the total of any issued invoice with a half-penny line by a penny
+(`notes/audit-components.md`, section 7, worst-one 5). A parallel cloud branch does
+sections 1–4; expect small conflicts.
+
 ## Merged 2026-10-19
 
 `feature/account-scoped-storage` fast-forwarded into `main` (`13f8c74`) on Atanas's say-so,

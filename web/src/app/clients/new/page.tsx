@@ -126,7 +126,7 @@ export default function NewClientPage() {
     }
   }
 
-  const filled = !!(name || email || address || vatNumber || paymentTerms || defaultCurrency || contactPerson || phone || found.length || !isCompany || !remindersEnabled);
+  const filled = !!(name || email || address || vatNumber || paymentTerms || defaultCurrency || contactPerson || phone || found.length || !isCompany || !remindersEnabled || endUserDeclared);
 
   function clearForm() {
     setIsCompany(true);
@@ -139,6 +139,7 @@ export default function NewClientPage() {
     setContactPerson("");
     setPhone("");
     setRemindersEnabled(true);
+    setEndUserDeclared(false);
     setError(null);
     setReadError(null);
     setFound([]);

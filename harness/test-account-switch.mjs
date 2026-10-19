@@ -98,7 +98,8 @@ check("...before the session is published to the app",
 // --- and the engine default that was missed on 15/10 ---
 const free = fs.readFileSync(path.join(REPO, "web/src/components/free-invoice/FreeInvoiceBuilder.tsx"), "utf8");
 check("the Free page scans with Gemini, like everything else since 15/10",
-  /useState<ScanEngine>\("gemini"\)/.test(free),
+  // Gemini unless /scan?engine=claude chose Claude on this device, as on /scan.
+  /useState<ScanEngine>\(chosenEngine === "claude" \? "claude" : "gemini"\)/.test(free),
   "CLAUDE.md says Gemini is the default everywhere; this was the fourth place and was missed");
 
 // --- the boot script: the decision must be made before anything can write ---

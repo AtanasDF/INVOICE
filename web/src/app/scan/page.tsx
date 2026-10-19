@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { misreadYear, noTotalRead } from "@/lib/scanSanity";
 import JustTheFile from "@/components/scan/JustTheFile";
-import { amount, money as gbp } from "@/lib/money";
+import { amount, amountOrNull, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
@@ -39,6 +39,7 @@ import { topUpOffered } from "@/lib/scanAllowance";
 import { todayISO } from "@/lib/today";
 import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
 import Tip from "@/components/Tip";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -280,15 +281,7 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
 // Same conversion as the manual Receipts form: figures stay in
 // `currency` until save time, when they're converted to GBP.
 function gbpAmounts(f: Form) {
-  const total = parseFloat(f.totalAmount) || 0;
-  const vat = parseFloat(f.vatAmount) || 0;
-  if (f.currency === "GBP") {
-    return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
-  }
-  const rate = parseFloat(f.fxRateInput) || 0;
-  const totalGbp = total * rate;
-  const vatGbp = vat * rate;
-  return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp, originalAmount: total, originalVatAmount: vat, originalCurrency: f.currency, fxRate: rate };
+  return receiptGbp(f.totalAmount, f.vatAmount, f.currency, f.fxRateInput);
 }
 
 function saveProblem(f: Form): string | null {
@@ -361,8 +354,8 @@ function prepareSave(f: Form, docPages: CapturedFile[], supplierList: Client[], 
     tags: [],
     lineItems: f.lines.map((l) => ({
       description: l.description,
-      quantity: parseFloat(l.quantity) || 0,
-      unitPrice: parseFloat(l.unitPrice) || 0,
+      quantity: amountOrNull(l.quantity) ?? 0,
+      unitPrice: amountOrNull(l.unitPrice) ?? 0,
       category: null,
     })),
     documentType: SAVED_TYPE[mode],
@@ -1141,12 +1134,12 @@ export default function ScanPage() {
   const amounts = gbpAmounts(form);
   const money = (n: number) => (form.currency === "GBP" ? gbp(n) : `${form.currency} ${amount(n)}`);
   const linesSum = form.lines.reduce((sum, l) => sum + lineTotalOf(l), 0);
-  const enteredTotal = parseFloat(form.totalAmount);
+  const enteredTotal = amountOrNull(form.totalAmount) ?? NaN;
   const linesMismatch =
     form.lines.length > 0 &&
     !Number.isNaN(enteredTotal) &&
     Math.abs(linesSum - enteredTotal) > 0.02 + 1e-9 &&
-    Math.abs(linesSum - (enteredTotal - (parseFloat(form.vatAmount) || 0))) > 0.02 + 1e-9;
+    Math.abs(linesSum - (enteredTotal - (amountOrNull(form.vatAmount) ?? 0))) > 0.02 + 1e-9;
   const saveLabel =
     (mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`) +
     (remaining ? " and next" : "");
@@ -1543,7 +1536,7 @@ export default function ScanPage() {
                   onChange={(e) =>
                     patch({
                       totalAmount: e.target.value,
-                      ...(form.vatWorkedOut !== null ? { vatAmount: String(vatFromRate(parseFloat(e.target.value), form.vatWorkedOut) ?? "") } : {}),
+                      ...(form.vatWorkedOut !== null ? { vatAmount: String(vatFromRate(amountOrNull(e.target.value), form.vatWorkedOut) ?? "") } : {}),
                     })
                   }
                   inputMode="decimal"
@@ -1555,7 +1548,7 @@ export default function ScanPage() {
                     nobody checked. There is one in his real records, saved
                     beside a real £8.50 from the same supplier on the same day.
                     Said, not blocked: a genuinely free item exists. */}
-                {noTotalRead(parseFloat(form.totalAmount) || 0, parseFloat(form.vatAmount) || 0) && (
+                {noTotalRead(amountOrNull(form.totalAmount) ?? 0, amountOrNull(form.vatAmount) ?? 0) && (
                   <p className="mt-1 text-xs text-amber-700">
                     Nothing was read as the total. Put in what the document says, or it goes into your records as costing nothing.
                   </p>

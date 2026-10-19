@@ -286,54 +286,62 @@ Lesser ones, where nothing is duplicated but the person is told something false:
 
 ## 5. Hard-coded hex
 
-- `components/DocumentCapture.tsx:2025, 2130` ✓: `bg-[#4ADE80]` with `text-neutral-900`.
+- **[fixed 2026-10-19, wip/audit-components-2]** `components/DocumentCapture.tsx:2025, 2130` ✓: `bg-[#4ADE80]` with `text-neutral-900`.
   It is wrong in dark mode (see class 6), not merely off-convention.
-- Legitimate, and left alone: `DocumentCapture.tsx:189,195,1350` (canvas overlay over the
+  → `--lock-on` token (`bg-lock-on`/`border-lock-on`), and the dark-mode half by `.camera-screen` (class 6).
+- **[left, agreed]** Legitimate, and left alone: `DocumentCapture.tsx:189,195,1350` (canvas overlay over the
   camera), `:2188` (a border with no text), `free-invoice/SignaturePad.tsx:8` (ink on the
   never-themed pad), `ThemePicker.tsx:21` (the swatch depicts light and dark),
   `SpendChart.tsx:23,28` (Recharts needs real values; the tokens are read in an effect, so
   only the very first frame in dark mode is wrong), `app/global-error.tsx` (renders without
   the app's CSS) and `app/opengraph-image.tsx`.
+  → The canvas `GREEN` stays a hex (a canvas cannot read a class) and is the same value as the token.
 
 ## 6. Invisible in dark mode, or on the camera
+
+**Status 2026-10-19 (wip/audit-components-2): every item below was read in DocumentCapture/Tip and is real, and all are fixed by one rule, not fifteen class edits:** `.camera-screen` on the camera's four panels (`globals.css`, sharing the `.paper-sheet` block) puts the light values back over the always-black screen -- white is white, `neutral-900` dark, `neutral-200/400` light greys, `red-600` real red, `accent-white` white. The review sheet that opens over the camera stays outside those panels and follows the theme. `Tip.tsx` "Got it" is `text-ink-on-dark/80`. Guarded by `test-camera-dark-source` (11/11 here); `test-camera-dark` measures the real screen in Dark and **has not been run** (needs Chrome and large.mjpeg).
 
 The camera screen is `bg-black`, which never changes. `white` there becomes #191b1f and
 `neutral-900` becomes near-white.
 
-- `DocumentCapture.tsx:2372` ✓. The shutter, before a page is found, is `border-white
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2372` ✓. The shutter, before a page is found, is `border-white
   bg-white/20`: a #191b1f ring on black, about 1.2:1. The main button nearly disappears.
-- `DocumentCapture.tsx:2256` ✓. The failure box is `bg-red-600/90 text-ink-on-dark`. Dark mode
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2256` ✓. The failure box is `bg-red-600/90 text-ink-on-dark`. Dark mode
   redefines red-600 to #ff8080, so the failure message is white on light pink (about 2.4:1).
-- `DocumentCapture.tsx:2025` ✓. The batch count badge is near-white on light green.
-- `DocumentCapture.tsx:2130` ✓. On the iPhone-camera path, "Check and read N scans" is
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2025` ✓. The batch count badge is near-white on light green.
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2130` ✓. On the iPhone-camera path, "Check and read N scans" is
   near-white on light green and can't be read.
-- `DocumentCapture.tsx:2020` (on the `bg-neutral-800` tile at :2016) ✓. "PDF" is white on
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2020` (on the `bg-neutral-800` tile at :2016) ✓. "PDF" is white on
   #e2e5e9.
-- `DocumentCapture.tsx:2285` ✓. The diagnostic readout is `text-neutral-200` (#232529) on
+  → (with light values `neutral-800` is #262626, the white word reads)
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2285` ✓. The diagnostic readout is `text-neutral-200` (#232529) on
   black, so it is invisible. This is the readout CLAUDE.md says to screenshot from the field.
-- `DocumentCapture.tsx:2213`. On the denied screen, the iPhone fix-it tip is `text-neutral-400`
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2213`. On the denied screen, the iPhone fix-it tip is `text-neutral-400`
   (#565a62) on black, about 2.9:1.
-- `DocumentCapture.tsx:2190` ✓. The capture flash is `bg-white`, so it is a near-black blink
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2190` ✓. The capture flash is `bg-white`, so it is a near-black blink
   that can't be seen.
-- `DocumentCapture.tsx:2275` ✓ and `:2331` ✓. Torch on and the selected zoom pill are
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2275` ✓ and `:2331` ✓. Torch on and the selected zoom pill are
   `bg-white text-neutral-900` and look the same as torch off and an unselected pill.
-- `DocumentCapture.tsx:2317` ✓. The zoom slider is `accent-white`, so the thumb and fill go
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2317` ✓. The zoom slider is `accent-white`, so the thumb and fill go
   near-black over the picture.
-- `DocumentCapture.tsx:2123, 2227, 2384`. "Take a photo", "Turn the camera back on" and
+- **[fixed 2026-10-19, wip/audit-components-2]** `DocumentCapture.tsx:2123, 2227, 2384`. "Take a photo", "Turn the camera back on" and
   "Upload a photo or PDF" are `bg-white` on black. The text stays readable, but the button
   shape vanishes. The `border-white/30` outlines at :2143, 2204, 2214, 2231, and the frames
   at :2016/2018, 2193, 2366, vanish the same way.
-- `components/Tip.tsx:32` ✓. With `dark` set, "Got it" is `text-white/80` on `bg-black/70`, so
+- **[fixed 2026-10-19, wip/audit-components-2]** `components/Tip.tsx:32` ✓. With `dark` set, "Got it" is `text-white/80` on `bg-black/70`, so
   near-black on near-black. It is shown on the camera at `DocumentCapture.tsx:2300, 2304,
   2352`. The tip's body already uses `text-ink-on-dark`; the button doesn't.
-- The invoice and quote sheets: see the worst ones above.
+- **[fixed earlier, 517a74f]** The invoice and quote sheets: see the worst ones above.
 
 ## 7. Money and date arithmetic in a component
 
 With a wrong outcome:
 
 - The credit-note parse, the CIS line and the unrounded sheet lines: see the worst ones above.
-- `app/receipts/page.tsx:73–92`, `app/receipts/new/page.tsx:148–165` and
+  → **Credit-note parse: [fixed earlier, 517a74f].**
+  → **CIS line (worst 4): [fixed 2026-10-19, wip/audit-components-2]** -- still live on main when checked, and reproduced in node exactly as described (−£9.57 above £86.17). `cisAfterCredit` in `lib/cis.ts` works the line back from the same `creditOffDue` the amount due uses; every credit from 1p to £99.99 now adds up (`test-component-money`).
+  → **Sheet lines (worst 5): `QuoteDocument`'s own `money` [fixed]** (it is lib's now, so a discount reads −£50.00). **The unrounded line amounts [left, needs Atanas]:** real, but the only fix that makes the lines add up is rounding each line inside `computeInvoiceTotals`, which would move the total of an already-issued invoice with a half-penny line by a penny -- and with it the amount owed, a recorded "paid" and a VAT return. That is a decision about the record, not a display fix.
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/receipts/page.tsx:73–92`, `app/receipts/new/page.tsx:148–165` and
   `app/scan/page.tsx:282–292`. Net (`total - vat`) and the currency conversion
   (`total * rate`) are worked out in each page and stored unrounded. `receipts.amount` is
   plain `numeric`, so £19.99 with £3.33 VAT is stored as 16.659999999999997, and EUR 19.99 at
@@ -341,32 +349,39 @@ With a wrong outcome:
   the JSON export carry sub-penny figures, and a total summed before display can differ by a
   penny from the rows listed under it. `api/inbox/ingest:34` has the same maths (outside
   this audit).
-- `app/receipts/review/page.tsx:108–120` with `app/receipts/page.tsx:53`. `approve` writes
+  → One `receiptGbp`/`gbpFigures` in `lib/receiptAmounts.ts`: VAT and total each to whole pennies, net the difference, and typed money through `amountOrNull` (the same copies used `parseFloat`, so "1,200.00" saved as £1). Also the review queue, recurring expenses and `api/inbox/ingest`. `test-component-money`.
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/receipts/review/page.tsx:108–120` with `app/receipts/page.tsx:53`. `approve` writes
   only `amount`/`vatAmount` and leaves `originalAmount`/`fxRate`. The page tells the person
   to "Edit the GBP figures above if that looks off" (:289). Example: an emailed EUR 100 at
   0.86 is corrected here to £90. Later, Edit → Save on /receipts (say, to fix a spelling)
   refills from the original and the rate and silently puts £86 back.
-- `app/expenses/page.tsx:31–42`, used at :80–81 and :162 ✓. In Week mode, clearing the date
+  → A correction of the pounds drops `fxRate` (`rateAfterReview`), so /receipts edits it as the pounds it holds; the original figures stay. The details line says "pounds corrected by hand" instead of "@ undefined".
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/expenses/page.tsx:31–42`, used at :80–81 and :162 ✓. In Week mode, clearing the date
   box sets `weekAnchor` to "". `new Date("").toISOString()` then throws RangeError during
   render and the Expenses page drops to the error boundary.
-- `app/expenses/page.tsx:102–132`, shown at :305. The per-category split is pro-rata floats
+  → `weekOf` in `lib/expensePeriod.ts`; an empty or nonsense day shows this week.
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/expenses/page.tsx:102–132`, shown at :305. The per-category split is pro-rata floats
   rounded only for display. A £10.00 receipt with three equal lines in three categories shows
   £3.33 three times (£9.99) beside a £10.00 total, although the comment at :113–117 promises
   they "always sum back to exactly r.amount".
-- `components/scan/LineItemsTable.tsx:6` and `:51`. `quantity * price` is shown with
+  → `spendByCategory`: each receipt shared out in whole pennies by largest remainder. A category whose lines net negative now books the whole receipt to its own category rather than a negative share.
+- **[fixed 2026-10-19, wip/audit-components-2]** `components/scan/LineItemsTable.tsx:6` and `:51`. `quantity * price` is shown with
   `.toFixed(2)`: 0.5 × £0.35 is 0.17499… and shows "£0.17" where the document says £0.18.
-- Timestamps sliced to a UTC date, which gives the wrong day between 00:00 and 01:00 BST:
+  → `roundMoney` in `lib/money.ts`; the scan page's other `parseFloat`s on typed money went with it.
+- **[fixed 2026-10-19, wip/audit-components-2]** Timestamps sliced to a UTC date, which gives the wrong day between 00:00 and 01:00 BST:
   - `app/quotes/requests/page.tsx:66` and `app/quotes/requests/[id]/page.tsx:249`:
     `shortDate(r.createdAt)` via `components/quoteRequest/dates.ts`, so a request made at
     00:30 is labelled yesterday.
   - `components/check-company/CompanyReportView.tsx:262`: `checkedAt` is formatted in UTC
     (`lib/companyReport.ts:91`), so a check at 00:30 says it was read the day before, and
     the copied report text says the same.
-- `app/quotes/page.tsx:42, 44, 81`. "Sent N days ago" counts from the quote's own date, not
+  → `shortDate` and `longDate` turn a timestamp into its London day (`dayOf`, `lib/dates.ts`); a plain date is untouched.
+- **[half fixed, half left]** `app/quotes/page.tsx:42, 44, 81`. "Sent N days ago" counts from the quote's own date, not
   from when it was sent. A quote dated 1 Oct and sent on 15 Oct says "sent 17 days ago" on
   18 Oct, and moves to "Waiting on an answer" after three real days instead of five.
+  → Real. Quotes keep no send time (no `sent_at` column), so the wording now says "dated N days ago" rather than claiming a send date; counting from the real send needs a migration and a feature branch (rule 4), left. `test-quote-chase` updated to the new words.
 
-Done in a component but correct as it stands. These need no fix, but are the places a
+**[not re-checked; the audit says no fix needed]** Done in a component but correct as it stands. These need no fix, but are the places a
 future edit could go wrong:
 
 - `PaidCelebration.tsx:39–42`, `TaxSoFar.tsx:7,12`, `CisFields.tsx:74`, `QuoteForm.tsx:65,67`,
@@ -380,34 +395,43 @@ future edit could go wrong:
 
 ## Real defects outside the seven classes
 
+**Status 2026-10-19 (wip/audit-components-2): all nine read in the code; eight real and fixed, one half already fixed.** Guarded by `test-audit-misc` (15/15).
+
 Found on the way and confirmed by reading:
 
-- `app/clients/new/page.tsx:130–147` ✓. `clearForm` doesn't reset `endUserDeclared`. A
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/clients/new/page.tsx:130–147` ✓. `clearForm` doesn't reset `endUserDeclared`. A
   ticked "They have told me in writing that they are an end user" survives Clear form and is
   saved on the next contact, which **turns the VAT reverse charge off** for somebody who never
   declared it.
-- `app/settings/page.tsx:410` ✓. Save writes back `inboxToken` from page-load state. Open
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/settings/page.tsx:410` ✓. Save writes back `inboxToken` from page-load state. Open
   Settings with no address, make one from the dashboard in another tab, then press Save in
   Settings: the new address is overwritten with null and stops working.
-- `app/AppShell.tsx:314` ✓. The footer's "How it works" goes to `/help`, which is not in
+  → Save writes back today's address, read in the same call that reads the invoice counter, and the page takes it.
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/AppShell.tsx:314` ✓. The footer's "How it works" goes to `/help`, which is not in
   `isPublicPage` (:209–228). A stranger on `/` or `/login` who taps it is sent back to
   `/login`.
-- `components/free-invoice/FreeInvoiceBuilder.tsx:63` ✓. The engine starts as `"claude"`, the
+  → The link shows only signed in; `/help` stays behind the sign-in ("nothing works before an account").
+- **[half false, half fixed]** `components/free-invoice/FreeInvoiceBuilder.tsx:63` ✓. The engine starts as `"claude"`, the
   picker (:389) is shown to every signed-in user, and its value is always sent. So every
   Free-page template scan uses Claude, despite "Gemini is the default everywhere since
   2026-10-15" and the rule that the picker shows only where `scan-engine` is set.
-- `components/SendInvoicePanel.tsx:179–184, 192`. After a successful send, `sending.current`
+  → It already started on Gemini by the time this was checked (f09e2b5). The picker for everyone was real: it now shows only where `scan-engine` is set, and reads with that choice.
+- **[fixed 2026-10-19, wip/audit-components-2]** `components/SendInvoicePanel.tsx:179–184, 192`. After a successful send, `sending.current`
   stays true. If the invoice then changes (new number or `resetKey`), the form returns but
   "Send invoice" silently does nothing. Only "Send again" (:255) clears the ref.
-- `components/FileStrip.tsx:41` and `app/files/page.tsx:236,258`. The tile shows
+  → The lock holds the invoice key it sent, not `true`.
+- **[fixed 2026-10-19, wip/audit-components-2]** `components/FileStrip.tsx:41` and `app/files/page.tsx:236,258`. The tile shows
   `money(r.amount)`, the net figure, so a £12 receipt with VAT reads £10.00, and a credit
   note reads negative.
-- `app/vat/page.tsx:48–60`. "Copy the figures" says "Copied" even when the clipboard write
+  → Gross (`grossOf`). A credit note still reads negative, which is right for a credit.
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/vat/page.tsx:48–60`. "Copy the figures" says "Copied" even when the clipboard write
   failed.
-- `app/mileage/page.tsx`. Typing "-5" passes the `!milesNum` check and saves a negative
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/mileage/page.tsx`. Typing "-5" passes the `!milesNum` check and saves a negative
   expense.
-- `app/copy/page.tsx:98–103` builds its own `<a download>` instead of going through
+  → Also "1,200" read as 1 mile.
+- **[fixed 2026-10-19, wip/audit-components-2]** `app/copy/page.tsx:98–103` builds its own `<a download>` instead of going through
   `saveFile.ts`, which CLAUDE.md names as the only place a file is handed to the device.
+  → `saveBlob` now revokes after 5 s, which is why /copy had its own.
 
 ---
 

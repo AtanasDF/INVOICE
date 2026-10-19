@@ -60,7 +60,16 @@ export default function FreeInvoiceBuilder() {
   const [draft, setDraft] = useState<FreeInvoiceDraft | null>(readFreeInvoiceDraft);
   const quote = draft?.docType === "quote";
   const [stage, setStage] = useState<Stage>(draft ? "editor" : "start");
-  const [engine, setEngine] = useState<ScanEngine>("gemini");
+  // The picker meant nothing to anyone but Atanas, so, as on /scan, it shows
+  // only on a device where /scan?engine= has set a choice, and reads with it.
+  const [chosenEngine] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("scan-engine");
+    } catch {
+      return null;
+    }
+  });
+  const [engine, setEngine] = useState<ScanEngine>(chosenEngine === "claude" ? "claude" : "gemini");
   const [pages, setPages] = useState<CapturedFile[]>([]);
   const isIOS = useIsIOS();
   // The free page's "Start from an old invoice" arrives with ?start=photo:
@@ -384,7 +393,7 @@ export default function FreeInvoiceBuilder() {
                   ? "We copy your details in. You check them. Your phone will ask to use the camera."
                   : "We copy your details in. You check them. It needs a free sign-in first, so every read comes from a real person; anything you've typed here stays."}
               </p>
-              {user && (
+              {user && chosenEngine !== null && (
                 <div className="mt-3">
                   <EnginePicker value={engine} onChange={setEngine} />
                 </div>
@@ -442,7 +451,7 @@ export default function FreeInvoiceBuilder() {
               </div>
             ))}
           </div>
-          {user && <EnginePicker value={engine} onChange={setEngine} disabled={reading} />}
+          {user && chosenEngine !== null && <EnginePicker value={engine} onChange={setEngine} disabled={reading} />}
           {readError && (
             <div className="rounded-lg border p-3">
               <p role="alert" className="text-sm font-medium">{readError}</p>

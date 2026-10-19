@@ -16,6 +16,7 @@ import ClearFormButton from "@/components/ClearFormButton";
 import ContactField, { type Usage } from "@/components/ContactField";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -144,27 +145,11 @@ export default function NewReceiptPage() {
   }
 
   // GBP-equivalent net/VAT for whatever's currently in the form, plus the
-  // original-currency figures to store alongside for reference. This is
-  // the one place the currency conversion actually happens -- both the
+  // original-currency figures to store alongside for reference -- both the
   // duplicate check and the save itself read from here, so they can never
   // disagree with each other.
   function gbpAmounts() {
-    const total = parseFloat(totalAmount) || 0;
-    const vat = parseFloat(vatAmount) || 0;
-    if (currency === "GBP") {
-      return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
-    }
-    const rate = parseFloat(fxRateInput) || 0;
-    const totalGbp = total * rate;
-    const vatGbp = vat * rate;
-    return {
-      netGbp: Math.max(0, totalGbp - vatGbp),
-      vatGbp,
-      originalAmount: total,
-      originalVatAmount: vat,
-      originalCurrency: currency,
-      fxRate: rate,
-    };
+    return receiptGbp(totalAmount, vatAmount, currency, fxRateInput);
   }
 
   function addReceiptLine() {

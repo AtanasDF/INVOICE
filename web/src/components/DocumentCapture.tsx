@@ -2027,7 +2027,7 @@ export default function DocumentCapture({
         // eslint-disable-next-line @next/next/no-img-element
         <img key={shots[shots.length - 1].id} src={shots[shots.length - 1].dataUrl} alt="" className="shot-in h-full w-full rounded-[4px] object-cover" />
       )}
-      <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#4ADE80] px-1 text-[11px] font-bold text-neutral-900">
+      <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-lock-on px-1 text-[11px] font-bold text-neutral-900">
         {shots.length}
       </span>
     </button>
@@ -2109,7 +2109,7 @@ export default function DocumentCapture({
   if (useNative) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black">
-        <div inert={reviewing} className={`relative flex flex-1 flex-col items-center justify-center gap-3 ${shownFailure ? "border-4 border-red-500" : ""}`}>
+        <div inert={reviewing} className={`camera-screen relative flex flex-1 flex-col items-center justify-center gap-3 ${shownFailure ? "border-4 border-red-500" : ""}`}>
           <div className="absolute left-4 z-10" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
             <BackButton onClick={close} />
           </div>
@@ -2122,7 +2122,7 @@ export default function DocumentCapture({
           </p>
           {shownFailure && <p role="alert" className="px-8 text-center text-sm text-red-400">{shownFailure}</p>}
         </div>
-        <div inert={reviewing} className="space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+        <div inert={reviewing} className="camera-screen space-y-2 p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
           <button
             onClick={() => nativeInputRef.current?.click()}
             className="w-full rounded-lg bg-white px-5 py-3 text-center text-sm font-medium text-neutral-900"
@@ -2132,7 +2132,7 @@ export default function DocumentCapture({
           {multi && shots.length > 0 && (
             <button
               onClick={openReview}
-              className="w-full rounded-lg bg-[#4ADE80] px-5 py-3 text-center text-sm font-medium text-neutral-900"
+              className="w-full rounded-lg bg-lock-on px-5 py-3 text-center text-sm font-medium text-neutral-900"
             >
               Check and read {shots.length} scan{shots.length === 1 ? "" : "s"}
             </button>
@@ -2179,7 +2179,7 @@ export default function DocumentCapture({
       {/* While the review sheet is up nothing behind it can take focus: it
           covered the camera but left Capture, and a Back that discards the
           batch, one Tab away. */}
-      <div ref={liveAreaRef} inert={reviewing} className="relative flex-1 overflow-hidden">
+      <div ref={liveAreaRef} inert={reviewing} className="camera-screen relative flex-1 overflow-hidden">
         <video
           ref={videoRef}
           playsInline
@@ -2190,7 +2190,7 @@ export default function DocumentCapture({
         />
         <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 h-full w-full" />
         {(shownFailure || (hasQuad && status === "live")) && (
-          <div className={`pointer-events-none absolute inset-0 border-4 ${shownFailure ? "border-red-500" : "border-[#4ADE80]"}`} />
+          <div className={`pointer-events-none absolute inset-0 border-4 ${shownFailure ? "border-red-500" : "border-lock-on"}`} />
         )}
         {flash && <div className="pointer-events-none absolute inset-0 z-10 bg-white" />}
         {focusPoint && (
@@ -2362,7 +2362,7 @@ export default function DocumentCapture({
         )}
       </div>
 
-      <div inert={reviewing} className="relative flex items-center justify-center bg-black p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+      <div inert={reviewing} className="camera-screen relative flex items-center justify-center bg-black p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         {status === "live" ? (
           <>
             <button
@@ -2374,7 +2374,7 @@ export default function DocumentCapture({
             </button>
             <button
               onClick={shutter}
-              className={`h-16 w-16 rounded-full border-4 bg-white/20 ${hasQuad ? "border-[#4ADE80]" : "border-white"}`}
+              className={`h-16 w-16 rounded-full border-4 bg-white/20 ${hasQuad ? "border-lock-on" : "border-white"}`}
               aria-label="Capture"
             />
             {stack && <div className="absolute right-6 flex flex-col items-center gap-1">{stack}</div>}
