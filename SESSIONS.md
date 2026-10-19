@@ -4,6 +4,55 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-19 (cloud) — Component audit sections 1-4 worked through, on `wip/audit-components-1`
+
+A cloud session: no browser, no `.env.local`, no database. **Not merged.** A second cloud
+session took sections 5-7 and the misc defects at the same time, so every change here is
+small and local to the finding.
+
+Every finding in sections 1-4 of `notes/audit-components.md` was opened in the code before
+it was believed. **All real: 50 fixed, 2 skipped (already fixed by `517a74f`), 0 false, 0
+left.** Each is marked in the notes file.
+
+- **1. Once-only presses** (21): a ref checked on entry wherever an insert or a send was
+  guarded only by `disabled` or state -- Same again, Duplicate, Save draft, three "Add as
+  new customer/supplier", Save customer, Save receipt, quote requests, feedback, the help
+  chat's email, the batch camera's Use N pages (two scans each off the allowance), Read
+  it now, all the sign-in sends, the email-in address (two tokens, the one shown possibly
+  dead). The two `run()` helpers set `busyRef` and never read it.
+- **2. Failed loads** (12): /scan's lists failure is its own note and is retried; new
+  invoice's load had no catch at all; **mileage priced every mile at 45p when the trips
+  hadn't loaded** (worst finding 7, not in `517a74f`) and now loads them first or refuses;
+  reminders, register, shared company link, "not found", statement, Money.
+- **3. Error text** (11): `authFailed()` (lib/errorText.ts) says GoTrue's errors by code,
+  so "Invalid login credentials" and the rate-limit text no longer reach people; a link's
+  `error_description` is never shown as written; "Load failed" is gone from feedback,
+  emailing a file and the price guide; emailing an invoice says PDF_FAILED; an offline
+  exchange rate no longer blames "your records".
+- **4. Removals** (6): Archive, Reset to defaults (names the categories that go), Forget my
+  saved signature, Clear form on an import, and the two recurring removals now say which.
+
+Checked here: `tsc`, `eslint .` and `npm run build` clean (the build needs placeholder
+`NEXT_PUBLIC_SUPABASE_URL`/keys in a cloud session, or it dies on "Invalid URL" collecting
+`/api/inbox/ingest`). New `harness/test-audit-guards.mjs` (56 checks, logic + source,
+runs anywhere) is green and fails when a fix is reverted; `errorText.ts` and `fx.ts` were
+added to `tsconfig.logic.json`. test-govuk-words, test-utc-today, test-promises,
+test-public-reads and test-csv-safety still green.
+
+**Before merging, on the Mac, against `next start`** (none of these has been run on this
+branch): `test-double-press` (two new cases, written blind -- check a selector before
+believing a failure), `test-settings-save` (now accepts the Reset dialog),
+`test-people-check`, `test-sign-up`, `test-feedback-page`, `test-feedback`,
+`test-mileage`, `test-money-screen`, `test-reminders-ui`, `test-quotes`, `test-quotes-ux`,
+`test-quote-requests`, `test-check-company`, `test-company-picker`,
+`test-no-silent-contacts`, `test-statement`, `test-clear`, `test-free-draft`,
+`test-price-finder`, `test-send-document`, `test-copy-document`, `test-scan-wall`,
+`test-upload-panel`, `test-currency`, `test-quiet-failures`, `test-write-fails`,
+`test-said-so`, `test-dashboard`, and the batch-camera runner for `DocumentCapture`.
+
+Left: `AnswerEntry` "Couldn't read their quote." runs `extractPages` through `errorText`,
+so offline it says "Load failed" -- same shape as the PriceFinder fix, outside the list.
+
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 
 **Merged into `main` on Atanas's say-so** (fast-forward to `32e963d`, exactly the tested

@@ -6,6 +6,12 @@ this section contradicts it.
 Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.
 
+## Audit sections 1-4: fixed on `wip/audit-components-1`, NOT merged (2026-10-19, cloud)
+
+50 findings fixed, 2 already done by `517a74f`, none false. Needs the browser suites
+listed at the top of SESSIONS.md run on the Mac before it merges. A second cloud branch
+covers sections 5-7 and the misc defects; expect small conflicts where both touched a file.
+
 ## Merged 2026-10-19
 
 `feature/account-scoped-storage` fast-forwarded into `main` (`13f8c74`) on Atanas's say-so,

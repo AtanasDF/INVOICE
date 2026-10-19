@@ -83,6 +83,7 @@ const ONCE = [
   ["app/scan/page.tsx", "async function addAsSupplier("],
   ["app/receipts/new/page.tsx", "async function addReceipt("],
   ["components/quoteRequest/RequestForm.tsx", "async function save("],
+  ["components/quoteRequest/AnswerEntry.tsx", "async function save("],
   ["app/quotes/requests/[id]/page.tsx", "async function run("],
   ["app/quotes/[id]/page.tsx", "async function run("],
   ["app/feedback/page.tsx", "async function submit("],

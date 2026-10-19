@@ -39,6 +39,9 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
   const [matches, setMatches] = useState<Record<string, number | null>>({});
   const [note, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // A second press uploaded the document again to a new path, leaving an
+  // orphan in the bucket, and its refused record said the answer had changed.
+  const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -104,6 +107,8 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
     const r = readDraft(items, draft, false);
     if (!r.ok) return setError(r.error);
     if (!Object.values(r.prices).some((p) => p.price !== null)) return setError("Nothing is priced. If they can't quote, go back and mark them \"Can't quote\".");
+    if (savingNow.current) return;
+    savingNow.current = true;
     setSaving(true);
     try {
       const path = file ? await uploadQuoteDocument(row.id, file.dataUrl) : row.documentPath;
@@ -116,6 +121,7 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
       onSaved();
     } catch (err) {
       setError(saveFailed(err, "Couldn't save their prices."));
+      savingNow.current = false;
       setSaving(false);
     }
   }
