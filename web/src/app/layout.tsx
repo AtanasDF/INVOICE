@@ -3,6 +3,8 @@ import "./globals.css";
 import AppShell from "./AppShell";
 import { SITE_NAME } from "@/lib/siteName";
 import { THEME_BOOT } from "@/lib/theme";
+import { accountBoot } from "@/lib/accountSwitch";
+import { AUTH_STORAGE_KEY } from "@/lib/supabaseClient";
 import ReportErrors from "@/components/ReportErrors";
 import { SITE_URL } from "@/lib/siteUrl";
 
@@ -62,6 +64,9 @@ export default function RootLayout({
         {/* Before the first paint, or the page flashes grey on its way to
             the colour this device chose. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        {/* Before any page code can run, so a different account cannot be
+            shown -- or have its own work wiped by a clear arriving late. */}
+        <script dangerouslySetInnerHTML={{ __html: accountBoot(AUTH_STORAGE_KEY) }} />
       </head>
       <body className="min-h-screen bg-neutral-50 text-neutral-900">
         {/* Listening before anything else renders: an error thrown by the

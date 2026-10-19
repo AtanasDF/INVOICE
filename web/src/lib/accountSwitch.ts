@@ -85,3 +85,32 @@ export function forgetOtherAccount(current: string | null): void {
     if (remember) localStorage.setItem(LAST_ACCOUNT_KEY, remember);
   } catch {}
 }
+
+// Done before the first paint, like the theme, and for a sharper reason.
+//
+// Doing it when AuthProvider resolved the session was a race: the session
+// arrives asynchronously, so anything written between the page loading and
+// that moment got wiped. Three harness suites caught it by seeding a scan
+// handoff or a draft right after load and finding it gone -- and what they
+// were really catching is that a clear which runs late can destroy work that
+// is not the previous account's at all.
+//
+// Here there is no window. The script runs in <head>, before any page code,
+// so by the time anything can write, the decision has been made and the
+// marker is written. AuthProvider still calls forgetOtherAccount for a
+// sign-in that happens without a full page load; by then this has already
+// recorded the account, so it is a no-op unless somebody genuinely swapped.
+//
+// `authKey` is passed in rather than imported: the harness compiles this file
+// on its own, and the key is built from the Supabase URL at runtime.
+export function accountBoot(authKey: string): string {
+  return `try{
+var K=${JSON.stringify(authKey)},M=${JSON.stringify(LAST_ACCOUNT_KEY)};
+var L=${JSON.stringify(PERSONAL_LOCAL_KEYS)},S=${JSON.stringify(PERSONAL_SESSION_KEYS)};
+var r=localStorage.getItem(K),u=null;
+if(r){if(r.indexOf("base64-")===0)r=atob(r.slice(7));var s=JSON.parse(r);u=(s&&s.user&&s.user.id)||null;}
+if(u){var p=localStorage.getItem(M);
+if(p!==u){for(var i=0;i<L.length;i++)localStorage.removeItem(L[i]);for(var j=0;j<S.length;j++)sessionStorage.removeItem(S[j]);}
+localStorage.setItem(M,u);}
+}catch(e){}`.replace(/\s*\n\s*/g, "");
+}

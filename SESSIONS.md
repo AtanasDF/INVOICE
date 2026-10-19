@@ -44,6 +44,31 @@ failed on its first run, on `tips.ts`'s `"tip:"`.
 scanning on Claude the whole time while CLAUDE.md says Gemini everywhere. I changed
 three defaults that day and this was the fourth place.
 
+**The first version of this was wrong, and the harness caught it.** Clearing when
+AuthProvider resolved the session was a RACE: the session arrives asynchronously, so
+anything written between the page loading and that moment was wiped. `test-lost-pages`
+(4/4 -> 0/4), `test-quote-not-invoice` (8/8 -> 7/8) and `test-vat-rate-scan` (7/7 -> 3/7)
+all went red, each by seeding a scan handoff or a draft just after load and finding it
+gone. What they were really catching is that a clear which arrives late destroys work
+belonging to nobody but the current user. Moved into a `<head>` script
+(`accountBoot`), exactly as `THEME_BOOT` already does for the theme: it runs before any
+page code, so by the time anything can write, the decision is made and the marker is
+written. AuthProvider still calls `forgetOtherAccount` for a sign-in with no full page
+load, and by then it is a no-op unless somebody genuinely swapped.
+
+**And the boot script was silently inert on its first write**: an over-escaped template
+put the literal text `${JSON.stringify(authKey)}` into the script instead of the key.
+`tsc` passed, because it is valid TypeScript that does nothing. Only running the
+compiled function and reading the output showed it -- the same lesson as the mutation
+testing and the backups. `test-account-switch` now checks the generated script contains
+the real key and no leftover `JSON.stringify`.
+
+**Verified against a baseline, not against hope**: all 22 suites that touch these keys
+were run on `main` first and then on the branch, and every number now matches. Three are
+red on BOTH, so they are pre-existing and nothing to do with this: `test-address` 0/1,
+`test-receipts-list-3302` 73/74, and `test-scan-wall`, which CRASHES on its own rather
+than under four-at-a-time load. Worth a look another day.
+
 Still open from the three audits, none verified: the component-layer branch (dark-mode
 PDFs rendering black, including the emailed one; a credit note typed "1,200.00" saving
 as GBP 1; an invoice markable paid twice) and the document-export branch (the Free

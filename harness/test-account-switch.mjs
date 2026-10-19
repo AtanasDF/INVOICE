@@ -24,6 +24,7 @@ import {
   LAST_ACCOUNT_KEY,
   PERSONAL_LOCAL_KEYS,
   PERSONAL_SESSION_KEYS,
+  accountBoot,
   accountToRemember,
   keysToClear,
 } from "./gen/lib/accountSwitch.js";
@@ -99,5 +100,16 @@ const free = fs.readFileSync(path.join(REPO, "web/src/components/free-invoice/Fr
 check("the Free page scans with Gemini, like everything else since 15/10",
   /useState<ScanEngine>\("gemini"\)/.test(free),
   "CLAUDE.md says Gemini is the default everywhere; this was the fourth place and was missed");
+
+// --- the boot script: the decision must be made before anything can write ---
+const boot = accountBoot("sb-test-auth-token");
+check("the boot script carries the real auth key, not a template", boot.includes("sb-test-auth-token") && !boot.includes("JSON.stringify"),
+  "an un-interpolated template compiles fine and does nothing at all");
+check("...and names every personal key", PERSONAL_LOCAL_KEYS.every((k) => boot.includes(k)) && PERSONAL_SESSION_KEYS.every((k) => boot.includes(k)));
+check("...and can read a base64 session as well as plain JSON", boot.includes("base64-") && boot.includes("atob"));
+check("...and never throws, whatever storage does", /^try\{/.test(boot) && /catch\(e\)\{\}$/.test(boot));
+const layout = fs.readFileSync(path.join(REPO, "web/src/app/layout.tsx"), "utf8");
+check("it runs in <head>, before any page code", /accountBoot\(AUTH_STORAGE_KEY\)/.test(layout) && layout.indexOf("accountBoot") < layout.indexOf("<body"),
+  "after the body starts, a page can already have written something the clear then destroys");
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));
