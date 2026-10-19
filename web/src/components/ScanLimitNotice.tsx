@@ -16,6 +16,9 @@ export default function ScanLimitNotice({ error, onTopUp, onCarryOn }: { error: 
   // Unguarded, the second claim comes back "already", so the screen tells
   // somebody they have had their extra 600 one beat after granting it.
   const asking = useRef(false);
+  // The same for "Read it now": a second press sent the document to be read
+  // twice, spending two of the scans just granted.
+  const carried = useRef(false);
   if (!topUpOffered(error)) return null;
 
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -47,7 +50,14 @@ export default function ScanLimitNotice({ error, onTopUp, onCarryOn }: { error: 
               in. Without this, the only way to spend the 600 just granted is
               to work out for yourself that the page wants reloading. */}
           {onCarryOn && (
-            <button type="button" onClick={onCarryOn} className="w-full rounded-lg bg-neutral-900 px-4 py-3 text-base font-bold text-white">
+            <button
+              type="button"
+              onClick={() => {
+                if (carried.current) return;
+                carried.current = true;
+                onCarryOn();
+              }}
+              className="w-full rounded-lg bg-neutral-900 px-4 py-3 text-base font-bold text-white">
               Read it now
             </button>
           )}

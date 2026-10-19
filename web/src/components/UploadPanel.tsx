@@ -40,6 +40,9 @@ export default function UploadPanel({ href = "/scan", inboxAddress, onMakeAddres
   const [showAddress, setShowAddress] = useState(false);
   const [madeAddress, setMadeAddress] = useState<string | null>(null);
   const [making, setMaking] = useState(false);
+  // Two presses made two tokens and the last save won, while the address
+  // shown was whichever call resolved last -- possibly the dead one.
+  const makingNow = useRef(false);
   const address = inboxAddress ?? madeAddress;
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
@@ -143,10 +146,21 @@ const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center g
             setShowAddress(opening);
             // Made on the first tap, silently. It was null until somebody
             // visited Settings and asked for one, which nobody would.
-            if (opening && !address && onMakeAddress && !making) {
+            if (opening && !address && onMakeAddress && !makingNow.current) {
+              makingNow.current = true;
               setMaking(true);
-              setMadeAddress(await onMakeAddress());
-              setMaking(false);
+              // A failed read or save threw past setMaking(false), and
+              // "Making your address…" stayed up for good. Null is the box
+              // that says it couldn't, and points at Settings.
+              try {
+                setMadeAddress(await onMakeAddress());
+              } catch (err) {
+                console.error("email-in address", err);
+                setMadeAddress(null);
+              } finally {
+                makingNow.current = false;
+                setMaking(false);
+              }
             }
           }}
           className={BTN}

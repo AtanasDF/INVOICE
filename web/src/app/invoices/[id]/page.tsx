@@ -102,6 +102,7 @@ export default function InvoiceViewPage() {
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const [duplicating, setDuplicating] = useState(false);
+  const duplicatingNow = useRef(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   // Draft editing -- everything is fair game, mirroring the New Invoice
@@ -475,7 +476,8 @@ export default function InvoiceViewPage() {
   }
 
   async function duplicateInvoice() {
-    if (!invoice) return;
+    if (!invoice || duplicatingNow.current) return;
+    duplicatingNow.current = true;
     setDuplicateError(null);
     setDuplicating(true);
     try {
@@ -499,6 +501,7 @@ export default function InvoiceViewPage() {
       router.push(`/invoices/${created.id}`);
     } catch (err) {
       setDuplicateError(saveFailed(err, "Couldn't duplicate this invoice."));
+      duplicatingNow.current = false;
       setDuplicating(false);
     }
   }

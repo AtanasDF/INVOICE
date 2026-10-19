@@ -893,6 +893,10 @@ export default function ScanPage() {
       setSaveError("Enter a supplier name first.");
       return;
     }
+    // The same ref as Save: both presses would check exactSupplier against
+    // the same stale list and make two suppliers of one name.
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveError(null);
     try {
@@ -923,6 +927,7 @@ export default function ScanPage() {
     } catch (err) {
       setSaveError(saveFailed(err, "Couldn't save."));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }

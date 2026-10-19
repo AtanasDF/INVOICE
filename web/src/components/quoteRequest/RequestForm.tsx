@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AddressFields from "@/components/AddressFields";
 import { NumberInput } from "@/components/free-invoice/fields";
 import type { Client } from "@/lib/storage";
@@ -29,6 +29,7 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
   const [v, setV] = useState<RequestInput>(initial.items.length ? initial : { ...initial, items: [blankLine()] });
   const [picked, setPicked] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<RequestInput>) => setV((prev) => ({ ...prev, ...patch }));
   const setLine = (id: string, patch: Partial<RequestItem>) => set({ items: v.items.map((l) => (l.id === id ? { ...l, ...patch } : l)) });
@@ -40,12 +41,15 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
     if (items.some((l) => !(l.quantity > 0))) return setError("Every item needs a quantity above 0.");
     if (v.neededBy && v.neededBy < todayIso() && v.neededBy !== initial.neededBy) return setError("The needed-by date is in the past: suppliers couldn't answer.");
     if (suppliers && !picked.length) return setError("Pick at least one supplier to ask.");
+    if (savingNow.current) return;
+    savingNow.current = true;
     setSaving(true);
     setError(null);
     try {
       await onSave({ ...v, title: v.title.trim(), items }, picked);
     } catch (err) {
       setError(saveFailed(err, "Couldn't save the request."));
+      savingNow.current = false;
       setSaving(false);
     }
   }

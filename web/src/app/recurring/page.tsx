@@ -182,8 +182,8 @@ export default function RecurringExpensesPage() {
     }
   }
 
-  async function removeRecurring(id: string) {
-    if (!window.confirm("Remove this repeating expense? It stops being made each month, and this can't be undone.")) return;
+  async function removeRecurring(id: string, description: string) {
+    if (!window.confirm(`Remove the repeating expense "${description}"? It stops being made each month, and this can't be undone.`)) return;
     setError(null);
     try {
       await recurringExpensesStore.remove(id);
@@ -281,7 +281,7 @@ export default function RecurringExpensesPage() {
                   <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600 underline">
                     {item.active ? "Pause" : "Resume"}
                   </button>
-                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-neutral-600 underline">
+                  <button onClick={() => removeRecurring(item.id, item.description)} className="text-sm text-neutral-600 underline">
                     Remove
                   </button>
                 </div>

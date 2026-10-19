@@ -121,9 +121,12 @@ export default function QuoteRequestPage() {
     };
   }, [load]);
 
+  // Checked on entry, not only set: two presses in one tick both passed
+  // `disabled`, so the supplier was emailed twice.
   async function run(action: () => Promise<void>, done?: string) {
-    setBusy(true);
+    if (busyRef.current) return;
     busyRef.current = true;
+    setBusy(true);
     genRef.current++;
     setError(null);
     setNotice(null);

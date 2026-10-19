@@ -52,6 +52,7 @@ export default function NewReceiptPage() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useLeaveGuard(!saving && !!(vendor || supplierText || totalAmount || vatAmount || notes || lineItems.length || imageDataUrl));
@@ -211,6 +212,7 @@ export default function NewReceiptPage() {
   // drifting apart.
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
+    if (savingNow.current) return;
     if (!totalAmount) return setError(MISSING_TOTAL);
     const rateSays = rateProblem(currency, fxRateInput);
     if (rateSays) {
@@ -226,6 +228,7 @@ export default function NewReceiptPage() {
       }
     }
 
+    savingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -252,6 +255,7 @@ export default function NewReceiptPage() {
       router.push("/receipts");
     } catch (err) {
       setError(saveFailed(err, "Couldn't save receipt."));
+      savingNow.current = false;
       setSaving(false);
     }
   }

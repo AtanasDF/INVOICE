@@ -2001,9 +2001,14 @@ export default function DocumentCapture({
     onClose();
   }
 
+  // Once only: the page that takes the batch unmounts this, but a second
+  // press before it does read every document twice on /scan (two scans each
+  // off the allowance) and put every page in the copy twice.
+  const acceptedRef = useRef(false);
   function acceptBatch() {
     const docs = groupShots(shots);
-    if (!docs.length) return;
+    if (!docs.length || acceptedRef.current) return;
+    acceptedRef.current = true;
     stopStream();
     onBatch?.(docs);
   }

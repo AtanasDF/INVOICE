@@ -122,8 +122,11 @@ export default function QuotePage() {
   // in for every one of five actions -- fine while the database's own words
   // showed through underneath it, and useless the moment they stopped.
   async function run(action: () => Promise<void>, doing: string) {
-    setBusy(true);
+    // Checked on entry: a second press in the same tick was refused by the
+    // conditional update and told the person their quote had changed.
+    if (busyRef.current) return;
     busyRef.current = true;
+    setBusy(true);
     genRef.current++;
     setError(null);
     try {

@@ -142,6 +142,7 @@ export default function NewInvoicePage() {
   const [notes, setNotes] = useState<string>(draft?.notes ?? "");
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // A file picked with "Upload a file" on the list is copied instead of
@@ -154,6 +155,7 @@ export default function NewInvoicePage() {
   const [typedNote, setTypedNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [newCustomer, setNewCustomer] = useState<ScannedCustomer | null>(null);
   const [addingClient, setAddingClient] = useState(false);
+  const addingClientNow = useRef(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [imported, setImported] = useState(!!draft);
@@ -588,7 +590,8 @@ export default function NewInvoicePage() {
   }
 
   async function addScannedClient() {
-    if (!newCustomer) return;
+    if (!newCustomer || addingClientNow.current) return;
+    addingClientNow.current = true;
     setAddingClient(true);
     setAddClientError(null);
     try {
@@ -622,6 +625,7 @@ export default function NewInvoicePage() {
     } catch (err) {
       setAddClientError(saveFailed(err, "Couldn't add the customer."));
     } finally {
+      addingClientNow.current = false;
       setAddingClient(false);
     }
   }
@@ -629,6 +633,8 @@ export default function NewInvoicePage() {
   const totals = computeInvoiceTotals(items, profile?.vatRegistered ?? false);
 
   async function save() {
+    if (savingNow.current) return;
+    savingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -650,6 +656,7 @@ export default function NewInvoicePage() {
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(saveFailed(err, "Couldn't save invoice."));
+      savingNow.current = false;
       setSaving(false);
     }
   }
@@ -969,7 +976,11 @@ export default function NewInvoicePage() {
           </div>
           <CisSummary items={items} rate={cisRate} total={totals.total} />
           <div className="flex justify-end pt-1">
-            <ClearFormButton onClear={clearForm} disabled={saving || scanning || typing || addingClient || !filled} />
+            <ClearFormButton
+              onClear={clearForm}
+              disabled={saving || scanning || typing || addingClient || !filled}
+              also={imported ? "The invoice you photographed on the Free page goes too, and is not kept." : undefined}
+            />
           </div>
           <p className="text-right text-xs text-neutral-500">
             Saves as a draft — fully editable until you mark it sent, which is what assigns its invoice number, locks the rest in, and starts the due-date clock.

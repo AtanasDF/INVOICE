@@ -216,10 +216,12 @@ function InvoicesPage() {
   // anything. This is the same thing from where they actually start.
   const repeatable = useMemo(() => sameAgainOptions(invoices), [invoices]);
   const [repeating, setRepeating] = useState<string | null>(null);
+  const repeatingNow = useRef(false);
 
   async function sameAgain(clientId: string) {
     const option = repeatable.find((o) => o.clientId === clientId);
-    if (!option || repeating) return;
+    if (!option || repeatingNow.current) return;
+    repeatingNow.current = true;
     setRepeating(clientId);
     setError(null);
     try {
@@ -241,6 +243,7 @@ function InvoicesPage() {
       router.push(`/invoices/${created.id}`);
     } catch (err) {
       setError(saveFailed(err, "Couldn't start that invoice."));
+      repeatingNow.current = false;
       setRepeating(null);
     }
   }

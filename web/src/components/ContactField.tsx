@@ -90,6 +90,7 @@ export default function ContactField({
   const [active, setActive] = useState(-1);
   const [pending, setPending] = useState<CompanyMatch | null>(null);
   const [adding, setAdding] = useState(false);
+  const addingNow = useRef(false);
   const [addError, setAddError] = useState<string | null>(null);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -149,7 +150,8 @@ export default function ContactField({
   }
 
   async function add() {
-    if (!pending) return;
+    if (!pending || addingNow.current) return;
+    addingNow.current = true;
     setAdding(true);
     setAddError(null);
     try {
@@ -177,6 +179,7 @@ export default function ContactField({
     } catch (err) {
       setAddError(saveFailed(err, `Couldn't add the ${word}.`));
     } finally {
+      addingNow.current = false;
       setAdding(false);
     }
   }

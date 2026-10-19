@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import AddressFields from "@/components/AddressFields";
 import CompanyNameInput from "@/components/CompanyNameInput";
 import { INPUT } from "@/components/free-invoice/fields";
@@ -164,15 +164,18 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
   const [vatNumber, setVatNumber] = useState("");
   const [address, setAddress] = useState(start.address);
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const id = useId();
 
   async function save() {
+    if (savingNow.current) return;
     const trimmed = name.trim();
     if (!trimmed) return setError(isCompany ? "Add the company's name." : "Add their name.");
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("That email address doesn't look right.");
     const same = existing.find((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
     if (same && !window.confirm(`You already have ${same.name} in your list. Add another one with the same name?`)) return;
+    savingNow.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -195,6 +198,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
       );
     } catch (err) {
       setError(saveFailed(err, "Couldn't add the customer."));
+      savingNow.current = false;
       setSaving(false);
     }
   }

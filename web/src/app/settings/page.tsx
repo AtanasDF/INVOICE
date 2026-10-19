@@ -37,7 +37,7 @@ import { PlanCard } from "@/components/ScansLeft";
 import InviteCard from "@/components/InviteCard";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabaseClient";
-import { loadFailed, saveFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed, authFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { logoSrc, prepareLogo, uploadLogo } from "@/lib/logo";
 import VatNumberInput from "@/components/VatNumberInput";
@@ -85,6 +85,7 @@ export default function SettingsPage() {
   const [accountKind, setAccountKind] = useState<AccountKind | null>(null);
   const [migrationPending, setMigrationPending] = useState(false);
   const [signInBusy, setSignInBusy] = useState(false);
+  const signInBusyNow = useRef(false);
   const [signInNote, setSignInNote] = useState<string | null>(null);
   // Kept apart from the note. Both used to be the same string in the same grey
   // styling, so Supabase's own words ("For security purposes, you can only
@@ -107,6 +108,7 @@ export default function SettingsPage() {
   const [pushError, setPushError] = useState<string | null>(null);
   const [inboxToken, setInboxToken] = useState<string | null>(null);
   const [inboxBusy, setInboxBusy] = useState(false);
+  const inboxBusyNow = useRef(false);
   const [inboxError, setInboxError] = useState<string | null>(null);
   const [inboxCopied, setInboxCopied] = useState(false);
   const [inboxRevealed, setInboxRevealed] = useState(false);
@@ -296,6 +298,16 @@ export default function SettingsPage() {
     }
   }
 
+  // One press replaced a list somebody had built up, and the next Save -- made
+  // perhaps only to fix the bank details -- kept the reset. So it names what
+  // goes before it goes.
+  function resetCategories() {
+    const defaults = defaultCategoriesFor(accountKind);
+    const lost = categories.filter((c) => c.trim() && !defaults.includes(c));
+    if (lost.length && !window.confirm(`Go back to the standard categories? ${lost.join(", ")} will go from the list when you press Save.`)) return;
+    setCategories(defaults);
+  }
+
   function removeLogo() {
     if (!window.confirm("Take the logo off your invoices and quotes? It goes when you press Save.")) return;
     setLogoUrl(null);
@@ -303,9 +315,13 @@ export default function SettingsPage() {
   }
 
   async function regenerateInboxToken() {
+    // Two presses made two tokens, the last SAVE won, and the address shown
+    // was whichever call resolved last -- so it could be the dead one.
+    if (inboxBusyNow.current) return;
     // Every other destructive tap in the app asks first; the old address
     // stops working the moment a new one exists.
     if (inboxToken && !window.confirm("Get a new import address? The old one stops working straight away, and anything still being forwarded to it won't arrive.")) return;
+    inboxBusyNow.current = true;
     setInboxError(null);
     setInboxBusy(true);
     try {
@@ -317,6 +333,7 @@ export default function SettingsPage() {
     } catch (err) {
       setInboxError(saveFailed(err, "Couldn't make an address just now."));
     } finally {
+      inboxBusyNow.current = false;
       setInboxBusy(false);
     }
   }
@@ -458,13 +475,15 @@ export default function SettingsPage() {
   // signs this browser in and lands on /reset-password, so it works both
   // as a way back in and as a way to change the password.
   async function emailSignInLink() {
-    if (!user?.email) return;
+    if (!user?.email || signInBusyNow.current) return;
+    signInBusyNow.current = true;
     setSignInNote(null);
     setSignInError(null);
     setSignInBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/reset-password` });
-    if (error) setSignInError(saveFailed(error, "Couldn't send the email just now. Try again in a minute."));
+    if (error) setSignInError(authFailed(error, "Couldn't send the email just now. Try again in a minute."));
     else setSignInNote(`Sent to ${user.email}. The link signs you in and lets you set a new password.`);
+    signInBusyNow.current = false;
     setSignInBusy(false);
   }
 
@@ -823,7 +842,7 @@ export default function SettingsPage() {
               </button>
             </div>
           )}
-          <button type="button" onClick={() => setCategories(defaultCategoriesFor(accountKind))} className="text-sm text-neutral-500 underline">
+          <button type="button" onClick={resetCategories} className="text-sm text-neutral-500 underline">
             Reset to defaults
           </button>
         </div>
