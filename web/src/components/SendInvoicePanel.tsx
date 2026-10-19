@@ -208,7 +208,7 @@ export function EmailForm({
         ({ base64 } = await pdf.currentPdf());
       } catch (err) {
         console.error("PDF failed:", err);
-        sending.current = false;
+        sending.current = null;
         setStatus({ kind: "error", message: PDF_FAILED });
         return;
       }
