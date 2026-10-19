@@ -1,10 +1,59 @@
-# Where things stand — 2026-10-09, late
+# Where things stand — 2026-10-19, early hours
 
 **Read this first.** Everything below the next heading is older and still true unless
 this section contradicts it.
 
-Everything is **committed and pushed** (`b1d4a0b`). `main` deploys to Vercel on push,
-so what is in GitHub is what is live.
+Everything is **committed and pushed**. `main` is `82d1571` and deploys to Vercel on
+push, so what is in GitHub is what is live.
+
+## The one decision waiting
+
+**`feature/account-scoped-storage` (`72bc951`) is finished, pushed and NOT merged.**
+Atanas wanted to be told before a merge, because merging deploys, and it was 3am.
+It fixes a real privacy hole: sign-out cleared only the session, so the next person to
+sign in on the same device opened /free-invoice and had the previous one's sort code,
+account number and signature. All gates green; all 22 suites that touch those keys run
+against `main` first as a baseline and every number matches. Merge it unless he says
+otherwise.
+
+## Four cloud audit branches, none merged, none verified
+
+The $250 cloud credit (expires 07:59 GMT 5 Nov) is being spent on audits from
+`notes/cloud-queue.md`. Branches on origin:
+
+- `claude/money-invariants-coverage-ku3id4` — **already merged into main**, done.
+- `claude/audit-component-layer-yo1epf` — 419 findings. Worst claims: dark-mode PDFs
+  render black INCLUDING the one emailed to customers; a credit note typed "1,200.00"
+  saves as £1 (parseFloat); an invoice can be marked paid twice; /i/ shows the full
+  amount owed if credits or payments fail to load.
+- `claude/document-export-audit-ctvabr` — the Free page's Word/text/spreadsheet files
+  carry no totals at all; CSV formula injection on /i/ and /q/; no BOM so Excel garbles
+  £. Its commit `f9d7fae` already FIXES the totals one.
+- `claude/audit-offline-service-worker-4vpjca` — the privacy hole above (now fixed) plus
+  unfixed items: no navigation timeout in sw.js, the cache never pruned, no guard on
+  unsaved forms.
+
+**None of these findings has been verified except the ones acted on.** Check before
+fixing: the three that were checked all held, but that is not the same as trusting them.
+
+## Three suites are red on main, pre-existing
+
+`test-address` 0/1, `test-receipts-list-3302` 73/74, and `test-scan-wall`, which CRASHES
+on its own rather than only under four-at-a-time load. Confirmed red on `main` itself,
+so they are nobody's regression. Unexplained.
+
+## GitHub access for cloud sessions
+
+The Claude GitHub App was **never installed** on the AtanasDF account, which is why the
+first cloud push was refused. It said "doesn't have GitHub access", which reads like a
+scope setting and is not. Installed 18/10 (installation 172849754). Cloud pushes work.
+
+## This Mac is no longer Klaudio's
+
+All Klaudio scheduled tasks are disabled, the nine launchd services booted out and
+disabled (plists parked in `~/klaudio-old-launchagents`), and the two WhatsApp MCP
+servers removed from `~/.claude.json`. Klaudio runs on the new Mac now. Don't restart
+any of it here.
 
 ## If you are a cloud session, or running from the phone
 
