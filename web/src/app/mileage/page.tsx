@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { money } from "@/lib/money";
+import { amountOrNull, money } from "@/lib/money";
 import { useEffect, useState, useRef } from "react";
 import { Receipt, receiptsStore } from "@/lib/storage";
 import {
@@ -67,7 +67,9 @@ export default function MileagePage() {
   const yearMiles = thisYear.reduce((sum, r) => sum + (tripOf(r)?.miles ?? 0), 0);
   const yearClaimed = thisYear.reduce((sum, r) => sum + r.amount, 0);
   const already = receipts ? milesSoFar(receipts, date, vehicle) : 0;
-  const milesNum = parseFloat(miles) || 0;
+  // "-5" passed the old `!milesNum` check and saved a negative expense, and
+  // "1,200" read as 1 mile. Nothing below zero is a trip.
+  const milesNum = Math.max(0, amountOrNull(miles) ?? 0);
   const claim = claimFor(milesNum, vehicle, already);
   const left = Math.max(0, RATES[vehicle].threshold - already);
 

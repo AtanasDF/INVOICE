@@ -11,6 +11,7 @@ import { shortDate } from "@/lib/dates";
 import Tip from "@/components/Tip";
 import EmailFileForm from "@/components/EmailFileForm";
 import SaveThese from "@/components/SaveThese";
+import { grossOf } from "@/lib/receiptAmounts";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -233,7 +234,7 @@ export default function FilesPage() {
                   <img src={r.imageDataUrl ?? undefined} alt="" className="aspect-square w-full rounded-lg object-cover" />
                 )}
                 <div className="mt-2 text-xs font-medium text-neutral-900 truncate">{r.vendor || r.category}</div>
-                <div className="text-xs text-neutral-500">{shortDate(r.date)} · {money(r.amount)}</div>
+                <div className="text-xs text-neutral-500">{shortDate(r.date)} · {money(grossOf(r))}</div>
                 {extra > 0 && <div className="text-xs text-neutral-500">{extra + 1} pages</div>}
               </button>
             );
@@ -255,7 +256,7 @@ export default function FilesPage() {
             <div>
               <div className="font-medium">{preview.vendor || preview.category}</div>
               <div className="text-sm text-neutral-500">
-                {shortDate(preview.date)} · {money(preview.amount)} · {supplierName(preview.clientId)}
+                {shortDate(preview.date)} · {money(grossOf(preview))} · {supplierName(preview.clientId)}
               </div>
             </div>
             <button ref={closeRef} onClick={closePreview} aria-label="Close preview" className="text-2xl leading-none text-ink-on-dark/80">✕</button>

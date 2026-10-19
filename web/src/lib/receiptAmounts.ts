@@ -40,3 +40,8 @@ export function rateAfterReview(stored: { amount: number; vatAmount: number; fxR
   const same = pence(stored.amount) === pence(next.netGbp) && pence(stored.vatAmount) === pence(next.vatGbp);
   return same ? stored.fxRate : null;
 }
+
+// What the document itself says it cost, VAT included: the figure a tile
+// beside its photograph should show. receipts.amount is net, so a £12 receipt
+// read "£10.00" under a picture that says £12.
+export const grossOf = (r: { amount: number; vatAmount: number }) => roundMoney(r.amount + r.vatAmount);

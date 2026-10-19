@@ -395,8 +395,12 @@ export default function SettingsPage() {
     try {
       // An untouched field writes back today's value, not this page's. A
       // deliberate edit still wins -- that is what the field is for.
+      // The import address is never edited here (its own button saves it at
+      // once), so it is always today's: one made from the dashboard in another
+      // tab was being overwritten with this page's null and stopped working.
       const typed = parseInt(invoiceNextNumber, 10) || 1;
-      const nextNumber = typed === loadedNextNumber ? (await businessProfileStore.get()).invoiceNextNumber : typed;
+      const current = await businessProfileStore.get();
+      const nextNumber = typed === loadedNextNumber ? current.invoiceNextNumber : typed;
       const full = await businessProfileStore.save({
         businessName,
         registeredName,
@@ -407,7 +411,7 @@ export default function SettingsPage() {
         logoUrl,
         showOverdueReminders,
         customCategories: categories,
-        inboxToken,
+        inboxToken: current.inboxToken,
         invoicePrefix,
         invoiceNextNumber: nextNumber,
         vatRegistered,
@@ -420,6 +424,7 @@ export default function SettingsPage() {
         reminderTextFinal: reminderTexts.final.trim() || null,
       });
       setMigrationPending(!full);
+      setInboxToken(current.inboxToken);
       setLoadedNextNumber(nextNumber);
       setInvoiceNextNumber(String(nextNumber));
       setSnapshot(JSON.stringify({ ...values, invoiceNextNumber: String(nextNumber) }));

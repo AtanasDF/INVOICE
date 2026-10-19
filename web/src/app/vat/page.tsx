@@ -24,7 +24,7 @@ export default function VatPage() {
   const [to, setTo] = useState(last.to);
   const [basis, setBasis] = useState<VatBasis>("invoice");
   const [showLines, setShowLines] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "yes" | "no">("");
 
   useEffect(() => {
     Promise.all([invoicesStore.all(), creditNotesStore.all(), paymentsStore.all(), receiptsStore.all(), businessProfileStore.get()])
@@ -56,9 +56,8 @@ export default function VatPage() {
           `Box 7 purchases ex VAT: ${money(f.box7)}`,
         ].join("\n")
       )
-      .catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+      .then(() => setCopied("yes"), () => setCopied("no"));
+    setTimeout(() => setCopied(""), 4000);
   }
 
   return (
@@ -137,7 +136,7 @@ export default function VatPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">{quarterLabel(from, to)}</h2>
             <button type="button" onClick={copy} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
-              {copied ? "Copied" : "Copy the figures"}
+              {copied === "yes" ? "Copied" : copied === "no" ? "Couldn't copy. Select them below instead" : "Copy the figures"}
             </button>
           </div>
           <dl className="mt-3 divide-y text-sm">

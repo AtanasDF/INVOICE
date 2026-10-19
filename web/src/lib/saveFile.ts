@@ -7,7 +7,10 @@ export function saveBlob(filename: string, blob: Blob) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Not at once: Safari can still be reading the blob when click() returns,
+  // and a revoked address saves nothing. /copy waited, which is why it kept
+  // its own copy of this.
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 export function saveText(filename: string, body: string, type: string) {
