@@ -7,7 +7,7 @@ import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
 import { VAT_RATE_LABELS } from "@/lib/vat";
 import { REVERSE_CHARGE_WORDING, reverseChargeNote } from "@/lib/reverseCharge";
-import { creditOffDue, invoiceCharge, labourNet } from "@/lib/cis";
+import { cisAfterCredit, creditOffDue, invoiceCharge, labourNet } from "@/lib/cis";
 
 // A deduction line (a deposit taken off) reads −£250.00, not £-250.00.
 const signedMoney = (n: number) => `${n < 0 ? "−" : ""}${money(Math.abs(n))}`;
@@ -33,7 +33,7 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   // After a credit note the CIS is on what's still billed, so Total, CIS,
   // credit notes and payments add up to the amount due.
   const billedShare = totals.total > 0 ? Math.max(0, 1 - creditNoteTotal / totals.total) : 0;
-  const cisShown = Math.round(totals.cis * billedShare * 100) / 100;
+  const cisShown = cisAfterCredit(totals, creditNoteTotal);
   const labourShown = Math.max(0, labourNet(invoice.items)) * billedShare;
   return (
     <>

@@ -84,6 +84,24 @@ check("a company check at 00:30 BST is read that day", longDate("2026-06-30T23:3
 check("a register date is still the date it says", longDate("2001-03-04") === "4 March 2001");
 check("an empty one is empty", longDate(null) === "" && longDate("") === "");
 
+// --- a CIS invoice after a credit note (worst one 4) ----------------------
+const { cisAfterCredit, creditOffDue } = await import("./gen/lib/cis.js");
+const charge = { total: 100, cis: 10, due: 90 };
+const shownCis = cisAfterCredit(charge, 4.25);
+const dueAfter = Math.round((charge.due - creditOffDue(charge, 4.25)) * 100);
+check("£100, £10 CIS, £4.25 credit: Total - CIS - credit is the amount due (it was a penny out)", Math.round((100 - shownCis - 4.25) * 100) === dueAfter, `${shownCis} ${dueAfter}`);
+check("no credit, the whole CIS", cisAfterCredit(charge, 0) === 10);
+check("credited in full, no CIS left", cisAfterCredit(charge, 100) === 0);
+check("over-credited never prints a negative CIS", cisAfterCredit(charge, 150) === 0);
+let worst = 0;
+for (let c = 1; c < 10000; c += 7) {
+  const cr = c / 100;
+  const left = Math.round((100 - cisAfterCredit(charge, cr) - cr) * 100) - Math.round((charge.due - creditOffDue(charge, cr)) * 100);
+  if (cr < 100) worst = Math.max(worst, Math.abs(left));
+}
+check("every credit from 1p to £99.99 adds up to the penny", worst === 0, String(worst));
+check("the invoice sheet takes its CIS line from cisAfterCredit", /const cisShown = cisAfterCredit\(totals, creditNoteTotal\)/.test(fs.readFileSync(`${REPO}/web/src/components/invoice/IssuedInvoice.tsx`, "utf8")));
+
 // --- the pages call the lib, not a copy of their own ---------------------
 const src = (f) => fs.readFileSync(`${REPO}/web/src/${f}`, "utf8").replace(/\/\/[^\n]*/g, "");
 for (const f of ["app/receipts/page.tsx", "app/receipts/new/page.tsx", "app/scan/page.tsx", "app/receipts/review/page.tsx", "app/recurring/page.tsx"]) {
@@ -102,6 +120,8 @@ check("the scan page saves its lines through amountOrNull", !/parseFloat/.test(s
 check("shortDate turns a timestamp into its London day", /ukDate/.test(src("lib/dates.ts")));
 const quotes = src("app/quotes/page.tsx");
 check("the quotes list no longer claims to know when a quote was sent", !/sent \{days\(/.test(quotes) && /dated \{days\(/.test(quotes));
+
+check("quotes print money through the app's one formatter (it printed \"£-50.00\")", /import \{ money \} from "@\/lib\/money"/.test(src("components/quote/QuoteDocument.tsx")) && !/export const money =/.test(src("components/quote/QuoteDocument.tsx")));
 
 const passed = results.filter(Boolean).length;
 console.log(JSON.stringify({ passed, total: results.length }));
