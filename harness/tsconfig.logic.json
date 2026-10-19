@@ -75,6 +75,8 @@
     "../web/src/lib/publicRead.ts",
     "../web/src/lib/publicInvoice.ts",
     "../web/src/lib/publicQuote.ts",
-    "../web/src/lib/publicQuoteRequest.ts"
+    "../web/src/lib/publicQuoteRequest.ts",
+    "../web/src/lib/errorText.ts",
+    "../web/src/lib/fx.ts"
   ]
 }

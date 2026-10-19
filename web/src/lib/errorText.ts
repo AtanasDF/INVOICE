@@ -2,10 +2,11 @@
 //
 // This one hands the message straight through, so it is ONLY for a call
 // site where everything that can be thrown is a sentence the app wrote
-// itself. Four such sites remain and were each checked on 2026-09-24: the
-// postcode lookup ("Couldn't find one of those postcodes."), the price
-// guide (the route's own `error`), and the two file readers ("Couldn't
-// open that file.", "Couldn't read that image."). Anything that can carry
+// itself. Three such sites remain, checked on 2026-09-24: the postcode
+// lookup ("Couldn't find one of those postcodes.") and the two file readers
+// ("Couldn't open that file.", "Couldn't read that image."). The price guide
+// left on 2026-10-19: its fetch can throw, and a dropped connection on an
+// iPhone throws TypeError("Load failed"), which this handed straight on. Anything that can carry
 // a database error uses saveFailed instead -- twelve sites did not, and
 // were showing Postgres's own wording to people.
 export function errorText(err: unknown, fallback: string): string {

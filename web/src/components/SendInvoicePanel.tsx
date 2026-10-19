@@ -198,7 +198,18 @@ export function EmailForm({
     const number = fields.number;
     try {
       setStatus({ kind: "working", step: "Making the PDF…" });
-      const { base64 } = await pdf.currentPdf();
+      // Share and Download say PDF_FAILED; this went through saveFailed, which
+      // hands any Error on, so a chunk that wouldn't load after a deploy said
+      // "Importing a module script failed."
+      let base64: string;
+      try {
+        ({ base64 } = await pdf.currentPdf());
+      } catch (err) {
+        console.error("PDF failed:", err);
+        sending.current = false;
+        setStatus({ kind: "error", message: PDF_FAILED });
+        return;
+      }
       // A link that can't be made just leaves the button out of the email.
       const link = ensureViewUrl ? await ensureViewUrl().catch(() => "") : viewUrl;
       setStatus({ kind: "working", step: "Sending…" });

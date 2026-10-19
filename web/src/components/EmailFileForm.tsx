@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SITE_NAME } from "@/lib/siteName";
+import { PDF_FAILED } from "@/lib/errorText";
 
 const toBase64 = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
@@ -44,9 +45,21 @@ export default function EmailFileForm({
     setSending(true);
     setError(null);
     setNote(null);
+    // Only the route's own sentences are shown as they come. A throw is the
+    // browser's ("Load failed") or pdf-lib's, and is said in plain words.
     try {
-      const made = await file();
-      if (!made) throw new Error("There's nothing to send yet.");
+      let made: Awaited<ReturnType<typeof file>>;
+      try {
+        made = await file();
+      } catch (err) {
+        console.error("email file: making the PDF", err);
+        setError(PDF_FAILED);
+        return;
+      }
+      if (!made) {
+        setError("There's nothing to send yet.");
+        return;
+      }
       const { data } = await supabase.auth.getSession();
       const res = await fetch("/api/send-document", {
         method: "POST",
@@ -54,12 +67,16 @@ export default function EmailFileForm({
         body: JSON.stringify({ to: to.trim(), filename: made.name, pdf: await toBase64(made.blob), message }),
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string; to?: string };
-      if (!res.ok) throw new Error(body.error || "It couldn't be sent. Try again in a minute.");
+      if (!res.ok) {
+        setError(body.error || "It couldn't be sent. Try again in a minute.");
+        return;
+      }
       setNote(`Sent to ${body.to ?? to.trim()}.`);
       setTo("");
       setMessage("");
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "It couldn't be sent. Try again in a minute.");
+      console.error("email file", err);
+      setError("It couldn't be sent. Check your connection and try again.");
     } finally {
       sendingNow.current = false;
       setSending(false);

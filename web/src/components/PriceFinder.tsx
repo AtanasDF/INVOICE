@@ -5,7 +5,6 @@ import { money } from "@/lib/money";
 import { PriceKind, priceKindOf, searchPlaces, webSearch } from "@/lib/priceSearch";
 import type { PriceGuide } from "@/lib/priceGuide";
 import { supabase } from "@/lib/supabaseClient";
-import { errorText } from "@/lib/errorText";
 
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
@@ -53,10 +52,12 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
         body: JSON.stringify({ description, quantity, unit, kind, want, priced }),
       });
       const body = (await res.json().catch(() => ({}))) as { guide?: PriceGuide; error?: string };
-      if (!res.ok || !body.guide) throw new Error(body.error || "Couldn't work out a price guide.");
-      setFetched({ for: askedFor, guide: body.guide });
+      // The route's own words; a throw here is the browser's ("Load failed").
+      if (!res.ok || !body.guide) setError(body.error || "Couldn't work out a price guide.");
+      else setFetched({ for: askedFor, guide: body.guide });
     } catch (err) {
-      setError(errorText(err, "Couldn't work out a price guide."));
+      console.error("price guide", err);
+      setError("Couldn't work out a price guide. Check your connection and try again.");
     } finally {
       askingNow.current = false;
       setLoading(false);
