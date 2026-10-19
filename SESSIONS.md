@@ -4,6 +4,53 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-19 — A borrowed phone handed over the last person's bank details
+
+`claude/audit-offline-service-worker-4vpjca` (cloud, findings only) reported that
+sign-out clears the session and nothing else. **Checked here before anything was
+believed, and it holds.** `signOut.ts:67` removes only `AUTH_STORAGE_KEY`, then
+`window.location.replace` -- the SAME tab. Every key holding somebody's own work was a
+fixed string with no account in it:
+
+- `free-invoice-draft` and `free-invoice-signature` carry `bank` and `signature`
+  (`freeInvoiceDraft.ts:34-35`), so the next person to sign in on that device opened
+  /free-invoice and had the previous one's business name, customer, lines, **sort code,
+  account number and signature** -- enough to issue an invoice as them, into their bank.
+- `scanHandoff.ts:12` keeps the camera photo in **sessionStorage**, which survives a
+  same-tab reload, so their receipt was waiting on /scan.
+
+**Fixed by clearing on account CHANGE, not on sign-out.** Clearing at sign-out was the
+audit's first suggestion and is the wrong one: it costs somebody their half-typed
+invoice every time they sign out deliberately. `accountSwitch.ts` compares the incoming
+user id with `last-account`; same person signing back in keeps everything, a different
+person finds nothing. It runs in `AuthProvider` **before `setSession`**, which is the
+only safe moment -- the Gate returns null while loading (`AppShell.tsx:236`), so no page
+can have rendered the previous draft first. A first sign-in on a device with no marker
+also clears, which is what removes the keys left by the version that had this bug.
+Sign-out deliberately does NOT update the marker, or returning as yourself would look
+like a new device and wipe your own work.
+
+Device preferences are explicitly NOT cleared (`theme`, `scanner-mode`, `camera-allowed`,
+`tip:` and the rest) -- CLAUDE.md says the theme is per device in as many words, and
+wiping them would reset somebody's phone because a colleague borrowed it.
+
+`harness/test-account-switch.mjs` (18 checks) pins the decision and, more usefully, pins
+that **every fixed storage key in `src/lib` is classified personal or device**: a new
+personal key nobody adds to the list is this same bug again, invisibly. That check
+failed on its first run, on `tips.ts`'s `"tip:"`.
+
+**And the engine default I missed on 15/10**: `FreeInvoiceBuilder.tsx:63` was
+`useState<ScanEngine>("claude")` and line 158 sends it, so the Free page has been
+scanning on Claude the whole time while CLAUDE.md says Gemini everywhere. I changed
+three defaults that day and this was the fourth place.
+
+Still open from the three audits, none verified: the component-layer branch (dark-mode
+PDFs rendering black, including the emailed one; a credit note typed "1,200.00" saving
+as GBP 1; an invoice markable paid twice) and the document-export branch (the Free
+page's Word/text/spreadsheet files carry no totals at all; CSV formula injection on
+/i/ and /q/). The offline audit's remaining items are also unfixed: no navigation
+timeout in `sw.js`, the cache never pruned, no guard on unsaved forms.
+
 ## 2026-10-19 — Reviewing the cloud's money work, and the cloud push that could not land
 
 The first cloud sessions ran, and the first one to finish could not push: GitHub
