@@ -8,7 +8,7 @@ push, so what is in GitHub is what is live.
 
 ## Waiting to merge: `wip/audit-components-2` (cloud, 2026-10-19)
 
-Audit sections 5–7 and the misc defects: 28 fixed, 2 left, 1 half false. **Not merged.**
+Audit sections 5–7 and the misc defects: 34 checked, 31 fixed, 2 half, 1 left for a decision. **Not merged.**
 Before merging, run the browser suites listed at the top of SESSIONS.md on the Mac
 (`test-camera-dark` is new and has never run). **One decision for Atanas:** whether a
 line on an invoice should be rounded to the penny before the total is added up -- it

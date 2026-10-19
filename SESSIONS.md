@@ -12,7 +12,7 @@ session is doing sections 1–4 at the same time, so expect small conflicts in `
 or `receipts/page.tsx` when both land. Every finding was opened in the code before it was
 believed; each is marked in `notes/audit-components.md` (fixed / false / left, with why).
 
-**Counts: 31 findings looked at. 28 fixed, 1 half-false-half-fixed, 2 left.**
+**Counts: 34 findings looked at, none of them false outright. 31 fixed, 2 half (quotes "sent N days ago": wording fixed, timing left; the Free-page engine: half already fixed), 1 left for a decision (rounding invoice lines).**
 - Section 7, money and dates (done first): 8 real, 7 fixed, 1 half (quotes "sent N days
   ago": the wording now says "dated", because quotes keep no send time; counting from the
   real send needs a `sent_at` migration). Plus worst-one 4, the CIS penny, which section 7
