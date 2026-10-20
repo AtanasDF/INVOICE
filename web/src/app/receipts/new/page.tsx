@@ -149,6 +149,8 @@ export default function NewReceiptPage() {
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    // Cleared so picking the same photo again, after removing it, still fires.
+    e.target.value = "";
     if (file) handleFile(file);
   }
 
@@ -352,7 +354,6 @@ export default function NewReceiptPage() {
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={onFile}
             className="hidden"
           />

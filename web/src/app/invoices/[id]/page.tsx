@@ -23,6 +23,7 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO, addDays } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import { logoSrc } from "@/lib/logo";
+import { copyText } from "@/lib/afterTap";
 
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
@@ -359,11 +360,14 @@ export default function InvoiceViewPage() {
   async function copyLink() {
     setLinkError(null);
     setLinkBusy(true);
+    // Started before anything is awaited: on an iPhone a write after the
+    // network call has lost the tap, so a link already made is written
+    // straight away and a new one is handed to the clipboard as a promise.
+    const url = link ? invoiceLinkUrl(link.token) : ensureLink();
+    const copying = copyText(url);
     try {
-      const url = await ensureLink();
-      // A write after an awaited network call has usually lost the tap on an
-      // iPhone and is refused; "Copied" then sent an empty paste to WhatsApp.
-      const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
+      await url;
+      const copied = await copying;
       if (copied) setLinkCopied(true);
       else setLinkError("The link is made, but the phone wouldn't copy it. Press Copy link again, or select it in the box.");
     } catch (err) {

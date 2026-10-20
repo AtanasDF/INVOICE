@@ -28,6 +28,7 @@ import {
 import { Picks, compare, formatPence, planFor, quantityText, supplierTotal } from "@/lib/quoteCompare";
 import { todayIso } from "@/lib/freeInvoiceDraft";
 import { loadFailed, saveFailed } from "@/lib/errorText";
+import { copyText, openWhenReady } from "@/lib/afterTap";
 
 const PRIMARY = "rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50";
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
@@ -222,8 +223,9 @@ export default function QuoteRequestPage() {
 
   const copyLink = (row: RequestSupplier) =>
     run(async () => {
+      const copying = copyText(requestLinkUrl(row.token));
       if (!row.sentAt) await requestSuppliersStore.markSent(row.id);
-      const copied = await navigator.clipboard.writeText(requestLinkUrl(row.token)).then(() => true, () => false);
+      const copied = await copying;
       setShownLink(row.id);
       if (!copied) return;
       setCopied(row.id);
@@ -236,9 +238,8 @@ export default function QuoteRequestPage() {
 
   const openDocument = (row: RequestSupplier) =>
     run(async () => {
-      const url = row.documentPath ? await quoteDocumentUrl(row.documentPath) : null;
-      if (!url) throw new Error("Their document couldn't be opened. Try again.");
-      window.open(url, "_blank", "noopener");
+      const opened = await openWhenReady(row.documentPath ? quoteDocumentUrl(row.documentPath) : Promise.resolve(null));
+      if (!opened) throw new Error("Their document couldn't be opened. Try again.");
     });
 
   return (

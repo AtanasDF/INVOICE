@@ -19,6 +19,7 @@ import { quoteStatusBadgeClass, quoteStatusLabel, shortDate, termsLength } from 
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { depositDeductions, depositGross, depositLines, depositTag } from "@/lib/quoteDeposit";
 import { logoSrc } from "@/lib/logo";
+import { copyText } from "@/lib/afterTap";
 
 type Open = Exclude<QuoteStatus, "invoiced">;
 
@@ -313,11 +314,13 @@ export default function QuotePage() {
     if (q.status === "draft" && !window.confirm("Sharing the link sends the quote: it's marked as sent and can't be edited after. Carry on?")) return;
     setLinkBusy(true);
     setError(null);
+    // Started before anything is awaited: on an iPhone a write after the
+    // network calls has lost the tap.
+    const url = link && q.status !== "draft" ? quoteLinkUrl(link.token) : ensureLink(true);
+    const copying = copyText(url);
     try {
-      // After the network calls the tap has usually expired on an iPhone and
-      // the write is refused; "Copied" then sent an empty paste.
-      const url = await ensureLink(true);
-      const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
+      await url;
+      const copied = await copying;
       if (copied) setLinkCopied(true);
       else setError("The link is made, but the phone wouldn't copy it. Press Copy link again, or select it in the box.");
     } catch (err) {

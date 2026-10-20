@@ -734,7 +734,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-neutral-500" htmlFor="invoice-prefix">Prefix</label>
-              <input id="invoice-prefix" className="w-full rounded-lg border px-3 py-2" value={invoicePrefix} onChange={(e) => setInvoicePrefix(e.target.value)} />
+              <input id="invoice-prefix" autoCapitalize="characters" autoCorrect="off" spellCheck={false} className="w-full rounded-lg border px-3 py-2" value={invoicePrefix} onChange={(e) => setInvoicePrefix(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-neutral-500" htmlFor="invoice-next-number">Next number</label>
@@ -980,14 +980,14 @@ export default function SettingsPage() {
             is due, a customer opens or answers a quote or opens an invoice, or a supplier sends prices.
           </p>
         </div>
-        {!pushSupported() ? (
-          <p className="text-sm text-neutral-500">This browser doesn&apos;t support push notifications.</p>
-        ) : isIosNotStandalone() ? (
+        {isIosNotStandalone() ? (
           <p className="text-sm text-neutral-500">
             On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from
             there and come back to this page to turn notifications on — Safari only delivers push notifications to
             an installed app, not a browser tab.
           </p>
+        ) : !pushSupported() ? (
+          <p className="text-sm text-neutral-500">This browser doesn&apos;t support push notifications.</p>
         ) : (
           <>
             {pushError && <p role="alert" className="text-sm text-red-600">{pushError}</p>}

@@ -43,7 +43,9 @@ export async function POST(req: Request) {
       webpush.setVapidDetails("https://invoice-omega-rust.vercel.app", vapidPublic, vapidPrivate);
       const message = JSON.stringify({
         title: "Invoice opened",
-        body: `${client?.name ?? "Your customer"} opened invoice ${inv?.number ?? ""}`.trim(),
+        // The owner's own tap on the link from WhatsApp, in a Safari tab while signed
+        // in only to the home-screen app, looks exactly like the customer's.
+        body: `${client?.name ?? "Your customer"} opened invoice${inv?.number ? ` ${inv.number}` : ""} (or you did, somewhere you aren't signed in)`,
         url: `/invoices/${view.invoice_id}`,
       });
       await Promise.all((subs ?? []).map((s) => webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key } }, message).catch(() => {})));

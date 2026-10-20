@@ -85,6 +85,8 @@
     "../web/src/lib/expensePeriod.ts",
     "../web/src/lib/dates.ts",
     "../web/src/lib/companyReport.ts",
-    "../web/src/lib/convert.ts"
+    "../web/src/lib/convert.ts",
+    "../web/src/lib/afterTap.ts",
+    "../web/src/lib/saveFile.ts"
   ]
 }

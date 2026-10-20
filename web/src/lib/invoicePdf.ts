@@ -1,3 +1,5 @@
+import { saveBlob, sheetPixelRatio } from "@/lib/saveFile";
+
 // A4 at 96dpi with the 14mm margins the printed sheet uses (ScaledPreview).
 export const PAGE_WIDTH = 794;
 export const PAGE_HEIGHT = 1123;
@@ -48,12 +50,13 @@ export function pageSlices(breaks: number[], height?: number): [number, number][
   return slices;
 }
 
-// The on-screen A4 sheet, photographed at 2x and laid onto A4 pages.
+// The on-screen A4 sheet, photographed at 2x (less for a very long one) and
+// laid onto A4 pages.
 // Image based rather than laid out as PDF text, so it is exactly what the
 // preview shows on every layout.
 export async function renderInvoicePdf(sheet: HTMLElement): Promise<{ base64: string; blob: Blob; save: (filename: string) => void }> {
   const [{ toCanvas }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
-  const options = { pixelRatio: 2, backgroundColor: "#ffffff" };
+  const options = { pixelRatio: sheetPixelRatio(sheet.offsetWidth, sheet.scrollHeight), backgroundColor: "#ffffff" };
   // Safari leaves images (the signature) out of the first capture.
   await toCanvas(sheet, options);
   const canvas = await toCanvas(sheet, options);
@@ -75,5 +78,8 @@ export async function renderInvoicePdf(sheet: HTMLElement): Promise<{ base64: st
     const y = page === 0 ? 0 : PAGE_MARGIN * ptPerCss;
     pdf.addImage(part.toDataURL("image/jpeg", 0.9), "JPEG", 0, y, PAGE_WIDTH * ptPerCss, (sh / pxPerCss) * ptPerCss);
   });
-  return { base64: pdf.output("datauristring").split(",")[1], blob: pdf.output("blob"), save: (filename) => pdf.save(filename) };
+  const blob = pdf.output("blob");
+  // Through saveBlob, not jsPDF's own save: one way to the device, with its
+  // iPhone handling.
+  return { base64: pdf.output("datauristring").split(",")[1], blob, save: (filename) => saveBlob(filename, blob) };
 }

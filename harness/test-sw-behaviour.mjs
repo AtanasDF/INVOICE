@@ -18,6 +18,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const source = fs.readFileSync(`${REPO}/web/public/sw.js`, "utf8");
 const timeout = Number(source.match(/NAVIGATE_TIMEOUT_MS = (\d+)/)?.[1]);
 const max = Number(source.match(/MAX_STATIC = (\d+)/)?.[1]);
+const offline = source.match(/const OFFLINE = "([^"]+)"/)?.[1];
+// /offline was a page of the app and needed its scripts, which the cache trims
+// after a few builds: "Loading..." for ever with no signal (ios-safari 24).
+check("the offline page is a file that needs nothing else", /^\/[\w-]+\.html$/.test(offline ?? ""), String(offline));
+const offlineHtml = offline ? fs.readFileSync(`${REPO}/web/public${offline}`, "utf8") : "";
+check("...which exists, and loads no script and no stylesheet", /No signal/.test(offlineHtml) && !/<script|<link[^>]+stylesheet|_next\//i.test(offlineHtml), offlineHtml.slice(0, 80));
+check("...and follows the phone's light or dark setting", /color-scheme:\s*light dark/.test(offlineHtml));
 check("a navigation has a time limit, and a sane one", timeout >= 5000 && timeout <= 20000, String(timeout));
 check("the app-file cache has a limit", max >= 100 && max <= 1000, String(max));
 
@@ -45,8 +52,9 @@ function boot({ fetch }) {
     location: { origin: "https://app.test" },
     addEventListener: (t, fn) => { listeners[t] = fn; },
     skipWaiting: async () => {},
-    clients: { claim: async () => {} },
+    clients: { claim: async () => {}, matchAll: async () => self.clientsList, openWindow: async (u) => { self.opened = u; } },
     registration: {},
+    clientsList: [],
     navigator: {},
   };
   // Shrunk so the suite takes a second, not ten.
@@ -59,7 +67,7 @@ function boot({ fetch }) {
     await Promise.all(waits);
     return responded;
   };
-  return { stores, caches, dispatch };
+  return { stores, caches, dispatch, self };
 }
 
 // ── One bar ──
@@ -71,7 +79,7 @@ function boot({ fetch }) {
   const started = Date.now();
   const res = await Promise.race([sw.dispatch("fetch", { request: req }).then((p) => p), sleep(3000).then(() => "hung")]);
   const answer = res === "hung" ? "hung" : await Promise.race([res, sleep(3000).then(() => "hung")]);
-  check("a page that is never answered ends on the offline page", answer?.body === "/offline", JSON.stringify(answer));
+  check("a page that is never answered ends on the offline page", answer?.body === offline, JSON.stringify(answer));
   check("...after the time limit, not straight away", Date.now() - started >= 180, String(Date.now() - started));
 }
 
@@ -106,7 +114,38 @@ function boot({ fetch }) {
   const statics = keys.filter((k) => k.includes("/_next/static/"));
   check("the app files kept stop at the limit", statics.length === max, `${statics.length} of ${max}`);
   check("...and it is the oldest that went", !keys.includes("https://app.test/_next/static/chunks/c0.js") && keys.includes(`https://app.test/_next/static/chunks/c${max + 39}.js`));
-  check("...never the vendor files, or the offline page", keys.includes("https://app.test/vendor/opencv-5.0.0.js") && keys.includes("https://app.test/offline"), JSON.stringify(keys.filter((k) => !k.includes("/_next/"))));
+  check("...never the vendor files, or the offline page", keys.includes("https://app.test/vendor/opencv-5.0.0.js") && keys.includes(`https://app.test${offline}`), JSON.stringify(keys.filter((k) => !k.includes("/_next/"))));
+}
+
+// ── The offline page comes back if the phone cleared it ──
+{
+  const sw = boot({ fetch: async () => ({ ok: true, body: "the real page" }) });
+  await sw.dispatch("install");
+  await sw.dispatch("activate");
+  const name = [...sw.stores.keys()][0];
+  sw.stores.get(name).delete(`https://app.test${offline}`);
+  const res = await sw.dispatch("fetch", { request: { method: "GET", url: "https://app.test/vat", mode: "navigate" } });
+  await res;
+  await sleep(20);
+  check("a page loaded with signal puts a missing offline page back", sw.stores.get(name).has(`https://app.test${offline}`), JSON.stringify([...sw.stores.get(name).keys()]));
+}
+
+// ── A notification tap takes an open window to its page ──
+{
+  const sw = boot({ fetch: async () => ({ ok: true }) });
+  const went = [];
+  const win = { url: "https://app.test/receipts", focus: async () => { went.push("focus"); return win; }, navigate: async (u) => { went.push(u); return win; } };
+  sw.self.clientsList = [win];
+  await sw.dispatch("notificationclick", { notification: { close() {}, data: { url: "/invoices/abc" } } });
+  check("a tap on a notification goes to the invoice, not just to the window", went[0] === "/invoices/abc" && went[1] === "focus", JSON.stringify(went));
+  const sw2 = boot({ fetch: async () => ({ ok: true }) });
+  const stuck = { url: "https://app.test/", focus: async () => { went.push("focus2"); return stuck; }, navigate: async () => { throw new TypeError("not controlled"); } };
+  sw2.self.clientsList = [stuck];
+  await sw2.dispatch("notificationclick", { notification: { close() {}, data: { url: "/quotes/q" } } });
+  check("...and a window that can't be moved is still brought forward", went.includes("focus2"), JSON.stringify(went));
+  const sw3 = boot({ fetch: async () => ({ ok: true }) });
+  await sw3.dispatch("notificationclick", { notification: { close() {}, data: { url: "/bills" } } });
+  check("...and with no window open, one opens on the page", sw3.self.opened === "/bills", String(sw3.self.opened));
 }
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

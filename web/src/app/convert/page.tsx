@@ -3,8 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import EmailFileForm from "@/components/EmailFileForm";
 import Tip from "@/components/Tip";
-import { Made, TARGETS, Target, convertFiles, kindOf, targetsFor, WRITTEN_FOR_PEOPLE } from "@/lib/convert";
-import { saveBlob } from "@/lib/saveFile";
+import { Made, TARGETS, Target, canEncodeWebp, convertFiles, kindOf, targetsFor, WRITTEN_FOR_PEOPLE } from "@/lib/convert";
+import { saveBlob, saveBlobs } from "@/lib/saveFile";
 
 const KIND_WORDS: Record<string, string> = {
   image: "picture",
@@ -23,7 +23,7 @@ export default function ConvertPage() {
   const picker = useRef<HTMLInputElement>(null);
 
   const kinds = useMemo(() => files.map((f) => kindOf(f)), [files]);
-  const targets = useMemo(() => targetsFor(kinds), [kinds]);
+  const targets = useMemo(() => targetsFor(kinds).filter((t) => t !== "webp" || canEncodeWebp()), [kinds]);
   const stuck = files.length > 0 && targets.length === 0;
 
   function add(picked: FileList | null) {
@@ -139,7 +139,7 @@ export default function ConvertPage() {
             ))}
           </ul>
           {made.length > 1 && (
-            <button type="button" onClick={() => made.forEach((m) => saveBlob(m.name, m.blob))} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+            <button type="button" onClick={() => saveBlobs(made)} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
               Save all {made.length}
             </button>
           )}

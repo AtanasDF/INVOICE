@@ -383,7 +383,7 @@ export default function ClientsPage() {
                     )}
                     <input aria-label="Email"
                       type="email"
-                      autoComplete="email"
+                      autoComplete="off"
                       className="w-full rounded-lg border px-3 py-2 text-sm"
                       placeholder="Email"
                       value={draft.email}

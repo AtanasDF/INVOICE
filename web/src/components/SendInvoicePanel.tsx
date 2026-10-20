@@ -4,6 +4,7 @@ import { ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
+import { useIsIOS } from "@/lib/platform";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/invoicePdf";
 import SaveAsMenu from "@/components/SaveAsMenu";
 import { supabase } from "@/lib/supabaseClient";
@@ -106,12 +107,13 @@ export function useDocumentPdf({ sheet, pdfKey, filename, shareText }: { sheet: 
     document.body
   );
 
-  return { currentPdf, share, download, shareState, shareError, sheetPortal, sheetRef, filename };
+  return { currentPdf, share, download, shareState, shareError, sheetPortal, sheetRef, filename, shareText };
 }
 
 export type DocumentPdf = ReturnType<typeof useDocumentPdf>;
 
 export function ShareButtons({ pdf, children }: { pdf: DocumentPdf; children?: ReactNode }) {
+  const ios = useIsIOS();
   return (
     <>
       <div className="mt-2 flex flex-wrap gap-2">
@@ -130,6 +132,14 @@ export function ShareButtons({ pdf, children }: { pdf: DocumentPdf; children?: R
         {children}
       </div>
       {pdf.shareError && <p role="alert" className="mt-2 text-sm text-red-600">{pdf.shareError}</p>}
+      {/* WhatsApp on an iPhone commonly keeps the file and drops the words,
+          and the link to pay or answer is in the words. */}
+      {ios && pdf.shareText.includes("://") && (
+        <p className="mt-2 text-xs text-neutral-500">
+          On an iPhone, WhatsApp often sends the PDF without the message and its link. If it does, copy the link and
+          send that too.
+        </p>
+      )}
     </>
   );
 }

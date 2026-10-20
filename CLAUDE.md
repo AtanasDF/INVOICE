@@ -915,8 +915,11 @@ called fixed.
 
 And a per-device setting he may be carrying: `scan-engine` in localStorage is
 **per device**. If his iPhone has it on `claude` from the engine testing, every
-scan there goes through the slow reader. Opening `/scan?engine=gemini` on that
-phone once sets it back.
+scan there goes through the slow reader. Opening `/scan?engine=gemini` in a
+Safari tab once sets it back **for that tab only**: the home-screen app keeps
+its own storage, apart from Safari's, and has no address bar to type it into
+(`notes/ios-safari.md` #18). In the home-screen app, switch it from the picker,
+which shows whenever the key is set.
 
 ## Who else works here
 

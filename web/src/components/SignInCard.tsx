@@ -8,6 +8,7 @@ import { readSource } from "@/lib/source";
 import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites";
 import Turnstile, { turnstileOn } from "@/components/Turnstile";
 import { peopleCheckProblem } from "@/lib/peopleCheck";
+import { useIosHomeScreenApp } from "@/lib/install";
 
 // One box for signing in and one for making an account, with the choice
 // between them in plain sight (Atanas, 2026-09-22: "it should be simple
@@ -81,6 +82,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const homeScreenApp = useIosHomeScreenApp();
   const [busy, setBusy] = useState(false);
   // All three sends share it. `disabled` lands a render late, so two presses
   // in one tick sent two emails (the second refused, its refusal shown beside
@@ -187,7 +189,11 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(formEmail, { redirectTo: `${window.location.origin}/reset-password`, ...(captchaToken ? { captchaToken } : {}) });
         if (error) throw error;
-        setInfo("If that email has an account, a link to make a new password is on its way.");
+        setInfo(
+          homeScreenApp
+            ? "If that email has an account, a link to make a new password is on its way. It opens in Safari, not in this app: make the new password there, then come back here and sign in with it."
+            : "If that email has an account, a link to make a new password is on its way."
+        );
       } else if (mode === "signin") {
         setUnconfirmed(false);
         const { error } = await supabase.auth.signInWithPassword({ email: formEmail, password: formPassword, ...(captchaToken ? { options: { captchaToken } } : {}) });
@@ -247,13 +253,20 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       <div className={card}>
         <div>
           <h2 className="text-xl font-bold">One last thing: check your email</h2>
-          <p className="mt-1 text-base text-neutral-700">
-            We sent an email to <strong>{pendingEmail}</strong>. Open it and tap the button inside. That&apos;s it.
-          </p>
+          {homeScreenApp ? (
+            <p className="mt-1 text-base text-neutral-700">
+              We sent an email to <strong>{pendingEmail}</strong>. Type the 6 numbers from it here. Don&apos;t tap the
+              button in the email: it opens Safari, which is separate from this app, and this app would still be waiting.
+            </p>
+          ) : (
+            <p className="mt-1 text-base text-neutral-700">
+              We sent an email to <strong>{pendingEmail}</strong>. Open it and tap the button inside. That&apos;s it.
+            </p>
+          )}
         </div>
         <form onSubmit={confirmWithCode} className="space-y-2">
           <label htmlFor="signup-code" className="text-base font-medium text-neutral-800">
-            Or type the 6 numbers from the email
+            {homeScreenApp ? "The 6 numbers from the email" : "Or type the 6 numbers from the email"}
           </label>
           <div className="flex gap-2">
             <input

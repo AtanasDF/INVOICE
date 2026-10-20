@@ -7,6 +7,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { ScannedLine, formatPounds, isDeliveryLine, matchScannedLines, scannedUnitPrice } from "@/lib/quoteCompare";
 import { QuoteRequest, RequestSupplier, quoteDocumentUrl, requestSuppliersStore, uploadQuoteDocument } from "@/lib/quoteRequests";
 import { errorText, saveFailed } from "@/lib/errorText";
+import { openWhenReady } from "@/lib/afterTap";
 
 const SECONDARY = "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
@@ -129,9 +130,8 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
   }
 
   async function openDocument() {
-    const url = row.documentPath ? await quoteDocumentUrl(row.documentPath) : null;
-    if (url) window.open(url, "_blank", "noopener");
-    else setError("Their document couldn't be opened. Try again.");
+    const opened = await openWhenReady(row.documentPath ? quoteDocumentUrl(row.documentPath) : Promise.resolve(null)).catch(() => false);
+    if (!opened) setError("Their document couldn't be opened. Try again.");
   }
 
   return (

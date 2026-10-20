@@ -31,7 +31,9 @@ export async function POST(req: Request) {
       : { data: null };
     await pushToOwner(admin, view.user_id, {
       title: "Quote opened",
-      body: `${client?.name ?? "Your customer"} opened quote ${q?.number ?? ""}`.trim(),
+      // The owner's own tap on the link from WhatsApp, in a Safari tab while signed
+      // in only to the home-screen app, looks exactly like the customer's.
+      body: `${client?.name ?? "Your customer"} opened quote${q?.number ? ` ${q.number}` : ""} (or you did, somewhere you aren't signed in)`,
       url: `/quotes/${view.quote_id}`,
     });
   }

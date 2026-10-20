@@ -451,7 +451,8 @@ body {
 
 /* iPhone Safari gives a date input a minimum width of its own, which in a
    half-width column pushed it past the edge and over the next field. */
-input[type="date"] {
+input[type="date"],
+input[type="month"] {
   display: block;
   min-width: 0;
   max-width: 100%;

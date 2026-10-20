@@ -81,10 +81,17 @@ export async function getFxRate(from: string, to: string = "GBP"): Promise<numbe
 // a typo, and it catches a decimal point in the wrong place.
 export const MAX_RATE = 1000;
 
+// A rate never has thousands in it, so a comma is the decimal point: an
+// iPhone set to a European region types "1,17", which Number() refused.
+export function readRate(input: string): number {
+  const t = input.replace(/\s/g, "");
+  return Number(t.includes(".") ? t : t.replace(",", "."));
+}
+
 export function rateProblem(currency: string, input: string): string | null {
   if (currency === "GBP") return null;
   if (!input.trim()) return "Enter an exchange rate before saving (or wait for it to load).";
-  const rate = Number(input);
+  const rate = readRate(input);
   if (!Number.isFinite(rate) || rate <= 0) return `That exchange rate doesn't look right. Enter how many pounds one ${currency} is worth.`;
   if (rate > MAX_RATE) return `That exchange rate looks far too high. Enter how many pounds one ${currency} is worth — usually less than 2.`;
   return null;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { money } from "@/lib/money";
+import { amountOrNull, money } from "@/lib/money";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BusinessProfile, Client, CreditNote, Invoice, InvoicePayment, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, paymentsStore } from "@/lib/storage";
@@ -170,7 +170,7 @@ function InvoicesPage() {
   }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
-    const minTotal = parseFloat(filterMinTotal);
+    const minTotal = amountOrNull(filterMinTotal) ?? NaN;
     const search = filterSearch.trim().toLowerCase();
     const vatRegistered = profile?.vatRegistered ?? false;
     return invoices.filter((inv) => {
