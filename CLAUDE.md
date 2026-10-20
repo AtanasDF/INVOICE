@@ -136,9 +136,13 @@ session log what was added so he knows what to clear.
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **`SCAN_LIMITS=on` was
    set in Vercel on 2026-09-23, so all of this is LIVE** — see the environment section.
-   **Written but NOT run: migration-042 + backup 017** (`quotes.sent_at`, on
-   `feature/quote-sent-at`, which must not merge until they are run and verified).
-   Applied and verified up
+   Applied and verified up to **042** (`quotes.sent_at timestamptz`, nullable, no default;
+   backup 017 = `quotes_backup_20261020`). Run 2026-10-20 through the Supabase connection,
+   not the SQL editor: backup verified both ways (0/0, 16 columns each side, RLS on, no
+   anon/authenticated grants), then 042, then the catalog (17 columns, sent_at shape, no
+   existing value moved, the one owner policy unchanged), then exercised as the Hidefield
+   owner in a transaction ending in a raise -- stamped, nobody else's quotes visible, 0
+   rows left. The live table held 0 quotes at the time. Previously verified up
    to **041** (the London day in SQL: `public.uk_today()`, and
    `respond_to_quote_link`, `generate_recurring_invoice` and
    `submit_quote_request_response` redefined to call it instead of

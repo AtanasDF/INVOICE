@@ -4,6 +4,23 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Migration 042 run, and quotes remember when they were sent
+
+Atanas said go. Backup 017 and migration-042 run on the live database (project
+`wecfwjxzyzzrcwbwnwpo`) through the Supabase connection, each verified by content rather
+than by its success message -- the detail is in CLAUDE.md under rule 2. 0 quotes in the
+live table, so nothing was at risk either way.
+
+`feature/quote-sent-at` merged onto main as `integrate/quote-sent-at`. One code clash:
+days-between had moved the quotes page onto the shared `daysBetween`, while this branch
+moved the same rule into `lib/quoteChase.ts` importing the old copy from `lib/bills` --
+which no longer exists after round 2. Took the branch's page, pointed the import at
+`lib/today` (same sign, same maths). Against `next start`, one at a time: test-quote-age
+20/20, test-migration-042 15/15, test-days-between 51/51, test-utc-today 18/18,
+test-quote-chase 17/17, test-quote-links 20/20, test-quotes-fixes 11/11,
+test-quote-vat-snapshot 10/10, test-quotes 35/35, test-quote-not-invoice 8/8,
+test-answer-clash 7/7. tsc, eslint, build clean.
+
 ## 2026-10-20 — Cloud round 2 combined on `integrate/cloud-round-2`
 
 Six cloud branches merged onto `integrate/cloud-round-2` from `main` (after
