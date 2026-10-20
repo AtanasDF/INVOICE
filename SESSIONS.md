@@ -4,6 +4,17 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Round 4a live, then the camera fixes live for the iPhone test
+
+Atanas: merge 4a (`15eb531`), then "merge the camera fixes so I can try them on the
+iPhone. Undo them if I say anything is wrong." A preview could not do it -- Preview has
+only the two public Supabase values (no reading keys, no Turnstile site key, and sign-in
+needs Turnstile), so the camera page is unreachable there. Camera brief 14 went live as
+`ddbaa81`, a revert of the hold-back `f79d937`; web/src is byte-identical to the round 4
+that ran 57 suites. Again on main: ios-camera 55/55, account-switch 24, multi-docs 33,
+batch-stuck 14, camera-refusal 15, upload-panel 13; tsc, eslint, build clean.
+**If he reports anything wrong with the camera: `git revert ddbaa81` and push.**
+
 ## 2026-10-20 — Round 4: three ready on `integrate/cloud-round-4a`, the camera held back
 
 All four Safari/help branches combined on `integrate/cloud-round-4` (clashes: notes, suite
