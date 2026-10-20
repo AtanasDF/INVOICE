@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PhotoIcon, FolderIcon, UploadIcon } from "@/components/icons";
-import { ScanHandoff, readUpload, stashUploads } from "@/lib/scanHandoff";
+import { ScanHandoff, readUploads, stashUploads } from "@/lib/scanHandoff";
 
 // Upload a document (Atanas, 2026-09-24: "it should give you three buttons...
 // so you don't have to click three times").
@@ -55,7 +55,7 @@ export default function UploadPanel({ href = "/scan", inboxAddress, onMakeAddres
     }
     setBusy(true);
     setError(null);
-    const read = await Promise.allSettled(usable.map(readUpload));
+    const read = await readUploads(usable);
     if (!alive.current) return;
     const ok = read.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])) as ScanHandoff[];
     if (!ok.length) {

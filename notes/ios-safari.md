@@ -12,6 +12,8 @@ How sure: **certain** = it follows from the code plus documented WebKit behaviou
 sure; **possible** = plausible, worth a look. **iPhone?** says whether only a real phone
 can settle it. "Chrome 390" means it reproduces in desktop Chrome at 390 px wide.
 
+**Fixed on `claude/brief-14-cloud-queue-aka0xo` (brief 14), not merged:** 3, 4, 14, 15 and 16. See SESSIONS.md.
+
 ## Try these on the phone (ten minutes, in this order)
 
 1. **Tap into any small box**, e.g. a field on Needs review or the payment amount on an

@@ -40,6 +40,8 @@ import { todayISO } from "@/lib/today";
 import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
 import Tip from "@/components/Tip";
 import { receiptGbp } from "@/lib/receiptAmounts";
+import { dropKeptReadings, keepReadings, keptReadings, readingsToKeep } from "@/lib/keptReadings";
+import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -154,6 +156,8 @@ const pill = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium ${on ?
 // Reads for a batch start together, a few at a time, so the next
 // document is usually ready by the time the current one is saved.
 const READ_CONCURRENCY = 3;
+
+const KEPT_NOTE = "Brought back after the page reloaded. The photo wasn't kept, so check the details against the paper.";
 
 function limiter(n: number) {
   let active = 0;
@@ -405,13 +409,16 @@ export default function ScanPage() {
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
 
   const [pages, setPages] = useState<CapturedFile[]>([]);
+  // Readings from before the page was reloaded (iOS does it to a camera page
+  // left in the background), offered back before the camera opens over them.
+  const [kept, setKept] = useState<ScanResult[]>(() => (uploadMarked() || scanCaptureWaiting() ? [] : keptReadings<ScanResult>()));
   // Files picked on another page arrive without the camera opening.
-  const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() || scanCaptureWaiting() ? null : { kind: "first" }));
+  const [capture, setCapture] = useState<Capture | null>(() => (uploadMarked() || scanCaptureWaiting() || kept.length ? null : { kind: "first" }));
   // The camera on this page opens on arrival, so a person with it blocked
   // used to land on a black "Camera access was denied" screen with no way to
   // scan at all -- from the biggest button in the app. Only the camera we
   // opened ourselves closes itself; a deliberate tap keeps Try again.
-  const [autoOpened] = useState(() => !uploadMarked() && !scanCaptureWaiting());
+  const [autoOpened] = useState(() => !uploadMarked() && !scanCaptureWaiting() && !kept.length);
   const [cameraBlocked, setCameraBlocked] = useState(false);
   const isIOS = useIsIOS();
   const [scanning, setScanning] = useState(false);
@@ -558,6 +565,21 @@ export default function ScanPage() {
   const doc = walk && position >= 0 ? walk.docs[position] : null;
   const remaining = walk ? walk.docs.slice(position + 1).filter((d) => !d.done).length : 0;
   const unsaved = walk ? walk.docs.filter((d) => !d.done).length : 0;
+
+  // Written through on every change to the walk, so a reload loses nothing
+  // that was read. Nothing is written before the first batch, or the empty
+  // page would wipe the readings it is about to offer back.
+  useEffect(() => {
+    if (walk) keepReadings(readingsToKeep(walk.docs));
+  }, [walk]);
+
+  // Each of these was already counted against the day's scans, and a header
+  // link or a swipe back used to drop them without a word.
+  useLeaveGuard(
+    unsaved > 0,
+    `${unsaved === 1 ? "A scanned document hasn't" : `${unsaved} scanned documents haven't`} been saved. Leave anyway? ${unsaved === 1 ? "It'll" : "They'll"} be dropped.`,
+    dropKeptReadings
+  );
 
   async function loadLists(): Promise<Lists> {
     const [c, r, profile] = await Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()]);
@@ -811,6 +833,48 @@ export default function ScanPage() {
     return !pages.length || window.confirm("Start a new document? This scan hasn't been saved.");
   }
 
+  // A restored document has its reading and nothing else: the photo was too
+  // big to keep, so it saves without one, as a receipt typed in by hand does.
+  async function restoreKept() {
+    const readings = kept;
+    setKept([]);
+    setScanError(null);
+    let lists: Lists | undefined;
+    if (!listsLoadedRef.current) {
+      try {
+        lists = await loadLists();
+      } catch (err) {
+        setKept(readings);
+        setScanError(loadFailed(err, "your suppliers and receipts"));
+        return;
+      }
+    }
+    if (lists) suppliersRef.current = lists.suppliers;
+    readsRef.current = new Map();
+    const entries: WalkDoc[] = readings.map((result) => ({
+      id: ++idRef.current,
+      pages: [],
+      result,
+      error: null,
+      joined: false,
+      context: [],
+      splitNote: null,
+      readNote: KEPT_NOTE,
+      done: null,
+      look: null,
+    }));
+    setSummary(null);
+    setRefusal(null);
+    setWalk({ docs: entries, current: entries[0].id });
+    openDoc(entries[0]);
+  }
+
+  function dropKept() {
+    dropKeptReadings();
+    setKept([]);
+    setCapture({ kind: "first" });
+  }
+
   function scanMore() {
     setWalk(null);
     setSummary(null);
@@ -1027,6 +1091,8 @@ export default function ScanPage() {
           f = { ...read, currency: d.result.currency && d.result.currency !== "GBP" ? d.result.currency : "GBP" };
         }
         let look = !f || d.error ? "couldn't be read" : lookReason(f, d.result, isShown ? shown.touched : new Set());
+        // Saved without its photo only by somebody who has looked at it.
+        if (!look && !(isShown ? shown.pages : d.pages).length) look = "photo wasn't kept";
         if (f && !look && f.currency !== "GBP" && !f.fxRateInput) {
           if (!rates.has(f.currency)) rates.set(f.currency, getFxRate(f.currency, "GBP"));
           try {
@@ -1081,7 +1147,10 @@ export default function ScanPage() {
       return;
     }
     const savedSome = walk?.docs.some((d) => d.done === "saved");
-    if (window.confirm(savedSome ? "Discard this document? It won't be saved." : "Discard this scan? Nothing has been saved.")) router.push("/");
+    if (window.confirm(savedSome ? "Discard this document? It won't be saved." : "Discard this scan? Nothing has been saved.")) {
+      dropKeptReadings();
+      router.push("/");
+    }
   }
 
   const summaryText =
@@ -1250,6 +1319,31 @@ export default function ScanPage() {
         {/* Says nothing until there is little left, so a generous allowance
             never feels like a meter running. */}
         <ScansLeft />
+        {kept.length > 0 && !walk && (
+          <div role="status" className="mb-3 rounded-xl border bg-neutral-50 p-4 text-neutral-900">
+            <p className="text-base font-medium">
+              {kept.length === 1 ? "A document you scanned wasn't saved." : `${kept.length} documents you scanned weren't saved.`}
+            </p>
+            <p className="mt-1 text-base text-neutral-700">
+              The page reloaded before {kept.length === 1 ? "it was" : "they were"} saved. What was read is still here; the
+              photos weren&apos;t kept.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" onClick={restoreKept} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+                Bring {kept.length === 1 ? "it" : "them"} back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(kept.length === 1 ? "Drop this reading? It won't be saved." : `Drop these ${kept.length} readings? They won't be saved.`)) dropKept();
+                }}
+                className="inline-block py-1 text-sm font-medium text-neutral-700 underline"
+              >
+                Drop {kept.length === 1 ? "it" : "them"} and scan
+              </button>
+            </div>
+          </div>
+        )}
         {cameraBlocked && (
           <div role="status" className="mb-3 rounded-xl border bg-neutral-50 p-4 text-neutral-900">
             <p className="text-base font-medium">The camera didn&apos;t open.</p>
@@ -1329,7 +1423,9 @@ export default function ScanPage() {
             {!pages.length
               ? scanning
                 ? "Reading your files…"
-                : "Nothing read yet."
+                : doc?.result
+                  ? "Check the details below before saving."
+                  : "Nothing read yet."
               : scanning
                 ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…`
                 : "The document has been read — check the details below before saving."}
