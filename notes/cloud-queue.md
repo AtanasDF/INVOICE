@@ -147,7 +147,7 @@ wall" is the standard.
 notes/audit-failure-paths.md, branch, push. No behaviour changes.
 ```
 
-## 7. Dead weight — [ ]
+## 7. Dead weight — [x] (2026-10-20, `notes/dead-weight.md` on `wip/dead-weight`)
 
 ```
 Read CLAUDE.md. Find everything in web/src that nothing uses: exported functions with
