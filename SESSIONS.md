@@ -74,8 +74,8 @@ test-first-week 25/25. **Not green, and identically so on a build of
 `origin/fix/audit-components` (f0e4c06), so not this branch's:**
 - test-receipts-list 54/55 -- "the GBP figures are the EUR ones converted ONCE" gets
   48 / 12 where it expects 47.9976 / 11.9994: the EUR receipt's GBP figures are saved
-  rounded to pence. Money rounding, presumably from the audit branch's part 2; **worth
-  looking at before fix/audit-components merges.**
+  rounded to pence. **Settled since:** `ea062a9` on fix/audit-components made the suite
+  expect the penny figures -- the rounding was deliberate and the assertion stale. Merged in.
 - test-review-fixes 0/0 -- "Waiting failed: 15000ms exceeded" before its first check.
   Could be this container; re-run on the Mac.
 
@@ -84,8 +84,7 @@ at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` and add `--no-sandbox` i
 (A worktree with a symlinked `node_modules` will not build: Turbopack refuses a symlink out
 of the project root. It needs its own `npm ci`.)
 
-**For the Mac before merging**, against `next start`: test-receipts-list (to see whether the
-pence rounding is the base's), test-review-fixes, and test-days-between and test-bills as
+**For the Mac before merging**, against `next start`: test-receipts-list (with `ea062a9`), test-review-fixes, and test-days-between and test-bills as
 part of the logic run. The camera and scan suites are unaffected: no file they use changed.
 
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
