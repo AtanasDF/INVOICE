@@ -1,6 +1,7 @@
 import type { CreditNote, Invoice, Receipt } from "@/lib/storage";
 import { invoiceVat } from "@/lib/invoiceBalance";
 import { invoiceCharge } from "@/lib/cis";
+import { daysBetween } from "@/lib/today";
 
 // England, Wales and Northern Ireland, 2026/27 (frozen at these figures
 // until 2030/31). Scotland sets its own income tax bands.
@@ -44,7 +45,7 @@ export function nextSelfAssessmentDate(today: string): { date: string; what: str
 export const SA_NOTICE_DAYS = 14;
 export function selfAssessmentNotice(today: string): string | null {
   const next = nextSelfAssessmentDate(today);
-  if (Math.round((Date.parse(next.date) - Date.parse(today)) / 86_400_000) !== SA_NOTICE_DAYS) return null;
+  if (daysBetween(today, next.date) !== SA_NOTICE_DAYS) return null;
   return `Self Assessment is due ${next.date.endsWith("-01-31") ? "31 January" : "31 July"}: ${next.what}`;
 }
 
@@ -153,8 +154,8 @@ export function estimateTax({ invoices, creditNotes, receipts, vatRegistered, to
   }
 
   const profit = income - expenses;
-  const days = Math.round((Date.parse(today) - Date.parse(year.start)) / 86_400_000) + 1;
-  const yearDays = Math.round((Date.parse(year.end) - Date.parse(year.start)) / 86_400_000) + 1;
+  const days = daysBetween(year.start, today) + 1;
+  const yearDays = daysBetween(year.start, year.end) + 1;
   // The year's allowances and bands belong to the whole year: tax on the
   // profit so far with all of them would understate what's building up,
   // and CIS (kept back from the first pound) would look like a refund. So

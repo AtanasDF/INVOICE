@@ -3,6 +3,7 @@ import type { CreditNote, Invoice, InvoicePayment, Receipt } from "@/lib/storage
 import { invoiceCharge, creditOffDue } from "@/lib/cis";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { addDays } from "@/lib/reminderTemplates";
+import { daysBetween } from "@/lib/today";
 
 // Everything owed to you and everything you owe, in the order it matters:
 // late first, then this week, then the rest. The figures come from the same
@@ -31,13 +32,11 @@ export type MoneyScreen = {
   lateOut: number;
 };
 
-const days = (from: string, to: string) => Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000);
-
 // "Soon" is the next seven days. Anything without a date cannot be late and
 // cannot be soon, so it sorts last rather than being guessed at.
 function bucket(dueDate: string | null, today: string): { when: Owed["when"]; daysLate: number } {
   if (!dueDate) return { when: "undated", daysLate: 0 };
-  const late = days(dueDate, today);
+  const late = daysBetween(dueDate, today);
   if (late > 0) return { when: "late", daysLate: late };
   return { when: dueDate <= addDays(today, 7) ? "soon" : "later", daysLate: 0 };
 }

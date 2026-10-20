@@ -2,6 +2,7 @@ import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { money } from "@/lib/money";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import type { CreditNote, Invoice, InvoicePayment } from "@/lib/storage";
+import { daysBetween } from "@/lib/today";
 
 // A statement of account: every issued invoice for one customer, what has
 // come off it, and what is still owed — the figures the invoice page shows,
@@ -43,7 +44,6 @@ export type Statement = {
 };
 
 const pence = (n: number) => Math.round(n * 100);
-const days = (from: string, to: string) => Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000);
 
 export function buildStatement(
   invoices: Invoice[],
@@ -77,7 +77,7 @@ export function buildStatement(
         paid,
         balance,
         credit,
-        daysLate: inv.dueDate && balance > 0 ? Math.max(0, days(inv.dueDate, today)) : 0,
+        daysLate: inv.dueDate && balance > 0 ? Math.max(0, daysBetween(inv.dueDate, today)) : 0,
       };
     })
     .sort((a, b) => (a.date === b.date ? a.number.localeCompare(b.number) : a.date < b.date ? -1 : 1));

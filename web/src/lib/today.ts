@@ -65,3 +65,23 @@ export function addDays(iso: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+// Whole days from one plain date to another: positive when `to` is later,
+// negative when it is earlier, NaN when either will not parse.
+//
+// The one copy. There were twelve -- three functions called daysBetween and
+// nine inline sums -- and they did not agree: lib/duplicates.ts returned the
+// UNSIGNED difference, freeInvoiceDraft returned null for a backwards gap,
+// some floored and some rounded, and some parsed the bare string while others
+// pinned it to UTC midnight. On two plain dates they all give the same whole
+// number, which is why nobody noticed; the trap was the next caller reusing
+// the unsigned one to ask "is this overdue" and getting the wrong sign without
+// a word. A caller that wants distance either way says Math.abs where it calls.
+//
+// Both ends are pinned to UTC midnight, so the difference is an exact number of
+// days even across a clock change. Midnight in London would be 23 or 25 hours
+// apart twice a year. harness/test-days-between.mjs holds it to that, and fails
+// if a private copy grows back anywhere in web/src.
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}

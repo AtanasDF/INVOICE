@@ -145,9 +145,10 @@ the hint names it after three seconds, both verified.
   correctly; the suite now fails if a route on disk is in no list.
 - **What counts as a bill, and the 3-day window, were each written out four times.**
   One definition now (`src/lib/bills.ts`), with a suite that fails if a screen grows
-  its own copy back. `daysBetween` still exists in four copies that are NOT
-  equivalent — `lib/duplicates.ts` returns an unsigned difference — and that is
-  written down, not fixed.
+  its own copy back. `daysBetween` was twelve copies (three named, nine inline)
+  that were NOT equivalent; on `wip/days-between` (2026-10-20, cloud) it is one,
+  signed, in `lib/today.ts`, and `test-days-between` fails if a private copy grows
+  back.
 - **The harness had been running against a dev server**, which invalidates every
   browser suite. Of nineteen suites not green, seventeen were that. **`preview_start`
   ignores the config name and starts the dev server whatever it is asked for**, and a
