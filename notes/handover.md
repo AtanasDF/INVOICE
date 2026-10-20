@@ -323,6 +323,11 @@ tracked in git, they are not in `run-all.sh`, and nothing runs them. They are wo
 dead weight: they still carry `new Date().toISOString().slice(0, 10)`, the exact bug the
 whole of `todayISO()` exists to fix, so anyone grepping the harness finds the wrong pattern
 first. Nothing in this project is deleted without him saying so, so they stay until he does.
+**Mapped 2026-10-20 in `notes/suite-map.md`:** they are 44 copies plus `run-all.sh`,
+`run-one.sh` and `run-bent-suites.sh` (live -- never delete by `run-*`). Only
+`qux-test-public-company` holds checks found nowhere else (the customer's `/q/` page for a
+company vs a private person). The bigger hole is `test-receipts-list-3302`, marked
+superseded but the only suite on the supplier-link banner and `noSupplier` (25 checks).
 
 
 Companies House API key (24) · his business details in Settings on Hidefield (42) ·
