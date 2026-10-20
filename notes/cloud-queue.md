@@ -263,7 +263,7 @@ Add source-reading guards (like test-no-hardcoded-colour) so each fix can't sile
 back, and list the browser suites the Mac must run. Branch: wip/ios-forms-layout.
 ```
 
-## 14. iPhone Safari fixes: the camera and scanning — [x] (2026-10-20, `claude/brief-14-cloud-queue-aka0xo`: findings 3, 4, 14, 15, 16 fixed, NOT merged; camera suites to run on the Mac)
+## 14. iPhone Safari fixes: the camera and scanning — [ ]
 
 ```
 Read notes/ios-safari.md first. Fix findings 3, 4, 14, 15 and 16: an interruption (iOS

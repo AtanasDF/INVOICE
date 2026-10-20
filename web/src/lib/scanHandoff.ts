@@ -1,5 +1,3 @@
-import { DECODE_AT_ONCE, settleFew } from "@/lib/settleFew";
-
 // Carries an iOS-native-camera capture across the dashboard -> /scan
 // navigation -- the tap that opens the camera also has to navigate, so
 // there's no way to hand the file directly through a component prop.
@@ -98,11 +96,6 @@ function typed(dataUrl: string, declared: string): { dataUrl: string; type: stri
   const comma = dataUrl.indexOf(",");
   const hit = SNIFF.find(([re]) => re.test(dataUrl.slice(comma + 1, comma + 16)));
   return hit ? { dataUrl: `data:${hit[1]};base64,${dataUrl.slice(comma + 1)}`, type: hit[1] } : null;
-}
-
-// Several picked files, read a couple at a time (see settleFew).
-export function readUploads(files: File[]): Promise<PromiseSettledResult<ScanHandoff>[]> {
-  return settleFew(files, DECODE_AT_ONCE, readUpload);
 }
 
 // A picked file as a scan page takes it: photos downscaled like every

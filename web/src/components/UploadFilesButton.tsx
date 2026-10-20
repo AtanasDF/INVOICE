@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadIcon } from "@/components/icons";
-import { ScanHandoff, readUploads, stashUploads } from "@/lib/scanHandoff";
+import { ScanHandoff, readUpload, stashUploads } from "@/lib/scanHandoff";
 
 // Under a camera button: photos or PDFs already on the phone, straight to
 // the page that reads them (href), or to this page's own reader (onFiles).
@@ -47,7 +47,7 @@ export default function UploadFilesButton({
     if (!files.length) return;
     setBusy(true);
     setError(null);
-    const read = await readUploads(files);
+    const read = await Promise.allSettled(files.map(readUpload));
     if (!mountedRef.current) return;
     const ok = read.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
     if (!ok.length) {
