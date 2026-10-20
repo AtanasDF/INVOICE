@@ -18,13 +18,16 @@ export default function FeedbackPage() {
   const [saving, setSaving] = useState(false);
   const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  // Apart from the send's error, which a send wipes: after that, "Previously
+  // sent" listing just the new note read as the whole history.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
 
   useEffect(() => {
     feedbackStore
       .all()
       .then(setItems)
-      .catch((err) => setError(loadFailed(err, "what you've noted before", "You can still add to it.")))
+      .catch((err) => setLoadError(loadFailed(err, "what you've noted before", "You can still add to it.")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -96,9 +99,10 @@ export default function FeedbackPage() {
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
-        items.length > 0 && (
+        (items.length > 0 || loadError) && (
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-neutral-500">Previously sent</h2>
+            {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
             {items.map((f) => (
               <div key={f.id} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
                 <div className="flex items-center justify-between text-xs text-neutral-500">

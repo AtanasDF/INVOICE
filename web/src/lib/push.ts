@@ -37,15 +37,22 @@ export async function enablePush(): Promise<PushSubscription> {
   if (!vapidKey) throw new Error("Push notifications aren't configured on this deployment yet.");
   if (!pushSupported()) throw new Error("This browser doesn't support push notifications.");
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") throw new Error("Notification permission wasn't granted.");
-  const reg = await navigator.serviceWorker.register("/sw.js");
-  await navigator.serviceWorker.ready;
-  const existing = await reg.pushManager.getSubscription();
-  if (existing) return existing;
-  return reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidKey),
-  });
+  if (permission !== "granted") throw new Error("Notifications are turned off for this site. Allow them in the browser's settings for this site, then try again.");
+  // Every throw here is shown as written, so the browser's own ("Registration
+  // failed - push service error", a DOMException offline) is said plainly.
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return existing;
+    return await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
+  } catch (err) {
+    console.error("enablePush", err);
+    throw new Error("Couldn't turn notifications on just now. Check your connection and try again.");
+  }
 }
 
 /** Returns the endpoint that was unsubscribed, so the caller can remove its stored row too. */

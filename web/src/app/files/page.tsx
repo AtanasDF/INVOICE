@@ -23,7 +23,7 @@ export default function FilesPage() {
   const [filterTo, setFilterTo] = useState("");
   const [filterSupplierId, setFilterSupplierId] = useState("");
   const [preview, setPreview] = useState<Receipt | null>(null);
-  const [previewPages, setPreviewPages] = useState<{ receiptId: string; pages: ReceiptPage[] } | null>(null);
+  const [previewPages, setPreviewPages] = useState<{ receiptId: string; pages: ReceiptPage[]; failed?: boolean } | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
   const previewIdRef = useRef<string | null>(null);
   // The tile that opened the preview gets focus back when it closes, so
@@ -49,15 +49,24 @@ export default function FilesPage() {
     setPreview(r);
     setPreviewIndex(0);
     setPreviewPages(null);
+    setFileNote(null);
+    setFileError(null);
+    loadPages(r);
+  }
+
+  function loadPages(r: Receipt) {
     if (!pageCounts.get(r.id)) return;
+    setPreviewPages(null);
     receiptPagesStore
       .forReceipt(r.id)
       .then((pages) => {
         if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages });
       })
-      // Page 1 is already on screen; without this the extra pages spin forever.
-      .catch(() => {
-        if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages: [] });
+      // Said, not just stopped: an empty list here left "Loading page…" up for
+      // good on page 2, and Save made a one-page file of a three-page document.
+      .catch((err) => {
+        console.error("Couldn't load the other pages", err);
+        if (previewIdRef.current === r.id) setPreviewPages({ receiptId: r.id, pages: [], failed: true });
       });
   }
 
@@ -86,12 +95,15 @@ export default function FilesPage() {
   const [fileNote, setFileNote] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
-  // The document as one file: page one and whatever pages came with it.
+  // The document as one file: page one and every page that came with it. It
+  // throws rather than say anything itself, so the email form below says its
+  // own PDF_FAILED instead of "There's nothing to send yet." under a document
+  // that is plainly on screen.
   async function makeFile() {
     if (!preview) return null;
-    setFileError(null);
     setMakingFile(true);
     try {
+      if (loadedPages.length < previewTotalPages - 1) throw new Error("pages not loaded");
       const sources = [preview.imageDataUrl, ...loadedPages.map((p) => p.imageDataUrl)].filter((s): s is string => !!s);
       // A page is a data URL or a signed link, and its kind is whatever it
       // says it is: a PNG embedded as a JPEG makes no file at all.
@@ -114,16 +126,21 @@ export default function FilesPage() {
       const name = pdfName("", `${preview.vendor || preview.category || "Document"} ${shortDate(preview.date)}`);
       const bytes = await pagesToPdf(pages, name.replace(/\.pdf$/, ""));
       return { blob: new Blob([bytes as BlobPart], { type: "application/pdf" }), name };
-    } catch {
-      setFileError("That file couldn't be made. Try again.");
-      return null;
     } finally {
       setMakingFile(false);
     }
   }
 
   async function saveFile() {
-    const made = await makeFile();
+    setFileError(null);
+    let made: Awaited<ReturnType<typeof makeFile>>;
+    try {
+      made = await makeFile();
+    } catch (err) {
+      console.error("files: making the file", err);
+      setFileError(pagesFailed ? "The other pages didn't load, so the file would be missing them. Try again when you have signal." : "That file couldn't be made. Try again.");
+      return;
+    }
     if (!made) return;
     const { saveBlob } = await import("@/lib/saveFile");
     saveBlob(made.name, made.blob);
@@ -153,6 +170,7 @@ export default function FilesPage() {
 
   const previewTotalPages = preview ? 1 + (pageCounts.get(preview.id) ?? 0) : 1;
   const loadedPages = preview && previewPages?.receiptId === preview.id ? previewPages.pages : [];
+  const pagesFailed = !!preview && previewPages?.receiptId === preview.id && !!previewPages.failed;
   const previewSrc = preview ? (previewIndex === 0 ? preview.imageDataUrl : loadedPages[previewIndex - 1]?.imageDataUrl ?? null) : null;
 
   return (
@@ -262,7 +280,14 @@ export default function FilesPage() {
             <button ref={closeRef} onClick={closePreview} aria-label="Close preview" className="text-2xl leading-none text-ink-on-dark/80">✕</button>
           </div>
           <div className="mt-4 flex flex-1 items-center justify-center overflow-auto" onClick={(e) => e.stopPropagation()}>
-            {!previewSrc ? (
+            {!previewSrc && pagesFailed ? (
+              <div role="alert" className="text-center text-sm text-ink-on-dark">
+                <p>Couldn&apos;t load this page. Check your connection and try again.</p>
+                <button type="button" onClick={() => loadPages(preview)} className="mt-2 rounded-lg border border-ink-on-dark/40 px-3 py-1.5 font-medium">
+                  Try again
+                </button>
+              </div>
+            ) : !previewSrc ? (
               <p className="text-sm text-neutral-500">Loading page…</p>
             ) : isPdfDataUrl(previewSrc) ? (
               <iframe src={previewSrc} className="h-full w-full rounded-lg bg-white" title="Document preview" />

@@ -44,7 +44,13 @@ export default function SaveThese({ receipts, clients, from, to, supplier }: {
       const extraPages = await receiptPagesStore.all();
       const items = await gather(receipts, clients, extraPages, (n, total) => setStep(`Reading ${n} of ${total}…`));
       setStep("Putting it together…");
-      const file = await buildExport(items, shape, label);
+      // Its own sentence: what this throws is pdf-lib's or the browser's
+      // ("Importing a module script failed." offline, "SOI not found in
+      // JPEG"), and saveFailed hands any Error's words straight on.
+      const file = await buildExport(items, shape, label).catch((err) => {
+        console.error("save these: building the file", err);
+        throw new Error("Couldn't put the file together. Check your connection and try again, or pick another kind of file.");
+      });
       saveBlob(file.name, file.blob);
       setDone(`${file.name} saved to your device.`);
       setOpen(false);

@@ -40,6 +40,10 @@ export default function RecurringInvoicesPage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Apart from the form's error, which Clear and Add reset: with one between
+  // them, clearing the form after a failed load made the list say there were
+  // none.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   // A ref, not the `disabled` state: React applies `disabled` on the render
   // AFTER the first press, and both handlers close over the same state, so two
@@ -69,7 +73,7 @@ export default function RecurringInvoicesPage() {
         setClients(c);
         setProfile(biz);
       })
-      .catch((err) => setError(loadFailed(err, "your repeating invoices")))
+      .catch((err) => setLoadError(loadFailed(err, "your repeating invoices")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -310,7 +314,8 @@ export default function RecurringInvoicesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring invoices set up yet. Add one for work you bill every month, and a draft invoice is made for you on the day.</p>}
+          {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
+          {items.length === 0 && !error && !loadError && <p className="text-sm text-neutral-500">No recurring invoices set up yet. Add one for work you bill every month, and a draft invoice is made for you on the day.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             const total = computeInvoiceTotals(item.items, profile?.vatRegistered ?? false).total;

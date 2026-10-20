@@ -22,7 +22,7 @@ export default function StatementPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<{ client: Client | null; invoices: Invoice[]; credits: CreditNote[]; payments: InvoicePayment[]; profile: BusinessProfile } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "yes" | "no">("");
   const asAt = todayIso();
 
   useEffect(() => {
@@ -54,9 +54,10 @@ export default function StatementPage() {
   });
 
   async function copy() {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    // "Copied" only when it was: a refused write said so too, and the chaser
+    // went out with whatever was on the clipboard before.
+    await navigator.clipboard.writeText(text).then(() => setCopied("yes"), () => setCopied("no"));
+    setTimeout(() => setCopied(""), 3000);
   }
 
   return (
@@ -98,7 +99,7 @@ export default function StatementPage() {
                 Print
               </button>
               <button type="button" onClick={copy} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
-                {copied ? "Copied" : "Copy the figures"}
+                {copied === "yes" ? "Copied" : copied === "no" ? "Couldn't copy. Use Share instead" : "Copy the figures"}
               </button>
             </ShareButtons>
           </div>

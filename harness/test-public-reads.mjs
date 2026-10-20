@@ -77,8 +77,13 @@ for (const table of ["clients", "quote_links"]) {
 }
 // A database without migration-033: the first select names a column that
 // isn't there and errors; the old column list must still find the quote.
-r = await outcome(loadPublicQuote(TOKEN, client({ ...QUOTE, quotes: (cols) => (/vat_registered/.test(cols) ? fail : ok({ ...QUOTE.quotes.data, vat_registered: undefined })) })));
+const noColumn = { data: null, error: { message: "column quotes.vat_registered does not exist", code: "42703" } };
+r = await outcome(loadPublicQuote(TOKEN, client({ ...QUOTE, quotes: (cols) => (/vat_registered/.test(cols) ? noColumn : ok({ ...QUOTE.quotes.data, vat_registered: undefined })) })));
 check("quote: without the snapshot column it falls back and still loads", r.value?.quote.number === "Q-3", JSON.stringify(r).slice(0, 200));
+// Any other failure of the first read is not a missing column: falling back
+// then priced the Accept button by today's setting instead of the snapshot.
+r = await outcome(loadPublicQuote(TOKEN, client({ ...QUOTE, quotes: (cols) => (/vat_registered/.test(cols) ? fail : ok({ ...QUOTE.quotes.data, vat_registered: true })) })));
+check("quote: a dropped first read throws rather than losing the VAT snapshot", !!r.threw, JSON.stringify(r).slice(0, 200));
 r = await outcome(loadPublicQuote(TOKEN, client({ ...QUOTE, quotes: fail })));
 check("quote: both quote reads failing throws", !!r.threw);
 r = await outcome(loadPublicQuote(TOKEN, client({ ...QUOTE, quotes: ok(null) })));

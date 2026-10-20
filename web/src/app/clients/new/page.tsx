@@ -30,7 +30,7 @@ async function readContacts(file: CapturedFile): Promise<ScannedContact[]> {
     body: JSON.stringify({ image: file.dataUrl }),
   });
   const body = (await res.json().catch(() => ({}))) as { contacts?: ScannedContact[]; error?: string };
-  if (!res.ok || !body.contacts) throw new Error(body.error || `Couldn't read that (${res.status}).`);
+  if (!res.ok || !body.contacts) throw new Error(body.error || "Couldn't read that just now. Try again, or type the details in.");
   return body.contacts;
 }
 

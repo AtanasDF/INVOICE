@@ -36,6 +36,10 @@ export async function loadPublicQuote(token: string, client?: SupabaseClient): P
     .eq("user_id", link.user_id)
     .maybeSingle();
   let q = first.data;
+  // Only the missing column falls back. Any error did, so one dropped read
+  // followed by a good one priced the Accept button by today's setting, not
+  // the one the quote went out under.
+  if (first.error && first.error.code !== "42703") must(first, "quote");
   if (first.error) {
     const fallback = must(await admin.from("quotes").select(COLUMNS).eq("id", link.quote_id).eq("user_id", link.user_id).maybeSingle(), "quote");
     q = fallback ? { ...fallback, vat_registered: null } : null;

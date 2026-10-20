@@ -52,6 +52,9 @@ export default function NewReceiptPage() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Its own line, not the form's error: a photo, Clear or Save wiped that, and
+  // the duplicate checks then ran against an empty list with nothing saying so.
+  const [listsError, setListsError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingNow = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -71,7 +74,7 @@ export default function NewReceiptPage() {
       })
       // The form still works without them: only the supplier list and the
       // usual category are missing, so say so rather than block the page.
-      .catch((err) => setError(loadFailed(err, "your suppliers and categories", "You can still fill this in.")));
+      .catch((err) => setListsError(loadFailed(err, "your suppliers and categories", "You can still fill this in.")));
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
@@ -188,9 +191,9 @@ export default function NewReceiptPage() {
     setConfirmedDuplicate(false);
   }
 
-  function duplicateOf(): Receipt | null {
+  function duplicateOf(saved: Receipt[]): Receipt | null {
     const { netGbp, vatGbp } = gbpAmounts();
-    return findDuplicate({ clientId, vendor, invoiceNumber: null, date, gross: netGbp + vatGbp, isCreditNote: false }, receipts);
+    return findDuplicate({ clientId, vendor, invoiceNumber: null, date, gross: netGbp + vatGbp, isCreditNote: false }, saved);
   }
 
   // Named so the box and the message can point at each other without the two
@@ -205,8 +208,22 @@ export default function NewReceiptPage() {
       return;
     }
 
+    // The list the duplicate check reads never loaded: fetch it now, or say the
+    // check couldn't run rather than save past it.
+    let saved = receipts;
+    if (listsError && !confirmedDuplicate) {
+      try {
+        saved = await receiptsStore.all();
+        setReceipts(saved);
+        setListsError(null);
+      } catch (err) {
+        setError(loadFailed(err, "your saved receipts, so this couldn't be checked for a duplicate"));
+        return;
+      }
+    }
+
     if (!confirmedDuplicate) {
-      const dup = duplicateOf();
+      const dup = duplicateOf(saved);
       if (dup) {
         setPossibleDuplicate(dup);
         return;
@@ -253,6 +270,8 @@ export default function NewReceiptPage() {
           Scan or upload a receipt, tag it with a supplier and category, and it is saved for later.
         </p>
       </div>
+
+      {listsError && <p role="alert" className="text-sm text-red-600">{listsError}</p>}
 
       <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <div

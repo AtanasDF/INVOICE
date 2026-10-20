@@ -8,7 +8,7 @@ import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH, renderInvoicePdf } from "@/lib/in
 import SaveAsMenu from "@/components/SaveAsMenu";
 import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicQuote } from "@/lib/publicQuote";
-import { saveFailed, PDF_FAILED } from "@/lib/errorText";
+import { customerFailed, PDF_FAILED } from "@/lib/errorText";
 import { SITE_NAME } from "@/lib/siteName";
 
 type Answer = "accepted" | "declined";
@@ -85,7 +85,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
     } catch (err) {
       // An answer that failed is worth another try; one that worked is not.
       answering.current = false;
-      setError(saveFailed(err, "That didn't work. Try again."));
+      setError(customerFailed(err, "That didn't work. Try again."));
     } finally {
       setSending(false);
     }
