@@ -6,6 +6,19 @@ this section contradicts it.
 Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.
 
+## Component audit MERGED and live (2026-10-20, `32f675d`)
+
+Both cloud halves (`wip/audit-components-1` and `-2`, 81 fixes) were combined on
+`fix/audit-components`, tested on the Mac (46 browser suites against `next start`, all
+green or explained) and fast-forwarded into `main` on Atanas's OK. The two sections
+below describe those branches before the merge. Still open:
+- `test-inbox-ingest` is red on main since 15/10 (8 checks): it stands in only for
+  Anthropic and the email import reads with Gemini. It needs a Gemini stand-in.
+- Atanas's call: whether invoice lines round to the penny inside computeInvoiceTotals.
+- In flight in the cloud: wip/converter-audit, wip/stale-suites, wip/dead-weight,
+  wip/draft-autosave, wip/network-off, feature/quote-sent-at (needs a migration, rule 4),
+  wip/days-between.
+
 ## Audit sections 1-4: fixed on `wip/audit-components-1`, NOT merged (2026-10-19, cloud)
 
 50 findings fixed, 2 already done by `517a74f`, none false. Needs the browser suites
