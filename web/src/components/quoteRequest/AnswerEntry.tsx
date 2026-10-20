@@ -7,6 +7,7 @@ import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { ScannedLine, formatPounds, isDeliveryLine, matchScannedLines, scannedUnitPrice } from "@/lib/quoteCompare";
 import { QuoteRequest, RequestSupplier, quoteDocumentUrl, requestSuppliersStore, uploadQuoteDocument } from "@/lib/quoteRequests";
 import { errorText, saveFailed } from "@/lib/errorText";
+import { useConfirmLeave } from "@/lib/leaveGuard";
 
 const SECONDARY = "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
@@ -39,6 +40,9 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
   const [matches, setMatches] = useState<Record<string, number | null>>({});
   const [note, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [opened] = useState(() => JSON.stringify(draft));
+  // iPhone Safari never asks before leaving, so the app does.
+  useConfirmLeave(!saving && (!!file || JSON.stringify(draft) !== opened), `Leave without saving ${supplierName}'s prices? What you've typed goes.`);
   // A second press uploaded the document again to a new path, leaving an
   // orphan in the bucket, and its refused record said the answer had changed.
   const savingNow = useRef(false);

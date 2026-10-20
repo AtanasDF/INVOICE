@@ -1,7 +1,8 @@
 "use client";
 
 import { ukDate } from "@/lib/today";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { clearAnswer, readAnswer, writeAnswer } from "@/lib/answerDraft";
 import PriceForm, { draftFrom, readDraft } from "@/components/quoteRequest/PriceForm";
 import { longDate } from "@/components/invoice/InvoiceDocument";
 import { LinePrice, RequestItem, cellFor, formatPence, quantityText, supplierTotal } from "@/lib/quoteCompare";
@@ -68,6 +69,26 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
   const from = data.from || "the sender";
   const own = sent ?? (data.answer?.own ? data.answer : null);
 
+  // Prices typed before the phone reloaded the page are put back, once, after
+  // the page is on the device (the server has no tab to read them from).
+  const onDevice = useSyncExternalStore(() => () => {}, () => true, () => false);
+  const [restored, setRestored] = useState(false);
+  const [blank] = useState(() => JSON.stringify({ draft, name: "" }));
+  if (onDevice && !restored) {
+    setRestored(true);
+    const kept = readAnswer(token, draftFrom(data.items));
+    if (kept) {
+      setDraft(kept.draft);
+      setName(kept.name);
+    }
+  }
+  useEffect(() => {
+    if (!restored || sent) return;
+    const now = JSON.stringify({ draft, name });
+    if (now === blank) clearAnswer(token);
+    else writeAnswer(token, { draft, name });
+  }, [restored, sent, draft, name, blank, token]);
+
   async function submit(decline: boolean) {
     setError(null);
     const read = readDraft(data.items, draft);
@@ -93,6 +114,7 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
         validUntil: out.status === "replied" ? draft.validUntil || null : null,
         note: draft.note.trim(),
       });
+      clearAnswer(token);
       setDeclining(false);
       window.scrollTo({ top: 0 });
     } catch (err) {

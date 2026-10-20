@@ -1,5 +1,9 @@
 "use client";
 
+import DraftOffer from "@/components/DraftOffer";
+import { clearFormDraft, invoiceEditDraftFields } from "@/lib/formDraft";
+import { useFormDraft } from "@/lib/useFormDraft";
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import Tip from "@/components/Tip";
 import { amount, money } from "@/lib/money";
@@ -120,6 +124,9 @@ export default function InvoiceViewPage() {
   const [draftTagsInput, setDraftTagsInput] = useState("");
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  // The draft as saved, which the kept copy on the device is measured
+  // against: undefined until it has loaded, and for an issued invoice.
+  const [draftBaseline, setDraftBaseline] = useState<string | undefined>(undefined);
 
   // "Mark as sent" is a two-step action: this panel confirms the invoice
   // number that's about to be assigned (a preview only -- the real value
@@ -176,6 +183,8 @@ export default function InvoiceViewPage() {
         setDraftCisRate(inv.cisRate);
         setDraftNotes(inv.notes);
         setDraftTagsInput(inv.tags.join(", "));
+        if (inv.status === "draft") setDraftBaseline(JSON.stringify(invoiceEditDraftFields({ ...inv, dueDate: inv.dueDate ?? "", items: inv.items.length ? inv.items : [{ ...BLANK_ITEM }], tagsInput: inv.tags.join(", ") })));
+        else clearFormDraft("invoice-edit", inv.id);
       }
     }
     load();
@@ -183,6 +192,24 @@ export default function InvoiceViewPage() {
       cancelled = true;
     };
   }, [params.id]);
+
+  // Kept on the device as it is typed: iPhone Safari reloads a tab left in
+  // the background, and beforeunload never fires there to warn first.
+  const draftFields = invoiceEditDraftFields({ clientId: draftClientId, date: draftDate, dueDate: draftDueDate, paymentTerms: draftPaymentTerms, items: draftItems, cisRate: draftCisRate, notes: draftNotes, tagsInput: draftTagsInput })!;
+  const kept = useFormDraft("invoice-edit", draftFields, draftSaving || sendBusy || draftBaseline === undefined, { scope: params.id, baseline: draftBaseline });
+
+  function restoreDraft() {
+    const f = kept.take();
+    if (!f) return;
+    if (clients.some((c) => c.id === f.clientId)) setDraftClientId(f.clientId);
+    setDraftDate(f.date);
+    setDraftDueDate(f.dueDate);
+    setDraftPaymentTerms(f.paymentTerms);
+    setDraftItems(f.items.length ? f.items : [{ ...BLANK_ITEM }]);
+    setDraftCisRate(f.cisRate);
+    setDraftNotes(f.notes);
+    setDraftTagsInput(f.tagsInput);
+  }
 
   const client = clients.find((c) => c.id === invoice?.clientId) || null;
   // Archived clients dropped from the draft picker, except the one
@@ -422,6 +449,7 @@ export default function InvoiceViewPage() {
         notes: draftNotes,
         tags,
       });
+      setDraftBaseline(JSON.stringify(draftFields));
       const fresh = await invoicesStore.get(invoice.id);
       setInvoice(fresh);
     } catch (err) {
@@ -467,6 +495,7 @@ export default function InvoiceViewPage() {
         tags,
       });
       await invoicesStore.markSentWithNumber(invoice.id);
+      kept.finish();
     } catch (err) {
       // Supabase errors are plain objects, not Errors: instanceof would
       // hide the reason behind the fallback on exactly the failures worth
@@ -611,7 +640,8 @@ export default function InvoiceViewPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Draft invoice</h1>
+            <Link href="/invoices" className="text-sm text-neutral-500">← Invoices</Link>
+            <h1 className="mt-1 text-2xl font-bold">Draft invoice</h1>
             <p className="mt-1 text-neutral-600">
               Nothing&apos;s been sent yet — everything here, including the client and line items, is still
               editable. Marking it sent locks the financial content and starts the due-date clock.
@@ -619,6 +649,8 @@ export default function InvoiceViewPage() {
           </div>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass("draft", false)}`}>Draft</span>
         </div>
+
+        {kept.offer && <DraftOffer what="changes to this draft invoice" savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
 
         <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <select aria-label="Customer" className="w-full rounded-lg border px-3 py-2" value={draftClientId} onChange={(e) => setDraftClientId(e.target.value)}>
@@ -656,14 +688,14 @@ export default function InvoiceViewPage() {
                   onChange={(e) => updateDraftItem(idx, { description: e.target.value })}
                 />
                 <NumberInput
-                  className={`${vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`}
+                  className={`col-span-4 rounded-lg border px-3 py-2 text-right sm:col-span-2`}
                   placeholder="Qty"
                   aria-label="Quantity"
                   value={it.quantity}
                   onChange={(quantity) => updateDraftItem(idx, { quantity })}
                 />
                 <NumberInput
-                  className={`${vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
+                  className={`${vatRegistered ? "col-span-4" : "col-span-8"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
                   placeholder="Unit price"
                   aria-label="Unit price"
                   value={it.unitPrice}
@@ -679,7 +711,7 @@ export default function InvoiceViewPage() {
                     {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                   </select>
                 )}
-                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600 underline">✕</button>
+                <button onClick={() => removeDraftLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-sm text-neutral-600 underline">✕</button>
                 {draftCisRate !== null && <LineKind item={it} onChange={(kind) => updateDraftItem(idx, { kind })} />}
               </div>
             ))}
@@ -766,6 +798,7 @@ export default function InvoiceViewPage() {
 
   return (
     <div className="space-y-6">
+      <Link href="/invoices" className="text-sm text-neutral-500 print:hidden">← Invoices</Link>
       <Tip id="invoice-how" className="print:hidden">
         How it works: record money as it comes in and the invoice keeps its own score &mdash; part paid, then paid,
         without you setting it. &ldquo;Mark as paid&rdquo; records whatever is still owed. The link is private to this

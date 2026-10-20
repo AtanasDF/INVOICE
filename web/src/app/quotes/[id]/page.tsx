@@ -1,5 +1,6 @@
 "use client";
 
+import { draftWhen, readFormDraft } from "@/lib/formDraft";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -364,6 +365,7 @@ export default function QuotePage() {
           saveLabel="Save changes"
           onSave={saveEdit}
           onCancel={() => setEditing(false)}
+          draftScope={q.id}
           onClientAdded={(c) => {
             // A refresh started before the add would drop the new customer.
             genRef.current++;
@@ -418,6 +420,9 @@ export default function QuotePage() {
     </>
   );
 
+  // Changes kept on the device from an edit the phone reloaded away.
+  const keptEdit = q.status === "draft" ? readFormDraft("quote", q.id) : null;
+
   return (
     <div className="space-y-6">
       <div className="print:hidden">
@@ -429,6 +434,12 @@ export default function QuotePage() {
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${quoteStatusBadgeClass(q, today)}`}>{quoteStatusLabel(q, today)}</span>
             </div>
             <p className="mt-1 text-neutral-600">Dated {longDate(q.date)}</p>
+            {keptEdit && (
+              <p role="status" className="mt-2 text-sm text-neutral-700">
+                You were changing this quote {draftWhen(keptEdit.savedAt)} and it isn&apos;t saved yet.{" "}
+                <button type="button" onClick={() => setEditing(true)} className="font-medium underline">Carry on editing</button>
+              </p>
+            )}
           </div>
           <div className="flex shrink-0 gap-2">
             {q.status === "draft" && (

@@ -72,6 +72,7 @@
     "../web/src/lib/quoteCompare.ts",
     "../web/src/lib/accountSwitch.ts",
     "../web/src/lib/formDraft.ts",
+    "../web/src/lib/answerDraft.ts",
     "../web/src/lib/csv.ts",
     "../web/src/lib/sheetFile.ts",
     "../web/src/lib/publicRead.ts",

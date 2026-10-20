@@ -292,7 +292,7 @@ export default function FreeInvoiceBuilder() {
   const mobileActions = (
     <>
       {moreOpen && (
-        <div className="absolute inset-x-3 bottom-full mb-2 max-h-[70vh] overflow-y-auto rounded-xl border bg-white shadow-lg">
+        <div className="absolute inset-x-3 bottom-full mb-2 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-xl border bg-white shadow-lg">
           <p className="px-4 pt-3 text-xs text-neutral-500">Save as</p>
           {SAVE_FORMATS.map((f) => (
             <button
@@ -515,7 +515,7 @@ export default function FreeInvoiceBuilder() {
             </div>
           </div>
           <div
-            className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t bg-white p-3 sm:hidden"
+            className="hide-while-typing fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center gap-2 border-t bg-white p-3 sm:hidden"
             style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
           >
             {mobileActions}

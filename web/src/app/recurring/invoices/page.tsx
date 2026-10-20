@@ -244,14 +244,14 @@ export default function RecurringInvoicesPage() {
                 onChange={(e) => updateLineItem(idx, { description: e.target.value })}
               />
               <NumberInput
-                className={`${profile?.vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`}
+                className={`col-span-4 rounded-lg border px-3 py-2 text-right sm:col-span-2`}
                 placeholder="Qty"
                 aria-label="Quantity"
                 value={it.quantity}
                 onChange={(quantity) => updateLineItem(idx, { quantity })}
               />
               <NumberInput
-                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
+                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-8"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
                 placeholder="Unit price"
                 aria-label="Unit price"
                 value={it.unitPrice}
@@ -267,7 +267,7 @@ export default function RecurringInvoicesPage() {
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button type="button" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 text-sm text-neutral-600 underline">✕</button>
+              <button type="button" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-sm text-neutral-600 underline">✕</button>
             </div>
           ))}
           <button type="button" onClick={addLine} className="text-sm font-medium text-neutral-700 underline">+ Add line</button>

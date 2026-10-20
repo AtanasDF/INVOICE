@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useConfirmLeave } from "@/lib/leaveGuard";
 import { ClientKind, clientsStore, businessProfileStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
 import type { ScannedContact } from "@/lib/contactExtraction";
@@ -72,6 +74,8 @@ export default function NewClientPage() {
   const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1" && !uploadMarked());
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
+  // iPhone Safari never asks before leaving, so the app does.
+  useConfirmLeave(!saving && !!(name.trim() || email.trim() || address.trim() || vatNumber.trim() || contactPerson.trim() || phone.trim() || paymentTerms.trim()), `Leave without saving this ${kind === "client" ? "customer" : "supplier"}? What you've typed goes.`);
   const [found, setFound] = useState<ScannedContact[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
   // The register entry this name came from, remembered against the saved
@@ -203,7 +207,8 @@ export default function NewClientPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">New {kind === "client" ? "customer" : "supplier"}</h1>
+        <Link href={kind === "supplier" ? "/clients?tab=supplier" : "/clients"} className="text-sm text-neutral-500">← Customers &amp; suppliers</Link>
+        <h1 className="mt-1 text-2xl font-bold">New {kind === "client" ? "customer" : "supplier"}</h1>
         <p className="mt-1 text-neutral-600">
           Customers are who you invoice. Suppliers are who invoices or receipts come from.
         </p>

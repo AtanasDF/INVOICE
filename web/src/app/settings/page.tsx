@@ -24,6 +24,7 @@ import { KIND_WORD, defaultCategoriesFor, effectiveCategories, isDefaultSet, mis
 import { downloadJson } from "@/lib/exportJson";
 import { disablePush, enablePush, getExistingSubscription, isIosNotStandalone, pushSupported, subscriptionToRecord } from "@/lib/push";
 import { signOut } from "@/lib/signOut";
+import { leaveTo, useNavigationGuard, type LeaveTo } from "@/lib/leaveGuard";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { DEFAULT_REMINDER_TEXT, REMINDER_SCHEDULE, ReminderKind } from "@/lib/reminderTemplates";
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
@@ -224,49 +225,8 @@ export default function SettingsPage() {
   const current = JSON.stringify(values);
   const dirty = snapshot !== null && current !== snapshot;
 
-  useEffect(() => {
-    if (!dirty) return;
-    const beforeUnload = (e: BeforeUnloadEvent) => e.preventDefault();
-    // Caught before React sees the click, so neither a plain link nor a
-    // Next.js one gets to navigate; the bar then asks what to do.
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as Element | null;
-      // The header's Sign out is a button, not a link, and leaves just the same.
-      const signOutButton = target?.closest?.("button");
-      if (signOutButton && signOutButton.textContent?.trim() === "Sign out") {
-        e.preventDefault();
-        e.stopPropagation();
-        setLeaving("signout");
-        return;
-      }
-      const a = target?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
-      const href = a.getAttribute("href") ?? "";
-      if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
-      // A link to this very page goes nowhere; let it be.
-      if (new URL(a.href, window.location.href).pathname === window.location.pathname) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setLeaving(href);
-    };
-    // The browser's Back (or a swipe on the phone) is a route change with
-    // no click and no unload. A copy of this entry is pushed on top, so
-    // Back lands here again and can be asked about; Next's own state is
-    // kept in the copy, or it would reload the page.
-    const onPop = () => {
-      window.history.pushState({ ...(window.history.state ?? {}), unsaved: true }, "", window.location.href);
-      setLeaving("back");
-    };
-    window.history.pushState({ ...(window.history.state ?? {}), unsaved: true }, "", window.location.href);
-    window.addEventListener("popstate", onPop);
-    window.addEventListener("beforeunload", beforeUnload);
-    document.addEventListener("click", onClick, true);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      window.removeEventListener("beforeunload", beforeUnload);
-      document.removeEventListener("click", onClick, true);
-    };
-  }, [dirty]);
+  // A link, Sign out or Back with changes unsaved: the bar then asks.
+  useNavigationGuard(dirty, setLeaving);
 
   useEffect(() => {
     const key = focusArrowRef.current;
@@ -454,12 +414,8 @@ export default function SettingsPage() {
     }
   }
 
-  // The copy of this entry pushed while dirty sits on top of the original,
-  // so going back is two steps.
-  function go(to: string) {
-    if (to === "back") window.history.go(-2);
-    else if (to === "signout") void signOut();
-    else router.push(to);
+  function go(to: LeaveTo) {
+    leaveTo(to, (href) => router.push(href), () => void signOut());
   }
 
   async function saveAndGo() {
