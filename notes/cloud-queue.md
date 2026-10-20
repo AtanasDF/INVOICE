@@ -189,7 +189,7 @@ notes/handover.md ("If you are a cloud session"), then the top of SESSIONS.md. P
 the wip/ branch the brief names, never to main. Finish with a SESSIONS.md entry and the
 browser suites the Mac must run, then push.
 
-## 9. Every API route — [ ]
+## 9. Every API route — [x] (2026-10-20, `wip/api-routes-audit`: notes/audit-api-routes.md; 4 fixed, 8 left)
 
 ```
 Audit every route under web/src/app/api. For each one, record: who may call it (stranger,

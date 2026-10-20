@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { GEMINI_MODEL } from "@/lib/extractors";
 import { HELP_CHAT_BROKEN, HELP_CHAT_BUSY, HELP_CHAT_LIMITS, HELP_CHAT_TOO_LONG, helpChatOn, trimHistory, type HelpMessage } from "@/lib/helpChat";
 import { systemPrompt } from "@/lib/helpPrompt";
-import { allow, release } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 // A short answer from a small model. Nothing like a document read, and a
@@ -26,11 +26,12 @@ export async function POST(req: Request) {
   const { data: { user } } = token ? await auth.auth.getUser(token) : { data: { user: null } };
   if (!user) return NextResponse.json({ error: "Sign in to ask a question." }, { status: 401 });
 
-  if (!allow(`help:${user.id}`, HELP_CHAT_LIMITS.perUser, HOUR)) {
+  // In the database: counted in one instance's memory, "400 overall" was
+  // 400 per instance, and the chat is the one feature with no natural limit.
+  if (!(await allowShared(`help:${user.id}`, HELP_CHAT_LIMITS.perUser, HOUR))) {
     return NextResponse.json({ error: HELP_CHAT_BUSY }, { status: 429 });
   }
-  if (!allow("help:global", HELP_CHAT_LIMITS.global, HOUR)) {
-    release(`help:${user.id}`);
+  if (!(await allowShared("help:global", HELP_CHAT_LIMITS.global, HOUR))) {
     return NextResponse.json({ error: HELP_CHAT_BUSY }, { status: 429 });
   }
 

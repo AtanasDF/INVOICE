@@ -9,6 +9,7 @@ import { pdfWithPages } from "@/lib/pdfPages";
 import { todayISO } from "@/lib/today";
 import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 import { allowShared } from "@/lib/rateLimit";
+import { RELAYED_ERRORS } from "@/lib/extractors";
 import { gbpFigures } from "@/lib/receiptAmounts";
 
 export const runtime = "nodejs";
@@ -113,30 +114,6 @@ export async function POST(req: Request) {
     }
     const userId = profile.user_id as string;
 
-    // The only route in the app with no limit of any kind, until now -- and the
-    // most expensive one per call: every attachment is a claude-opus-5 read on
-    // Atanas's key.
-    //
-    // The webhook secret keeps strangers off this address, but it is not the
-    // real trigger. The Worker forwards every email arriving at somebody's
-    // u-<token>@invoiceover.com without counting anything, and that address is
-    // handed out to suppliers. Anyone who learns one can post mail all night,
-    // five attachments at a time, and nothing anywhere would have stopped it.
-    //
-    // Counted per MAILBOX rather than per request, because the request is the
-    // Worker and is always the same caller. A real person forwarding receipts
-    // sends a handful a day; sixty an hour is far past that and still far short
-    // of a bill worth noticing.
-    const HOUR = 60 * 60 * 1000;
-    if (!(await allowShared(`inbox:user:${userId}`, 60, HOUR))) {
-      console.error("inbox: mailbox over its hourly limit,", userId);
-      return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
-    }
-    if (!(await allowShared("inbox:global", 600, HOUR))) {
-      console.error("inbox: overall hourly limit reached");
-      return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
-    }
-
     // A PDF or photo a mail gateway labelled application/octet-stream is
     // still one; the Worker recovers the type the same way, this is for
     // anything else that posts here.
@@ -163,6 +140,34 @@ export async function POST(req: Request) {
       ...readable.filter((a) => !smallEnough.includes(a)).map((a) => `${named(a)} — larger than ${Math.round(MAX_FILE_BYTES / 1024 / 1024)}MB`),
       ...smallEnough.slice(MAX_ATTACHMENTS).map((a) => `${named(a)} — more than ${MAX_ATTACHMENTS} documents in one email`),
     ];
+
+    // The only route in the app with no limit of any kind, until now -- and the
+    // most expensive one per call: every attachment is a paid model read.
+    //
+    // The webhook secret keeps strangers off this address, but it is not the
+    // real trigger. The Worker forwards every email arriving at somebody's
+    // u-<token>@invoiceover.com without counting anything, and that address is
+    // handed out to suppliers. Anyone who learns one can post mail all night,
+    // five attachments at a time, and nothing anywhere would have stopped it.
+    //
+    // Counted per MAILBOX, and per DOCUMENT read rather than per request. It
+    // used to count requests, so "sixty an hour" was really three hundred
+    // reads an hour, five attachments to an email. A real person forwarding
+    // receipts sends a handful a day; sixty documents an hour is far past that
+    // and still far short of a bill worth noticing. An email with nothing
+    // readable still counts once, for the row it files. A 429 makes the Worker
+    // reject the email, so the sender's server retries and the sender is told.
+    const HOUR = 60 * 60 * 1000;
+    for (let n = 0; n < Math.max(1, usableAttachments.length); n++) {
+      if (!(await allowShared(`inbox:user:${userId}`, 60, HOUR))) {
+        console.error("inbox: mailbox over its hourly limit,", userId);
+        return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
+      }
+      if (!(await allowShared("inbox:global", 600, HOUR))) {
+        console.error("inbox: overall hourly limit reached");
+        return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
+      }
+    }
 
     const created: string[] = [];
     // Filed as its own row rather than appended to one of the others: which
@@ -259,7 +264,11 @@ export async function POST(req: Request) {
       try {
         documents = await extractDocuments([{ mediaType: attachment.mimeType, base64: attachment.base64 }], []);
       } catch (err) {
-        await fileUnread(attachment, err instanceof Error ? err.message.slice(0, 120) : "the reader failed");
+        // The owner reads this sentence, so only the app's own words go into
+        // it; a provider's or the SDK's text goes to the log.
+        const message = err instanceof Error ? err.message : "";
+        if (!RELAYED_ERRORS.has(message)) console.error("inbox: read failed,", message || String(err));
+        await fileUnread(attachment, RELAYED_ERRORS.has(message) ? message.replace(/\.$/, "") : "the reader failed");
         continue;
       }
       for (const [index, result] of documents.entries()) {
@@ -357,7 +366,8 @@ export async function POST(req: Request) {
           .single();
         if (error) {
           // One row refused must not abandon the attachments behind it.
-          await fileUnread(attachment, `it could not be saved: ${error.message.slice(0, 100)}`);
+          console.error("inbox: row refused,", error.message);
+          await fileUnread(attachment, "it could not be saved");
           continue;
         }
         created.push(data.id);

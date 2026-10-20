@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { RELAYED_ERRORS } from "@/lib/extractors";
 import { invoiceFromText } from "@/lib/invoiceFromText";
-import { allow } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const MAX_CHARS = 2000;
 const PER_HOUR = 60;
+// Every call is a claude-opus-5 read. The per-account count alone let any
+// number of accounts spend without a ceiling, and in memory it was kept per
+// instance; both now live in the database.
+const GLOBAL_PER_HOUR = 300;
 
 export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
@@ -21,8 +25,11 @@ export async function POST(req: Request) {
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   if (!text) return NextResponse.json({ error: "Type what the invoice is for first." }, { status: 400 });
   if (text.length > MAX_CHARS) return NextResponse.json({ error: `Keep it under ${MAX_CHARS} characters.` }, { status: 400 });
-  if (!allow(`text:${user.id}`, PER_HOUR, 60 * 60 * 1000)) {
+  if (!(await allowShared(`text:${user.id}`, PER_HOUR, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many this hour. Try again later." }, { status: 429 });
+  }
+  if (!(await allowShared("text:global", GLOBAL_PER_HOUR, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "This is busy right now. Try again in a little while." }, { status: 429 });
   }
 
   try {

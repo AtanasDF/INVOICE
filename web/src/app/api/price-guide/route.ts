@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CUT_OFF, ENGINE_BUSY, NOT_STRUCTURED } from "@/lib/extractors";
 import { priceGuide } from "@/lib/priceGuide";
-import { allow } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_CHARS = 300;
 const PER_HOUR = 120;
+// A paid model call each time: a ceiling on everybody together, and both
+// counts in the database rather than in one instance's memory.
+const GLOBAL_PER_HOUR = 1200;
 const RELAYED = new Set([CUT_OFF, NOT_STRUCTURED, ENGINE_BUSY]);
 
 export async function POST(req: Request) {
@@ -23,8 +26,11 @@ export async function POST(req: Request) {
     | null;
   const description = typeof body?.description === "string" ? body.description.trim().slice(0, MAX_CHARS) : "";
   if (!description) return NextResponse.json({ error: "Nothing to look up." }, { status: 400 });
-  if (!allow(`price:${user.id}`, PER_HOUR, 60 * 60 * 1000)) {
+  if (!(await allowShared(`price:${user.id}`, PER_HOUR, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many price checks this hour. Try again later." }, { status: 429 });
+  }
+  if (!(await allowShared("price:global", GLOBAL_PER_HOUR, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "Price checks are busy right now. Try again in a little while." }, { status: 429 });
   }
 
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);

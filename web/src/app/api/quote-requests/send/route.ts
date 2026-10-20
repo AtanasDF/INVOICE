@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { allow, release } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 import { longDate } from "@/lib/reminderTemplates";
 import { QuoteRequestEmailInput, quoteRequestEmailHtml, quoteRequestEmailSubject, quoteRequestEmailText } from "@/lib/quoteRequestEmail";
 import { SITE_NAME } from "@/lib/siteName";
@@ -54,14 +54,11 @@ export async function POST(req: Request) {
   if (!apiKey) return NextResponse.json({ error: "Email sending isn't switched on yet.", code: "not_configured" }, { status: 503 });
 
   const key = `send:user:${user.id}`;
-  if (!allow(key, 30, HOUR)) return NextResponse.json({ error: "Too many emails this hour. Try again later." }, { status: 429 });
-  if (!allow("send:global", 60, HOUR)) {
-    release(key);
+  if (!(await allowShared(key, 30, HOUR))) return NextResponse.json({ error: "Too many emails this hour. Try again later." }, { status: 429 });
+  if (!(await allowShared("send:global", 60, HOUR))) {
     return NextResponse.json({ error: "Sending is busy right now. Try again in a little while." }, { status: 429 });
   }
-  if (!allow(`${key}:day`, 100, DAY)) {
-    release(key);
-    release("send:global");
+  if (!(await allowShared(`${key}:day`, 100, DAY))) {
     return NextResponse.json({ error: "That's the most emails for today. Try again tomorrow." }, { status: 429 });
   }
 

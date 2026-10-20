@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { allow, release } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 import { SITE_NAME } from "@/lib/siteName";
 
 export const runtime = "nodejs";
@@ -55,14 +55,13 @@ export async function POST(req: Request) {
   const sender = user.email ?? "";
 
   const key = `send-doc:user:${user.id}`;
-  if (!allow(key, USER_PER_HOUR, HOUR)) return NextResponse.json({ error: "Too many sent this hour. Try again later." }, { status: 429 });
-  if (!allow("send-doc:global", GLOBAL_PER_HOUR, HOUR)) {
-    release(key);
+  // In the database, as /api/send-invoice: a per-instance count is not a
+  // daily limit.
+  if (!(await allowShared(key, USER_PER_HOUR, HOUR))) return NextResponse.json({ error: "Too many sent this hour. Try again later." }, { status: 429 });
+  if (!(await allowShared("send-doc:global", GLOBAL_PER_HOUR, HOUR))) {
     return NextResponse.json({ error: "Sending is busy right now. Try again in a little while." }, { status: 429 });
   }
-  if (!allow(`${key}:day`, USER_PER_DAY, DAY)) {
-    release(key);
-    release("send-doc:global");
+  if (!(await allowShared(`${key}:day`, USER_PER_DAY, DAY))) {
     return NextResponse.json({ error: "That's the most for today. Try again tomorrow." }, { status: 429 });
   }
 
