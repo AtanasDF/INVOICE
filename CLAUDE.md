@@ -34,8 +34,12 @@ session log what was added so he knows what to clear.
   `npx wrangler deploy` from `worker/` on this Mac — and nothing in the repo says so.
   Commit `1564983` sat undeployed from 2026-09-28 to 2026-10-09 for exactly that reason,
   which meant Cloudflare went on DESTROYING an emailed invoice instead of rejecting it
-  where the sender would find out. Latest deploy 2026-10-09, version
-  `61dc60ef-d2e0-46e0-a846-0657467811d3`. First deployed
+  where the sender would find out. Latest deploy **2026-10-20, version
+  `c1a59b45-0228-4004-8765-5847adba7f66`**, by Atanas from `integrate/cloud-round-3`
+  (the Worker audit's ten fixes: an unreachable app and a mistyped address now bounce
+  instead of vanishing). **Until that branch is merged, `main`'s worker/ is OLDER than
+  what is live, and a deploy from main would quietly undo the fixes.** Before that,
+  2026-10-09, `61dc60ef-d2e0-46e0-a846-0657467811d3`. First deployed
   2026-09-21 (`npx wrangler deploy` from `worker/`; wrangler is signed in on this Mac as
   atanaschoo@gmail.com, Cloudflare account 5926bcf52e541589a3003ab4dee95e16). Email
   Routing for invoiceover.com: MX/SPF/DKIM added that day, catch-all → the Worker,
