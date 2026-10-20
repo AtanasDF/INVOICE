@@ -305,10 +305,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const main = useRef<HTMLElement>(null);
   return (
     <AuthProvider>
+      {/* WCAG 2.4.1: past the header and its five menus in one key. Hidden until a keyboard lands on it. */}
+      <a href="#main" className="sr-only rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50">
+        Skip to the page
+      </a>
       <Header />
       <FocusOnNavigate target={main} />
       {/* Room at the foot on a phone, so the Feedback pill never sits on a last card's buttons. */}
-      <main ref={main} tabIndex={-1} className="safe-x mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
+      <main id="main" ref={main} tabIndex={-1} className="safe-x mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
       {/* Small, quiet, and on every page: an advertiser, an app store and a

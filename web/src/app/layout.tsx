@@ -59,7 +59,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en-GB">
       <head>
         {/* Before the first paint, or the page flashes grey on its way to
             the colour this device chose. */}

@@ -15,7 +15,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="en-GB">
       <body style={{ margin: 0, fontFamily: "Arial, Helvetica, sans-serif", background: "#fafafa", color: "#171717" }}>
         <div style={{ maxWidth: 520, margin: "0 auto", padding: "48px 20px" }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>The app couldn&apos;t start</h1>
