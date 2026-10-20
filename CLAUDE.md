@@ -140,15 +140,18 @@ session log what was added so he knows what to clear.
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **`SCAN_LIMITS=on` was
    set in Vercel on 2026-09-23, so all of this is LIVE** — see the environment section.
-   **043 and 044 applied and verified 2026-10-20; 045 NOT run.** 043: `authenticated` and
-   `anon` can no longer execute `generate_recurring_invoice`, `service_role` still can. 044:
-   `business_profile_plan_guard` trigger, enabled; exercised as the Hidefield owner in a
-   rolled-back transaction -- an ordinary profile save still writes (1 row), plan -> paid is
-   refused, the recurring job is refused; plan still free after, 0 paid accounts. **045** (the
-   five `*_same_owner` triggers on receipts, invoices, recurring_invoices, recurring_expenses,
-   credit_notes): the first attempt rolled back whole on a typo in its check query (verified:
-   still only the five older triggers), and the retry was refused by the permission check,
-   so it is waiting for Atanas -- run the file in the SQL editor, or allow the Supabase tool.
+   **Applied and verified up to 045 (2026-10-20, through the Supabase connection).** 043:
+   `authenticated` and `anon` can no longer execute `generate_recurring_invoice`;
+   `service_role` still can. 044: `business_profile_plan_guard`, enabled. Exercised as the
+   Hidefield owner and rolled back: an ordinary profile save still writes, plan -> paid is
+   refused, the recurring job is refused; plan still free after, 0 paid accounts. 045: five
+   `*_same_owner` triggers on receipts, invoices, recurring_invoices, recurring_expenses and
+   credit_notes (10 same-owner triggers in all). Exercised the same way: a receipt on the
+   owner's own supplier saves, one on an id that is not theirs is refused with "The supplier
+   on a receipt must be one of your own.", 0 test rows left. The five NEW trigger functions
+   are revoked from `authenticated`; the five older ones (020-028) are not, which is harmless,
+   because Postgres refuses to call a trigger function outside a trigger. 045's first attempt
+   rolled back whole on a typo in its check query, verified before the rerun.
    Applied and verified up to **042** (`quotes.sent_at timestamptz`, nullable, no default;
    backup 017 = `quotes_backup_20261020`). Run 2026-10-20 through the Supabase connection,
    not the SQL editor: backup verified both ways (0/0, 16 columns each side, RLS on, no
