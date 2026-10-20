@@ -56,7 +56,7 @@ Write the findings to notes/audit-components.md, commit on a branch and push. Do
 change any behaviour.
 ```
 
-## 2. The file converter — [ ]
+## 2. The file converter — [x] 2026-10-20, `wip/converter-audit`: 20 found and fixed, `notes/audit-convert.md`
 
 ```
 Read CLAUDE.md, then audit web/src/lib/convert.ts and web/src/app/convert/page.tsx.

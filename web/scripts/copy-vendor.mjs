@@ -13,7 +13,7 @@ const pdfjsVersion = require("pdfjs-dist/package.json").version;
 
 const files = [
   ["node_modules/@techstark/opencv-js/dist/opencv.js", "public/vendor/opencv-5.0.0.js"],
-  ["node_modules/pdfjs-dist/build/pdf.worker.min.mjs", `public/vendor/pdf.worker-${pdfjsVersion}.mjs`],
+  ["node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs", `public/vendor/pdf.worker-legacy-${pdfjsVersion}.mjs`],
 ];
 
 const size = (path) => {
