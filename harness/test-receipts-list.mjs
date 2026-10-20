@@ -226,9 +226,10 @@ try {
   await saveEdit();
   const once = db.tables.receipts.find((r) => r.id === R.r9);
   check("...the spelling correction lands, so this is a save that really happened", once.vendor === "Shell UK", String(once.vendor));
-  // EUR 70.00 incl 14.00 at 0.8571 is 59.997 gross, 11.9994 VAT, 47.9976 net.
-  // Converted twice it would have been 42.855 net and 8.571 VAT.
-  check("...and the GBP figures are the EUR ones converted ONCE", Math.abs(Number(once.amount) - 47.9976) < 0.0005 && Math.abs(Number(once.vat_amount) - 11.9994) < 0.0005, JSON.stringify({ a: once.amount, v: once.vat_amount }));
+  // EUR 70.00 incl 14.00 at 0.8571 is 59.997 gross, 11.9994 VAT, 47.9976 net,
+  // kept to the penny since receiptAmounts: 48.00 and 12.00. Converted twice it
+  // would have been 42.86 net and 8.57 VAT.
+  check("...and the GBP figures are the EUR ones converted ONCE", Math.abs(Number(once.amount) - 48) < 0.005 && Math.abs(Number(once.vat_amount) - 12) < 0.005, JSON.stringify({ a: once.amount, v: once.vat_amount }));
   check("...and what the document said in EUR is still what is recorded", Number(once.original_amount) === 70 && Number(once.original_vat_amount) === 14 && once.original_currency === "EUR" && Number(once.fx_rate) === 0.8571, JSON.stringify({ oa: once.original_amount, ov: once.original_vat_amount, c: once.original_currency, r: once.fx_rate }));
   // The compounding is the part that made this dangerous: each edit shrank it
   // again, so a JPY receipt would have gone to nearly nothing in one save and a
