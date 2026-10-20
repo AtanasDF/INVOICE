@@ -181,3 +181,69 @@ not another?
 
 notes/audit-documents.md, branch, push. No behaviour changes.
 ```
+
+---
+
+Briefs 9-12 were added 2026-10-20. Each one starts the same way: read CLAUDE.md, then
+notes/handover.md ("If you are a cloud session"), then the top of SESSIONS.md. Push only to
+the wip/ branch the brief names, never to main. Finish with a SESSIONS.md entry and the
+browser suites the Mac must run, then push.
+
+## 9. Every API route — [ ]
+
+```
+Audit every route under web/src/app/api. For each one, record: who may call it (stranger,
+signed in, cron secret, service role); whether that is enforced before any expensive or
+outward work; the rate limit; the body size limit; whether an error can leak a provider's
+or Postgres's raw text, a stack trace or a secret; whether a service-role query is scoped
+to the caller's own rows; and whether it sends email or calls a paid API without a cap.
+Cross-check the harness guard lists. Confirm each finding in the code, fix the confirmed
+ones minimally (routes and server-side lib only), and add a source-reading or logic suite
+that fails if each hole comes back. tsc, eslint and build clean; the build needs
+placeholder NEXT_PUBLIC_SUPABASE_URL and keys in the cloud. Table in
+notes/audit-api-routes.md. Branch: wip/api-routes-audit.
+```
+
+## 10. SQL functions and RLS — [ ]
+
+```
+Read every file in web/supabase/ in order (latest: migration 042 and backup 017, both run
+on 20/10). Audit: SECURITY DEFINER functions without a fixed search_path; execute grants
+that leave out `authenticated` or `anon` in the revoke (Supabase grants by default; 037
+had this hole); tables without RLS or with weak policies; FK checks that let one user
+reference another's row (017, 038); `current_date` where uk_today() belongs; functions
+that trust an argument they should take from auth.uid(). Prove SQL against pglite the way
+harness/test-migration-042.mjs does. You can't see the live database, so say when a
+finding depends on it. For each real hole, write migration 043 onward with backup 018
+onward, exactly as hard rule 2 says. Never claim they ran. Report in notes/audit-sql.md.
+Branch: wip/sql-audit.
+```
+
+## 11. The email-inbox Worker — [ ]
+
+```
+Audit worker/, the Cloudflare Worker that takes emailed receipts for invoiceover.com to
+/api/inbox/ingest. Look for: email dropped silently instead of rejected to the sender
+(1564983 fixed one); size limits, attachment counts and MIME edge cases (octet-stream PDF,
+inline images, nested multipart, non-UTF-8 subject); the shared secret and how a forged
+call is refused; the app down or slow; whether the types still match the route
+(harness/test-inbox-worker-types). Fix confirmed findings in worker/ only, with tests that
+run without Cloudflare. Nothing under worker/ is live until Atanas runs
+`npx wrangler deploy` on his Mac: say so at the top of the report and list what would
+change for a sender. Report in notes/audit-worker.md. Branch: wip/worker-audit.
+```
+
+## 12. iPhone Safari, a report — [ ]
+
+```
+Atanas uses the app almost entirely in iPhone Safari; the harness is desktop Chrome. List
+everything in web/src that behaves differently or breaks in iOS Safari or as a home-screen
+app: beforeunload (check draft autosave in lib/formDraft.ts covers the forms), date and
+number inputs and decimal commas, storage in private mode and Safari's 7-day eviction,
+100vh and safe areas, position:fixed with the keyboard open, file inputs and capture,
+getUserMedia and ImageCapture, Web Share with files, downloads, window.open or clipboard
+after an await, push (16.4+, home screen only), service-worker cache limits, 200% text.
+For each: where in the code, what he would see, how sure, the fix, and whether only a real
+iPhone can confirm it. Change no app code. notes/ios-safari.md, worst first, with a short
+"try these on the phone" list at the top. Branch: wip/ios-safari.
+```
