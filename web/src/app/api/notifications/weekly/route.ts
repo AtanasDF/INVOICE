@@ -6,6 +6,7 @@ import { invoiceBalance } from "@/lib/invoiceBalance";
 import { lastWeek, weeklySummary, type WeekFigures } from "@/lib/weeklySummary";
 import { addDays } from "@/lib/reminderTemplates";
 import { todayISO } from "@/lib/today";
+import { bearerMatches } from "@/lib/bearer";
 
 export const runtime = "nodejs";
 // Cron work grows with the number of accounts, and killing it part-way is
@@ -29,7 +30,7 @@ type Row = Record<string, unknown>;
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || req.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+  if (!bearerMatches(req.headers.get("authorization"), cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

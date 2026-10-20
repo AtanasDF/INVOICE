@@ -7,7 +7,7 @@
 //
 // So: the fingerprinted files that make up the app are cached as they are
 // fetched (they are immutable, so serving them from the cache can never be
-// wrong), and a page asked for with no signal falls back to /offline, which
+// wrong), and a page asked for with no signal falls back to /offline.html, which
 // says plainly what works and what does not.
 //
 // It deliberately does NOT cache anything with figures in it. A stale invoice
@@ -18,8 +18,9 @@
 // v2 on 2026-10-19: the name never moved, so activate's clean-up never ran
 // and every deploy's chunks piled up in v1 for good. Bumping it clears that
 // once; trim() keeps it from happening again. v3 on 2026-10-20 for the move
-// from /offline to offline.html, so the old copy goes with the old cache.
-const CACHE = "invoiceover-v3";
+// from /offline to offline.html, so the old copy goes with the old cache. v4
+// on 2026-10-20: offline.html's Try again reloads the page asked for.
+const CACHE = "invoiceover-v4";
 // A plain file, not a page of the app: /offline needed the app's scripts, and
 // a few deploys after it was cached those had been trimmed, so with no signal
 // it said "Loading..." for ever.

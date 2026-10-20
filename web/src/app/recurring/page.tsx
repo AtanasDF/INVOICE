@@ -258,7 +258,7 @@ export default function RecurringExpensesPage() {
       ) : (
         <div className="space-y-3">
           {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
-          {items.length === 0 && !error && !loadError && <p className="text-sm text-neutral-500">No recurring expenses set up yet. Add one for a bill that comes every month, and it goes in with your expenses on the day.</p>}
+          {items.length === 0 && !error && !loadError && <p className="text-sm text-neutral-500">No recurring expenses set up yet. Add one for a bill that comes every month, and on the day it&apos;s due you&apos;ll be asked to log it.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             return (

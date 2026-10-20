@@ -2,7 +2,7 @@ import type { CompanyMatch } from "./companyLookup";
 import { normaliseSupplierName } from "./supplierMatch";
 import { supabase } from "./supabaseClient";
 
-async function authHeaders(): Promise<Record<string, string>> {
+export async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
 }

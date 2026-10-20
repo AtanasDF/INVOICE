@@ -218,6 +218,29 @@ try {
   res = await post({ token: TOKEN, subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/octet-stream", base64: one }] });
   r = rows()[0];
   check("an octet-stream PDF is read as a PDF, not filed as 'no usable attachment'", res.status === 200 && stub.calls.length === 1 && r?.document_type === "invoice" && r?.image_data_url?.endsWith(".pdf"), JSON.stringify({ calls: stub.calls.length, type: r?.document_type, image: r?.image_data_url }));
+
+  // The same email twice -- a bounce after a slow read makes the sender's
+  // server send it again. What went in the first time doesn't go in again.
+  reset();
+  const MID = "<inv-1043.7f3a@mailer.supplier.example>";
+  stub.gemini.push(read([INVOICE]), ...Array(10).fill(busy));
+  stub.claude.push(...Array(10).fill(overloaded));
+  const twoFiles = { token: TOKEN, messageId: MID, subject: "Two files", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }, { filename: "statement.pdf", mimeType: "application/pdf", base64: one }] };
+  res = await post(twoFiles);
+  const firstTime = rows().length;
+  stub.calls.length = 0;
+  stub.gemini.push(read([RECEIPT]), read([RECEIPT]));
+  res = await post(twoFiles);
+  check("a resent email reads only what wasn't filed the first time", res.status === 200 && stub.calls.length === 0 && rows().length === firstTime && firstTime === 2,
+    JSON.stringify({ status: res.status, calls: stub.calls.length, first: firstTime, now: rows().length }));
+  check("...every row says which email and which part it came from", rows().every((x) => x.details?.emailMessageId === MID) && new Set(rows().map((x) => x.details?.emailPart)).size === 2, JSON.stringify(rows().map((x) => x.details)));
+  db.tables.receipts = db.tables.receipts.filter((x) => x.details?.emailPart !== "1");
+  stub.calls.length = 0;
+  res = await post(twoFiles);
+  check("...and a part whose row never went in is read the second time", res.status === 200 && stub.calls.length === 1 && rows().length === 2, JSON.stringify({ calls: stub.calls.length, rows: rows().length }));
+  const before = rows().length;
+  res = await post({ ...twoFiles, messageId: "<another@mailer.supplier.example>" });
+  check("...while a different email with the same files is filed as new", rows().length === before + 2, JSON.stringify({ before, now: rows().length }));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

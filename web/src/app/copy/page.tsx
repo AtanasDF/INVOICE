@@ -75,8 +75,10 @@ export default function CopyDocumentPage() {
       const next = { blob: new Blob([bytes as BlobPart], { type: "application/pdf" }), name: filename, pages: await pageCount(pages) };
       setMade(next);
       return next;
-    } catch {
-      setError("Couldn't put the pages into one file. Remove the last page added and try again.");
+    } catch (err) {
+      const { PDF_LOCKED, PICTURE_KIND } = await import("@/lib/documentPdf");
+      const said = err instanceof Error && (err.message === PDF_LOCKED || err.message === PICTURE_KIND);
+      setError(said ? (err as Error).message : "Couldn't put the pages into one file. Remove the last page added and try again.");
       return null;
     } finally {
       setMaking(false);

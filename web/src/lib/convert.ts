@@ -269,7 +269,7 @@ async function pdfPagesOf(file: File): Promise<DocPage[]> {
   return [{ dataUrl: await readDataUrl(await imageAs(file, "image/jpeg")), mediaType: "image/jpeg" }];
 }
 
-/** A row of a comma or tab separated file, quotes and all. */
+/** A row of a comma, semicolon or tab separated file, quotes and all. */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -278,7 +278,10 @@ export function parseCsv(text: string): string[][] {
   // Decided by the first line: a tab-separated file with "1,200.00" anywhere
   // in it used to be read as commas, splitting the money and keeping the tabs.
   const first = text.slice(0, 65536).split("\n").find((l) => l.trim()) ?? "";
-  const sep = first.split("\t").length > first.split(",").length ? "\t" : ",";
+  // Excel set to a European language saves with semicolons, which read as one
+  // column of everything.
+  const count = (s: string) => first.split(s).length;
+  const sep = count("\t") > count(",") && count("\t") >= count(";") ? "\t" : count(";") > count(",") ? ";" : ",";
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (quoted) {
@@ -462,54 +465,63 @@ export async function convertFiles(files: File[], target: Target): Promise<Made[
 
   const made: Made[] = [];
   for (const file of files) {
-    const kind = kindOf(file);
-    const stem = baseName(file.name);
-    if (kind === "image") {
-      const type = target === "png" ? "image/png" : target === "webp" ? "image/webp" : "image/jpeg";
-      made.push({ name: `${stem}.${target}`, blob: await imageAs(file, type) });
-      continue;
+    try {
+      await convertOne(file, target, made);
+    } catch (err) {
+      // With several files in, "That file couldn't be read" didn't say which.
+      throw Object.assign(err instanceof Error ? err : new Error(String(err)), { file: file.name });
     }
-    if (kind === "pdf") {
-      const doc = await openPdf(file);
-      try {
-        if (target === "txt") {
-          made.push({ name: `${stem}.txt`, blob: new Blob([await pdfAsText(doc)], { type: "text/plain;charset=utf-8" }) });
-          continue;
-        }
-        const pages = await pdfPagesAsImages(doc, target === "png" ? "image/png" : "image/jpeg");
-        pages.forEach((blob, i) => made.push({ name: pages.length > 1 ? `${stem} page ${i + 1}.${target}` : `${stem}.${target}`, blob }));
-      } finally {
-        await doc.loadingTask.destroy();
-      }
-      continue;
-    }
-    // Words, rows or data.
-    const raw = await file.text();
-    const isHtml = /\.(html?)$/i.test(file.name) || /^\s*<(!doctype|html)/i.test(raw);
-    const data = isHtml ? undefined : jsonIn(file.name, raw);
-    const isJson = data !== undefined;
-    if (!isJson && /\.json$/i.test(file.name) && (target === "csv" || target === "json")) throw new Error(NOT_DATA);
-    const words = isHtml ? htmlToText(raw) : raw;
-    if (target === "txt") {
-      made.push({ name: `${stem}.txt`, blob: new Blob([words], { type: "text/plain;charset=utf-8" }) });
-      continue;
-    }
-    if (target === "pdf") {
-      made.push({ name: `${stem}.pdf`, blob: await textToPdf(words, stem) });
-      continue;
-    }
-    if (target === "html") {
-      // Only a spreadsheet becomes a table: a letter with a comma in every line
-      // used to come out cut into cells.
-      const rows = !isHtml && !isJson && (/\.(csv|tsv)$/i.test(file.name) || /csv|tab-separated/.test(file.type)) ? parseCsv(raw) : null;
-      made.push({ name: `${stem}.html`, blob: new Blob([isHtml ? raw : rows && rows.length > 1 ? rowsToHtml(rows, stem) : textToHtml(words, stem)], { type: "text/html;charset=utf-8" }) });
-      continue;
-    }
-    if (target === "csv") {
-      made.push({ name: `${stem}.csv`, blob: new Blob([toCsv(isJson ? jsonRows(data) : parseCsv(words))], { type: "text/csv;charset=utf-8" }) });
-      continue;
-    }
-    made.push({ name: `${stem}.json`, blob: new Blob([JSON.stringify(isJson ? data : rowsToRecords(parseCsv(words)), null, 2) + "\n"], { type: "application/json" }) });
   }
   return made;
+}
+
+async function convertOne(file: File, target: Target, made: Made[]): Promise<void> {
+  const kind = kindOf(file);
+  const stem = baseName(file.name);
+  if (kind === "image") {
+    const type = target === "png" ? "image/png" : target === "webp" ? "image/webp" : "image/jpeg";
+    made.push({ name: `${stem}.${target}`, blob: await imageAs(file, type) });
+    return;
+  }
+  if (kind === "pdf") {
+    const doc = await openPdf(file);
+    try {
+      if (target === "txt") {
+        made.push({ name: `${stem}.txt`, blob: new Blob([await pdfAsText(doc)], { type: "text/plain;charset=utf-8" }) });
+        return;
+      }
+      const pages = await pdfPagesAsImages(doc, target === "png" ? "image/png" : "image/jpeg");
+      pages.forEach((blob, i) => made.push({ name: pages.length > 1 ? `${stem} page ${i + 1}.${target}` : `${stem}.${target}`, blob }));
+    } finally {
+      await doc.loadingTask.destroy();
+    }
+    return;
+  }
+  // Words, rows or data.
+  const raw = await file.text();
+  const isHtml = /\.(html?)$/i.test(file.name) || /^\s*<(!doctype|html)/i.test(raw);
+  const data = isHtml ? undefined : jsonIn(file.name, raw);
+  const isJson = data !== undefined;
+  if (!isJson && /\.json$/i.test(file.name) && (target === "csv" || target === "json")) throw new Error(NOT_DATA);
+  const words = isHtml ? htmlToText(raw) : raw;
+  if (target === "txt") {
+    made.push({ name: `${stem}.txt`, blob: new Blob([words], { type: "text/plain;charset=utf-8" }) });
+    return;
+  }
+  if (target === "pdf") {
+    made.push({ name: `${stem}.pdf`, blob: await textToPdf(words, stem) });
+    return;
+  }
+  if (target === "html") {
+    // Only a spreadsheet becomes a table: a letter with a comma in every line
+    // used to come out cut into cells.
+    const rows = !isHtml && !isJson && (/\.(csv|tsv)$/i.test(file.name) || /csv|tab-separated/.test(file.type)) ? parseCsv(raw) : null;
+    made.push({ name: `${stem}.html`, blob: new Blob([isHtml ? raw : rows && rows.length > 1 ? rowsToHtml(rows, stem) : textToHtml(words, stem)], { type: "text/html;charset=utf-8" }) });
+    return;
+  }
+  if (target === "csv") {
+    made.push({ name: `${stem}.csv`, blob: new Blob([toCsv(isJson ? jsonRows(data) : parseCsv(words))], { type: "text/csv;charset=utf-8" }) });
+    return;
+  }
+  made.push({ name: `${stem}.json`, blob: new Blob([JSON.stringify(isJson ? data : rowsToRecords(parseCsv(words)), null, 2) + "\n"], { type: "application/json" }) });
 }

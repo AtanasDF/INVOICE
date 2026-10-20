@@ -23,6 +23,7 @@ import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import Tip from "@/components/Tip";
+import { useConfirmLeave } from "@/lib/leaveGuard";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -57,6 +58,10 @@ export default function MileagePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [measuring, setMeasuring] = useState(false);
   const [measured, setMeasured] = useState<string | null>(null);
+  // The offline page says everything saved is still there; a half-typed trip
+  // wasn't saved, so leaving asks first. From and To stay after a save, for
+  // the next trip, so they alone are not unsaved work.
+  useConfirmLeave(!saving && !!(miles.trim() || purpose.trim()), "Leave without saving this trip? What you've typed goes.");
 
   useEffect(() => {
     receiptsStore

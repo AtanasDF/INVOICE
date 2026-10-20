@@ -5,6 +5,7 @@ import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { ReminderKind, SUBJECT, laterReminders, reminderBody, reminderDueToday } from "@/lib/reminderTemplates";
 import { todayISO } from "@/lib/today";
 import { SITE_NAME } from "@/lib/siteName";
+import { bearerMatches } from "@/lib/bearer";
 
 export const runtime = "nodejs";
 // Cron work grows with the number of accounts, and killing it part-way is
@@ -32,7 +33,7 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!bearerMatches(authHeader, cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -178,7 +179,7 @@ export async function GET(req: Request) {
       if (!claimed?.length) continue;
 
       try {
-        const res = await fetch("https://api.resend.com/emails", {
+        const res = await fetch(`${process.env.RESEND_API_BASE ?? "https://api.resend.com"}/emails`, {
           method: "POST",
           headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({

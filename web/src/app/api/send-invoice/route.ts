@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { allowShared } from "@/lib/rateLimit";
 import { InvoiceEmailInput, invoiceEmailHtml, invoiceEmailSubject, invoiceEmailText } from "@/lib/invoiceEmail";
 import { SITE_NAME } from "@/lib/siteName";
+import { documentFileName } from "@/lib/documentName";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -124,12 +125,12 @@ export async function POST(req: Request) {
 
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
   const fromAddress = /<([^>]+)>/.exec(from)?.[1] ?? from;
-  const filename = `${input.docType === "quote" ? "Quote" : "Invoice"}${input.number ? `-${input.number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
+  const filename = documentFileName(input.docType === "quote" ? "quote" : "invoice", input.number ?? "");
   // Quoted, and stripped of anything that could end the header or the quote.
   const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via ${SITE_NAME}`;
   let res: Response;
   try {
-    res = await fetch("https://api.resend.com/emails", {
+    res = await fetch(`${process.env.RESEND_API_BASE ?? "https://api.resend.com"}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -161,7 +162,7 @@ export async function POST(req: Request) {
   let copied = copyToSelf && !input.viewUrl;
   if (copyToSelf && input.viewUrl) {
     const own = { ...input, viewUrl: `${input.viewUrl}#o` };
-    const copyRes = await fetch("https://api.resend.com/emails", {
+    const copyRes = await fetch(`${process.env.RESEND_API_BASE ?? "https://api.resend.com"}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({

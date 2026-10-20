@@ -151,6 +151,16 @@ function readEngine(): ScanEngine {
   }
 }
 
+// Storage can refuse outright (a locked-down profile, Safari with every site
+// blocked from storing), and read bare in a useState it took the page down.
+function engineWasChosen(): boolean {
+  try {
+    return localStorage.getItem(ENGINE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 const pill = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium ${on ? "bg-neutral-900 text-white" : "border text-neutral-700"}`;
 
 // Reads for a batch start together, a few at a time, so the next
@@ -433,7 +443,7 @@ export default function ScanPage() {
   const [engine, setEngine] = useState<ScanEngine>(readEngine);
   // The Claude / Gemini choice is for whoever has already made one on this
   // device; everyone else just gets the document read.
-  const [engineChosen] = useState(() => typeof window !== "undefined" && localStorage.getItem(ENGINE_KEY) !== null);
+  const [engineChosen] = useState(() => typeof window !== "undefined" && engineWasChosen());
   const [walk, setWalkState] = useState<Walk | null>(null);
   // Picked files waiting for the supplier lists; kept here so Try again
   // can still read them if the lists failed to load.
@@ -1551,7 +1561,7 @@ export default function ScanPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className={showDueDate ? "" : "col-span-2"}>
                 <label className="text-xs text-neutral-500">{mode === "receipt" ? "Receipt number" : mode === "credit_note" ? "Credit note number" : "Invoice number"}</label>
-                <input aria-label="Document number" className="w-full rounded-lg border px-3 py-2" value={form.invoiceNumber} onChange={(e) => patch({ invoiceNumber: e.target.value })} />
+                <input aria-label="Document number" className="w-full rounded-lg border px-3 py-2" autoCapitalize="characters" autoCorrect="off" spellCheck={false} value={form.invoiceNumber} onChange={(e) => patch({ invoiceNumber: e.target.value })} />
               </div>
               {showDueDate && (
                 <div>

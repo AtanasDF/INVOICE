@@ -2,7 +2,9 @@ import { makeDb, launchSignedIn, signIn, sleep, shot, newId } from "./mockdb-rl.
 const BASE = process.env.BASE ?? "http://localhost:3200";
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
-const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+// The app's day is London's (CLAUDE.md "What day it is"); a UTC day here
+// disagreed with it for the hour after midnight every summer night.
+import { day } from "./mockdb.mjs";
 const T = day(0);
 
 const img = (colour) => "data:image/svg+xml;base64," + Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="60" height="80"><rect width="60" height="80" fill="${colour}"/></svg>`).toString("base64");

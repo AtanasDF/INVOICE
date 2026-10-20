@@ -175,12 +175,6 @@ const HOME = path.join(SRC, "lib", "today.ts");
 const EXCUSED = {
   // A rate-limit window of 24 hours, not a difference between two dates.
   "app/api/address-search/route.ts": /const DAY = 24 \* 60 \* 60 \* 1000;/,
-  // How many days a Companies House deadline has passed by NOW -- a moment,
-  // not a date, so it is not this function's question. (It asks UTC what day
-  // it is, which is the bug in CLAUDE.md "What day it is"; flagged in
-  // SESSIONS.md 2026-10-20, not changed here because this branch promised no
-  // caller's behaviour would.)
-  "lib/companyReportBuild.ts": /const day = 24 \* 60 \* 60 \* 1000;|Math\.floor\(\(now\.getTime\(\) - dateOnly\(nextDue\)\) \/ day\)/,
 };
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [path.join(d, e.name)] : []));
 const code = (file) =>

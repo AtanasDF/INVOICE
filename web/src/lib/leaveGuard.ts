@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/signOut";
 
 // A link tapped with no signal is not a client navigation any more: Next falls
-// back to a full page load, the worker answers it with /offline, and a half
+// back to a full page load, the worker answers it with /offline.html, and a half
 // typed receipt or invoice was gone under a page saying nothing had been lost
 // (notes/audit-offline.md 4c). The browser's own "Leave this page?" stops that
 // on a computer and on Android. iPhone Safari ignores beforeunload, so there

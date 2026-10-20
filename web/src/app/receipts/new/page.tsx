@@ -60,6 +60,10 @@ export default function NewReceiptPage() {
   // Its own line, not the form's error: a photo, Clear or Save wiped that, and
   // the duplicate checks then ran against an empty list with nothing saying so.
   const [listsError, setListsError] = useState<string | null>(null);
+  // A save that failed may still have gone in -- the reply was what got lost --
+  // and the list loaded on arrival doesn't know, so pressing Save again made a
+  // second copy with nothing to say so. Read the list again before the next try.
+  const listStale = useRef(false);
   const [saving, setSaving] = useState(false);
   const savingNow = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -245,11 +249,12 @@ export default function NewReceiptPage() {
     // The list the duplicate check reads never loaded: fetch it now, or say the
     // check couldn't run rather than save past it.
     let saved = receipts;
-    if (listsError && !confirmedDuplicate) {
+    if ((listsError || listStale.current) && !confirmedDuplicate) {
       try {
         saved = await receiptsStore.all();
         setReceipts(saved);
         setListsError(null);
+        listStale.current = false;
       } catch (err) {
         setError(loadFailed(err, "your saved receipts, so this couldn't be checked for a duplicate"));
         return;
@@ -292,6 +297,7 @@ export default function NewReceiptPage() {
       router.push("/receipts");
     } catch (err) {
       setError(saveFailed(err, "Couldn't save receipt."));
+      listStale.current = true;
       savingNow.current = false;
       setSaving(false);
     }

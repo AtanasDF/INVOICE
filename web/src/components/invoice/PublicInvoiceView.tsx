@@ -8,6 +8,7 @@ import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicInvoice } from "@/lib/publicInvoice";
 import { PDF_FAILED } from "@/lib/errorText";
 import { SITE_NAME } from "@/lib/siteName";
+import { documentFileName } from "@/lib/documentName";
 
 // The customer's view of an invoice they were sent a link to: the invoice
 // itself, a PDF to keep, and a quiet "opened" signal back to the sender.
@@ -56,7 +57,7 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
           <button onClick={download} disabled={making} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {making ? "Making the PDF…" : "Download PDF"}
           </button>
-          <SaveAsMenu sheet={() => sheetRef.current} name={`Invoice ${data.invoice.number}`} onPdf={download} />
+          <SaveAsMenu sheet={() => sheetRef.current} name={documentFileName("invoice", data.invoice.number, "")} onPdf={download} />
           <button onClick={() => window.print()} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
             Print
           </button>

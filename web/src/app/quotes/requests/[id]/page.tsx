@@ -124,7 +124,7 @@ export default function QuoteRequestPage() {
 
   // Checked on entry, not only set: two presses in one tick both passed
   // `disabled`, so the supplier was emailed twice.
-  async function run(action: () => Promise<void>, done?: string) {
+  async function run(action: () => Promise<void>, failed: string, done?: string) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
@@ -136,7 +136,7 @@ export default function QuoteRequestPage() {
       await action();
       ok = true;
     } catch (err) {
-      setError(saveFailed(err, "Something went wrong."));
+      setError(saveFailed(err, failed));
     }
     await load().catch(() => {});
     busyRef.current = false;
@@ -214,12 +214,12 @@ export default function QuoteRequestPage() {
     run(async () => {
       setRequest((prev) => prev && { ...prev, choice: next });
       await quoteRequestsStore.saveChoice(r.id, next);
-    });
+    }, "Couldn't save your pick.");
 
   const send = (row: RequestSupplier, to: string) =>
     run(async () => {
       await requestSuppliersStore.send(row.id, to);
-    }, `Request emailed to ${nameOf(row)} (${to}).`);
+    }, `Couldn't email the request to ${nameOf(row)}.`, `Request emailed to ${nameOf(row)} (${to}).`);
 
   const copyLink = (row: RequestSupplier) =>
     run(async () => {
@@ -230,17 +230,17 @@ export default function QuoteRequestPage() {
       if (!copied) return;
       setCopied(row.id);
       setTimeout(() => setCopied((c) => (c === row.id ? null : c)), 2000);
-    });
+    }, "Couldn't copy the link.");
 
   const record = (row: RequestSupplier, answer: Answer, message: string, done: string) => {
-    if (window.confirm(message)) run(() => requestSuppliersStore.record(row, answer, "manual", answer.status === "declined" ? row.documentPath : null), done);
+    if (window.confirm(message)) run(() => requestSuppliersStore.record(row, answer, "manual", answer.status === "declined" ? row.documentPath : null), "Couldn't save their answer.", done);
   };
 
   const openDocument = (row: RequestSupplier) =>
     run(async () => {
       const opened = await openWhenReady(row.documentPath ? quoteDocumentUrl(row.documentPath) : Promise.resolve(null));
       if (!opened) throw new Error("Their document couldn't be opened. Try again.");
-    });
+    }, "Their document couldn't be opened. Try again.");
 
   return (
     <div className="space-y-6">
@@ -362,7 +362,7 @@ export default function QuoteRequestPage() {
                         <a href={`${requestLinkUrl(row.token)}#o`} target="_blank" rel="noopener" className="font-medium text-neutral-700 underline">See their page</a>
                         <button
                           onClick={() => {
-                            if (window.confirm(`Stop ${nameOf(row)}'s link? It stops working at once; send or copy the new one.`)) run(() => requestSuppliersStore.replaceToken(row.id), "Old link stopped. Send or copy the new one.");
+                            if (window.confirm(`Stop ${nameOf(row)}'s link? It stops working at once; send or copy the new one.`)) run(() => requestSuppliersStore.replaceToken(row.id), "Couldn't stop the old link.", "Old link stopped. Send or copy the new one.");
                           }}
                           disabled={busy}
                           className="font-medium text-neutral-500 underline"
@@ -397,7 +397,7 @@ export default function QuoteRequestPage() {
                   {available.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <button
-                  onClick={() => run(async () => { await requestSuppliersStore.add(r.id, [adding]); setAdding(""); })}
+                  onClick={() => run(async () => { await requestSuppliersStore.add(r.id, [adding]); setAdding(""); }, "Couldn't add that supplier.")}
                   disabled={busy || !adding}
                   className={SECONDARY}
                 >
@@ -432,7 +432,7 @@ export default function QuoteRequestPage() {
         {open ? (
           <button
             onClick={() => {
-              if (window.confirm("Close this request? Suppliers' links stop taking prices. You can reopen it.")) run(() => quoteRequestsStore.setStatus(r.id, "closed"), "Request closed.");
+              if (window.confirm("Close this request? Suppliers' links stop taking prices. You can reopen it.")) run(() => quoteRequestsStore.setStatus(r.id, "closed"), "Couldn't close this request.", "Request closed.");
             }}
             disabled={busy}
             className={SECONDARY}
@@ -440,7 +440,7 @@ export default function QuoteRequestPage() {
             Close request
           </button>
         ) : (
-          <button onClick={() => run(() => quoteRequestsStore.setStatus(r.id, "open"), "Request reopened.")} disabled={busy} className={SECONDARY}>
+          <button onClick={() => run(() => quoteRequestsStore.setStatus(r.id, "open"), "Couldn't reopen this request.", "Request reopened.")} disabled={busy} className={SECONDARY}>
             Reopen request
           </button>
         )}

@@ -29,7 +29,7 @@ check("another origin is left alone", /url\.origin !== self\.location\.origin/.t
 const install = sw.slice(sw.indexOf("install"), sw.indexOf("activate"));
 const precached = install.match(/"\/[^"]*"/g) ?? [];
 check("no screen is precached: only the offline page and the icons",
-  precached.every((p) => /icon-|OFFLINE/.test(p) || p === '"/offline"'),
+  precached.every((p) => /icon-|OFFLINE/.test(p)),
   JSON.stringify(precached));
 
 // ── And in a browser, with the network taken away ──
@@ -85,8 +85,9 @@ try {
     const offlineText = await page.evaluate(() => document.body.innerText);
     check("with no signal, a page says so rather than showing an old one",
       !/Box 1|VAT return/i.test(offlineText), offlineText.replace(/\s+/g, " ").slice(0, 200));
+    // Our own sentence only: Chrome's error page says "No internet" too.
     check("and what it says is for a person, not a browser error",
-      /offline|no signal|connection|internet/i.test(offlineText), offlineText.replace(/\s+/g, " ").slice(0, 200));
+      /No signal just now/.test(offlineText), offlineText.replace(/\s+/g, " ").slice(0, 200));
     await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     await page.setCacheEnabled(true);
   }

@@ -5,6 +5,7 @@ import webpush from "web-push";
 import { selfAssessmentNotice } from "@/lib/taxEstimate";
 import { todayISO } from "@/lib/today";
 import { SITE_NAME } from "@/lib/siteName";
+import { bearerMatches } from "@/lib/bearer";
 
 export const runtime = "nodejs";
 // Cron work grows with the number of accounts, and killing it part-way is
@@ -44,7 +45,7 @@ function todayStr(): string {
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!bearerMatches(authHeader, cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

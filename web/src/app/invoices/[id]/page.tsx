@@ -454,10 +454,17 @@ export default function InvoiceViewPage() {
         tags,
       });
       setDraftBaseline(JSON.stringify(draftFields));
-      const fresh = await invoicesStore.get(invoice.id);
-      setInvoice(fresh);
     } catch (err) {
       setDraftError(saveFailed(err, "Couldn't save this draft."));
+      setDraftSaving(false);
+      return;
+    }
+    // Saved by here: a drop in the read-back used to say "Couldn't save this draft".
+    try {
+      setInvoice(await invoicesStore.get(invoice.id));
+    } catch (err) {
+      console.error("save draft: reading the invoice back", err);
+      setDraftError("Saved, but the page couldn't load it back. Reload to see it.");
     } finally {
       setDraftSaving(false);
     }
@@ -525,7 +532,9 @@ export default function InvoiceViewPage() {
       setSendPanelOpen(false);
     } catch (err) {
       console.error("send: reading the invoice back", err);
-      setSendError("It's sent and has its number, but the page couldn't load it back. Reload to see it.");
+      // The panel goes with the draft: left open, Confirm could be pressed again on an issued invoice.
+      setSendPanelOpen(false);
+      setDraftError("It's sent and has its number, but the page couldn't load it back. Reload to see it.");
     } finally {
       setSendBusy(false);
     }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CompanyReportView from "@/components/check-company/CompanyReportView";
 import { asCompanyNumber, CH_SEARCH_URL, type CompanyHit, type CompanyReport, longDate } from "@/lib/companyReport";
 import Tip from "@/components/Tip";
+import { authHeaders } from "@/lib/companyRegister";
 
 const CARD = "rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
 const PRIMARY = "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 min-h-14 text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
@@ -27,7 +28,7 @@ export default function CompanyChecker() {
   const top = useRef<HTMLDivElement>(null);
 
   const ask = useCallback(async (params: string): Promise<Answer | null> => {
-    const res = await fetch(`/api/company-check${params}`).catch(() => null);
+    const res = await fetch(`/api/company-check${params}`, { headers: await authHeaders() }).catch(() => null);
     if (!res) return null;
     const body = (await res.json().catch(() => null)) as Answer | null;
     if (body && body.configured === false) setConfigured(false);
@@ -81,7 +82,8 @@ export default function CompanyChecker() {
   useEffect(() => {
     let live = true;
     const number = new URLSearchParams(window.location.search).get("number");
-    fetch(`/api/company-check${number ? `?number=${encodeURIComponent(number)}` : ""}`)
+    authHeaders()
+      .then((headers) => fetch(`/api/company-check${number ? `?number=${encodeURIComponent(number)}` : ""}`, { headers }))
       .then((r) => r.json())
       .then((body: Answer) => {
         if (!live) return;

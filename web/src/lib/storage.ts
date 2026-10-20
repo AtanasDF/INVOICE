@@ -738,10 +738,11 @@ export const invoicesStore = {
     const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
     if (error) throw error;
   },
-  // Full-content edit, only ever valid while status is still "draft" --
-  // callers are responsible for that check, same as the UI only showing
-  // this form for a draft. Once marked sent, this becomes exactly the
-  // "changing what was billed" problem update() deliberately can't do.
+  // Full-content edit, only ever valid while status is still "draft". Once
+  // sent, this becomes exactly the "changing what was billed" problem
+  // update() deliberately can't do -- and a stale tab, or Confirm pressed
+  // again after a send whose read-back dropped, still shows the draft form,
+  // so the database is asked to refuse it rather than the page trusted.
   async updateDraft(
     id: string,
     patch: Partial<Pick<Invoice, "clientId" | "date" | "items" | "dueDate" | "paymentTerms" | "notes" | "tags" | "cisRate">>
@@ -755,8 +756,9 @@ export const invoicesStore = {
     if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
     if (patch.tags !== undefined) dbPatch.tags = patch.tags;
     if (patch.cisRate !== undefined) dbPatch.cis_rate = patch.cisRate;
-    const { error } = await supabase.from("invoices").update(dbPatch).eq("id", id);
+    const { data, error } = await supabase.from("invoices").update(dbPatch).eq("id", id).eq("status", "draft").select("id");
     if (error) throw error;
+    if (!data?.length) throw new Error("This invoice has already been sent, so it can't be edited. Reload to see it.");
   },
   // Atomically assigns the real invoice number, advances the account's
   // number counter, and flips status to sent -- one Postgres transaction
@@ -890,7 +892,8 @@ export type BusinessProfile = {
   accountKind: AccountKind | null;
   // "free" or "paid" (migration-036). Only Atanas can change it, by hand in
   // SQL: nothing sells a paid plan yet, and a switch the app could flip would
-  // be a switch anyone could flip. Read `?? "free"` so the app works against a
+  // be a switch anyone could flip -- migration-044's trigger refuses it from
+  // any signed-in account. Read `?? "free"` so the app works against a
   // database where 036 has not been run.
   plan: "free" | "paid";
   vatNumber: string;
@@ -1026,9 +1029,8 @@ export const businessProfileStore = {
   //
   // `plan` is deliberately not accepted: it is Atanas's switch, set by hand in
   // SQL, and a save path that took it would be a way for any account to make
-  // itself paid. The type is what stops it, rather than a comment asking
-  // nicely -- the database refuses it too, but by then the intent is already
-  // wrong.
+  // itself paid. The type is what stops it, and the database refuses it too
+  // (migration-044's business_profile_plan_guard, live since 2026-10-20).
   async save(input: SavableBusinessProfile): Promise<boolean> {
     const user_id = await currentUserId();
     const row = {

@@ -231,6 +231,9 @@ export default function ReviewQueuePage() {
                           <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
                           <input
                             className="w-full rounded-lg border px-3 py-2 text-sm"
+                            autoCapitalize="characters"
+                            autoCorrect="off"
+                            spellCheck={false}
                             value={draft.invoiceNumber}
                             onChange={(e) => updateDraft(r.id, { invoiceNumber: e.target.value })}
                           />

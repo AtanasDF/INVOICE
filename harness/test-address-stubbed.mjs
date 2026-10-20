@@ -84,6 +84,7 @@ const stubServer = http.createServer((req, res) => {
     const pc = (s) => decodeURIComponent(s).toUpperCase().replace(/\s+/g, " ").trim();
     if (u.pathname.startsWith("/pc/postcodes/") && req.method === "GET") {
       const code = pc(u.pathname.slice("/pc/postcodes/".length));
+      if (code === "ZZ9 9ZZ") return send(res, 500, { status: 500, error: "Internal server error" });
       return PLACES[code] ? send(res, 200, { status: 200, result: { postcode: code, ...PLACES[code] } }) : send(res, 404, { status: 404, error: "Postcode not found" });
     }
     if (u.pathname === "/pc/postcodes" && req.method === "POST") {
@@ -207,6 +208,9 @@ try {
   check("a postcode that doesn't exist says so and can be kept as typed", r.body.badPostcode === true && labels(r)[0] === "Use ZZ99 9ZZ as typed", JSON.stringify(r.body));
   r = await search({ q: "SE18 1HU", where: true });
   check("a postcode's position for a mileage trip", r.status === 200 && r.body.at?.lat === PLACES["SE18 1HU"].latitude, JSON.stringify(r.body));
+  // postcodes.io failing used to throw out of the handler: a bare 500 page.
+  r = await search({ q: "ZZ9 9ZZ", where: true });
+  check("postcodes.io failing on a mileage lookup answers 503 in words, not a thrown 500", r.status === 503 && /isn't answering/.test(r.body?.error ?? ""), JSON.stringify({ status: r.status, body: r.body }));
   check("no stranger's search ever reached the paid service", idealCalls() === 0, String(idealCalls()));
 
   // ---- Royal Mail's list, signed in, with a key --------------------------

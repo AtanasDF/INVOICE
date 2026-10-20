@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { RECEIPTS_BUCKET } from "@/lib/receiptsBucket";
+import { PRIVATE_FILE_CACHE, RECEIPTS_BUCKET } from "@/lib/receiptsBucket";
 
 export { RECEIPTS_BUCKET };
 
@@ -35,7 +35,7 @@ export async function storeImages(userId: string, dataUrls: (string | null)[]): 
         if (!url || !url.startsWith("data:")) return url;
         const blob = await (await fetch(url)).blob();
         const path = `${userId}/${folder}/${i + 1}.${extensionFor(blob.type)}`;
-        const { error } = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false });
+        const { error } = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false, cacheControl: PRIVATE_FILE_CACHE });
         if (error) throw error;
         return PREFIX + path;
       })

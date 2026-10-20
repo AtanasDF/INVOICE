@@ -11,6 +11,7 @@ import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 import { allowShared } from "@/lib/rateLimit";
 import { RELAYED_ERRORS } from "@/lib/extractors";
 import { gbpFigures } from "@/lib/receiptAmounts";
+import { bearerMatches } from "@/lib/bearer";
 
 export const runtime = "nodejs";
 // The same reader /api/scan needs 300s for, run once per attachment, up to
@@ -30,7 +31,7 @@ export const maxDuration = 300;
 const MAX_ATTACHMENTS = 5;
 
 type IngestAttachment = { filename: string; mimeType: string; base64: string };
-type IngestBody = { token?: string; from?: string; subject?: string; textBody?: string; attachments?: IngestAttachment[] };
+type IngestBody = { token?: string; messageId?: string; from?: string; subject?: string; textBody?: string; attachments?: IngestAttachment[] };
 
 // Nobody sees the scan screen's "could also be ..." prompt for an emailed
 // document, so the ambiguity has to travel with the row into the review
@@ -74,14 +75,15 @@ async function documentFile(attachment: IngestAttachment, documents: ScanResult[
 export async function POST(req: Request) {
   const webhookSecret = process.env.INBOX_WEBHOOK_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (!webhookSecret || authHeader !== `Bearer ${webhookSecret}`) {
+  if (!bearerMatches(authHeader, webhookSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!supabaseUrl || !serviceRoleKey || !anthropicKey) {
+  // Gemini reads and Claude stands in for it, so either key is enough.
+  const readerKey = process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!supabaseUrl || !serviceRoleKey || !readerKey) {
     return NextResponse.json({ error: "Inbox import isn't fully configured on this deployment." }, { status: 500 });
   }
 
@@ -157,8 +159,25 @@ export async function POST(req: Request) {
     // and still far short of a bill worth noticing. An email with nothing
     // readable still counts once, for the row it files. A 429 makes the Worker
     // reject the email, so the sender's server retries and the sender is told.
+    // The same email arriving twice. A read that ran long made the Worker
+    // bounce it, the sender's server sent it again, and every attachment that
+    // had already been filed the first time was filed again beside it. Each
+    // row now carries the email's Message-ID and which part of it it came
+    // from, and a part already filed is not read twice.
+    const messageId = typeof body.messageId === "string" && body.messageId.trim() ? body.messageId.trim().slice(0, 300) : null;
+    const filed = new Set<string>();
+    if (messageId) {
+      const { data: earlier } = await admin.from("receipts").select("details").eq("user_id", userId).eq("details->>emailMessageId", messageId);
+      for (const r of earlier ?? []) filed.add(String((r.details as { emailPart?: unknown } | null)?.emailPart));
+    }
+    const fromEmail = (part: string) => (messageId ? { emailMessageId: messageId, emailPart: part } : undefined);
+    if (messageId && (usableAttachments.length ? usableAttachments.every((_, i) => filed.has(String(i))) : filed.has("email"))) {
+      return NextResponse.json({ created: 0, dropped: 0, note: "already filed from this email" });
+    }
+    const toRead = usableAttachments.map((a, i) => ({ a, part: String(i) })).filter(({ part }) => !filed.has(part));
+
     const HOUR = 60 * 60 * 1000;
-    for (let n = 0; n < Math.max(1, usableAttachments.length); n++) {
+    for (let n = 0; n < Math.max(1, toRead.length); n++) {
       if (!(await allowShared(`inbox:user:${userId}`, 60, HOUR))) {
         console.error("inbox: mailbox over its hourly limit,", userId);
         return NextResponse.json({ error: "Too many documents this hour." }, { status: 429 });
@@ -174,7 +193,7 @@ export async function POST(req: Request) {
     // receipt would it belong to? It lands in needs-review beside them, which
     // is where somebody is looking.
     const fileDropped = async () => {
-      if (!dropped.length) return;
+      if (!dropped.length || filed.has("dropped")) return;
       await admin.from("receipts").insert({
         user_id: userId,
         client_id: null,
@@ -190,6 +209,7 @@ export async function POST(req: Request) {
         warranty_months: null,
         tags: ["via-email", "not-imported"],
         line_items: [],
+        details: fromEmail("dropped"),
       });
     };
 
@@ -201,7 +221,7 @@ export async function POST(req: Request) {
     // in `wrangler tail` that nobody is watching. Filing it for review with
     // the document attached is the same promise the no-attachment path
     // above already makes.
-    const fileUnread = async (attachment: { filename: string; mimeType: string; base64: string }, why: string) => {
+    const fileUnread = async (attachment: { filename: string; mimeType: string; base64: string }, why: string, part: string) => {
       const stored = await storeImageForUser(admin, userId, attachment.mimeType, attachment.base64).catch(() => null);
       const { data, error } = await admin
         .from("receipts")
@@ -220,6 +240,7 @@ export async function POST(req: Request) {
           warranty_months: null,
           tags: ["via-email", "unread"],
           line_items: [],
+          details: fromEmail(part),
         })
         .select("id")
         .single();
@@ -248,6 +269,7 @@ export async function POST(req: Request) {
           warranty_months: null,
           tags: ["via-email"],
           line_items: [],
+          details: fromEmail("email"),
         })
         .select("id")
         .single();
@@ -259,7 +281,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ created: created.length, dropped: dropped.length, note: "no usable attachment, filed the email itself" });
     }
 
-    for (const attachment of usableAttachments) {
+    for (const { a: attachment, part } of toRead) {
       let documents;
       try {
         documents = await extractDocuments([{ mediaType: attachment.mimeType, base64: attachment.base64 }], []);
@@ -268,7 +290,7 @@ export async function POST(req: Request) {
         // it; a provider's or the SDK's text goes to the log.
         const message = err instanceof Error ? err.message : "";
         if (!RELAYED_ERRORS.has(message)) console.error("inbox: read failed,", message || String(err));
-        await fileUnread(attachment, RELAYED_ERRORS.has(message) ? message.replace(/\.$/, "") : "the reader failed");
+        await fileUnread(attachment, RELAYED_ERRORS.has(message) ? message.replace(/\.$/, "") : "the reader failed", part);
         continue;
       }
       for (const [index, result] of documents.entries()) {
@@ -360,14 +382,14 @@ export async function POST(req: Request) {
             invoice_number: result.invoiceNumber,
             due_date: result.dueDate,
             paid: documentType !== "invoice" || result.paidOnDocument === true,
-            details: { ...documentDetailsFromScan(result.details), ...(unsureFields(result).length ? { unsure: unsureFields(result) } : {}) },
+            details: { ...documentDetailsFromScan(result.details), ...(unsureFields(result).length ? { unsure: unsureFields(result) } : {}), ...fromEmail(part) },
           })
           .select("id")
           .single();
         if (error) {
           // One row refused must not abandon the attachments behind it.
           console.error("inbox: row refused,", error.message);
-          await fileUnread(attachment, "it could not be saved");
+          await fileUnread(attachment, "it could not be saved", part);
           continue;
         }
         created.push(data.id);

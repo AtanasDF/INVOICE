@@ -1,5 +1,5 @@
 import { showOnAppIcon } from "@/lib/appBadge";
-import { disablePush } from "@/lib/push";
+import { clearShownNotifications, disablePush } from "@/lib/push";
 import { pushSubscriptionsStore } from "@/lib/storage";
 import { AUTH_STORAGE_KEY, supabase } from "@/lib/supabaseClient";
 
@@ -36,6 +36,7 @@ export async function signOut(): Promise<void> {
   } catch {
     // Offline, permission already revoked, no service worker -- sign out anyway.
   }
+  await clearShownNotifications().catch(() => {});
 
   // The loser of the race isn't cancelled, which is what we want: if the
   // logout does eventually reach Supabase, the session is revoked there too.

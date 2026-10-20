@@ -46,7 +46,7 @@ const pdfAttachment = (a) => {
 // holding a multipart/alternative (the plain text, and a multipart/related
 // with the HTML and its inline images) and then the real attachments.
 // plain: false is the HTML-only email some invoicing systems put out.
-function email({ to = `u-${TOKEN}@invoiceover.com`, icons = 0, screenshot = false, attachments = [], html = "<p>Please find the invoice attached.</p>", plain = true, text = null, from = "Accounts <ap@supplier.example>", raw = null } = {}) {
+function email({ to = `u-${TOKEN}@invoiceover.com`, icons = 0, screenshot = false, attachments = [], html = "<p>Please find the invoice attached.</p>", plain = true, text = null, from = "Accounts <ap@supplier.example>", raw = null, messageId = null } = {}) {
   if (raw) return raw;
   const related = [
     'Content-Type: multipart/related; boundary="rel"',
@@ -64,6 +64,7 @@ function email({ to = `u-${TOKEN}@invoiceover.com`, icons = 0, screenshot = fals
     `From: ${from}`,
     `To: ${to}`,
     "Subject: Invoice 1043",
+    ...(messageId ? [`Message-ID: ${messageId}`] : []),
     "MIME-Version: 1.0",
     'Content-Type: multipart/mixed; boundary="mixed"',
     "",
@@ -83,6 +84,12 @@ async function send(opts, env = ENV) {
   return posted;
 }
 const names = (p) => (p?.body.attachments ?? []).map((a) => a.filename);
+
+// The Message-ID goes with the email, so the app can tell a resend from a new one.
+{
+  const sent = await send({ attachments: ["invoice-1043.pdf"], messageId: "<inv-1043.7f3a@mailer.supplier.example>" });
+  check("the email's Message-ID is posted with it", sent?.body.messageId === "<inv-1043.7f3a@mailer.supplier.example>", JSON.stringify(sent?.body.messageId));
+}
 
 // The bug as it was: five footer icons and then the invoice.
 let p = await send({ icons: 5, attachments: ["invoice-1043.pdf"] });

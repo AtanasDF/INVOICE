@@ -6,7 +6,7 @@ import { extractPages } from "@/lib/scanClient";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { ScannedLine, formatPounds, isDeliveryLine, matchScannedLines, scannedUnitPrice } from "@/lib/quoteCompare";
 import { QuoteRequest, RequestSupplier, quoteDocumentUrl, requestSuppliersStore, uploadQuoteDocument } from "@/lib/quoteRequests";
-import { errorText, saveFailed } from "@/lib/errorText";
+import { saveFailed } from "@/lib/errorText";
 import { openWhenReady } from "@/lib/afterTap";
 import { useConfirmLeave } from "@/lib/leaveGuard";
 
@@ -60,8 +60,10 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
       setFile({ dataUrl, mediaType: dataUrl.slice(5, dataUrl.indexOf(";")), name: f.name });
       setScanned(null);
       setNote(null);
-    } catch (err) {
-      setError(errorText(err, "Couldn't open that file."));
+    } catch {
+      // The browser's own words ("The source image cannot be decoded") say
+      // nothing to somebody attaching a supplier's quote.
+      setError("Couldn't open that file. Try a PDF, or a JPEG or PNG photo.");
     }
   }
 
