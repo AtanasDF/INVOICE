@@ -31,14 +31,29 @@ export default function JustTheFile({ pages, suggestedName }: { pages: DocPage[]
   // is applied on the render after the press.
   const working = useRef(false);
 
-  async function make() {
-    if (made) return made;
-    const { pagesToPdf, pdfName } = await import("@/lib/documentPdf");
-    const filename = pdfName(suggestedName, suggestedName || "document");
-    const bytes = await pagesToPdf(pages, filename.replace(/\.pdf$/, ""));
-    const next = { blob: new Blob([bytes as BlobPart], { type: "application/pdf" }), name: filename };
-    setMade(next);
-    return next;
+  const making = useRef<Promise<{ blob: Blob; name: string }> | null>(null);
+
+  function make() {
+    making.current ??= (async () => {
+      const { pagesToPdf, pdfName } = await import("@/lib/documentPdf");
+      const filename = pdfName(suggestedName, suggestedName || "document");
+      const bytes = await pagesToPdf(pages, filename.replace(/\.pdf$/, ""));
+      const next = { blob: new Blob([bytes as BlobPart], { type: "application/pdf" }), name: filename };
+      setMade(next);
+      return next;
+    })().catch((err) => {
+      making.current = null;
+      throw err;
+    });
+    return making.current;
+  }
+
+  // Made as the panel opens, so Share has the file in hand when it is pressed:
+  // on an iPhone a share sheet asked for after building the PDF has outlasted
+  // the tap and is refused.
+  function openPanel() {
+    setOpen(true);
+    make().catch(() => {});
   }
 
   async function run(what: "save" | "share") {
@@ -48,7 +63,7 @@ export default function JustTheFile({ pages, suggestedName }: { pages: DocPage[]
     setError(null);
     setNote(null);
     try {
-      const m = await make();
+      const m = made ?? (await make());
       if (what === "save") {
         saveBlob(m.name, m.blob);
         setNote("Saved to your device. Nothing was added to your records.");
@@ -62,8 +77,11 @@ export default function JustTheFile({ pages, suggestedName }: { pages: DocPage[]
       try {
         await navigator.share({ files: [file], title: m.name });
         setNote("Shared. Nothing was added to your records.");
-      } catch {
-        // Closing the share sheet is not a failure.
+      } catch (err) {
+        // Closing the share sheet is not a failure; a sheet refused because
+        // the file was still being made when the tap came is, and the file is
+        // ready for the next press.
+        if ((err as { name?: unknown } | null)?.name !== "AbortError") setError("The file is ready now. Press Share it again.");
       }
     } catch {
       setError("Couldn't make the file from these pages. Try retaking the photo.");
@@ -77,7 +95,7 @@ export default function JustTheFile({ pages, suggestedName }: { pages: DocPage[]
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openPanel}
         className="min-h-11 text-sm font-medium text-neutral-700 underline"
       >
         Not yours? Just keep the file

@@ -40,8 +40,9 @@ export default function InviteCard({ className = "" }: { className?: string }) {
       }
       await navigator.clipboard.writeText(message);
       setState("copied");
-    } catch {
-      setState("failed");
+    } catch (err) {
+      // Closing the share sheet is not a failure.
+      if ((err as { name?: unknown } | null)?.name !== "AbortError") setState("failed");
     }
   }
 

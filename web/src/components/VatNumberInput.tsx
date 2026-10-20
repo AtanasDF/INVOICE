@@ -167,6 +167,9 @@ export default function VatNumberInput({
         id={id}
         className={className}
         autoComplete="off"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
         placeholder={placeholder ?? "GB 123 4567 89"}
         value={value}
         disabled={disabled}

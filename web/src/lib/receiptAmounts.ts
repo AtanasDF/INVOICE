@@ -1,4 +1,5 @@
 import { amountOrNull, roundMoney } from "@/lib/money";
+import { readRate } from "@/lib/fx";
 
 // What a receipt costs in pounds, worked out once for every screen that saves
 // one. The by-hand form, the edit form, the scan page, the review queue and
@@ -24,7 +25,7 @@ export function receiptGbp(totalText: string, vatText: string, currency: string,
   if (currency === "GBP") {
     return { ...gbpFigures(total, vat, 1, credit), originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
   }
-  const rate = Number(rateText) || 0;
+  const rate = readRate(rateText) || 0;
   return { ...gbpFigures(total, vat, rate, credit), originalAmount: total, originalVatAmount: vat, originalCurrency: currency, fxRate: rate };
 }
 

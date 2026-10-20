@@ -68,9 +68,17 @@ export default function GetTheApp({ className = "" }: { className?: string }) {
         />
       )}
 
-      <p className="text-sm text-neutral-600">
-        You can keep using it in this tab instead. The icon just saves you finding it again.
-      </p>
+      {way === "ios" ? (
+        <p className="text-sm text-neutral-600">
+          You can keep using it in Safari instead, but Safari clears what the app keeps on this phone after 7 days
+          without a visit: you&apos;d be signed out, and anything half-written would go. The Home Screen app keeps it.
+          It is separate from Safari, so you sign in once more inside it.
+        </p>
+      ) : (
+        <p className="text-sm text-neutral-600">
+          You can keep using it in this tab instead. The icon just saves you finding it again.
+        </p>
+      )}
     </section>
   );
 }

@@ -62,6 +62,13 @@ export function useInstallWay(): InstallWay {
   return useSyncExternalStore(subscribe, installWay, () => "manual" as InstallWay);
 }
 
+// The iPhone's home-screen app keeps its own storage, apart from Safari's, and
+// iOS never opens a link into it: a link in an email lands in Safari, signed
+// in (or not) on its own.
+export function useIosHomeScreenApp(): boolean {
+  return useInstallWay() === "installed" && isIOS();
+}
+
 // Returns false when the browser had nothing to offer, so the caller can fall
 // back to telling someone what to do by hand.
 export async function askToInstall(): Promise<boolean> {

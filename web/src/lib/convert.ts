@@ -120,11 +120,27 @@ async function canvasBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob
   canvas.width = 0;
   canvas.height = 0;
   if (!blob) throw new Error(NO_PICTURE);
+  // A browser that can't write the kind asked for hands back a PNG instead
+  // (Safari, asked for WEBP), which would be saved under the wrong ending.
+  if (blob.type && blob.type !== type) throw new Error(NO_PICTURE);
   return blob;
 }
 
+let webp: boolean | undefined;
+/** Safari up to 18 reads WEBP but can't write it: the "smallest" picture came out the biggest, a PNG. */
+export function canEncodeWebp(): boolean {
+  if (webp === undefined) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 1;
+    webp = c.toDataURL("image/webp").startsWith("data:image/webp");
+  }
+  return webp;
+}
+
 async function imageAs(file: Blob, type: "image/png" | "image/jpeg" | "image/webp"): Promise<Blob> {
-  const bitmap = await createImageBitmap(file).catch(() => {
+  // Turned the way the camera held it, as DocumentCapture does: without this
+  // some browsers draw a phone photo on its side.
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => {
     throw new Error(UNREADABLE);
   });
   const { width, height } = fitCanvas(bitmap.width, bitmap.height);

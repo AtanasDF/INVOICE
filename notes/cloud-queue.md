@@ -280,7 +280,7 @@ suites the Mac must run (test-far, test-autozoom*, test-conditions, test-batch-*
 Branch: wip/ios-camera.
 ```
 
-## 15. iPhone Safari fixes: files, sharing, downloads and links — [ ]
+## 15. iPhone Safari fixes: files, sharing, downloads and links — [x] (2026-10-20, `wip/ios-files-share`: notes/ios-files-share.md; 13 findings fixed, a few small ones handed on)
 
 ```
 Read notes/ios-safari.md first. Fix findings 7-13, 17-19, 24 and 25: push instructions

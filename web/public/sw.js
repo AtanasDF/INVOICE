@@ -17,9 +17,13 @@
 // offline scan queue) and is not attempted here.
 // v2 on 2026-10-19: the name never moved, so activate's clean-up never ran
 // and every deploy's chunks piled up in v1 for good. Bumping it clears that
-// once; trim() keeps it from happening again.
-const CACHE = "invoiceover-v2";
-const OFFLINE = "/offline";
+// once; trim() keeps it from happening again. v3 on 2026-10-20 for the move
+// from /offline to offline.html, so the old copy goes with the old cache.
+const CACHE = "invoiceover-v3";
+// A plain file, not a page of the app: /offline needed the app's scripts, and
+// a few deploys after it was cached those had been trimmed, so with no signal
+// it said "Loading..." for ever.
+const OFFLINE = "/offline.html";
 // Enough for a few builds' worth of what one phone actually fetches (a whole
 // build is about 90 files); the oldest go first. Cache keys come back in the
 // order they were put, which is what makes the oldest the first ones listed.
@@ -97,6 +101,8 @@ self.addEventListener("fetch", (event) => {
   // stand in for it.
   if (req.mode === "navigate") {
     event.respondWith(fetchWithin(req, NAVIGATE_TIMEOUT_MS).catch(() => caches.match(OFFLINE).then((hit) => hit || Response.error())));
+    // Put back if the phone cleared it to make room, while there is signal to.
+    event.waitUntil(caches.open(CACHE).then((c) => c.match(OFFLINE).then((hit) => hit || c.addAll([OFFLINE]))).catch(() => {}));
   }
 });
 
@@ -129,9 +135,11 @@ self.addEventListener("notificationclick", (event) => {
   const url = (event.notification.data && event.notification.data.url) || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if (client.url.includes(url) && "focus" in client) return client.focus();
-      }
+      // Any open window of the app is taken to the page the notification is
+      // about. Matching on the address found every window ("/" is in all of
+      // them) and focused it wherever it was.
+      const open = windowClients.find((c) => "focus" in c);
+      if (open) return (open.navigate ? open.navigate(url).then((c) => c || open, () => open) : Promise.resolve(open)).then((c) => c.focus());
       if (self.clients.openWindow) return self.clients.openWindow(url);
     })
   );

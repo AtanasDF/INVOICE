@@ -4,6 +4,26 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — iPhone Safari: files, sharing, downloads and links (cloud, brief 15), `wip/ios-files-share`
+
+Findings 7-13, 17-19, 24 and 25 of `notes/ios-safari.md`, each read in the code first; all
+held. Detail and the leftovers in `notes/ios-files-share.md`. **Not merged.** Copy link now
+starts the clipboard write inside the tap (`lib/afterTap.ts`), as does opening a supplier's
+document; CSV/JSON exports, the invoice PDF and /convert's Save all go through `saveBlob`,
+which waits 60 s to revoke and uses the share sheet in the iPhone home-screen app; the
+receipt photo box offers the library; Just the file makes its PDF as it opens; Settings shows
+the Home Screen push steps in a Safari tab; the sign-in, reset and install wording says what
+Safari's 7 days and the separate home-screen app mean; the first-open push allows it may have
+been the owner; the worker serves a script-free `offline.html` (cache v3) and notification
+taps navigate. Plus the small /convert, form and share items.
+
+New `harness/test-ios-files-share.mjs` (63/63, in run-all); `test-sw-behaviour` 16/16 (was
+12). tsc, eslint, build clean (build with placeholder public Supabase values, no .env.local
+in the cloud). Every logic suite green except `test-component-money` 60/61, which is red on
+main too (stale after `8d11611`). No browser suite run: the list for the Mac is in the note.
+Expect small conflicts with briefs 13 and 14 in `receipts/new`, `settings`, `globals.css`.
+CLAUDE.md: the `/scan?engine=gemini` advice now says it can't be done in the home-screen app.
+
 ## 2026-10-20 — Round 3 merged; migrations 043-045 live
 
 043, 044 and 045 run on the live database and each exercised as the Hidefield owner in a

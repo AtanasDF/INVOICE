@@ -83,6 +83,9 @@ export default function CompanyNumberInput({
         placeholder={placeholder}
         value={value}
         autoComplete="off"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
         onChange={(e) => {
           onChange(e.target.value);
           setOffer(null);

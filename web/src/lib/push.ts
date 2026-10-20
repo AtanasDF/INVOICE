@@ -3,6 +3,9 @@
 // API. Storing the resulting subscription is pushSubscriptionsStore's job
 // (storage.ts) -- this file only talks to the browser, never Supabase.
 
+import { isStandalone } from "@/lib/install";
+import { isIOS } from "@/lib/platform";
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -18,11 +21,8 @@ export function pushSupported(): boolean {
 
 /** iOS Safari only supports push for a site added to the Home Screen, not a plain tab. */
 export function isIosNotStandalone(): boolean {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const nav = navigator as Navigator & { standalone?: boolean };
-  const isStandalone = window.matchMedia?.("(display-mode: standalone)").matches || nav.standalone === true;
-  return isIos && !isStandalone;
+  if (typeof window === "undefined") return false;
+  return isIOS() && !isStandalone();
 }
 
 export async function getExistingSubscription(): Promise<PushSubscription | null> {
