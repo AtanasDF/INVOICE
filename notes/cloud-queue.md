@@ -317,7 +317,7 @@ stored changed, say so loudly in the report: that page has its own rule in CLAUD
 Report in notes/help-truth.md. Branch: wip/help-truth.
 ```
 
-## 17. The leftovers sweep — [ ]
+## 17. The leftovers sweep — [x] (2026-10-20, `wip/leftovers`: notes/leftovers.md; 20 questions, the phone/Mac list, about 35 fixed)
 
 ```
 Every audit since 18/10 wrote down what it left: notes/audit-components.md,

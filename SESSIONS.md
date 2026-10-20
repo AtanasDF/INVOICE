@@ -4,6 +4,32 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — The leftovers sweep (cloud, brief 17), `wip/leftovers`, NOT merged
+
+Every item the audits since 18/10 left open, re-checked against today's code, sorted in
+`notes/leftovers.md`: **(a) 20 questions for Atanas** (line rounding, CSV money as numbers,
+the Claude-first contact and describe-an-invoice reads, invite farming, company lookups for
+strangers, dead code, and the rest), **(b) what needs the iPhone, the live database or the
+Mac**, with what to run, and **(c) about 35 fixed**, each confirmed in the code first and
+pinned in the new `harness/test-leftovers.mjs` (71 checks; its source checks fail on main).
+The camera capture code was not touched.
+
+Worth knowing: an issued invoice could be rewritten by a stale draft tab or a second Confirm
+after a send whose read-back dropped (`updateDraft` had no status filter); the Save-as text
+and spreadsheet lost labour/materials headings and ran "INV-001" into "3 days late"; the
+offline page's Try again went to the dashboard; the Companies House deadline asked UTC what
+day it was; the same email sent twice was filed twice (Message-ID now kept in
+`receipts.details` -- **the Worker half needs `npx wrangler deploy` on the Mac**). No
+schema change. `test-audit-guards` (89/90) and `test-free-quote` (crashed at check 6) were
+red on main and are fixed; both were stale tests, not the app.
+
+Checks: tsc, eslint, build clean (placeholder public Supabase values). Logic: test-leftovers
+71, test-api-routes 126, test-audit-guards 90, test-days-between 50, test-csv-safety 12,
+test-convert-logic 47, test-free-totals 13, test-inbox-worker 41. Browser (container
+Chromium against `next start`, one at a time): RESULTS. Note for the next cloud session: the harness
+needs `npm install` in `harness/` before any browser suite runs, or every one dies on
+`puppeteer-core` with no result line.
+
 ## 2026-10-20 — Round 4a live, then the camera fixes live for the iPhone test
 
 Atanas: merge 4a (`15eb531`), then "merge the camera fixes so I can try them on the

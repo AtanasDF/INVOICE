@@ -106,6 +106,7 @@ Part two (the sheet's other shapes, offline, the iPhone list, the Worker):
 - [x] The Companies House deadline is counted in London days: the hour after midnight on a summer night, an overdue filing read as on time. `test-days-between` no longer excuses it. (days-between flag)
 - [x] The same email sent twice is not filed twice: the Worker posts its Message-ID, every row records it and which part it came from, and a part already filed is not read again (no schema change: `receipts.details`). **The Worker half is live only after `npx wrangler deploy` on the Mac**; until then the route behaves as before. One edge left: if an attachment held two documents and only the first row went in before the failure, the resend skips that attachment. (audit-worker)
 - [x] Stale comments: `leaveGuard.ts` and `sw.js` said `/offline`. (brief 15 left)
+- [x] `test-free-quote` crashed at check 6, on main too: the harness's `signIn` clears storage, `last-account` with it, and the app rightly cleared the Free draft for an account it didn't know. The suite puts `last-account` back with the draft (13/13). Found while running the browser suites for this branch.
 
 Not done from list (c), and why:
 - `useLeaveGuard.ts` duplicating `leaveGuard.ts`: merging means removing a file, rule 1 — in (a)15.
