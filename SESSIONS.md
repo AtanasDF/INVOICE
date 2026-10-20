@@ -4,6 +4,27 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud brief 7, dead weight: report only, on `wip/dead-weight`
+
+Cloud session, repo only. **Nothing removed or edited in `web/`** (rule 1). Report in
+`notes/dead-weight.md` (the brief named `audit-dead-code.md`; the session that started this
+one asked for `dead-weight.md`). Method: the TypeScript checker resolving every identifier in
+`web/src` to its export, the harness's `gen/` imports and text reads counted as callers,
+reachability from the 111 Next.js entry files, `tsc --noUnusedLocals`, and the same scan
+on `fix/audit-components` to see what its merge leaves behind.
+
+- 0 orphaned files of 319, 0 unrendered components, 0 unused dependencies of 22, 0 unused locals.
+- 5 dead outright: `claimMessage` (invites, maybe an unwired message rather than leftover code),
+  `type CurrencyCode`, two re-exports nobody imports through, and `scripts/copy-opencv.mjs`
+  (replaced by `copy-vendor.mjs`; two stale comments still name it).
+- 4 used only by the harness. **`reverseChargeCreditNote` is probably a gap rather than dead
+  code**: the guide says reverse-charge credit notes carry that wording, but no screen prints it.
+- 102 exports used only inside their own file (`export` unnecessary), plus 43 kept exported
+  only for suites.
+- `fix/audit-components` takes no export's last caller away.
+
+Left open: whether to remove any of it, which is Atanas's call, after the pending merges.
+
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 
 **Merged into `main` on Atanas's say-so** (fast-forward to `32e963d`, exactly the tested
