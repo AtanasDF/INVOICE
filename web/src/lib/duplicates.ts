@@ -1,5 +1,6 @@
 import type { Receipt } from "@/lib/storage";
 import { normaliseSupplierName } from "@/lib/supplierMatch";
+import { daysBetween } from "@/lib/today";
 
 export type DuplicateCandidate = {
   clientId: string;
@@ -22,17 +23,13 @@ export function sameSupplier(a: { clientId: string; vendor: string }, b: { clien
   return v !== "" && v === normaliseSupplierName(b.vendor);
 }
 
-function daysBetween(a: string, b: string): number {
-  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
-}
-
 export function findDuplicate(candidate: DuplicateCandidate, receipts: Receipt[]): Receipt | null {
   const pool = receipts.filter(
     (r) => (r.documentType === "credit_note") === candidate.isCreditNote && sameSupplier(r, candidate)
   );
   return (
     pool.find((r) => sameNumber(r.invoiceNumber, candidate.invoiceNumber)) ??
-    pool.find((r) => Math.abs(r.amount + r.vatAmount - candidate.gross) < 0.01 && daysBetween(r.date, candidate.date) <= 3) ??
+    pool.find((r) => Math.abs(r.amount + r.vatAmount - candidate.gross) < 0.01 && Math.abs(daysBetween(r.date, candidate.date)) <= 3) ??
     null
   );
 }

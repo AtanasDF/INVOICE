@@ -13,8 +13,8 @@ import { bulkMatchSupplier, plainlySupplier, readLinkSkips, writeLinkSkips } fro
 import { DocumentIcon } from "@/components/icons";
 import Tip from "@/components/Tip";
 import { loadFailed, saveFailed } from "@/lib/errorText";
-import { daysBetween, dueSoon } from "@/lib/bills";
-import { todayISO } from "@/lib/today";
+import { dueSoon } from "@/lib/bills";
+import { daysBetween, todayISO } from "@/lib/today";
 import { addMonths } from "@/lib/recurrence";
 import { receiptGbp } from "@/lib/receiptAmounts";
 

@@ -12,7 +12,7 @@ import { loadFailed } from "@/lib/errorText";
 import TextCustomer from "@/components/TextCustomer";
 import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
 import AddAnything from "@/components/AddAnything";
-import { daysBetween } from "@/lib/bills";
+import { daysBetween } from "@/lib/today";
 
 // Quiet for this long after sending is worth a nudge.
 const QUIET_DAYS = 5;

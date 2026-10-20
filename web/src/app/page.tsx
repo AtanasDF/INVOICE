@@ -39,8 +39,8 @@ import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
 import { creditOffDue, invoiceCharge } from "@/lib/cis";
 import { showOnAppIcon } from "@/lib/appBadge";
 import { loadFailed, saveFailed } from "@/lib/errorText";
-import { BILL_DUE_SOON_DAYS, daysBetween, dueSoon, isBill } from "@/lib/bills";
-import { todayISO } from "@/lib/today";
+import { BILL_DUE_SOON_DAYS, dueSoon, isBill } from "@/lib/bills";
+import { daysBetween, todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 
 // The dashboard is a scanner (Atanas, 2026-09-23: "the scanner is going to
@@ -396,7 +396,7 @@ function Dashboard() {
       const total = outstandingInvoices
         .filter((o) => {
           if (!o.invoice.dueDate) return bucket.label === "Not yet due";
-          const days = Math.floor((new Date(today).getTime() - new Date(o.invoice.dueDate).getTime()) / 86400000);
+          const days = daysBetween(o.invoice.dueDate, today);
           return bucket.test(days);
         })
         .reduce((s, o) => s + o.amountDue, 0);

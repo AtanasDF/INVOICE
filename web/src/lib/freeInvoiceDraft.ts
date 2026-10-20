@@ -1,6 +1,6 @@
 import type { InvoiceLayoutStyle, InvoiceLineKind, InvoiceTemplate } from "@/lib/invoiceTemplate";
 import { computeInvoiceTotals, VAT_RATES, VatRateKind } from "@/lib/vat";
-import { todayISO } from "@/lib/today";
+import { daysBetween, todayISO } from "@/lib/today";
 import { cisDeduction as cisDeductionOf } from "@/lib/cis";
 
 export type FreeInvoiceLine = { description: string; quantity: number; unitPrice: number; vatRate: VatRateKind; kind: InvoiceLineKind };
@@ -157,10 +157,10 @@ export function nextInvoiceNumber(number: string): string {
   return n.slice(0, target.index) + next + n.slice(target.index! + target[0].length);
 }
 
-function daysBetween(from: string, to: string): number | null {
-  const a = Date.parse(`${from}T00:00:00Z`);
-  const b = Date.parse(`${to}T00:00:00Z`);
-  return Number.isNaN(a) || Number.isNaN(b) || b < a ? null : Math.round((b - a) / 86_400_000);
+// A due date before the invoice date is no gap to copy.
+function forwardGap(from: string, to: string): number | null {
+  const days = daysBetween(from, to);
+  return Number.isNaN(days) || days < 0 ? null : days;
 }
 
 // A printed "Payment due within 14 days" maps onto the preset of the same
@@ -179,7 +179,7 @@ function presetTerms(printed: string | null, days: number | null): string | null
 // the same is kept, the number moves on and the date is today.
 export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
   const base = defaultDraft();
-  const printedGap = t.date && t.dueDate ? daysBetween(t.date, t.dueDate) : null;
+  const printedGap = t.date && t.dueDate ? forwardGap(t.date, t.dueDate) : null;
   // A printed gap that isn't one of the presets is kept as custom terms.
   const paymentTerms = presetTerms(t.paymentTerms, printedGap) ?? (printedGap !== null ? `${printedGap} days` : base.paymentTerms);
   const gap = termsDays(paymentTerms) ?? printedGap ?? 14;
@@ -213,7 +213,7 @@ export function templateToDraft(t: InvoiceTemplate): FreeInvoiceDraft {
 // Same business, customer and lines; the next number, dated today.
 export function nextDraft(d: FreeInvoiceDraft): FreeInvoiceDraft {
   const date = todayIso();
-  const days = termsDays(d.paymentTerms) ?? daysBetween(d.date, d.dueDate) ?? 14;
+  const days = termsDays(d.paymentTerms) ?? forwardGap(d.date, d.dueDate) ?? 14;
   return { ...d, number: d.number ? nextInvoiceNumber(d.number) : "", date, dueDate: addDays(date, days) };
 }
 

@@ -20,7 +20,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { REPO } from "./repo.mjs";
-import { BILL_DUE_SOON_DAYS, daysBetween, dueSoon, dueSoonBy, isBill } from "./gen/lib/bills.js";
+import { BILL_DUE_SOON_DAYS, dueSoon, dueSoonBy, isBill } from "./gen/lib/bills.js";
+import { daysBetween } from "./gen/lib/today.js";
 
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -137,14 +138,11 @@ const cron = code(`${SRC}/app/api/notifications/check/route.ts`).join("\n");
 check("the push cron asks the database with the shared rule", /\.match\(BILL_COLUMNS\)/.test(cron));
 check("...and takes the window from the shared number", /dueSoonBy\(/.test(cron) && !/daysFromToday\(/.test(cron));
 
-// The day count is NOT consolidated yet and this check says so out loud rather
-// than passing quietly: four copies exist and they are not equivalent --
-// lib/duplicates.ts returns an UNSIGNED difference and does not round, so
-// reusing it for "is this overdue" gives the wrong sign without a word. The
-// number here comes down as they are replaced, and must never go up.
+// The day count has one home now, lib/today.ts; test-days-between holds the
+// whole of web/src to that. This is the narrower check it grew from.
 check(
-  "the copies of daysBetween are not multiplying",
-  ownDays.length <= 4,
+  "no copy of daysBetween outside lib/today.ts",
+  ownDays.every((at) => at.startsWith("src/lib/today.ts:")),
   `${ownDays.length} copies: ${ownDays.join(", ")}`
 );
 

@@ -10,6 +10,7 @@ import Tip from "@/components/Tip";
 import CompanyNameInput, { useCompanyLookup } from "@/components/CompanyNameInput";
 import AddressFields from "@/components/AddressFields";
 import type { CompanyMatch } from "@/lib/companyLookup";
+import { daysBetween } from "@/lib/today";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -95,7 +96,7 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
 
   function setDate(date: string) {
     // A quote keeps however long it was valid for; an invoice follows its terms.
-    const gap = Math.round((Date.parse(draft.dueDate) - Date.parse(draft.date)) / 86_400_000);
+    const gap = daysBetween(draft.date, draft.dueDate);
     const days = quote ? (Number.isFinite(gap) && gap >= 0 ? gap : 30) : termsDays(draft.paymentTerms);
     set({ date, dueDate: days === null ? draft.dueDate : addDays(date, days) });
   }
