@@ -1,4 +1,5 @@
-// notes/audit-components.md, sections 1-4, held where they can be held
+// notes/audit-components.md, sections 1-4, and notes/audit-failure-paths.md
+// (every screen with the network taken away), held where they can be held
 // without a browser.
 //
 // Every finding in those sections was read in the code and fixed on
@@ -12,7 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { REPO } from "./repo.mjs";
-import { authFailed, saveFailed } from "./gen/lib/errorText.js";
+import { authFailed, customerFailed, saveFailed } from "./gen/lib/errorText.js";
 import { getFxRate } from "./gen/lib/fx.js";
 
 const APP = `${REPO}/web/src`;
@@ -127,5 +128,69 @@ check("Forget my saved signature asks", /function forgetSaved\(\) \{\s*if \(!win
 check("Clear form says the Free page draft goes too", /also=\{imported \?/.test(code("app/invoices/new/page.tsx")) && /\$\{also \?/.test(code("components/ClearFormButton.tsx")));
 check("removing a repeating expense says which", /repeating expense "\$\{description\}"/.test(code("app/recurring/page.tsx")));
 check("removing a repeating invoice says who to", /repeating invoice to \$\{to\}/.test(code("app/recurring/invoices/page.tsx")));
+
+// ── Network taken away (notes/audit-failure-paths.md) ──────────────────
+// The shapes, generally, so a new screen can't bring one back: a copy that
+// says "Copied" whether or not it was, a link read that turns a failure into
+// "no link", and a bare res.json() whose SyntaxError reaches the screen.
+const uiCode = ui.map((f) => [path.relative(APP, f), code(path.relative(APP, f))]);
+const blindCopy = uiCode.filter(([, s]) => /clipboard\s*\.writeText\([^;]*\)\s*\.catch\(\(\) => \{\}\)/.test(s)).map(([f]) => f);
+check("no copy swallows a refused write and says Copied anyway", blindCopy.length === 0, blindCopy.join(", "));
+const blindLink = uiCode.filter(([, s]) => /for(Quote|Invoice)\([^)]*\)\.catch\(\(\) => null\)/.test(s)).map(([f]) => f);
+check("a failed link read is not drawn as 'no link yet'", blindLink.length === 0, blindLink.join(", "));
+// These two parse inside a try whose catch never shows the error.
+const PARSE_OK = new Set(["components/AddressFields.tsx", "components/VatNumberInput.tsx"]);
+const bareParse = uiCode.filter(([f, s]) => !PARSE_OK.has(f) && /await res\.json\(\)\s*[;)]/.test(s)).map(([f]) => f);
+check("no screen parses a reply without a catch (a timeout page is HTML)", bareParse.length === 0, bareParse.join(", "));
+const routes = walk(path.join(APP, "app", "api")).map((f) => code(path.relative(APP, f)));
+check("no route tells a person the name of a missing server key", !routes.some((s) => /NextResponse\.json\(\{ error: `[^`]*\$\{keyName\}/.test(s)));
+check("no scan reply is a bare status code", !/failed \(\$\{res\.status\}\)/.test(code("lib/scanClient.ts")) && !/\(\$\{res\.status\}\)/.test(code("app/clients/new/page.tsx")));
+
+console.error = () => {};
+const cust = customerFailed(new TypeError("Load failed"), "That didn't work. Try again.");
+check("a customer offline isn't told about 'your records'", !/records/.test(cust) && /connection/.test(cust), cust);
+check("a customer still gets the route's own sentence", customerFailed(new Error("This quote has expired."), "x") === "This quote has expired.");
+console.error = quiet;
+for (const f of ["components/quote/PublicQuoteView.tsx", "components/quoteRequest/PublicRequestView.tsx"]) {
+  check(`${f}: says failures with customerFailed`, /customerFailed\(/.test(code(f)) && !/saveFailed\(/.test(code(f)));
+}
+
+// A load error kept apart from the one that Clear, Add or Send wipes.
+for (const f of ["app/recurring/page.tsx", "app/recurring/invoices/page.tsx"]) {
+  const s = code(f);
+  check(`${f}: the load error is its own, and gates the empty state`, /\.catch\(\(err\) => setLoadError\(loadFailed\(/.test(s) && /items\.length === 0 && !error && !loadError &&/.test(s));
+}
+check("feedback: a send doesn't wipe the history's load error", /setLoadError\(loadFailed\(/.test(code("app/feedback/page.tsx")));
+check("receipts: 'isn't here any more' never after a failed load", /openMissing = !loading && !loadFailedNow &&/.test(code("app/receipts/page.tsx")));
+const nr = code("app/receipts/new/page.tsx");
+check("new receipt: the lists' error is its own line", /setListsError\(loadFailed\(/.test(nr));
+check("new receipt: the duplicate check never runs against a list that didn't load", /if \(listsError && !confirmedDuplicate\)[\s\S]{0,120}receiptsStore\.all\(\)/.test(nr) && /duplicateOf\(saved\)/.test(nr));
+check("contact field: adding from the register asks the saved list again first", /async function add\(\)[\s\S]{0,700}await clientsStore\.all\(\)[\s\S]{0,300}clientsStore\.add\(/.test(code("components/ContactField.tsx")));
+check("/scan: its load failures say so with loadFailed", !/saveFailed\(err, "Couldn't load/.test(code("app/scan/page.tsx")));
+
+// A change that saved is never reported as one that didn't.
+const inv = code("app/invoices/[id]/page.tsx");
+check("credit note: a status update that fails says the note is saved", /creditNotesStore\.add\([\s\S]{0,500}syncStatus\([^;]*\)\.catch\(/.test(inv) && /credit note is saved, but/.test(inv));
+check("credit note removal: a status failure doesn't put it back on screen", /creditNotesStore\.remove\(id\);\s*\} catch \(err\) \{[\s\S]{0,700}return;\s*\}/.test(inv));
+check("payment removal: a failed re-read doesn't say it couldn't be removed", /paymentsStore\.remove\(id\);\s*\} catch \(err\) \{[\s\S]{0,120}return;\s*\}/.test(inv));
+check("send: a failed read-back doesn't say it wasn't sent", /markSentWithNumber\(invoice\.id\);\s*\} catch/.test(inv));
+check("merge: a failed re-read doesn't say the merge failed", /mergeInto\([\s\S]{0,400}\.then\([\s\S]{0,200}The merge went through/.test(code("app/clients/page.tsx")));
+check("turn into invoice: the payment terms are read inside the claim's release", /terms = \(await clientsStore\.all\(\)\)[\s\S]{0,140}\} catch \(err\) \{\s*await quotesStore\.releaseClaim/.test(code("app/quotes/[id]/page.tsx")));
+
+// Library and browser words.
+check("mileage: an offline postcode lookup is our sentence, not 'Load failed'", /fetch\("\/api\/address-search"[^;]*\.catch\(\(\) => \{\s*throw new Error\(/.test(code("app/mileage/page.tsx")));
+check("reading a supplier's quote doesn't run a fetch error through errorText", !/errorText\(err, "Couldn't read their quote/.test(code("components/quoteRequest/AnswerEntry.tsx")));
+check("save these: the file builder's throw is said plainly", /buildExport\([^)]*\)\.catch\(/.test(code("components/SaveThese.tsx")));
+check("push: the browser's subscribe error is said plainly", /pushManager\.subscribe[\s\S]{0,200}\} catch[\s\S]{0,200}throw new Error\("Couldn't turn notifications on/.test(code("lib/push.ts")));
+check("reset link: no signal is not 'run out'", /"offline"/.test(code("app/reset-password/page.tsx")) && /establishSession\(\)\.catch\(/.test(code("app/reset-password/page.tsx")));
+check("/copy: only closing the share sheet is silent", /name === "AbortError"/.test(code("app/copy/page.tsx")));
+
+// Nobody stuck, nothing quietly short.
+const files = code("app/files/page.tsx");
+check("files: missing pages say so with a retry, never 'Loading page…' for good", /failed: true/.test(files) && /pagesFailed \?/.test(files) && /onClick=\{\(\) => loadPages\(preview\)\}/.test(files));
+check("files: a document whose pages didn't load is never saved short", /loadedPages\.length < previewTotalPages - 1\) throw/.test(files));
+check("files: the email form hears a failed file as a failure", !/makeFile\(\)[\s\S]{0,40}\} catch \{[\s\S]{0,120}return null;/.test(files) && !/catch \{\s*setFileError\([^)]*\);\s*return null;/.test(files));
+check("logo: a failed read isn't kept for the session", /cache\.delete\(ref\)/.test(code("lib/logo.ts")));
+check("settings: a saved logo that didn't show isn't 'No logo yet'", /\) : logoUrl \? \(/.test(code("app/settings/page.tsx")));
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

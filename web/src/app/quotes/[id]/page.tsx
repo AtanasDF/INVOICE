@@ -44,7 +44,9 @@ async function fetchQuote(id: string) {
       depositInvoice = depositOrphan;
     }
   }
-  const link = quote ? await quoteLinksStore.forQuote(quote.id).catch(() => null) : null;
+  // undefined, not null, when the read failed: null drew "no link yet" and
+  // dropped "Opened 3 times", and on a declined quote the whole card.
+  const link = quote ? await quoteLinksStore.forQuote(quote.id).catch((err) => { console.error("quote link", err); return undefined; }) : null;
   const logo = await logoSrc(profile.logoUrl);
   return { quote, clients, profile, orphan, depositInvoice, depositOrphan, link, logo };
 }
@@ -62,6 +64,7 @@ export default function QuotePage() {
   const [depositInvoice, setDepositInvoice] = useState<Invoice | null>(null);
   const [depositOrphan, setDepositOrphan] = useState<Invoice | null | undefined>(undefined);
   const [link, setLink] = useState<QuoteLink | null>(null);
+  const [linkUnknown, setLinkUnknown] = useState(false);
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -84,7 +87,10 @@ export default function QuotePage() {
       setOrphan(d.orphan);
       setDepositInvoice(d.depositInvoice);
       setDepositOrphan(d.depositOrphan);
-      setLink(d.link);
+      if (d.link !== undefined) {
+        setLink(d.link);
+        setLinkUnknown(false);
+      }
     });
   }, [id]);
 
@@ -98,7 +104,8 @@ export default function QuotePage() {
         setOrphan(d.orphan);
         setDepositInvoice(d.depositInvoice);
         setDepositOrphan(d.depositOrphan);
-        setLink(d.link);
+        setLink(d.link ?? null);
+        setLinkUnknown(d.link === undefined);
       })
       .catch((err) => setError(loadFailed(err, "this quote")))
       .finally(() => setLoading(false));
@@ -209,6 +216,7 @@ export default function QuotePage() {
       const tag = `from ${claimed.number}`;
       let deposit: Invoice | null = null;
       let credited = 0;
+      let terms = "";
       try {
         if (claimed.depositClaimed && !claimed.depositInvoiceId)
           throw new Error("The deposit invoice can't be found: it may still be being made, or it was removed. Reload the page to see which.");
@@ -220,11 +228,13 @@ export default function QuotePage() {
           if (depositTotal > computeInvoiceTotals(claimed.items, issuingVat).total + 0.005)
             throw new Error("The deposit invoice is for more than the whole quote, so the balance would be negative. Check the deposit invoice.");
         }
+        // Inside the release: a drop here, before any invoice exists, left the
+        // quote claimed with nothing made from it.
+        terms = (await clientsStore.all()).find((c) => c.id === claimed.clientId)?.paymentTerms ?? "";
       } catch (err) {
         await quotesStore.releaseClaim(q.id, before).catch(() => {});
         throw err;
       }
-      const terms = (await clientsStore.all()).find((c) => c.id === claimed.clientId)?.paymentTerms ?? "";
       let invoice: Invoice;
       try {
         const date = todayIso();
@@ -304,8 +314,12 @@ export default function QuotePage() {
     setLinkBusy(true);
     setError(null);
     try {
-      await navigator.clipboard.writeText(await ensureLink(true)).catch(() => {});
-      setLinkCopied(true);
+      // After the network calls the tap has usually expired on an iPhone and
+      // the write is refused; "Copied" then sent an empty paste.
+      const url = await ensureLink(true);
+      const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
+      if (copied) setLinkCopied(true);
+      else setError("The link is made, but the phone wouldn't copy it. Press Copy link again, or select it in the box.");
     } catch (err) {
       setError(saveFailed(err, "Couldn't make the link."));
     } finally {
@@ -390,6 +404,9 @@ export default function QuotePage() {
         </>
       ) : (
         <>
+          {linkUnknown && (
+            <p className="mt-1 text-sm text-amber-800">Couldn&apos;t check the online link just now, so whether it was made or opened isn&apos;t shown. Reload to see.</p>
+          )}
           <p className="mt-1 text-sm text-neutral-600">
             A private link where your customer can see the quote and accept or decline it. You&apos;ll see when they open it and get a notification when they answer. Emails include it, and a text or WhatsApp can.
           </p>
@@ -587,10 +604,10 @@ export default function QuotePage() {
           </div>
         </QuoteSendCard>
       ) : (
-        link && (
+        (link || linkUnknown) && (
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
             <h2 className="font-semibold">View and accept online</h2>
-            {linkSection}
+            {link ? linkSection : <p className="mt-1 text-sm text-amber-800">Couldn&apos;t check the online link just now, so whether it was opened or answered isn&apos;t shown. Reload to see.</p>}
           </div>
         )
       )}

@@ -38,7 +38,8 @@ export async function POST(req: Request) {
   const engine = (body.engine as ScanEngine | undefined) ?? "claude";
   const keyName = engine === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
   if (!process.env[keyName]) {
-    return NextResponse.json({ error: `Scanning isn't configured yet: ${keyName} is missing on the server.` }, { status: 500 });
+    console.error(`contact-scan: ${keyName} is missing on the server`);
+    return NextResponse.json({ error: "Scanning isn't working on our side just now. Try again later." }, { status: 500 });
   }
 
   const page = typeof body.image === "string" ? parseDataUrl(body.image) : null;

@@ -50,6 +50,7 @@ export default function InvoiceViewPage() {
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [payments, setPayments] = useState<InvoicePayment[]>([]);
   const [link, setLink] = useState<InvoiceLink | null>(null);
+  const [linkUnknown, setLinkUnknown] = useState(false);
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -152,13 +153,15 @@ export default function InvoiceViewPage() {
           creditNotesStore.forInvoice(inv.id),
           businessProfileStore.get(),
           paymentsStore.forInvoice(inv.id),
-          invoiceLinksStore.forInvoice(inv.id).catch(() => null),
+          // undefined when the read failed, so it isn't drawn as "no link".
+          invoiceLinksStore.forInvoice(inv.id).catch((err) => { console.error("invoice link", err); return undefined; }),
         ]);
         if (cancelled) return;
         setClients(allClients);
         setCreditNotes(notes);
         setPayments(paid);
-        setLink(existingLink);
+        setLink(existingLink ?? null);
+        setLinkUnknown(existingLink === undefined);
         setProfile(biz);
         void logoSrc(biz.logoUrl).then((l) => { if (!cancelled) setLogo(l); });
         setEditDueDate(inv.dueDate ?? "");
@@ -316,10 +319,18 @@ export default function InvoiceViewPage() {
     setPayError(null);
     try {
       await paymentsStore.remove(id);
+    } catch (err) {
+      setPayError(saveFailed(err, "Couldn't remove the payment."));
+      return;
+    }
+    // Gone from the database from here on: a drop in what follows must not
+    // say it couldn't be removed, or leave it listed beside the old balance.
+    setPayments((prev) => prev.filter((x) => x.id !== id));
+    try {
       const { pays, notes } = await freshFigures();
       await syncStatus(invoice, notes, pays, invoiceVat(invoice, vatRegistered), true);
     } catch (err) {
-      setPayError(saveFailed(err, "Couldn't remove the payment."));
+      setStatusError(saveFailed(err, "The payment is removed, but the status couldn't be updated. Reload to fix it."));
     }
   }
 
@@ -350,8 +361,11 @@ export default function InvoiceViewPage() {
     setLinkBusy(true);
     try {
       const url = await ensureLink();
-      await navigator.clipboard.writeText(url).catch(() => {});
-      setLinkCopied(true);
+      // A write after an awaited network call has usually lost the tap on an
+      // iPhone and is refused; "Copied" then sent an empty paste to WhatsApp.
+      const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
+      if (copied) setLinkCopied(true);
+      else setLinkError("The link is made, but the phone wouldn't copy it. Press Copy link again, or select it in the box.");
     } catch (err) {
       setLinkError(saveFailed(err, "Couldn't make the link."));
     } finally {
@@ -453,6 +467,17 @@ export default function InvoiceViewPage() {
         tags,
       });
       await invoicesStore.markSentWithNumber(invoice.id);
+    } catch (err) {
+      // Supabase errors are plain objects, not Errors: instanceof would
+      // hide the reason behind the fallback on exactly the failures worth
+      // reading.
+      setSendError(saveFailed(err, "Couldn't mark this invoice sent."));
+      setSendBusy(false);
+      return;
+    }
+    // Issued with its number from here on. A drop in the read-back used to say
+    // "Couldn't mark this invoice sent" and leave the draft up to be sent again.
+    try {
       const fresh = await invoicesStore.get(invoice.id);
       setInvoice(fresh);
       if (fresh) {
@@ -466,10 +491,8 @@ export default function InvoiceViewPage() {
       }
       setSendPanelOpen(false);
     } catch (err) {
-      // Supabase errors are plain objects, not Errors: instanceof would
-      // hide the reason behind the fallback on exactly the failures worth
-      // reading.
-      setSendError(saveFailed(err, "Couldn't mark this invoice sent."));
+      console.error("send: reading the invoice back", err);
+      setSendError("It's sent and has its number, but the page couldn't load it back. Reload to see it.");
     } finally {
       setSendBusy(false);
     }
@@ -528,7 +551,11 @@ export default function InvoiceViewPage() {
       setCnAmount("");
       setCnReason("");
       setShowCnForm(false);
-      await syncStatus(invoice, notes, payments, invoiceVat(invoice, vatRegistered));
+      // Apart from the save, as addPayment does: "Couldn't save credit note."
+      // under a note that had saved invited a second one.
+      await syncStatus(invoice, notes, payments, invoiceVat(invoice, vatRegistered)).catch((err) =>
+        setStatusError(saveFailed(err, "The credit note is saved, but the status couldn't be updated. Reload to fix it."))
+      );
     } catch (err) {
       setCnError(saveFailed(err, "Couldn't save credit note."));
     } finally {
@@ -546,6 +573,18 @@ export default function InvoiceViewPage() {
     setCreditNotes((prev) => prev.filter((c) => c.id !== id));
     try {
       await creditNotesStore.remove(id);
+    } catch (err) {
+      // The credit note is still in the database, and this same array feeds
+      // the printed invoice and the email: leaving it removed on screen
+      // means asking the customer for money that was credited. Put it back
+      // and say so, rather than waiting for a reload he has no reason to do.
+      setCreditNotes((prev) => (prev.some((c) => c.id === id) ? prev : [...prev, note].sort((a, b) => (a.date < b.date ? -1 : 1))));
+      setCnError(saveFailed(err, "Couldn't remove that credit note. It's still on the invoice."));
+      return;
+    }
+    // Removed for real: a drop from here on is about the status only, and
+    // putting the note back on screen would print a credit that is gone.
+    try {
       if (invoice) {
         // If the figures (this credit included) are what made it paid, it
         // follows them back; a status set by hand stays.
@@ -554,12 +593,7 @@ export default function InvoiceViewPage() {
         await syncStatus(invoice, creditNotes.filter((c) => c.id !== id), payments, invoiceVat(invoice, vatRegistered), setByFigures);
       }
     } catch (err) {
-      // The credit note is still in the database, and this same array feeds
-      // the printed invoice and the email: leaving it removed on screen
-      // means asking the customer for money that was credited. Put it back
-      // and say so, rather than waiting for a reload he has no reason to do.
-      setCreditNotes((prev) => (prev.some((c) => c.id === id) ? prev : [...prev, note].sort((a, b) => (a.date < b.date ? -1 : 1))));
-      setCnError(saveFailed(err, "Couldn't remove that credit note. It's still on the invoice."));
+      setStatusError(saveFailed(err, "The credit note is removed, but the status couldn't be updated. Reload to fix it."));
     }
   }
 
@@ -839,6 +873,9 @@ export default function InvoiceViewPage() {
           </>
         ) : (
           <>
+            {linkUnknown && (
+              <p className="mt-1 text-sm text-amber-800">Couldn&apos;t check the online link just now, so whether it was made or opened isn&apos;t shown. Reload to see.</p>
+            )}
             <p className="mt-1 text-sm text-neutral-600">
               A private link your customer can open to see the invoice and download it. You&apos;ll see when they open it. It&apos;s added to the email automatically when you send it from here.
             </p>

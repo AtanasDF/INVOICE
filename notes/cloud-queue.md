@@ -129,7 +129,7 @@ That last one is the important one. Write findings to notes/audit-offline.md wit
 concrete failure each, commit on a branch and push. No behaviour changes.
 ```
 
-## 6. Every screen with the network taken away — [ ]
+## 6. Every screen with the network taken away — [x] (2026-10-20, `wip/network-off`: notes/audit-failure-paths.md; 25 fixed, 7 left)
 
 ```
 Read CLAUDE.md, especially the house style on loadFailed/saveFailed and empty states.

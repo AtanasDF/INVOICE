@@ -162,9 +162,16 @@ export default function ClientsPage() {
     setError(null);
     try {
       const { moved, left } = await clientsStore.mergeInto(pair.duplicate.id, pair.keep.id);
-      const [c, inv] = await Promise.all([clientsStore.all(), invoicesStore.all()]);
-      setClients(c);
-      setInvoices(inv);
+      // Merged from here on. The re-read is apart: a drop in it said "Couldn't
+      // merge those two" under a duplicate card still offering the merge.
+      setClients((prev) => prev.map((x) => (x.id === pair.duplicate.id ? { ...x, archived: true } : x)));
+      await Promise.all([clientsStore.all(), invoicesStore.all()]).then(
+        ([c, inv]) => {
+          setClients(c);
+          setInvoices(inv);
+        },
+        (err) => setError(loadFailed(err, "your contacts again", "The merge went through; reload to see it."))
+      );
       const total = Object.values(moved).reduce((a, b) => a + b, 0);
       setMerged(
         `Merged into ${pair.keep.name}${total ? `: ${total} record${total === 1 ? "" : "s"} moved` : ""}.${left.length ? ` Some rows stayed with the old record (${left.join(", ")}).` : ""}`

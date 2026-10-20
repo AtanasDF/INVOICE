@@ -19,9 +19,12 @@ export function logoSrc(ref: string | null | undefined): Promise<string | null> 
     hit = (async () => {
       try {
         const [signed] = await resolveImages([ref]);
-        if (!signed || signed.startsWith("storage:")) return null;
+        if (!signed || signed.startsWith("storage:")) throw new Error("no signed link");
         return await inlineImage(signed);
       } catch {
+        // Not kept: one dropped read left every PDF from this page without
+        // the logo until a full reload.
+        cache.delete(ref);
         return null;
       }
     })();

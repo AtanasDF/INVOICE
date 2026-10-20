@@ -20,6 +20,55 @@ both readers refusing asks Gemini before Claude; a cut-off read is not asked twi
 Google's own address there; without it no suite could stand in for the default engine at
 all. tsc, eslint, build clean. **Not merged -- waiting on Atanas.**
 
+## 2026-10-20 (cloud) — Every screen with the network taken away (brief 6), on `wip/network-off`
+
+A cloud session: no browser, no database, no `.env.local`. **Not merged; nothing here is
+live.** Cut from `fix/audit-components`, not `main`, so it sits on the 81 audit fixes and
+merges after them. Report in `notes/audit-failure-paths.md`: the table the brief asked for
+(every page, failed load, failed save, empty state gated), then the findings.
+
+**One departure, named (rule 7):** the brief said "No behaviour changes"; this session was
+asked to fix what it confirmed, so it did. Nothing already marked Fixed in audit-components
+sections 2-3 was redone.
+
+Four readers traced every page in parallel. **41 candidates; each opened in the code before it
+was believed: 25 real and fixed, 7 real and left with the reason, 9 not defects.** The ones
+that matter most:
+- **A change that worked, reported as one that didn't**: a credit note (invites a second
+  credit), a credit-note removal put back on screen (the PDF would print a credit that is
+  gone), a payment removal, Send (the draft stays up although it's issued with its number),
+  and a merge.
+- **A duplicate check against a list that never loaded**: on New receipt, the photo wiped the
+  lists' error and the duplicate-receipt check ran on `[]`. In `ContactField`, shared by
+  three pages, adding from the register made a second copy of a saved supplier.
+- **"Copied" when nothing was**: five copy buttons, in the invoice and quote cases after
+  network calls that expire the tap on an iPhone.
+- **Stuck or quietly short**: /files saved a one-page PDF of a three-page document when the
+  extra pages failed. /copy's Share swallowed every failure. The reset link read no signal
+  as "run out". The logo failure was cached for the session.
+- **Words that weren't ours**: "Load failed" from Work it out and from reading a supplier's
+  quote, a server key's name from /api/scan, pdf-lib's words from Save these, the browser's
+  push error, and a customer told about "your records" (new `customerFailed()`).
+- **/q/ priced the Accept button by today's VAT setting after one dropped read**
+  (`publicQuote.ts` now falls back only on 42703; `test-public-reads` +1 check).
+
+Checked here: `tsc`, `eslint .`, `npm run build` (placeholder Supabase env) clean.
+`test-audit-guards` is **90/90, 34 new**. Put back against the old page code, the 32 new
+source checks all fail, so they bite. `test-public-reads` 22/22, and its new check fails on
+the old code. Also green: govuk-words, utc-today, promises, csv-safety, audit-misc,
+component-money, camera-dark-source, rls-audit, error-report.
+
+**Before merging, on the Mac, against `next start`** (none run on this branch):
+`test-credit-rollback`, `test-quiet-failures`, `test-write-fails`, `test-said-so`,
+`test-empty-account`, `test-logo`, `test-settings-save`, `test-sign-up`, `test-feedback-page`,
+`test-feedback`, `test-mileage`, `test-statement`, `test-merge-contacts`, `test-quotes`,
+`test-quotes-ux`, `test-quote-requests`, `test-public-links`, `test-company-picker`,
+`test-no-silent-contacts`, `test-uploads`, `test-upload-panel`, `test-copy-document`,
+`test-send-document`, `test-scan-wall`, `test-bad-scan`, `test-half-connection`,
+`test-offline-rules`, `test-lost-pages`, `test-open-receipt`, `test-double-press`. That's 30;
+`JOBS=1` if he's at the Mac. Watch `test-company-picker` and `test-no-silent-contacts`
+especially: ContactField's Add now reads `clients` once more before inserting.
+
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
 
 Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged
