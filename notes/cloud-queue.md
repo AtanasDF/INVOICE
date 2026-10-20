@@ -351,3 +351,21 @@ Branch: wip/accessibility.
 
 Briefs 8, 17 and 18 can run at the same time. Merge 8 first (it is in lib/invoicePdf,
 documentPdf, sheetFile, saveFile), then 18, then 17.
+
+## 19. Fix what the printed-document audit found — [ ]
+
+```
+Read the second pass at the foot of notes/audit-documents.md (2026-10-20, brief 8) and
+fix its open items, each confirmed in the code first: the statement's invoice number and
+"12 days late" running together in every text shape; single-root sheets (Free page,
+statement) coming out of order; the Free page's labour/materials headings dropped; long
+unbroken names overflowing the Free page, quote and statement (wrap-anywhere, as CLAUDE.md
+says); Excel turning 0042 / 01234567 / 12-03-56 in the CSV into numbers and dates (keep
+them as text without breaking the formula-injection guard in test-csv-safety); a long
+notes block cut through a line in the PDF; pdfName stripping combining marks (Hindi, Thai,
+Arabic); and the csv.ts comment that contradicts its code. Stay in src/lib/sheetFile.ts,
+csv.ts, invoicePdf.ts, documentPdf.ts, saveFile.ts and the sheet components; another
+branch (accessibility) is changing labels and aria across many components, so keep each
+component edit to the one line it needs. Extend test-save-as / test-csv-safety and add a
+logic suite for each fix. Branch: wip/printed-fixes.
+```
