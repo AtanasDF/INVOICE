@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { warmScanner } from "@/lib/warmScanner";
 import { useRouter } from "next/navigation";
 import { CameraIcon } from "@/components/icons";
@@ -22,6 +23,8 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
   const isIOS = useIsIOS();
   const [open, setOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+  useFocusTrap(sheet, open);
 
   useEffect(() => {
     if (!open) return;
@@ -57,8 +60,10 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
 
       {open && (
         <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center">
-          <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/40" />
+          {/* For a tap outside the sheet; Cancel and Escape are the keyboard's way out. */}
+          <button type="button" aria-label="Close" tabIndex={-1} onClick={() => setOpen(false)} className="absolute inset-0 bg-black/40" />
           <div
+            ref={sheet}
             role="dialog"
             aria-modal="true"
             aria-label="Add"

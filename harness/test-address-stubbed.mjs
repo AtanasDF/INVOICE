@@ -253,18 +253,18 @@ try {
         line1: v("House number and street"),
         town: v("Town or city"),
         postcode: v("Postcode"),
-        options: [...b.querySelectorAll('[role="option"]')].map((o) => o.querySelector("span").textContent),
+        options: [...b.querySelectorAll('[data-address-option]')].map((o) => o.querySelector("span").textContent),
         note: [...b.querySelectorAll("p.text-xs")].map((p) => p.textContent).join(" | "),
       };
     });
   const waitOptions = (ms = 8000) =>
     page
-      .waitForFunction(() => document.querySelector('input[aria-label="Postcode"]').closest(".space-y-2").querySelectorAll('[role="option"]').length > 0, { timeout: ms })
+      .waitForFunction(() => document.querySelector('input[aria-label="Postcode"]').closest(".space-y-2").querySelectorAll('[data-address-option]').length > 0, { timeout: ms })
       .then(() => true, () => false);
   const pick = (label) =>
     page.evaluate((label) => {
       const b = document.querySelector('input[aria-label="Postcode"]').closest(".space-y-2");
-      const o = [...b.querySelectorAll('[role="option"] button')].find((x) => x.querySelector("span").textContent === label);
+      const o = [...b.querySelectorAll('[data-address-option] button')].find((x) => x.querySelector("span").textContent === label);
       o?.click();
       return !!o;
     }, label);

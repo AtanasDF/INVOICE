@@ -28,7 +28,12 @@ try {
   await clickText(page, "Mark as paid");
   await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some((e) => e.innerText.includes("Paid")), { timeout: 8000 });
   await sleep(500);
-  const card = await page.evaluate(() => [...document.querySelectorAll('[role="status"]')].find((e) => e.innerText.includes("Paid"))?.innerText);
+  // The card is for the eyes (aria-hidden); a status region that is always
+  // mounted says the same for a screen reader, since one that arrives with
+  // its text is often not read.
+  const card = await page.evaluate(() => document.querySelector(".paid-pop")?.innerText);
+  const said = await page.evaluate(() => [...document.querySelectorAll('[role="status"]')].find((e) => e.textContent.startsWith("Paid."))?.textContent);
+  check("...and a screen reader is told the same", /^Paid\. £1,200\.00 from Acme Ltd, invoice INV-1\.$/.test(said ?? ""), said);
   await shot(page, "paid-moment");
   check("marking paid celebrates with the amount and customer", /Paid/.test(card) && card.includes("£1,200.00 from Acme Ltd") && card.includes("Invoice INV-1"), card);
   check("…and what's come in this month", /£1,210\.00 in this month/.test(card), card);

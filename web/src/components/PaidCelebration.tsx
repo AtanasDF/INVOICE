@@ -51,11 +51,17 @@ export default function PaidCelebration() {
     };
   }, []);
 
-  if (!paid) return null;
+  // Always there, so the words are a change to a live region a screen reader
+  // is already watching: one that arrives with its text is often not read.
+  const said = paid ? `Paid. ${paid.amount > 0 ? money(paid.amount) : ""}${paid.from ? ` from ${paid.from}` : ""}${paid.number ? `, invoice ${paid.number}` : ""}.` : "";
+  const live = <p role="status" className="sr-only">{said}</p>;
+  if (!paid) return live;
   return (
-    // Taps go through to the page, so marking the next invoice paid isn't
-    // swallowed; only a tap on the card itself closes it early.
-    <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-white/40 print:hidden">
+    <>
+    {live}
+    {/* Taps go through to the page, so marking the next invoice paid isn't
+        swallowed; only a tap on the card itself closes it early. */}
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-white/40 print:hidden">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden">
         {PIECES.map((i) => (
           <span
@@ -90,5 +96,6 @@ export default function PaidCelebration() {
         {month !== null && month > 0 && <p className="mt-3 text-xs font-medium text-neutral-700">{money(month)} in this month</p>}
       </div>
     </div>
+    </>
   );
 }

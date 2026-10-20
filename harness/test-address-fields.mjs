@@ -25,7 +25,7 @@ const typeOnly = (i, label, text) => page.evaluate((i, label, text) => {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, text);
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }, i, label, text);
-const optionCount = (i) => page.evaluate((i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelectorAll('[role="option"]').length, i);
+const optionCount = (i) => page.evaluate((i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelectorAll('[data-address-option]').length, i);
 // The note under the list is the block's own 12px paragraph (it was 11px
 // before the contrast floor of 2026-09-22).
 const noteIn = (i) => [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2").querySelector("p.text-xs");
@@ -38,12 +38,12 @@ const findIn = async (i) => {
     const block = [...document.querySelectorAll('input[placeholder="House number and street"]')][i].closest(".space-y-2");
     const notes = [...block.querySelectorAll("p.text-xs")];
     return {
-      options: [...block.querySelectorAll('[role="option"]')].map((o) => o.textContent),
+      options: [...block.querySelectorAll('[data-address-option]')].map((o) => o.textContent),
       note: notes.map((n) => n.textContent).find((t) => !/Fill in a postcode|Lists the addresses/.test(t)) ?? notes.at(-1)?.textContent,
     };
   }, i);
 };
-const pickOption = (re) => page.evaluate((src) => { const o = [...document.querySelectorAll('[role="option"] button')].find((x) => new RegExp(src).test(x.textContent)); o?.click(); return !!o; }, re);
+const pickOption = (re) => page.evaluate((src) => { const o = [...document.querySelectorAll('[data-address-option] button')].find((x) => new RegExp(src).test(x.textContent)); o?.click(); return !!o; }, re);
 try {
   await page.goto(url("/free-invoice"), { waitUntil: "networkidle0" });
   await page.evaluate(() => { localStorage.clear(); for (const t of ["free-invoice-scan", "free-invoice-signature"]) localStorage.setItem("tip:" + t, "3"); });

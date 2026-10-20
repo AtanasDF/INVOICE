@@ -24,6 +24,7 @@ import { PhotoIcon, TorchIcon } from "@/components/icons";
 import BatchReview, { Shot, groupShots } from "@/components/scan/BatchReview";
 import Tip from "@/components/Tip";
 import { saveFailed } from "@/lib/errorText";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 type Point = { x: number; y: number };
 type Quad = [Point, Point, Point, Point];
@@ -1689,6 +1690,14 @@ export default function DocumentCapture({
   const pinchRef = useRef<{ dist: number; level: number; ratio: number; frame: number } | null>(null);
   const pinchStepRef = useRef<(ratio: number, level: number) => void>(() => {});
   const rootRef = useRef<HTMLDivElement>(null);
+  // The camera covers the page, and on /invoices/new the whole form stayed one
+  // Tab away underneath it. Labels and focus only: nothing here touches capture.
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(dialogRef, true);
+  const setRoot = useCallback((el: HTMLDivElement | null) => {
+    rootRef.current = el;
+    dialogRef.current = el;
+  }, []);
   useEffect(() => {
     pinchStepRef.current = (ratio, level) => {
       if (capturedRef.current) return;
@@ -2084,6 +2093,17 @@ export default function DocumentCapture({
     stopStream();
     onClose();
   }
+  // Escape is Back, with Back's own question; the review sheet has its own.
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    if (reviewing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [reviewing]);
 
   // Once only: the page that takes the batch unmounts this, but a second
   // press before it does read every document twice on /scan (two scans each
@@ -2178,6 +2198,28 @@ export default function DocumentCapture({
   // nothing" (Atanas, 2026-09-22). Say so, in words, at a readable size.
   const cvLine =
     cvStatus === "loading" ? "Getting ready — the first time takes a moment. You can take the photo yourself now." : cvStatus === "failed" ? `Edge detection unavailable: ${cvError}` : null;
+  // What the viewfinder shows, for somebody who cannot see it: whether a page
+  // is in view, the same coaching as the pill, the shot, and the count. Read
+  // from the screen's own state; it decides nothing.
+  const spoken = reviewing
+    ? ""
+    : status === "starting"
+      ? "Starting the camera."
+      : status !== "live"
+        ? ""
+        : saving
+          ? "Taking the photo."
+          : multi && waitingNext
+            ? `Got it. ${shots.length} scanned. Next document.`
+            : cvStatus === "failed"
+              ? "Edge detection unavailable. Press Capture to take the photo yourself."
+              : cvStatus === "loading"
+                ? "Getting ready. You can press Capture now."
+                : dark
+                  ? "It's dark here. More light helps."
+                  : !hasQuad
+                    ? "No page in view yet."
+                    : `Page in view. ${hint ?? ""}`.trim();
 
   // iOS: the in-page live-detection camera fundamentally can't win here.
   // getUserMedia on iOS Safari returns a low-resolution, fixed-focus
@@ -2192,7 +2234,7 @@ export default function DocumentCapture({
   // default since auto-capture landed; this stays one tap away.
   if (useNative) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Camera" className="fixed inset-0 z-50 flex flex-col bg-black">
         <div inert={reviewing} className={`camera-screen relative flex flex-1 flex-col items-center justify-center gap-3 ${shownFailure ? "border-4 border-red-500" : ""}`}>
           <div className="absolute left-4 z-10" style={{ top: "calc(1rem + env(safe-area-inset-top))" }}>
             <BackButton onClick={close} />
@@ -2259,7 +2301,8 @@ export default function DocumentCapture({
   }
 
   return (
-    <div ref={rootRef} className="fixed inset-0 z-50 flex touch-none flex-col bg-black">
+    <div ref={setRoot} role="dialog" aria-modal="true" aria-label="Camera" className="fixed inset-0 z-50 flex touch-none flex-col bg-black">
+      <p role="status" className="sr-only">{spoken}</p>
       {/* While the review sheet is up nothing behind it can take focus: it
           covered the camera but left Capture, and a Back that discards the
           batch, one Tab away. */}
@@ -2288,7 +2331,7 @@ export default function DocumentCapture({
           <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-on-dark">Starting camera…</div>
         )}
         {status === "timeout" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
+          <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             <p>The camera didn&apos;t respond. This usually means access is blocked somewhere your browser won&apos;t report directly (an OS-level camera privacy setting is the most common one) — check there, or upload a photo or PDF instead.</p>
             <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-ink-on-dark">
               Try again
@@ -2297,7 +2340,7 @@ export default function DocumentCapture({
           </div>
         )}
         {status === "denied" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
+          <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             <p>Camera access was denied. You can allow it from your browser&apos;s site settings, or upload a photo or PDF instead.</p>
             {iOSMode && <p className="text-neutral-400">{SAFARI_CAMERA_TIP}</p>}
             <button onClick={retry} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-ink-on-dark">
@@ -2307,7 +2350,7 @@ export default function DocumentCapture({
           </div>
         )}
         {status === "stalled" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
+          <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             {/* The scans are the thing to say first. A black screen with no
                 way back reads as "I have lost the ones I already took", and
                 the other failure screens hide the stack, so without this
@@ -2325,7 +2368,7 @@ export default function DocumentCapture({
           </div>
         )}
         {status === "unsupported" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
+          <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-6 text-center text-sm text-ink-on-dark">
             <p>This browser doesn&apos;t support camera capture here. Upload a photo or PDF instead.</p>
           </div>
         )}
@@ -2342,7 +2385,7 @@ export default function DocumentCapture({
           <div className="flex items-center gap-2">
             <BackButton onClick={close} />
             {shownFailure ? (
-              <div className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-ink-on-dark line-clamp-2">{shownFailure}</div>
+              <div role="alert" className="min-w-0 flex-1 rounded-lg bg-red-600/90 p-2 text-center text-xs font-medium text-ink-on-dark line-clamp-2">{shownFailure}</div>
             ) : (
               status === "live" && (
                 // With nothing to say it's an invisible strip, still there
@@ -2398,6 +2441,7 @@ export default function DocumentCapture({
               <input
                 type="range"
                 aria-label="Zoom"
+                aria-valuetext={`${Math.round(zoom * 10) / 10} times`}
                 min={zoomRange.min}
                 max={zoomRange.max}
                 step={zoomRange.step}
@@ -2406,7 +2450,7 @@ export default function DocumentCapture({
                 className="w-full max-w-xs accent-white"
               />
             ) : (
-              <div className="flex overflow-hidden rounded-full bg-black/50 text-xs font-medium text-ink-on-dark">
+              <div role="group" aria-label="Zoom" className="flex overflow-hidden rounded-full bg-black/50 text-xs font-medium text-ink-on-dark">
                 {[1, 2].map((z) => (
                   <button
                     key={z}

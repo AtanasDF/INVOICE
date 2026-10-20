@@ -12,6 +12,7 @@ import Tip from "@/components/Tip";
 import EmailFileForm from "@/components/EmailFileForm";
 import SaveThese from "@/components/SaveThese";
 import { grossOf } from "@/lib/receiptAmounts";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -30,6 +31,10 @@ export default function FilesPage() {
   // closing doesn't lose your place in the list; while it's open, Escape
   // closes it and the close button is where focus starts.
   const openerRef = useRef<HTMLElement | null>(null);
+  // inert covers this page only: the header, footer and Feedback pill under
+  // the scrim are AppShell's, so Tab is kept in the viewer too.
+  const viewer = useRef<HTMLDivElement>(null);
+  useFocusTrap(viewer, !!preview);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -263,6 +268,7 @@ export default function FilesPage() {
 
       {preview && (
         <div
+          ref={viewer}
           role="dialog"
           aria-modal="true"
           aria-label={`${preview.vendor || preview.category || "Document"} preview`}

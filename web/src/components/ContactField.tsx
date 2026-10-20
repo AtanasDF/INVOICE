@@ -251,7 +251,8 @@ export default function ContactField({
           }}
           onKeyDown={onKeyDown}
         />
-        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 flex w-9 items-center justify-center text-neutral-500">▾</span>
+        {/* The select over it is invisible, so its focus ring is drawn here. */}
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-neutral-500 [&:has(+select:focus-visible)]:ring-2 [&:has(+select:focus-visible)]:ring-neutral-900">▾</span>
         <select
           aria-label={listLabel ?? `Your saved ${word}s`}
           className="absolute inset-y-0 right-0 w-9 cursor-pointer opacity-0"
