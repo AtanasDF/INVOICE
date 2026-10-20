@@ -93,7 +93,9 @@ const { browser, page } = await launchSignedIn(db, { base: BASE, profile: "profi
     if (req.method() === "OPTIONS") { req.respond({ status: 204, headers: cors, body: "" }); return true; } req.respond({ status: 400, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify({ message: "Harness: no storage" }) }); return true; }
   return false;
 } });
-page.on("dialog", (d) => d.accept());
+// /scan now asks before leaving unsaved readings (useLeaveGuard), and a
+// navigation can close that question before this handler gets to it.
+page.on("dialog", (d) => d.accept().catch(() => {}));
 const vendorInput = 'input[placeholder="Supplier name as printed"]';
 const supplierSelect = () => page.evaluate(() => [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => /Toolstation/.test(o.textContent)))?.value);
 const paidChoice = () => page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /bg-neutral-900/.test(b.className) && /Already paid|To be paid/.test(b.textContent))?.textContent.trim());
