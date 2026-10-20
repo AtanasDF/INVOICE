@@ -1321,6 +1321,10 @@ export type Quote = {
   // column existed, which both follow the account's current setting -- the
   // same rule as a draft invoice.
   vatRegistered: boolean | null;
+  // When it left draft (migration-042). Null on a draft, on every quote from
+  // before the column, and on a database without it; the chase then counts
+  // from the quote's own date and says "dated".
+  sentAt: string | null;
 };
 
 type QuoteRow = {
@@ -1338,6 +1342,7 @@ type QuoteRow = {
   deposit_invoice_id: string | null;
   deposit_claimed: boolean | null;
   vat_registered?: boolean | null;
+  sent_at?: string | null;
 };
 
 function quoteFromRow(r: QuoteRow): Quote {
@@ -1360,6 +1365,7 @@ function quoteFromRow(r: QuoteRow): Quote {
     depositInvoiceId: r.deposit_invoice_id ?? null,
     depositClaimed: r.deposit_claimed ?? false,
     vatRegistered: r.vat_registered ?? null,
+    sentAt: r.sent_at ?? null,
   };
 }
 
@@ -1384,6 +1390,31 @@ async function accountVat(): Promise<boolean> {
   return !!data?.vat_registered;
 }
 
+// What a quote records the moment it leaves draft: the VAT setting it was
+// priced under (migration-033) and when (migration-042). Reopening an
+// answered quote is not a new send, so neither is touched then.
+async function leavingDraft() {
+  return { vat_registered: await accountVat(), sent_at: new Date().toISOString() };
+}
+
+// A database without one of those columns refuses the whole update
+// (PGRST204). Dropped newest first, so a database that has 033 but not 042
+// still keeps the VAT setting -- dropping both at once would lose it on every
+// send until 042 is run.
+const OPTIONAL_QUOTE_COLUMNS = ["sent_at", "vat_registered"];
+
+// Only from the status the page showed, and never an invoiced one.
+async function updateQuote(id: string, patch: Record<string, unknown>, from: QuoteStatus): Promise<{ id: string }[]> {
+  let body = patch;
+  for (;;) {
+    const { data, error } = await supabase.from("quotes").update(body).eq("id", id).eq("status", from).neq("status", "invoiced").select("id");
+    if (!error) return data ?? [];
+    const drop = OPTIONAL_QUOTE_COLUMNS.find((c) => c in body);
+    if (error.code !== "PGRST204" || !drop) throw error;
+    body = Object.fromEntries(Object.entries(body).filter(([k]) => k !== drop));
+  }
+}
+
 export const quotesStore = {
   async all(): Promise<Quote[]> {
     const { data, error } = await supabase.from("quotes").select("*").order("date", { ascending: false }).order("number", { ascending: false });
@@ -1395,7 +1426,7 @@ export const quotesStore = {
     if (error) throw error;
     return data ? quoteFromRow(data as QuoteRow) : null;
   },
-  async add(input: Omit<Quote, "id" | "status" | "invoiceId" | "depositInvoiceId" | "depositClaimed" | "vatRegistered">): Promise<Quote> {
+  async add(input: Omit<Quote, "id" | "status" | "invoiceId" | "depositInvoiceId" | "depositClaimed" | "vatRegistered" | "sentAt">): Promise<Quote> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("quotes")
@@ -1444,33 +1475,13 @@ export const quotesStore = {
     // sent, or accepted/declined straight from a draft agreed on the phone
     // -- so that is when the VAT setting is fixed to the quote; otherwise
     // switching VAT on later re-prices a quote someone is still holding.
-    const patch = from === "draft" ? { status, vat_registered: await accountVat() } : { status };
-    const { data, error } = await supabase.from("quotes").update(patch).eq("id", id).eq("status", from).neq("status", "invoiced").select("id");
-    if (error) {
-      if (error.code !== "PGRST204") throw error;
-      // migration-033 hasn't been run: everything else still works.
-      const retry = await supabase.from("quotes").update({ status }).eq("id", id).eq("status", from).neq("status", "invoiced").select("id");
-      if (retry.error) throw retry.error;
-      if (!retry.data?.length) throw new Error("This quote has changed since the page loaded (the customer may have answered online). Reload to see it.");
-      return;
-    }
-    if (!data?.length) throw new Error("This quote has changed since the page loaded (the customer may have answered online). Reload to see it.");
+    const patch = from === "draft" ? { status, ...(await leavingDraft()) } : { status };
+    const data = await updateQuote(id, patch, from);
+    if (!data.length) throw new Error("This quote has changed since the page loaded (the customer may have answered online). Reload to see it.");
   },
   // A draft becomes sent when it's emailed; anything further along stays.
   async markSent(id: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from("quotes")
-      .update({ status: "sent", vat_registered: await accountVat() })
-      .eq("id", id)
-      .eq("status", "draft")
-      .select("id");
-    if (error) {
-      if (error.code !== "PGRST204") throw error;
-      const retry = await supabase.from("quotes").update({ status: "sent" }).eq("id", id).eq("status", "draft").select("id");
-      if (retry.error) throw retry.error;
-      return (retry.data ?? []).length > 0;
-    }
-    return (data ?? []).length > 0;
+    return (await updateQuote(id, { status: "sent", ...(await leavingDraft()) }, "draft")).length > 0;
   },
   // Turning a quote into an invoice claims it first (status invoiced, no
   // invoice yet), so a second tap or tab can't make a second invoice; the

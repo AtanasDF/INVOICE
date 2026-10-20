@@ -136,6 +136,8 @@ session log what was added so he knows what to clear.
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **`SCAN_LIMITS=on` was
    set in Vercel on 2026-09-23, so all of this is LIVE** — see the environment section.
+   **Written but NOT run: migration-042 + backup 017** (`quotes.sent_at`, on
+   `feature/quote-sent-at`, which must not merge until they are run and verified).
    Applied and verified up
    to **041** (the London day in SQL: `public.uk_today()`, and
    `respond_to_quote_link`, `generate_recurring_invoice` and
