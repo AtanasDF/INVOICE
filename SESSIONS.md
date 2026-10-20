@@ -4,6 +4,27 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Round 4: three ready on `integrate/cloud-round-4a`, the camera held back
+
+All four Safari/help branches combined on `integrate/cloud-round-4` (clashes: notes, suite
+lists, the logic tsconfig, one import pair in AnswerEntry). 57 named suites against
+`next start`, one at a time: 53 green. `test-far`/`test-far-v2` 34/35 fail the same
+"used the full-resolution still" check on a main build too -- pre-existing.
+`test-multi-docs` crashed on the camera brief's new leave question (puppeteer answering a
+dialog already closed); test hardened, 33/33. `test-bent` was 0/64 because its clips had
+never been generated on this Mac (`python3 gen-bent.py`, NOT `-I`, which hides Pillow);
+with them: round 4 59, 64, 63; main 64; round 4 WITHOUT the camera branch 63, 64. So it
+wobbles either way, and the 59 (bent-receipt never found, first run after a server start)
+is the outlier. Not proof against the camera branch, but not proof for it either, and it
+is the code the iPhone scanner runs, so it is held back pending Atanas.
+
+`integrate/cloud-round-4a` = round 4 with the camera merge reverted: tsc, eslint, build
+clean; ios-forms-layout 52, ios-files-share 63, account-switch 24, form-draft 67,
+ios-layout 15, multi-docs 33, upload-panel 13, uploads 15, settings-save 41, bent 64.
+`/privacy` changed (help-truth): Anthropic is the automatic second reader and reads cards
+and described invoices by default; Cloudflare and the reminder emails are now named. Read
+in full and accurate. Not merged.
+
 ## 2026-10-20 — Round 4 started: `wip/ios-files-share` tested, on `integrate/cloud-round-4`
 
 Brief 15 (iPhone Safari: files, sharing, downloads, links) merged onto
