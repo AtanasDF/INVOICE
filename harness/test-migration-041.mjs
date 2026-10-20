@@ -121,6 +121,9 @@ say(stillUtc.length === 0, "no function in the schema still asks UTC what day it
 // ---- The grants ------------------------------------------------------------
 const grants = (await db.query(`select routine_name, grantee from information_schema.routine_privileges where routine_name in ('uk_today','respond_to_quote_link','generate_recurring_invoice','submit_quote_request_response') and grantee in ('anon','authenticated','service_role') order by 1, 2`)).rows;
 const got = grants.map((g) => `${g.routine_name}:${g.grantee}`).sort().join(" ");
+// This is what 041 DOES, not what it should have done: the authenticated grant
+// on generate_recurring_invoice was the hole migration-043 closes (013's header
+// says service role only). test-migration-043 holds the intended state.
 const want = ["generate_recurring_invoice:authenticated", "respond_to_quote_link:service_role", "submit_quote_request_response:service_role", "uk_today:service_role"].sort().join(" ");
 say(got === want, "the grants are exactly as intended, and anon has none", `grants\n  got  ${got}\n  want ${want}`);
 

@@ -204,7 +204,7 @@ placeholder NEXT_PUBLIC_SUPABASE_URL and keys in the cloud. Table in
 notes/audit-api-routes.md. Branch: wip/api-routes-audit.
 ```
 
-## 10. SQL functions and RLS — [ ]
+## 10. SQL functions and RLS — [x] (2026-10-20, `wip/sql-audit`: notes/audit-sql.md; 3 holes, migrations 043-045 written, NOT run)
 
 ```
 Read every file in web/supabase/ in order (latest: migration 042 and backup 017, both run

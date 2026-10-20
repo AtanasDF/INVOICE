@@ -4,6 +4,32 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — SQL and RLS audit (cloud, brief 10), `wip/sql-audit`
+
+Every file in `web/supabase/` read. Three holes, each fixed by a migration that has **not
+been run** (no live database from the cloud). Each was proved in pglite: open before, shut
+after, and running it twice is safe. Detail in `notes/audit-sql.md`.
+
+- **043:** 041 granted `generate_recurring_invoice` to `authenticated`. That is the cron
+  function 013 says must be service-role only, and `test-migration-041` pinned the wrong
+  grant. With a leaked id, any account could raise a draft into another account and skip
+  that account's month.
+- **044:** any account can `PATCH business_profile {"plan":"paid"}` and scan without
+  limit. storage.ts claims the database refuses it, and it doesn't. The fix is a trigger,
+  because a column revoke does nothing while the table-level grant stands.
+- **045:** the five pre-017 foreign keys (receipts/invoices/recurring_invoices
+  client_id, recurring_expenses supplier_id, credit_notes invoice_id) still let one
+  account point at another's rows. `*_same_owner` triggers fix them, the same shape as
+  020 to 028.
+
+No backup files: each migration adds functions and triggers or changes a grant, and its
+header says so. New suite `harness/test-migration-043.mjs` (51 checks), added to run-all.
+It also fails if a SECURITY DEFINER function in the folder ever lacks a search_path.
+Left as a decision for Atanas: invite bonuses can be farmed through the RPCs whatever
+`NEXT_PUBLIC_INVITES` says. Logic suites run: test-migration-041 16/16, -042 15/15,
+-043 51/51, rls-audit 5/5, utc-today 18/18. No app code changed, so tsc, eslint and build
+were not needed.
+
 ## 2026-10-20 — Migration 042 run, and quotes remember when they were sent
 
 Atanas said go. Backup 017 and migration-042 run on the live database (project

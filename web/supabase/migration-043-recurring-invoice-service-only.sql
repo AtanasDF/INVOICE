@@ -1,0 +1,49 @@
+-- generate_recurring_invoice goes back to the service role only.
+--
+-- WHY THIS EXISTS. migration-013 made this function SECURITY DEFINER and NOT
+-- scoped to auth.uid(): the daily cron runs it with the service role on behalf
+-- of every account at once, so it trusts the recurring row's own user_id and
+-- client_id. Its header says what that means -- "unsafe to expose to
+-- authenticated or anon: either could otherwise generate a draft invoice into
+-- an arbitrary OTHER account by passing any recurring_invoices id" -- and 013
+-- and 016 both revoked `authenticated` for exactly that reason.
+--
+-- migration-041 re-created it with the London day and, in its grant block,
+-- wrote `grant execute ... to authenticated` instead. Nothing in the app calls
+-- it as a user (the only caller is /api/recurring-invoices/generate, with the
+-- admin client), and test-migration-041 pinned the grant it found rather than
+-- the one 013 meant, so nothing noticed. The live check after 041 confirmed
+-- that `anon` could not call it; it did not look at `authenticated`.
+--
+-- What that allows, as a signed-in account holding another account's
+-- recurring_invoices id: a draft invoice written into THAT account, dated
+-- today, and its schedule advanced a month, so their real invoice for the
+-- month is skipped. The ids are random uuids, which is why this is a hole and
+-- not an incident -- but the function's own header says it must never be
+-- reachable this way.
+--
+-- NO BACKUP FILE. This changes who may execute one function. It alters no
+-- table and touches no row, so CLAUDE.md rule 2 asks for none.
+--
+-- Additive and idempotent: safe to run twice.
+
+revoke all on function public.generate_recurring_invoice(uuid) from public, anon, authenticated;
+grant execute on function public.generate_recurring_invoice(uuid) to service_role;
+
+-- ── Checks after running ────────────────────────────────────────────
+-- 1. Only service_role (and the owner) may run it. Expect exactly one row,
+--    service_role:
+--   select grantee from information_schema.routine_privileges
+--    where routine_schema = 'public' and routine_name = 'generate_recurring_invoice'
+--      and grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC');
+--
+-- 2. Exercised as a signed-in account, it must be refused for permission, not
+--    for "not found". Expect: permission denied for function
+--    generate_recurring_invoice.
+--   begin;
+--   set local role authenticated;
+--   select public.generate_recurring_invoice(gen_random_uuid());
+--   rollback;
+--
+-- 3. The cron still works: the next 07:00 run of /api/recurring-invoices/generate
+--    reports no "permission denied" in the Vercel log.
