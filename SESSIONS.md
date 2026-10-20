@@ -4,6 +4,20 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud: email Worker audit (brief 11), `wip/worker-audit`
+
+Not live: worker/ only ships with `npx wrangler deploy` on the Mac. Ten findings fixed in
+`worker/src/index.ts`, all confirmed by a check that fails on the old code (24/40 there,
+40/40 now). The worst: the app unreachable (fetch throws) and a mistyped address were
+both swallowed after Cloudflare had accepted the email. Both now bounce. Also fixed: the
+text uncounted in the 4.5 MB body, image/jpg and x-pdf aliases, an octet-stream with no
+extension sniffed by its bytes, signature icons filed as receipts, a related PDF dropped
+unnamed, the header From instead of the bounce address. `setReject` is a PERMANENT
+error, so the old "retries for days" comment was wrong. test-inbox-worker-types 17/17,
+worker tsc clean, wrangler dry-run bundles. Left open (route side): duplicates when a
+late failure is resent, the email handler's fetch wait limit (unchecked, no docs
+access). Full detail and the sender-facing table in `notes/audit-worker.md`.
+
 ## 2026-10-20 — Migration 042 run, and quotes remember when they were sent
 
 Atanas said go. Backup 017 and migration-042 run on the live database (project
