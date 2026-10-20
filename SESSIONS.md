@@ -4,6 +4,24 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud brief 18: can everybody use it? (`claude/brief-18-cloud-queue-2yb3gl`, NOT merged)
+
+WCAG 2.2 AA across every page and component, confirmed in the code before each fix: 52
+fixed, none false (`notes/audit-accessibility.md`). The worst: Escape anywhere pulled focus
+into a header menu; the upload buttons and the iPhone scan label could not be reached by
+keyboard (`display:none` file inputs); the Add sheet, file viewer and camera let Tab walk
+out under them (`useFocusTrap`); the camera said nothing at all (one always-mounted status
+reading its own state, capture logic untouched); the quote form tied its errors to a
+`<div>`, which `test-form-errors` accepted; amber-900 was dark-on-dark in dark mode. Also
+a skip link, `lang="en-GB"`, 15 unnamed boxes, 10 toggles with no `aria-pressed`, ~25
+field errors tied to their box, ~30 messages that were never announced. `/accessibility`
+corrected on the camera, contrast and keyboard. Two new source suites, both in run-all:
+`test-contrast-tokens` (every text/background pair in all six themes) and
+`test-accessibility-source` (38). tsc, eslint, build clean; the source suites pass;
+`test-ios-forms-layout` updated for the hidden arrows (52/52). **Before merging, run the
+browser suites listed at the foot of the report on the Mac.** Left: the supplier price
+form's ties and its whole-form live region, and nobody has tried any of it with VoiceOver.
+
 ## 2026-10-20 — Round 4a live, then the camera fixes live for the iPhone test
 
 Atanas: merge 4a (`15eb531`), then "merge the camera fixes so I can try them on the

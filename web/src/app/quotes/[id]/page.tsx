@@ -399,6 +399,7 @@ export default function QuotePage() {
             <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
               {linkCopied ? "Copied" : "Copy link"}
             </button>
+            <span role="status" className="sr-only">{linkCopied ? "Link copied." : ""}</span>
             <a href={`${url}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
               Open
             </a>

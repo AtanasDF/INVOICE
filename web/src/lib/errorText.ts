@@ -76,7 +76,7 @@ export const PASSWORDS_DIFFER = "The two passwords are not the same. Type the sa
 // 42 seconds." Each is said in plain words here, by the code GoTrue gives;
 // one it doesn't know falls back to the caller's sentence. An Error the app
 // threw itself is not an auth error and still goes through as written.
-const AUTH_WORDS: Record<string, string> = {
+export const AUTH_WORDS: Record<string, string> = {
   invalid_credentials: "That email and password don't match an account. Check both, or press \"Forgotten your password?\".",
   over_email_send_rate_limit: "We've sent this address a few emails already. Wait a few minutes, then try again.",
   over_request_rate_limit: "That's a lot of tries in a short time. Wait a minute, then try again.",
@@ -88,6 +88,10 @@ const AUTH_WORDS: Record<string, string> = {
   otp_expired: "That code or link has run out. Send yourself a new one.",
   signup_disabled: "New accounts can't be made just now. Try again later.",
 };
+
+// Which box a refusal is about, so that box can be marked and tied to it.
+export const emailAtFault = (msg: string | null) => msg === AUTH_WORDS.email_address_invalid || msg === AUTH_WORDS.email_exists;
+export const passwordAtFault = (msg: string | null) => msg === AUTH_WORDS.weak_password || msg === AUTH_WORDS.same_password;
 
 export function authFailed(err: unknown, fallback: string): string {
   const e = err as { __isAuthError?: unknown; code?: unknown; message?: unknown } | null;

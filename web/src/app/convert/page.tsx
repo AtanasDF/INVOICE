@@ -100,7 +100,7 @@ export default function ConvertPage() {
           </ul>
         )}
 
-        {stuck && <p className="text-base text-neutral-700">We can change pictures, PDFs, and files of words or rows. That one we can&apos;t.</p>}
+        {stuck && <p role="alert" className="text-base text-neutral-700">We can change pictures, PDFs, and files of words or rows. That one we can&apos;t.</p>}
 
         {targets.length > 0 && (
           <div>
@@ -125,6 +125,8 @@ export default function ConvertPage() {
         )}
 
         {error && <p role="alert" className="text-base text-red-600">{error}</p>}
+        {/* The target buttons disable while they work, so finishing is said. */}
+        <p role="status" className="sr-only">{made.length === 0 ? "" : made.length === 1 ? "Your file is ready." : `Your ${made.length} files are ready.`}</p>
       </div>
 
       {made.length > 0 && (

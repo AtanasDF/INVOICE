@@ -288,12 +288,17 @@ function gbpAmounts(f: Form) {
   return receiptGbp(f.totalAmount, f.vatAmount, f.currency, f.fxRateInput);
 }
 
+// The refusals that are about one box, so that box is marked and tied to them.
+const NO_TOTAL = "Enter a total before saving.";
+const NO_DUE_DATE = "A bill to be paid needs a due date.";
+const NO_SUPPLIER_NAME = "Enter a supplier name first.";
+
 function saveProblem(f: Form): string | null {
   const mode = modeOf(f);
-  if (mode !== "archival" && !f.totalAmount) return "Enter a total before saving.";
+  if (mode !== "archival" && !f.totalAmount) return NO_TOTAL;
   const rateSays = rateProblem(f.currency, f.fxRateInput);
   if (rateSays) return rateSays;
-  if (mode === "invoice" && !f.paid && !f.dueDate) return "A bill to be paid needs a due date.";
+  if (mode === "invoice" && !f.paid && !f.dueDate) return NO_DUE_DATE;
   return null;
 }
 
@@ -467,6 +472,7 @@ export default function ScanPage() {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const rateWrong = !!saveError && saveError === rateProblem(form.currency, form.fxRateInput);
   const [duplicate, setDuplicate] = useState<Receipt | null>(null);
 
   // Reads land after the page has moved on, so the walk and the lists they
@@ -954,7 +960,7 @@ export default function ScanPage() {
   async function addAsSupplier() {
     const name = form.vendor.trim();
     if (!name) {
-      setSaveError("Enter a supplier name first.");
+      setSaveError(NO_SUPPLIER_NAME);
       return;
     }
     // The same ref as Save: both presses would check exactSupplier against
@@ -1460,7 +1466,7 @@ export default function ScanPage() {
             {pagesStrip}
             <div>
               <label className="text-xs text-neutral-500">Company name</label>
-              <input aria-label="Company name" className="w-full rounded-lg border px-3 py-2" value={form.vendor} onChange={(e) => patch({ vendor: e.target.value })} />
+              <input aria-label="Company name" aria-invalid={saveError === NO_SUPPLIER_NAME || undefined} aria-describedby={saveError === NO_SUPPLIER_NAME ? "scan-supplier-error" : undefined} className="w-full rounded-lg border px-3 py-2" value={form.vendor} onChange={(e) => patch({ vendor: e.target.value })} />
               <FieldFlag confidence={form.vendorConf} />
               <RegisterNote check={cardCheck} />
             </div>
@@ -1483,7 +1489,9 @@ export default function ScanPage() {
               </p>
             )}
             {supplierSaved && <p className="text-sm text-neutral-700">Saved as a new supplier.</p>}
-            {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
+            {/* The button disables and relabels itself, so focus leaves it; this says what happened. */}
+            <p role="status" className="sr-only">{supplierSaved ? "Saved as a new supplier." : supplierDuplicate ? `Already have a supplier named ${form.vendor}. Didn't create a duplicate.` : ""}</p>
+            {saveError && <p id="scan-supplier-error" role="alert" className="text-sm text-red-600">{saveError}</p>}
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={addAsSupplier}
@@ -1546,6 +1554,7 @@ export default function ScanPage() {
               )}
               {supplierSaved && <p className="mt-1 text-sm text-neutral-700">Saved as a new supplier.</p>}
               {supplierDuplicate && <p className="mt-1 text-sm text-amber-700">Already a supplier — using the existing one.</p>}
+              <p role="status" className="sr-only">{supplierSaved ? "Saved as a new supplier." : supplierDuplicate ? "Already a supplier. Using the existing one." : ""}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1559,6 +1568,8 @@ export default function ScanPage() {
                   <input
                     type="date"
                     aria-label="Due date"
+                    aria-invalid={saveError === NO_DUE_DATE || undefined}
+                    aria-describedby={saveError === NO_DUE_DATE ? "scan-save-error" : undefined}
                     className="w-full rounded-lg border px-3 py-2"
                     value={form.dueDate}
                     onChange={(e) => patch({ dueDate: e.target.value, dueDateAlternative: null })}
@@ -1625,6 +1636,8 @@ export default function ScanPage() {
                 </label>
                 <input
                   aria-label="Total including VAT"
+                  aria-invalid={saveError === NO_TOTAL || undefined}
+                  aria-describedby={saveError === NO_TOTAL ? "scan-save-error" : undefined}
                   className="w-full rounded-lg border px-3 py-2"
                   value={form.totalAmount}
                   // A VAT figure worked out from the printed rate follows a
@@ -1682,6 +1695,8 @@ export default function ScanPage() {
                   <label className="text-xs text-neutral-500 whitespace-nowrap">1 {form.currency} =</label>
                   <input
                     aria-label={`Pounds to 1 ${form.currency}`}
+                    aria-invalid={rateWrong || undefined}
+                    aria-describedby={rateWrong ? "scan-save-error" : undefined}
                     className="w-28 rounded-lg border px-2 py-1.5 text-sm"
                     value={form.fxRateInput}
                     onChange={(e) => patch({ fxRateInput: e.target.value })}
@@ -1741,7 +1756,7 @@ export default function ScanPage() {
               />
             )}
 
-            {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
+            {saveError && <p id="scan-save-error" role="alert" className="text-sm text-red-600">{saveError}</p>}
             {duplicate && (
               <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
                 Looks like a duplicate of {duplicate.vendor || clients.find((c) => c.id === duplicate.clientId)?.name || "a saved document"}, £

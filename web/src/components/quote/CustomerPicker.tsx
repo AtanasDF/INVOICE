@@ -31,13 +31,15 @@ export type NewCustomerStart = { name: string; email: string; address: string; i
 // someone new added on the spot. An archived one stays shown only while it's
 // the one picked. Whether a new customer is being added is held by the form,
 // so it can't be saved over one half typed in.
-export default function CustomerPicker({ people, value, onChange, onAdded, adding, onAdding }: {
+export default function CustomerPicker({ people, value, onChange, onAdded, adding, onAdding, invalid = false, describedBy }: {
   people: Client[];
   value: string;
   onChange: (id: string) => void;
   onAdded: (c: Client) => void;
   adding: NewCustomerStart | null;
   onAdding: (start: NewCustomerStart | null) => void;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const shown = people.filter((c) => !c.archived || c.id === value);
   const picked = shown.find((c) => c.id === value) ?? null;
@@ -61,6 +63,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
   if (adding) {
     return (
       <NewCustomer
+        describedBy={describedBy}
         start={adding}
         existing={shown}
         onCancel={shown.length ? () => onAdding(null) : undefined}
@@ -106,7 +109,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
         />
       )}
       {groups.length > 0 ? (
-        <div role="radiogroup" aria-labelledby={labelId} className="max-h-80 overflow-y-auto rounded-lg border">
+        <div role="radiogroup" aria-labelledby={labelId} aria-invalid={invalid || undefined} aria-describedby={describedBy} className="max-h-80 overflow-y-auto rounded-lg border">
           {groups.map((g) => (
             <div key={g.label}>
               <p className="sticky top-0 border-b bg-neutral-50 px-3 py-1 text-xs font-medium text-neutral-500">{g.label}</p>
@@ -150,7 +153,12 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
 }
 
 // A new customer, company or private person, saved straight to Customers.
-function NewCustomer({ start, existing, onSaved, onCancel }: {
+const NO_COMPANY_NAME = "Add the company's name.";
+const NO_NAME = "Add their name.";
+const BAD_EMAIL = "That email address doesn't look right.";
+
+function NewCustomer({ start, existing, onSaved, onCancel, describedBy }: {
+  describedBy?: string;
   start: NewCustomerStart;
   existing: Client[];
   onSaved: (c: Client) => void;
@@ -167,12 +175,13 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
   const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const id = useId();
+  const nameWrong = error === NO_COMPANY_NAME || error === NO_NAME;
 
   async function save() {
     if (savingNow.current) return;
     const trimmed = name.trim();
-    if (!trimmed) return setError(isCompany ? "Add the company's name." : "Add their name.");
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("That email address doesn't look right.");
+    if (!trimmed) return setError(isCompany ? NO_COMPANY_NAME : NO_NAME);
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError(BAD_EMAIL);
     const same = existing.find((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
     if (same && !window.confirm(`You already have ${same.name} in your list. Add another one with the same name?`)) return;
     savingNow.current = true;
@@ -216,7 +225,8 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
   );
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    // The form's "finish adding the new customer first" is about this block as a whole.
+    <div role="group" aria-label="New customer" aria-describedby={describedBy} className="space-y-3 rounded-lg border p-4">
       <div>
         <p className="font-medium">New customer</p>
         <p className="text-sm text-neutral-600">Saved to your customers, so it&apos;s there next time.</p>
@@ -237,6 +247,8 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
                 lookupPlaceholder="Type to search Companies House"
                 value={name}
                 onChange={setName}
+                invalid={nameWrong}
+                describedBy={nameWrong ? `${id}-error` : undefined}
                 address={address}
                 onAddress={setAddress}
                 onPick={(c, fillAddress) => {
@@ -245,7 +257,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
                 }}
               />
             ) : (
-              <input id={`${id}-name-input`} className={INPUT} autoComplete="off" placeholder="e.g. Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
+              <input id={`${id}-name-input`} aria-invalid={nameWrong || undefined} aria-describedby={nameWrong ? `${id}-error` : undefined} className={INPUT} autoComplete="off" placeholder="e.g. Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
             )}
           </div>
           {isCompany && (
@@ -257,7 +269,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs text-neutral-500" htmlFor={`${id}-email`}>Email</label>
-              <input id={`${id}-email`} type="email" inputMode="email" autoComplete="off" className={INPUT} placeholder="To email the quote" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input id={`${id}-email`} aria-invalid={error === BAD_EMAIL || undefined} aria-describedby={error === BAD_EMAIL ? `${id}-error` : undefined} type="email" inputMode="email" autoComplete="off" className={INPUT} placeholder="To email the quote" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-neutral-500" htmlFor={`${id}-phone`}>Mobile</label>
@@ -277,7 +289,7 @@ function NewCustomer({ start, existing, onSaved, onCancel }: {
           />
         </>
       )}
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="flex flex-wrap gap-2">
         {isCompany !== null && (
           <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">

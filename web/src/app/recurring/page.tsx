@@ -239,12 +239,15 @@ export default function RecurringExpensesPage() {
           />
         </div>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {logged && (
-          <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-            {logged} logged as an expense.{" "}
-            <Link href="/receipts" className="font-medium underline">See it</Link>
-          </p>
-        )}
+        {/* Always mounted, so what goes into it is read out; one that arrives with its words often is not. */}
+        <div role="status">
+          {logged && (
+            <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+              {logged} logged as an expense.{" "}
+              <Link href="/receipts" className="font-medium underline">See it</Link>
+            </p>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {saving ? "Saving…" : "Add recurring expense"}

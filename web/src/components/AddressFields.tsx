@@ -275,7 +275,7 @@ export default function AddressFields({ address, onAddress, label = "Address", s
       {result && (
         <div className="overflow-hidden rounded-lg border bg-white text-neutral-900">
           {items.length > 0 && (
-            // A list of buttons, not a listbox: role="option" makes what is
+            // A list of buttons, not a listbox: an option role makes what is
             // inside it presentational, so the button stopped being one, and
             // there was no arrow-key model behind the role anyway.
             <ul aria-label="Addresses found" className="max-h-72 overflow-y-auto">

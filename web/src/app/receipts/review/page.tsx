@@ -51,6 +51,8 @@ const TYPE_BADGE: Partial<Record<Receipt["documentType"], { label: string; class
 const doubted = (r: Receipt, field: "vendor" | "date" | "total" | "vat") =>
   (r.details?.unsure ?? []).includes(field) ? "low" : null;
 
+const NO_DUE_DATE = "A bill to be paid needs a due date.";
+
 export default function ReviewQueuePage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -99,7 +101,7 @@ export default function ReviewQueuePage() {
     const isCredit = r.documentType === "credit_note";
     const isInvoice = r.documentType === "invoice";
     if (isInvoice && !draft.paid && !draft.dueDate) {
-      setRowError({ id: r.id, message: "A bill to be paid needs a due date." });
+      setRowError({ id: r.id, message: NO_DUE_DATE });
       return;
     }
     setRowError(null);
@@ -156,11 +158,14 @@ export default function ReviewQueuePage() {
       <Tip id="review-how">How it works: check what was read off each one. Once you save it, it counts towards your totals.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      {done && (
-        <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-          {done} <Link href="/receipts" className="font-medium underline">See it</Link>
-        </p>
-      )}
+      {/* Always mounted, so what goes into it is read out; one that arrives with its words often is not. */}
+      <div role="status">
+        {done && (
+          <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+            {done} <Link href="/receipts" className="font-medium underline">See it</Link>
+          </p>
+        )}
+      </div>
 
       {receipts.length === 0 && !error ? (
         <p className="text-sm text-neutral-500">Nothing waiting on review.</p>
@@ -240,6 +245,8 @@ export default function ReviewQueuePage() {
                           <div>
                             <label className="text-xs text-neutral-500">Due date</label>
                             <input aria-label="Due date"
+                              aria-invalid={(rowError?.id === r.id && rowError.message === NO_DUE_DATE) || undefined}
+                              aria-describedby={rowError?.id === r.id && rowError.message === NO_DUE_DATE ? `review-error-${r.id}` : undefined}
                               type="date"
                               className="w-full rounded-lg border px-3 py-2 text-sm"
                               value={draft.dueDate}
@@ -319,7 +326,7 @@ export default function ReviewQueuePage() {
 
                     {r.clientId && <p className="text-xs text-neutral-500">Filed under {clientName(r.clientId)}.</p>}
 
-                    {rowError?.id === r.id && <p role="alert" className="text-sm text-red-600">{rowError.message}</p>}
+                    {rowError?.id === r.id && <p id={`review-error-${r.id}`} role="alert" className="text-sm text-red-600">{rowError.message}</p>}
 
                     <div className="flex gap-3">
                       <button

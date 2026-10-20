@@ -679,6 +679,8 @@ function ReceiptsPage() {
                     <label className="text-xs text-neutral-500 whitespace-nowrap">1 {editDraft.currency} =</label>
                     <input
                       aria-label={`Pounds to 1 ${editDraft.currency}`}
+                      aria-invalid={(!!editError && editError === rateProblem(editDraft.currency, editDraft.fxRateInput)) || undefined}
+                      aria-describedby={!!editError && editError === rateProblem(editDraft.currency, editDraft.fxRateInput) ? "receipt-edit-error" : undefined}
                       className="w-28 rounded-lg border px-2 py-1.5 text-sm"
                       value={editDraft.fxRateInput}
                       onChange={(e) => setEditDraft({ ...editDraft, fxRateInput: e.target.value })}
@@ -702,7 +704,7 @@ function ReceiptsPage() {
                   value={editDraft.notes}
                   onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
                 />
-                {editError && <p role="alert" className="text-sm text-red-600">{editError}</p>}
+                {editError && <p id="receipt-edit-error" role="alert" className="text-sm text-red-600">{editError}</p>}
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveEditReceipt(r)}

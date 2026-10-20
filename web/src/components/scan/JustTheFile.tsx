@@ -133,7 +133,7 @@ export default function JustTheFile({ pages, suggestedName }: { pages: DocPage[]
         </button>
       </div>
       {error && <p role="alert" className="mt-2 wrap-anywhere text-sm text-red-600">{error}</p>}
-      {note && <p role="status" className="mt-2 text-sm text-neutral-600">{note}</p>}
+      <p role="status" className={note ? "mt-2 text-sm text-neutral-600" : "sr-only"}>{note ?? ""}</p>
       <div className="mt-4 border-t pt-4">
         <EmailFileForm file={make} heading="Or email it to someone" idPrefix="scan-file" className="space-y-2" />
       </div>

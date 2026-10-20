@@ -170,7 +170,7 @@ const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center g
         </button>
       </div>
 
-      {busy && <p role="status" className="text-sm text-neutral-600">Reading…</p>}
+      <p role="status" className={busy ? "text-sm text-neutral-600" : "sr-only"}>{busy ? "Reading…" : ""}</p>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {showAddress && (
@@ -190,6 +190,7 @@ const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center g
               >
                 {copied ? "Copied" : "Copy the address"}
               </button>
+              <span role="status" className="sr-only">{copied ? "Address copied." : ""}</span>
             </>
           ) : (
             <p className="text-neutral-700">

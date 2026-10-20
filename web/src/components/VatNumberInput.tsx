@@ -182,6 +182,7 @@ export default function VatNumberInput({
           if (pretty !== value.trim()) onChange(pretty);
         }}
         aria-describedby={said || hint ? saidId : undefined}
+        aria-invalid={bad || undefined}
       />
       {(said || hint) && (
         <p id={saidId} role={bad ? "alert" : "status"} className={`mt-1 wrap-anywhere text-xs ${bad ? "text-red-600" : "text-neutral-500"}`}>

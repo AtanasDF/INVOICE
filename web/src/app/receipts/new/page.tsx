@@ -434,6 +434,8 @@ export default function NewReceiptPage() {
             <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>
             <input
               aria-label={`Pounds to 1 ${currency}`}
+              aria-invalid={(!!error && error === rateProblem(currency, fxRateInput)) || undefined}
+              aria-describedby={!!error && error === rateProblem(currency, fxRateInput) ? "receipt-error" : undefined}
               className="w-28 rounded-lg border px-2 py-1.5 text-sm"
               value={fxRateInput}
               onChange={(e) => setFxRateInput(e.target.value)}

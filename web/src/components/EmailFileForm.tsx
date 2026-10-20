@@ -101,7 +101,7 @@ export default function EmailFileForm({
         {sending ? "Sending…" : "Send"}
       </button>
       <p className="text-xs text-neutral-600">It goes from {SITE_NAME} with your email address to reply to.</p>
-      {note && <p className="text-sm text-neutral-700">{note}</p>}
+      <p role="status" className={note ? "text-sm text-neutral-700" : "sr-only"}>{note ?? ""}</p>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     </form>
   );

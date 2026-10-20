@@ -10,6 +10,8 @@ import { useConfirmLeave } from "@/lib/leaveGuard";
 
 const CATEGORIES = ["Bug", "Confusing", "Missing feature", "Other"];
 
+const NO_MESSAGE = "Write what you want to tell us first.";
+
 export default function FeedbackPage() {
   const pathname = usePathname();
   const [items, setItems] = useState<Feedback[]>([]);
@@ -38,7 +40,9 @@ export default function FeedbackPage() {
   // person's and emails it to the maker; a failed send keeps the text.
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!message.trim() || savingNow.current) return;
+    if (savingNow.current) return;
+    // Refused out loud: a Send that does nothing at all reads as broken.
+    if (!message.trim()) return setError(NO_MESSAGE);
     savingNow.current = true;
     setError(null);
     setSent(null);
@@ -85,13 +89,15 @@ export default function FeedbackPage() {
         </select>
         <textarea
           aria-label="Your message"
+          aria-invalid={error === NO_MESSAGE || undefined}
+          aria-describedby={error === NO_MESSAGE ? "feedback-error" : undefined}
           className="w-full rounded-lg border px-3 py-2"
           placeholder="What's on your mind?"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
         />
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p id="feedback-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {sent && <p className="text-sm text-neutral-700">{sent}</p>}
         <p role="status" className="sr-only">{sent ?? ""}</p>
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">

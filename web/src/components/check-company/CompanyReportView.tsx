@@ -245,6 +245,7 @@ export default function CompanyReportView({ report: r, onBack }: { report: Compa
           <button type="button" onClick={copy} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
             {copied ? "Copied" : "Copy the report"}
           </button>
+          <span role="status" className="sr-only">{copied ? "Report copied." : ""}</span>
           {canShare && (
             <button type="button" onClick={() => navigator.share({ title: `${r.name} — Companies House`, text }).catch(() => {})} className={SECONDARY}>
               Share

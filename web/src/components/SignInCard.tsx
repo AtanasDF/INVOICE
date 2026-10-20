@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { authFailed, PASSWORDS_DIFFER } from "@/lib/errorText";
+import { authFailed, emailAtFault, passwordAtFault, PASSWORDS_DIFFER } from "@/lib/errorText";
 import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 import { readSource } from "@/lib/source";
 import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites";
@@ -18,6 +18,7 @@ import { useIosHomeScreenApp } from "@/lib/install";
 // Named so the box it is about can carry it: see
 // harness/test-error-on-the-field.mjs.
 const WRONG_CODE = "The code is the six numbers in the email.";
+const CODE_REFUSED = "That code has run out or isn't right. Check it, or send the email again.";
 
 function PasswordField({
   value,
@@ -81,6 +82,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const emailWrong = error === THROWAWAY_REFUSED || emailAtFault(error);
   const [info, setInfo] = useState<string | null>(null);
   const homeScreenApp = useIosHomeScreenApp();
   const [busy, setBusy] = useState(false);
@@ -142,7 +144,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       if (error) throw error;
       setInfo("That's you. Signing you in…");
     } catch (err) {
-      setError(/expired|invalid/i.test(err instanceof Error ? err.message : "") ? "That code has run out or isn't right. Check it, or send the email again." : authFailed(err, "Couldn't check the code just now."));
+      setError(/expired|invalid/i.test(err instanceof Error ? err.message : "") ? CODE_REFUSED : authFailed(err, "Couldn't check the code just now."));
     } finally {
       busyNow.current = false;
       setBusy(false);
@@ -276,8 +278,8 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
               maxLength={8}
               className="min-w-0 flex-1 rounded-lg border px-3 py-3 text-lg tracking-widest"
               value={code}
-              aria-invalid={error === WRONG_CODE || undefined}
-              aria-describedby={error === WRONG_CODE ? "code-error" : undefined}
+              aria-invalid={error === WRONG_CODE || error === CODE_REFUSED || undefined}
+              aria-describedby={error === WRONG_CODE || error === CODE_REFUSED ? "code-error" : undefined}
               onChange={(e) => setCode(e.target.value)}
             />
             <button disabled={busy} className="rounded-lg border px-4 py-3 text-base font-medium text-neutral-700 disabled:opacity-50">
@@ -314,10 +316,11 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
             <label htmlFor="email" className="text-base font-medium text-neutral-800">
               Your email
             </label>
-            <input name="email" id="email" type="email" required autoComplete="email" className="mt-1 w-full rounded-lg border px-3 py-3 text-base" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input name="email" id="email" type="email" required autoComplete="email" aria-invalid={emailAtFault(error) || undefined} aria-describedby={emailAtFault(error) ? "forgot-error" : undefined} className="mt-1 w-full rounded-lg border px-3 py-3 text-base" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          {error && <p role="alert" className="text-base text-red-600">{error}</p>}
+          {error && <p id="forgot-error" role="alert" className="text-base text-red-600">{error}</p>}
           {info && <p className="text-base text-neutral-700">{info}</p>}
+          <p role="status" className="sr-only">{info ?? ""}</p>
           <Turnstile onToken={setCaptchaToken} resetKey={captchaRound} />
           <button disabled={busy} className={bigButton}>
             {busy ? "Sending…" : "Send me a link"}
@@ -370,6 +373,8 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
             type="email"
             required
             autoComplete="email"
+            aria-invalid={emailWrong || undefined}
+            aria-describedby={emailWrong ? "signin-error" : undefined}
             className="mt-1 w-full rounded-lg border px-3 py-3 text-base"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -380,6 +385,8 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
           onChange={setPassword}
           autoComplete={newAccount ? "new-password" : "current-password"}
           label={newAccount ? "Make a password" : "Password"}
+          invalid={passwordAtFault(error)}
+          describedBy={passwordAtFault(error) ? "signin-error" : undefined}
           hint={newAccount ? "Six letters or numbers, or more." : undefined}
         />
         {newAccount && (

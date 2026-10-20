@@ -47,6 +47,13 @@ function bankRowsFromText(text: string): [string, string][] {
     });
 }
 
+// Each refusal names its box, so the box can say it is the one at fault.
+const PAY_NO_DATE = "Enter the date it was received.";
+const PAY_NO_AMOUNT = "Enter the amount received.";
+const NOTHING_OWED = "Nothing is owed on this invoice.";
+const CN_NO_AMOUNT = "Enter the amount to credit, like 1,200.00.";
+const payAmountWrong = (err: string | null) => err === PAY_NO_AMOUNT || err === NOTHING_OWED || !!err?.startsWith("That's more than the ");
+
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -267,8 +274,8 @@ export default function InvoiceViewPage() {
     e.preventDefault();
     if (!invoice || paySaving || payingNow.current) return;
     const amount = Math.round(parseAmount(payAmount) * 100) / 100;
-    if (!payDate) return setPayError("Enter the date it was received.");
-    if (!(amount > 0)) return setPayError("Enter the amount received.");
+    if (!payDate) return setPayError(PAY_NO_DATE);
+    if (!(amount > 0)) return setPayError(PAY_NO_AMOUNT);
     payingNow.current = true;
     setPaySaving(true);
     setPayError(null);
@@ -277,7 +284,7 @@ export default function InvoiceViewPage() {
     try {
       const { pays, notes, due } = await freshFigures();
       if (amount > due + 0.005) {
-        setPayError(due > 0 ? `That's more than the ${money(due)} still owed.` : "Nothing is owed on this invoice.");
+        setPayError(due > 0 ? `That's more than the ${money(due)} still owed.` : NOTHING_OWED);
         return;
       }
       const added = await paymentsStore.add({ invoiceId: invoice.id, date: payDate, amount, method: payMethod || null, note: "" });
@@ -564,11 +571,11 @@ export default function InvoiceViewPage() {
 
   async function addCreditNote(e: React.FormEvent) {
     e.preventDefault();
-    if (!invoice || !cnAmount || creditingNow.current) return;
+    if (!invoice || creditingNow.current) return;
     // parseFloat read "1,200.00" as 1 and "-50" as a credit that raised the
     // balance; this is the reading the payment form beside it uses.
     const amount = Math.round((amountOrNull(cnAmount) ?? NaN) * 100) / 100;
-    if (!(amount > 0)) return setCnError("Enter the amount to credit, like 1,200.00.");
+    if (!(amount > 0)) return setCnError(CN_NO_AMOUNT);
     creditingNow.current = true;
     setCnError(null);
     setCnSaving(true);
@@ -900,6 +907,7 @@ export default function InvoiceViewPage() {
               <button onClick={copyLink} disabled={linkBusy} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
                 {linkCopied ? "Copied" : "Copy link"}
               </button>
+              <span role="status" className="sr-only">{linkCopied ? "Link copied." : ""}</span>
               <a href={`${invoiceLinkUrl(link.token)}#o`} target="_blank" rel="noopener" className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
                 Open
               </a>
@@ -981,9 +989,11 @@ export default function InvoiceViewPage() {
         {showPayForm && (
           <form onSubmit={addPayment} className="mt-3 space-y-2">
             <div className="grid gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3">
-              <input type="date" aria-label="Date received" className="rounded-lg border px-3 py-2 text-sm" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              <input type="date" aria-label="Date received" aria-invalid={payError === PAY_NO_DATE || undefined} aria-describedby={payError === PAY_NO_DATE ? "pay-error" : undefined} className="rounded-lg border px-3 py-2 text-sm" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
               <input
                 aria-label="Amount received"
+                aria-invalid={payAmountWrong(payError) || undefined}
+                aria-describedby={payAmountWrong(payError) ? "pay-error" : undefined}
                 className="rounded-lg border px-3 py-2 text-sm"
                 placeholder="Amount received (£)"
                 value={payAmount}
@@ -995,7 +1005,7 @@ export default function InvoiceViewPage() {
                 <option value="">Not saying</option>
               </select>
             </div>
-            {payError && <p role="alert" className="text-sm text-red-600">{payError}</p>}
+            {payError && <p id="pay-error" role="alert" className="text-sm text-red-600">{payError}</p>}
             <button disabled={paySaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
               {paySaving ? "Saving…" : "Save payment"}
             </button>
@@ -1044,6 +1054,8 @@ export default function InvoiceViewPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <input type="date" aria-label="Credit note date" className="rounded-lg border px-3 py-2 text-sm" value={cnDate} onChange={(e) => setCnDate(e.target.value)} />
               <input aria-label="Amount to credit (£)"
+                aria-invalid={cnError === CN_NO_AMOUNT || undefined}
+                aria-describedby={cnError === CN_NO_AMOUNT ? "cn-error" : undefined}
                 className="rounded-lg border px-3 py-2 text-sm"
                 placeholder="Amount to credit (£)"
                 value={cnAmount}
@@ -1058,7 +1070,7 @@ export default function InvoiceViewPage() {
                 credit its total of {money(totals.total)}.
               </p>
             )}
-            {cnError && <p role="alert" className="text-sm text-red-600">{cnError}</p>}
+            {cnError && <p id="cn-error" role="alert" className="text-sm text-red-600">{cnError}</p>}
             <button disabled={cnSaving} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
               {cnSaving ? "Saving…" : "Save credit note"}
             </button>

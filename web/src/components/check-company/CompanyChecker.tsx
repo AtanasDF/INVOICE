@@ -17,6 +17,10 @@ const OFF = "Couldn't reach the register just now. Try again in a minute, or loo
 
 type Answer = { configured?: boolean; items?: CompanyHit[]; report?: CompanyReport; busy?: boolean; unavailable?: boolean; found?: boolean };
 
+// The two refusals that are about what was typed, rather than the register being down.
+const NO_NAME_MATCH = "No company with that name is listed. Check the spelling, or type the company number.";
+const NO_NUMBER_MATCH = "No company has that number. Check it against the paperwork.";
+
 export default function CompanyChecker() {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [query, setQuery] = useState("");
@@ -49,7 +53,7 @@ export default function CompanyChecker() {
       }
       setReport(null);
       setHits(body.items);
-      if (body.items.length === 0) setError("No company with that name is listed. Check the spelling, or type the company number.");
+      if (body.items.length === 0) setError(NO_NAME_MATCH);
     },
     [ask]
   );
@@ -70,7 +74,7 @@ export default function CompanyChecker() {
         top.current?.scrollIntoView({ block: "start" });
         return;
       }
-      if (body.found === false) return orSearch ? void searchFor(orSearch) : setError("No company has that number. Check it against the paperwork.");
+      if (body.found === false) return orSearch ? void searchFor(orSearch) : setError(NO_NUMBER_MATCH);
       if (body.configured !== false) setError(OFF);
     },
     [ask, searchFor]
@@ -91,7 +95,7 @@ export default function CompanyChecker() {
         if (body.report) setReport(body.report);
         else if (body.unavailable) setError(UNAVAILABLE);
         else if (body.busy) setError(BUSY);
-        else if (body.found === false) setError("No company has that number. Check it against the paperwork.");
+        else if (body.found === false) setError(NO_NUMBER_MATCH);
       })
       .catch(() => {
         // A shared link opened on a dropped signal showed the blank form, with
@@ -143,6 +147,8 @@ export default function CompanyChecker() {
         <div className="mt-1 flex flex-wrap gap-2">
           <input
             id="company-query"
+            aria-invalid={error === NO_NAME_MATCH || error === NO_NUMBER_MATCH || undefined}
+            aria-describedby={error === NO_NAME_MATCH || error === NO_NUMBER_MATCH ? "company-error" : undefined}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Smith Building Ltd, or 01234567"
@@ -178,7 +184,7 @@ export default function CompanyChecker() {
 
       {error && (
         <div className={CARD} data-testid="error">
-          <p className="text-sm text-neutral-700">{error}</p>
+          <p id="company-error" role="alert" className="text-sm text-neutral-700">{error}</p>
           <a href={chSearch} target="_blank" rel="noopener noreferrer" className={`mt-3 inline-block ${SECONDARY}`}>
             Search at Companies House
           </a>

@@ -138,6 +138,7 @@ export default function VatPage() {
             <button type="button" onClick={copy} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               {copied === "yes" ? "Copied" : copied === "no" ? "Couldn't copy. Select them below instead" : "Copy the figures"}
             </button>
+            <span role="status" className="sr-only">{copied === "yes" ? "Figures copied." : copied === "no" ? "Couldn't copy. Select them below instead." : ""}</span>
           </div>
           <dl className="mt-3 divide-y text-sm">
             {boxes.map((b) => (

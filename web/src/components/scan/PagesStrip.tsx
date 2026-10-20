@@ -93,7 +93,7 @@ export default function PagesStrip({ pages, scanning, onOpen, onCaptured, confir
           Start a new document
         </CaptureButton>
       </div>
-      {full && <p className="mt-1 text-xs text-neutral-500">{MAX_PAGES} pages is the most one document can have.</p>}
+      <p role="status" className={full ? "mt-1 text-xs text-neutral-500" : "sr-only"}>{full ? `${MAX_PAGES} pages is the most one document can have.` : ""}</p>
       <p className="mt-1 text-xs text-neutral-500">
         {scanning
           ? `Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…`

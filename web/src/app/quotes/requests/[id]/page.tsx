@@ -261,7 +261,7 @@ export default function QuoteRequestPage() {
 
       {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
       {notice && <p className="text-sm text-neutral-700">{notice}</p>}
-      <p role="status" className="sr-only">{notice ?? ""}</p>
+      <p role="status" className="sr-only">{notice ?? (copied ? "Link copied." : "")}</p>
 
       <section className={CARD} aria-labelledby="list-heading">
         <h2 id="list-heading" className="font-semibold">What you asked for</h2>

@@ -123,7 +123,7 @@ export default function MoneyPage() {
 
       {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      {done && <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{done}</p>}
+      <p role="status" className={done ? "rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700" : "sr-only"}>{done ?? ""}</p>
 
       {/* Nothing is shown when the read failed. "Owed to you £0.00" on a
           page that could not load is a figure that is not true, which is

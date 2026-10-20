@@ -332,7 +332,7 @@ for each. Don't touch the camera capture code (DocumentCapture, lib/opencv, the 
 timing): it is waiting on an iPhone test. Branch: wip/leftovers.
 ```
 
-## 18. Can everybody use it? — [ ]
+## 18. Can everybody use it? — [x] (2026-10-20, `claude/brief-18-cloud-queue-2yb3gl`: notes/audit-accessibility.md; 52 fixed, browser suites to run on the Mac)
 
 ```
 Read CLAUDE.md, /accessibility's own statement, and the suites test-keyboard-only,
