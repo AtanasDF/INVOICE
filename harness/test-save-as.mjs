@@ -74,6 +74,11 @@ try {
   await type("Who it'?s for|customer", "Big Co Ltd");
   await type("What you did|description", "Skim two ceilings");
   await type("How much|price|amount", "480");
+  // A number Excel would turn into 42, and notes the sheet prints after the
+  // lines: both came out wrong in the text shapes (audit-documents.md, second pass).
+  await clickText(page, "Add more details");
+  await sleep(500);
+  check("the number and the notes can be typed", (await type("INV-001", "0042")) && (await type("Thank you for your business", "Paid within fourteen days please")));
   await sleep(600);
   await openSaveAs();
   await sleep(300);
@@ -97,6 +102,8 @@ try {
   // 480 alone is also the line's own price, which is how a text file with
   // no totals in it at all passed this suite (notes/audit-documents.md).
   check("...and the Total due line itself, in the text and the spreadsheet", /^Total due: £480\.00$/m.test(txt) && /^Total due,£480\.00$/m.test(csv), `${txt.slice(-200)} | ${csv.slice(-200)}`);
+  check("the text file reads in print order: the line, the total, then the notes", txt.indexOf("Skim two ceilings") < txt.indexOf("Total due") && txt.indexOf("Total due") < txt.indexOf("Paid within fourteen days please") && txt.indexOf("Skim two ceilings") > 0, txt);
+  check("the spreadsheet keeps the invoice number 0042 as text, so Excel does not open it as 42", csv.includes('"=""0042"""') && !/^0042$/m.test(csv), csv);
   const html = read(".html").toString();
   check("the web page is a whole page with a table", html.startsWith("<!doctype html>") && html.includes("<table>") && html.includes("Skim two ceilings"), html.slice(0, 120));
   const word = read(".doc").toString();

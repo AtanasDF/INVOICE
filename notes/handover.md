@@ -6,6 +6,11 @@ this section contradicts it.
 Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.
 
+## Waiting to merge: `claude/brief-19-cloud-queue-oyr8zh` (2026-10-20, cloud)
+
+The printed-document fixes (brief 19): Save as, the CSV, the PDF's page breaks and file
+names. No schema. Run the suites listed in its SESSIONS.md entry on the Mac first.
+
 ## Component audit MERGED and live (2026-10-20, `32f675d`)
 
 Both cloud halves (`wip/audit-components-1` and `-2`, 81 fixes) were combined on

@@ -20,6 +20,30 @@ contradicts its code. Checked by running the real sheetFile/csv code in headless
 html-to-image and jsPDF were not run (no node_modules). Nothing in `web/` changed, so no
 suites need running for this branch.
 
+## 2026-10-20 — The printed-document fixes (cloud, brief 19), `claude/brief-19-cloud-queue-oyr8zh`
+
+Every open item of the second pass of `notes/audit-documents.md` read in the code first; all
+real, all fixed. **Not merged.** The brief named `wip/printed-fixes`; this session was
+started on `claude/brief-19-cloud-queue-oyr8zh` and pushed there instead. The statement's
+cells no longer read `INV-00112 days late`; the statement and the Free page come out in
+print order; the Free page's Labour / Materials headings are kept; long unbroken names wrap
+on the Free page, quote and statement (one line per component, for the accessibility
+branch's sake); the spreadsheet keeps 0042, 01234567 and 12-03-56 as text (`sheetCell`, with
+the formula guard intact); PDF pages never end through a line of long notes; `pdfName` keeps
+Hindi/Thai/Arabic marks and both file-name helpers cut at whole characters; the `csv.ts`
+comment is true. Detail and the leftovers at the foot of `notes/audit-documents.md`.
+
+Seven new suites (`test-statement-cells`, `test-sheet-order`, `test-cis-headings`,
+`test-csv-identifiers`, `test-file-name-marks`, `test-pdf-line-breaks`,
+`test-long-names-wrap`), in run-all.sh, each failing on the old code; `test-csv-safety`
+and `test-save-as` extended. tsc, eslint and build clean (built with placeholder public
+Supabase values: a cloud session has no `.env.local`). Against `next start` here,
+Chromium standing in for Chrome, one at a time: save-as 24, statement 18, free-totals 13,
+print 11, paper-sheet 10, page-print 33, long-values 28, just-the-file 19, save-these 21,
+copy-document 19, public-links 31. `test-free-quote` fails 1 run in 3 at its own
+localStorage read, on the old build too, so it is not this branch.
+**For the Mac before merging:** those suites plus the seven new ones, against `next start`.
+
 ## 2026-10-20 — Round 4a live, then the camera fixes live for the iPhone test
 
 Atanas: merge 4a (`15eb531`), then "merge the camera fixes so I can try them on the

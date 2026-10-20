@@ -39,5 +39,14 @@ check("csvCell: ordinary words untouched", csvCell("Skim two ceilings") === "Ski
 check("csvCell: a phone number in international form stays as typed", csvCell("+447700900123") === "+447700900123");
 check("csvCell: a tab at the start is neutralised", csvCell("\t=1+1").startsWith("'"));
 check("csvCell: numbers pass through", csvCell(-12.5) === "-12.5" && csvCell(0) === "0");
+// csv.ts said this was "left as it is" while the code guarded it; the code was
+// right, since Excel reads +44 20 ... as a sum (second pass, N4).
+check("csvCell: a phone number with spaces gets the apostrophe, as the comment now says", csvCell("+44 20 7946 0000") === "'+44 20 7946 0000", csvCell("+44 20 7946 0000"));
+
+// Identifiers kept as text (N1) go round the guard, so it must still hold
+// for everything that is not purely digits and dashes.
+const ids = sheetCsv({ title: "x", blocks: [{ kind: "text", lines: ["Sort code: 12-03-56", "Ref: =0042", "Ref: -0042+1"] }] });
+check("the sheet keeps a sort code as text", ids.includes('Sort code,"=""12-03-56"""'), ids);
+check("...and still guards a formula that starts with digits after =", ids.includes("Ref,'=0042") && ids.includes("Ref,'-0042+1"), ids);
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

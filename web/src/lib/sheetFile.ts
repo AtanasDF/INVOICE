@@ -6,43 +6,92 @@
 // it, so every format says exactly what the customer would see and no
 // screen needs its own copy of the totals.
 
-import { CSV_BOM, csvCell } from "@/lib/csv";
+import { CSV_BOM, sheetCell } from "@/lib/csv";
 
 export type SheetTable = { head: string[]; rows: string[][] };
 export type SheetBlock = { kind: "text"; lines: string[] } | { kind: "table"; table: SheetTable };
 export type SheetDoc = { title: string; blocks: SheetBlock[] };
 
 const text = (el: Element | null | undefined) => (el as HTMLElement | null)?.innerText?.replace(/\s+\n/g, "\n").trim() ?? "";
-const cells = (row: Element, sel: string) => [...row.querySelectorAll(sel)].map((c) => (c.textContent ?? "").replace(/\s+/g, " ").trim());
+const BLOCK_TAGS = /^(ADDRESS|BLOCKQUOTE|DD|DIV|DL|DT|H[1-6]|LI|OL|P|SECTION|UL)$/;
+
+// A cell's words with a space wherever the sheet starts a new line inside
+// it. textContent ran the statement's "INV-001" into the "12 days late"
+// under it, an invoice number that does not exist. Not innerText, which
+// would also apply the headings' text-transform.
+function cellText(cell: Element): string {
+  let out = "";
+  const walk = (n: Node) => {
+    if (n.nodeType === Node.TEXT_NODE) {
+      out += n.textContent;
+      return;
+    }
+    if (!(n instanceof Element)) return;
+    if (n.tagName === "BR") {
+      out += " ";
+      return;
+    }
+    const display = n === cell ? "inline" : getComputedStyle(n).display;
+    const block = display ? !display.startsWith("inline") && display !== "contents" : BLOCK_TAGS.test(n.tagName);
+    if (block) out += " ";
+    n.childNodes.forEach(walk);
+    if (block) out += " ";
+  };
+  walk(cell);
+  return out.replace(/\s+/g, " ").trim();
+}
+
+const cells = (row: Element, sel: string) => [...row.querySelectorAll(sel)].map(cellText);
 
 function readTable(table: HTMLTableElement): SheetTable {
   const head = [...table.querySelectorAll("thead tr")].flatMap((r) => cells(r, "th"));
-  const rows = [...table.querySelectorAll("tbody tr")].map((r) => cells(r, "td")).filter((r) => r.some(Boolean));
+  // A row of nothing but a heading is the Free page's "Labour" / "Materials"
+  // group: without it nothing in the file said which lines the CIS was on.
+  const rows = [...table.querySelectorAll("tbody tr")]
+    .map((r) => (r.querySelector("td") ? cells(r, "td") : cells(r, "th")))
+    .filter((r) => r.some(Boolean));
   return { head, rows };
+}
+
+const hiddenInPrint = (el: Element) => (el.getAttribute("class") ?? "").includes("print:hidden");
+
+// The blocks the sheet prints, top to bottom. A block's tables are read
+// after its words, and the statement and the Free page wrap everything in
+// one element, so "Total owing", the notes and the bank details all came
+// out above the lines. A lone wrapper holding a table is looked inside.
+function printedBlocks(sheet: HTMLElement): HTMLElement[] {
+  let blocks = [...sheet.children].filter((c) => !hiddenInPrint(c)) as HTMLElement[];
+  while (blocks.length === 1 && blocks[0].tagName !== "TABLE" && blocks[0].querySelector("table")) {
+    blocks = [...blocks[0].children].filter((c) => !hiddenInPrint(c)) as HTMLElement[];
+  }
+  return blocks;
 }
 
 /** The sheet's words and its item table, in the order they are printed. */
 export function readSheet(sheet: HTMLElement): SheetDoc {
   const title = text(sheet.querySelector("h1")) || "Document";
   const blocks: SheetBlock[] = [];
-  for (const child of [...sheet.children] as HTMLElement[]) {
-    if (child.className.includes("print:hidden")) continue;
-    const clone = child.cloneNode(true) as HTMLElement;
-    for (const hidden of [...clone.querySelectorAll('[class*="print:hidden"], [class*="sr-only"]')]) hidden.remove();
-    const tables = [...clone.querySelectorAll("table")] as HTMLTableElement[];
-    for (const t of tables) t.remove();
-    // innerText needs the node in the page to know what is on a line.
-    clone.style.position = "fixed";
-    clone.style.left = "-10000px";
-    clone.style.width = `${child.offsetWidth || 794}px`;
-    document.body.appendChild(clone);
-    const lines = text(clone)
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    clone.remove();
-    if (lines.length) blocks.push({ kind: "text", lines });
-    for (const t of [...child.querySelectorAll("table")] as HTMLTableElement[]) {
+  for (const child of printedBlocks(sheet)) {
+    // Looking inside the statement's wrapper makes its table a block itself.
+    const own = child.tagName === "TABLE";
+    const tables = own ? [child as HTMLTableElement] : ([...child.querySelectorAll("table")] as HTMLTableElement[]);
+    if (!own) {
+      const clone = child.cloneNode(true) as HTMLElement;
+      for (const hidden of [...clone.querySelectorAll('[class*="print:hidden"], [class*="sr-only"]')]) hidden.remove();
+      for (const t of [...clone.querySelectorAll("table")]) t.remove();
+      // innerText needs the node in the page to know what is on a line.
+      clone.style.position = "fixed";
+      clone.style.left = "-10000px";
+      clone.style.width = `${child.offsetWidth || 794}px`;
+      document.body.appendChild(clone);
+      const lines = text(clone)
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      clone.remove();
+      if (lines.length) blocks.push({ kind: "text", lines });
+    }
+    for (const t of tables) {
       blocks.push({ kind: "table", table: readTable(t) });
       // The Free page prints every total in the footer, a label and a figure
       // a row: read as "Total due: £480.00", the way IssuedInvoice prints them.
@@ -121,5 +170,5 @@ export function sheetCsv(doc: SheetDoc): string {
     }
     rows.push([]);
   }
-  return CSV_BOM + rows.map((r) => r.map(csvCell).join(",")).join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  return CSV_BOM + rows.map((r) => r.map(sheetCell).join(",")).join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

@@ -352,7 +352,7 @@ Branch: wip/accessibility.
 Briefs 8, 17 and 18 can run at the same time. Merge 8 first (it is in lib/invoicePdf,
 documentPdf, sheetFile, saveFile), then 18, then 17.
 
-## 19. Fix what the printed-document audit found — [ ]
+## 19. Fix what the printed-document audit found — [x] (2026-10-20, `claude/brief-19-cloud-queue-oyr8zh`: all 8 fixed, a suite each, NOT merged; foot of notes/audit-documents.md)
 
 ```
 Read the second pass at the foot of notes/audit-documents.md (2026-10-20, brief 8) and
