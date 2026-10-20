@@ -37,6 +37,11 @@ export default function Terms() {
         sure of is left blank on purpose rather than guessed at.
       </p>
 
+      <p className={P}>
+        Having documents read for you has a limit, because every one costs us money: 300 a day for your first week, then
+        50 a day and 600 a month. Copying a document, and typing anything in yourself, have no limit.
+      </p>
+
       <h2 className={H}>Your account</h2>
       <ul className="list-disc space-y-1 pl-5">
         <li className={LI}>Keep your password to yourself. What happens under your account is treated as you.</li>
@@ -74,7 +79,7 @@ export default function Terms() {
         If these terms change in a way that matters, you will be told in the app rather than quietly.
       </p>
 
-      <p className="mt-10 text-sm text-neutral-500">Last changed 23 September 2026. English law applies.</p>
+      <p className="mt-10 text-sm text-neutral-500">Last changed 20 October 2026. English law applies.</p>
     </div>
   );
 }

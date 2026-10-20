@@ -119,7 +119,7 @@ export default function MoneyPage() {
         <h1 className="text-2xl font-bold">Money</h1>
         <p className="mt-1 text-neutral-600">Everything owed to you and everything you owe, latest first.</p>
       </div>
-      <Tip id="money-how">How it works: what is late is at the top of each list. Chase an invoice, or mark a bill paid, without leaving this page.</Tip>
+      <Tip id="money-how">How it works: what is late is at the top of each list. Mark a bill paid without leaving this page, or press Chase to open the invoice.</Tip>
 
       {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

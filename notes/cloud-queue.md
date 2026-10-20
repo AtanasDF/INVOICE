@@ -299,7 +299,7 @@ Branch: wip/ios-files-share.
 Briefs 13-15 come from the Safari report. They can run at the same time; merge them on the
 Mac in the order 13, 15, 14, and run the camera suites before 14 goes in.
 
-## 16. Do the help pages still tell the truth? — [ ]
+## 16. Do the help pages still tell the truth? — [x] (2026-10-20, `claude/brief-16-cloud-queue-hrozjb`: notes/help-truth.md; 20 fixed, /privacy was wrong about Anthropic, 3 left)
 
 ```
 Read CLAUDE.md (the help chat in the environment section). The help ladder is

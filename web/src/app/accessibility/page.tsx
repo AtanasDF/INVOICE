@@ -41,7 +41,8 @@ export default function Accessibility() {
 
       <h2 className={H}>What we have made work</h2>
       <p className={P}>
-        Each of these is checked automatically every time the app is built, against the real screens, not asserted here:
+        Each of these is checked by an automatic test against the real screens, not just asserted here. We run those
+        tests ourselves before changes go out; they are not run on their own every time the app is built.
       </p>
       <ul className="list-disc space-y-1 pl-5">
         <li className={LI}>
@@ -112,7 +113,7 @@ export default function Accessibility() {
         If we get it wrong and will not put it right, you can take it up with the Equality Advisory and Support Service.
       </p>
 
-      <p className="mt-8 text-sm text-neutral-500">Last gone through on 25 September 2026.</p>
+      <p className="mt-8 text-sm text-neutral-500">Last gone through on 20 October 2026.</p>
     </div>
   );
 }

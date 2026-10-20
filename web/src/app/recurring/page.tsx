@@ -201,7 +201,7 @@ export default function RecurringExpensesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Recurring</h1>
-        <Tip id="recurring-how">How it works: anything set up here is created for you on the day it is due, without you being here. You can change or stop it any time, and nothing is sent to a customer until you send it.</Tip>
+        <Tip id="recurring-how">How it works: when one is due, it asks you here and on your dashboard to log it as an expense. Nothing is added until you do, and you can change or stop it any time.</Tip>
         <p className="mt-1 text-neutral-600">
           Things like monthly insurance or subscriptions — a reminder so they don&apos;t get forgotten.
         </p>

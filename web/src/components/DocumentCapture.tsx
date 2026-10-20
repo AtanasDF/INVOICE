@@ -2307,7 +2307,7 @@ export default function DocumentCapture({
               </Tip>
             ) : (
               <Tip id="scanner-auto" dark className="w-full max-w-sm">
-                {autoOn ? "Hold the phone over the page and keep still: it zooms in and takes the photo by itself." : "Line the page up inside the corners and tap the button to take the photo."}
+                {autoOn ? `Hold the phone over the page and keep still: it ${autoZoomOn ? "zooms in and " : ""}takes the photo by itself.` : "Line the page up inside the corners and tap the button to take the photo."}
               </Tip>
             )}
             {zoomRange ? (
