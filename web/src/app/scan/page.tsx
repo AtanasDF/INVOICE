@@ -32,7 +32,7 @@ import FieldFlag, { Confidence } from "@/components/scan/FieldFlag";
 import ContactField, { type Usage } from "@/components/ContactField";
 import { type RegisterCheck, RegisterNote, useRegisterCheck } from "@/components/RegisterBits";
 import { useCompanyLookup } from "@/lib/companyConfigured";
-import { saveFailed } from "@/lib/errorText";
+import { loadFailed, saveFailed } from "@/lib/errorText";
 import ScanLimitNotice from "@/components/ScanLimitNotice";
 import ScansLeft from "@/components/ScansLeft";
 import { topUpOffered } from "@/lib/scanAllowance";
@@ -532,7 +532,7 @@ export default function ScanPage() {
       .catch((err) => {
         setScanning(false);
         setListsFailed(true);
-        setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
+        setScanError(loadFailed(err, "your suppliers and receipts"));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -592,7 +592,7 @@ export default function ScanPage() {
       startBatch(docs, l);
     } catch (err) {
       setScanning(false);
-      setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
+      setScanError(loadFailed(err, "your suppliers and receipts"));
     }
   }
 
@@ -687,7 +687,7 @@ export default function ScanPage() {
         lists = await loadLists();
       } catch (err) {
         setScanning(false);
-        setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
+        setScanError(loadFailed(err, "your suppliers and receipts"));
         return;
       }
     }

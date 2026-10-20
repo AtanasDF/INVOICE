@@ -103,3 +103,14 @@ export function authFailed(err: unknown, fallback: string): string {
   console.error(fallback, err);
   return fallback;
 }
+
+// For the customer and supplier links (/q/, /r/), where nobody reading has
+// any "records" here: saveFailed's connection sentence told a customer
+// pressing Accept that theirs couldn't be reached.
+export function customerFailed(err: unknown, fallback: string): string {
+  const message = (err as { message?: unknown } | null)?.message;
+  if (typeof message === "string" && /failed to fetch|networkerror|load failed|network request failed/i.test(message)) {
+    return "That didn't get through: there's no connection just now. Check your signal and try again.";
+  }
+  return saveFailed(err, fallback);
+}

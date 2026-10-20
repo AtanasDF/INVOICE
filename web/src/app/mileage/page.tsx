@@ -93,7 +93,12 @@ export default function MileagePage() {
       const headers = { "Content-Type": "application/json", ...(data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {}) };
       const at = await Promise.all(
         [a, b].map(async (pc) => {
-          const res = await fetch("/api/address-search", { method: "POST", headers, body: JSON.stringify({ q: pc, where: true }) });
+          // Every throw in this block has to be our own sentence, because
+          // errorText shows it as written: offline, fetch throws "Load failed".
+          const res = await fetch("/api/address-search", { method: "POST", headers, body: JSON.stringify({ q: pc, where: true }) }).catch(() => {
+            throw new Error("Couldn't reach the postcode lookup. Check your connection, or type the miles in.");
+          });
+          if (!res.ok) throw new Error("Couldn't work that out just now. Type the miles in.");
           const body = (await res.json().catch(() => ({}))) as { at?: { lat: number; lon: number } };
           return body.at ?? null;
         })

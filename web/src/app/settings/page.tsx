@@ -110,7 +110,7 @@ export default function SettingsPage() {
   const [inboxBusy, setInboxBusy] = useState(false);
   const inboxBusyNow = useRef(false);
   const [inboxError, setInboxError] = useState<string | null>(null);
-  const [inboxCopied, setInboxCopied] = useState(false);
+  const [inboxCopied, setInboxCopied] = useState<"" | "yes" | "no">("");
   const [inboxRevealed, setInboxRevealed] = useState(false);
   const [invoicePrefix, setInvoicePrefix] = useState("INV-");
   const [invoiceNextNumber, setInvoiceNextNumber] = useState("1");
@@ -201,7 +201,7 @@ export default function SettingsPage() {
     })
       .catch((err) => setError(loadFailed(err, "your settings")))
       .finally(() => setLoading(false));
-    getExistingSubscription().then((sub) => setPushEnabled(sub !== null));
+    getExistingSubscription().then((sub) => setPushEnabled(sub !== null), (err) => console.error("push state", err));
   }, []);
 
   const values: FormValues = {
@@ -340,10 +340,9 @@ export default function SettingsPage() {
 
   function copyInboxAddress() {
     if (!inboxToken) return;
-    navigator.clipboard.writeText(inboxAddress(inboxToken)).then(() => {
-      setInboxCopied(true);
-      setTimeout(() => setInboxCopied(false), 2000);
-    });
+    // A refused write did nothing at all and left a rejection unhandled.
+    navigator.clipboard.writeText(inboxAddress(inboxToken)).then(() => setInboxCopied("yes"), () => setInboxCopied("no"));
+    setTimeout(() => setInboxCopied(""), 3000);
   }
 
   async function togglePush() {
@@ -485,11 +484,18 @@ export default function SettingsPage() {
     setSignInNote(null);
     setSignInError(null);
     setSignInBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/reset-password` });
-    if (error) setSignInError(authFailed(error, "Couldn't send the email just now. Try again in a minute."));
-    else setSignInNote(`Sent to ${user.email}. The link signs you in and lets you set a new password.`);
-    signInBusyNow.current = false;
-    setSignInBusy(false);
+    // try/finally: the library re-throws anything that isn't its own error,
+    // and "Sending…" then stayed up for good.
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/reset-password` });
+      if (error) setSignInError(authFailed(error, "Couldn't send the email just now. Try again in a minute."));
+      else setSignInNote(`Sent to ${user.email}. The link signs you in and lets you set a new password.`);
+    } catch (err) {
+      setSignInError(authFailed(err, "Couldn't send the email just now. Try again in a minute."));
+    } finally {
+      signInBusyNow.current = false;
+      setSignInBusy(false);
+    }
   }
 
   async function exportData() {
@@ -660,15 +666,19 @@ export default function SettingsPage() {
               {logoPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoPreview} alt="Your logo" className="mt-1 max-h-16 max-w-[12rem] object-contain object-left" />
+              ) : logoUrl ? (
+                // Saved but not shown: "No logo yet" here, after a dropped
+                // read, read as the logo having gone.
+                <p className="mt-1 text-sm text-neutral-600">Your logo is saved, but it couldn&apos;t be shown just now. Check your connection and reload.</p>
               ) : (
                 <p className="mt-1 text-sm text-neutral-600">No logo yet. It goes at the top of your invoices and quotes.</p>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
                 <label aria-disabled={logoBusy} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${SMALL_BUTTON}`}>
-                  {logoBusy ? "Adding…" : logoPreview ? "Change logo" : "Add a logo"}
+                  {logoBusy ? "Adding…" : logoPreview || logoUrl ? "Change logo" : "Add a logo"}
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickLogo} disabled={logoBusy} />
                 </label>
-                {logoPreview && (
+                {(logoPreview || logoUrl) && (
                   <button type="button" onClick={removeLogo} className={SMALL_BUTTON}>
                     Remove logo
                   </button>
@@ -1015,7 +1025,7 @@ export default function SettingsPage() {
                 {inboxRevealed ? "Hide" : "Show"}
               </button>
               <button type="button" onClick={copyInboxAddress} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
-                {inboxCopied ? "Copied" : "Copy"}
+                {inboxCopied === "yes" ? "Copied" : inboxCopied === "no" ? "Couldn't copy" : "Copy"}
               </button>
               <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
                 {inboxBusy ? "Working…" : "Get a new address"}

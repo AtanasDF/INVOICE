@@ -59,7 +59,10 @@ export async function extractPages(
     const json = (await res.json().catch(() => ({}))) as { result?: ScanResult; documents?: ScanResult[]; error?: string; read?: ReadNote | null; limit?: { reason: string; topUpAvailable?: boolean } };
     if (json.read && (!slowest || json.read.ms > slowest.ms)) slowest = json.read;
     if (!res.ok || !json.result) {
-      const err = new Error(json.error || `Scanning failed (${res.status}).`);
+      // A status code is no use to the person holding the phone; a timeout
+      // page from the platform carries no sentence of ours.
+      if (!json.error) console.error(`scan: ${res.status} with no message`);
+      const err = new Error(json.error || "Couldn't read that just now. Try again.");
       // A refusal is not a failure: it carries what to offer next, and the
       // page shows a button rather than just the sentence.
       if (json.limit) (err as Error & { limit?: unknown }).limit = json.limit;

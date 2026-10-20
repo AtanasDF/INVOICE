@@ -90,7 +90,9 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
           : "No priced lines could be read from it. Type the prices in below; the document is still kept with them."
       );
     } catch (err) {
-      setError(errorText(err, "Couldn't read their quote."));
+      // saveFailed, not errorText: extractPages' fetch throws "Load failed"
+      // offline, which errorText showed as written.
+      setError(saveFailed(err, "Couldn't read their quote."));
     } finally {
       setReading(false);
     }

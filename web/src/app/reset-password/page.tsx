@@ -5,7 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { PASSWORDS_DIFFER, authFailed } from "@/lib/errorText";
 
-type Status = "checking" | "ready" | "expired" | "done";
+type Status = "checking" | "ready" | "expired" | "offline" | "done";
+
+// The library hands a dropped connection back as an error like any other,
+// and "That link has run out" for it sent somebody to ask for a new link
+// when reloading with a bar of signal would have done.
+const offline = (err: unknown) => {
+  const e = err as { name?: unknown; message?: unknown } | null;
+  return e?.name === "AuthRetryableFetchError" || (typeof e?.message === "string" && /failed to fetch|networkerror|load failed|network request failed/i.test(e.message));
+};
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -29,7 +37,7 @@ export default function ResetPasswordPage() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (error) {
-          setStatus("expired");
+          setStatus(offline(error) ? "offline" : "expired");
           return;
         }
       }
@@ -38,7 +46,10 @@ export default function ResetPasswordPage() {
       setStatus(data.session ? "ready" : "expired");
     }
 
-    establishSession();
+    establishSession().catch((err) => {
+      console.error("reset link", err);
+      if (!cancelled) setStatus(offline(err) ? "offline" : "expired");
+    });
     return () => {
       cancelled = true;
     };
@@ -81,6 +92,20 @@ export default function ResetPasswordPage() {
         </p>
         <button onClick={() => router.push("/login")} className="text-sm font-medium text-neutral-700 underline">
           Back to sign in
+        </button>
+      </div>
+    );
+  }
+
+  if (status === "offline") {
+    return (
+      <div className="mx-auto max-w-sm space-y-4">
+        <h1 className="text-2xl font-bold">No signal just now</h1>
+        <p className="text-neutral-600">
+          Your reset link couldn&apos;t be checked because there&apos;s no connection. The link itself may well be fine: try again when you have signal.
+        </p>
+        <button onClick={() => window.location.reload()} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+          Try again
         </button>
       </div>
     );

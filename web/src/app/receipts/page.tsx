@@ -124,6 +124,7 @@ function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailedNow, setLoadFailedNow] = useState(false);
 
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
@@ -166,7 +167,10 @@ function ReceiptsPage() {
         setPageCounts(counts);
         setLinkSkips(readLinkSkips());
       })
-      .catch((err) => setError(loadFailed(err, "your receipts")))
+      .catch((err) => {
+        setError(loadFailed(err, "your receipts"));
+        setLoadFailedNow(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -212,7 +216,9 @@ function ReceiptsPage() {
 
   // Say so rather than land silently on the top of the list: the row may have
   // been merged into another, or the link may be older than the record.
-  const openMissing = !loading && !!wanted && !receipts.some((r) => r.id === wanted);
+  // Not after a failed load, when nothing is "here" and it says nothing about
+  // the one asked for.
+  const openMissing = !loading && !loadFailedNow && !!wanted && !receipts.some((r) => r.id === wanted);
 
   // Tapping a receipt on the dashboard or in the file library used to land on
   // this list with no way to tell which of them was meant -- on a long list,
@@ -580,7 +586,7 @@ function ReceiptsPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-2">
-          {filteredReceipts.length === 0 && !error && (
+          {filteredReceipts.length === 0 && !error && !loadFailedNow && (
             <p className="text-sm text-neutral-500">
               {hasActiveFilters ? (
                 "Nothing matches these filters."

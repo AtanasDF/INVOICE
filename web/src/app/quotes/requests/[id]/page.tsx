@@ -223,8 +223,9 @@ export default function QuoteRequestPage() {
   const copyLink = (row: RequestSupplier) =>
     run(async () => {
       if (!row.sentAt) await requestSuppliersStore.markSent(row.id);
-      await navigator.clipboard.writeText(requestLinkUrl(row.token)).catch(() => {});
+      const copied = await navigator.clipboard.writeText(requestLinkUrl(row.token)).then(() => true, () => false);
       setShownLink(row.id);
+      if (!copied) return;
       setCopied(row.id);
       setTimeout(() => setCopied((c) => (c === row.id ? null : c)), 2000);
     });

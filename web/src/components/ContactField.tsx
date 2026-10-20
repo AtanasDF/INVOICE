@@ -161,6 +161,17 @@ export default function ContactField({
     setAdding(true);
     setAddError(null);
     try {
+      // Asked again, not taken from `contacts`: a page whose list failed to
+      // load passes [], so every saved supplier was offered as a register row
+      // and adding it made a second copy.
+      const name = normaliseSupplierName(pending.name);
+      const already = (await clientsStore.all()).find((c) => c.kind === kind && !c.archived && normaliseSupplierName(c.name) === name);
+      if (already) {
+        if (!contacts.some((c) => c.id === already.id)) onCreated(already);
+        onSelect(already);
+        setPending(null);
+        return;
+      }
       const created = await clientsStore.add({
         name: pending.name,
         isCompany: true,

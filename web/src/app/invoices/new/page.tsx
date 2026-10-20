@@ -420,9 +420,12 @@ export default function NewInvoicePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ image: file.dataUrl }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Scan failed.");
-      const result = body.result as ScanApiResult;
+      // Guarded like the two fetches below: a timeout page from the platform
+      // is HTML, and its SyntaxError ("The string did not match the expected
+      // pattern.") went straight to the screen through saveFailed.
+      const body = (await res.json().catch(() => ({}))) as { error?: string; result?: ScanApiResult };
+      if (!res.ok || !body.result) throw new Error(body.error || "Couldn't read that just now. Try again, or fill it in by hand.");
+      const result = body.result;
 
       if (result.date) onDateChange(result.date);
       if (result.notes) setNotes((prev) => prev || result.notes || "");

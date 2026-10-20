@@ -121,8 +121,13 @@ export default function CopyDocumentPage() {
     try {
       await navigator.share({ files: [file], title: m.name });
       setNote("Shared.");
-    } catch {
-      // Closing the share sheet is not a failure.
+    } catch (err) {
+      // Closing the share sheet is not a failure; anything else is, and was
+      // just as silent -- on an iPhone a long PDF build outlasts the tap, and
+      // the sheet is refused.
+      if ((err as { name?: unknown } | null)?.name === "AbortError") return;
+      console.error("copy: share", err);
+      setError("The sheet to share it wouldn't open. Press Share again, or Save it instead.");
     }
   }
 

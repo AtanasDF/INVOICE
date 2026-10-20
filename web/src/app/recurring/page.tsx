@@ -28,6 +28,10 @@ export default function RecurringExpensesPage() {
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Apart from the form's error, which Clear and Add reset: with one between
+  // them, clearing the form after a failed load made the list say there were
+  // none.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Category>(CATEGORIES[0]);
@@ -61,7 +65,7 @@ export default function RecurringExpensesPage() {
         setCategories(active);
         setCategory(active[0]);
       })
-      .catch((err) => setError(loadFailed(err, "what repeats each month")))
+      .catch((err) => setLoadError(loadFailed(err, "what repeats each month")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -253,7 +257,8 @@ export default function RecurringExpensesPage() {
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {items.length === 0 && !error && <p className="text-sm text-neutral-500">No recurring expenses set up yet. Add one for a bill that comes every month, and it goes in with your expenses on the day.</p>}
+          {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
+          {items.length === 0 && !error && !loadError && <p className="text-sm text-neutral-500">No recurring expenses set up yet. Add one for a bill that comes every month, and it goes in with your expenses on the day.</p>}
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             return (
