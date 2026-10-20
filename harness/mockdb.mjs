@@ -39,6 +39,14 @@ function test(cell, expr) {
   return negate ? !r : r;
 }
 
+// PostgREST's details->>key: a field inside a jsonb column, as text.
+const cellOf = (row, k) => {
+  const m = /^(\w+)->>(\w+)$/.exec(k);
+  if (!m) return row[k];
+  const v = row[m[1]]?.[m[2]];
+  return v === undefined || v === null ? null : String(v);
+};
+
 function matches(row, params) {
   for (const [k, v] of params) {
     if (["select", "order", "limit", "offset", "on_conflict", "columns"].includes(k)) continue;
@@ -47,7 +55,7 @@ function matches(row, params) {
       if (!parts.some((p) => { const i = p.indexOf("."); return test(row[p.slice(0, i)], p.slice(i + 1)); })) return false;
       continue;
     }
-    if (!test(row[k], v)) return false;
+    if (!test(cellOf(row, k), v)) return false;
   }
   return true;
 }

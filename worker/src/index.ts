@@ -222,6 +222,9 @@ export default {
         },
         body: JSON.stringify({
           token,
+          // So the same email sent again -- a bounce after a slow read makes the
+          // sender's server retry -- isn't filed twice.
+          messageId: parsed.messageId || undefined,
           // The header From, not the envelope: invoicing systems send from a
           // bounce address (bounces+8f3a...@mailer.example) that names nobody.
           from: parsed.from?.address ? (parsed.from.name ? `${parsed.from.name} <${parsed.from.address}>` : parsed.from.address) : message.from,

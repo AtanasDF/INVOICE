@@ -84,6 +84,34 @@ From the routes and the invoice page (commit 1):
 - [x] The `storage.ts` plan comments name migration-044. (sql H2 follow-up)
 - [x] `test-audit-guards` was red on main (89/90): its regex predated the draft's `kept.finish()`.
 
+Part two (the sheet's other shapes, offline, the iPhone list, the Worker):
+- [x] Save as text/Word/web page/spreadsheet: labour and materials headings kept (they were `th`, read as nothing); a statement read child by child, not every word before its table; `INV-001 3 days late`, not `INV-0013 days late`; a figure on its own line paired with its label, so the spreadsheet has `Total owing,£380.00`; a two-colon sentence stays one cell; the title read as written (the Free page's was upper-cased by its style) and printed once; tables read from the copy with hidden parts gone; an SVG child can't throw; columns line up for CJK and emoji (`displayWidth`). (documents 2a, 2d, 3b, 3c, §5)
+- [x] One file name for a document however it leaves (`lib/documentName.ts`): the PDF kept no letter outside ASCII, and Save as on /i/ and /q/ named it differently. The usual `Invoice-INV-042.pdf` shape is unchanged. (documents §4)
+- [x] The Free page printed a discount as `£-50.00`; now `−£50.00` (`moneyIn`). Not rounded first, so item (a)1 is untouched. (documents 3)
+- [x] Long business and customer names wrap on the Free sheet and the quote. (documents 3)
+- [x] `/copy` refuses a password-protected PDF and a WEBP in words instead of copying garbage or throwing pdf-lib's. (documents §5, audit-convert)
+- [x] `/convert` reads semicolon CSVs and, with several files in, names the one that failed. (audit-convert)
+- [x] The offline page's Try again reloads the page asked for (it went to the dashboard) and no longer promises nothing typed was lost; worker cache `v4`. Mileage asks before leaving with a trip typed. `test-offline-rules` accepts only our own sentence, not Chrome's "No internet". (offline 4c, §5)
+- [x] A missing chunk after a deploy: Try again reloads instead of re-running the old bundle. (offline §3)
+- [x] Sign-out closes notifications left on the lock screen. (offline 1e)
+- [x] Receipt and quote-request uploads go up with `max-age=0`. (offline 1d)
+- [x] New receipt: after a save that failed (perhaps only its reply was lost), the duplicate check reads the list again, so Save pressed twice finds the copy that went in. (offline 4a)
+- [x] AnswerEntry's "can't open that file" is the app's sentence, not the browser's. (components)
+- [x] `/scan` no longer dies when storage refuses. (ios-safari #25)
+- [x] Document-number boxes stop forcing capitals and corrections. (ios-safari #25)
+- [x] The Free draft no longer writes the saved signature a second time on every keystroke. (ios-safari #25)
+- [x] Text that lived only in a `title` (the "Emailed to you" date, a long supplier name or note in Compare) is on the screen. (ios-safari #25)
+- [x] `dvh` instead of `vh`/`min-h-screen`; the signature pad raises no loupe or callout. (ios-safari #25)
+- [x] The recurring-expenses empty state no longer says a bill goes in on its own. (help-truth left 1)
+- [x] The Companies House deadline is counted in London days: the hour after midnight on a summer night, an overdue filing read as on time. `test-days-between` no longer excuses it. (days-between flag)
+- [x] The same email sent twice is not filed twice: the Worker posts its Message-ID, every row records it and which part it came from, and a part already filed is not read again (no schema change: `receipts.details`). **The Worker half is live only after `npx wrangler deploy` on the Mac**; until then the route behaves as before. One edge left: if an attachment held two documents and only the first row went in before the failure, the resend skips that attachment. (audit-worker)
+- [x] Stale comments: `leaveGuard.ts` and `sw.js` said `/offline`. (brief 15 left)
+
+Not done from list (c), and why:
+- `useLeaveGuard.ts` duplicating `leaveGuard.ts`: merging means removing a file, rule 1 — in (a)15.
+- The remaining forms with no guard or kept draft (Needs review, expenses, recurring, the inline edits on /clients and /receipts, Settings across a reload): each needs a dirty test and a browser suite that answers a `confirm` (`mockdb.mjs` answers only `beforeunload`, so a suite that types and then clicks a link would hang). Mileage was done because the offline page's promise was false there. Worth its own brief.
+- A storage-full Free draft still fails silently (the signature halves what it writes; saying so needs a place on the page).
+
 ## Already fixed before this sweep (checked, not re-opened)
 
 Quote "sent N days ago" (migration-042); AnswerEntry and extractPages "Load failed"; the

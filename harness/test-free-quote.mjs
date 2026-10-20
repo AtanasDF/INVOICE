@@ -87,9 +87,12 @@ try {
 
   // Save to your account: the quote carries over.
   // Signed in without clearing storage, so the Free page draft survives.
-  const draftBefore = await page.evaluate(() => localStorage.getItem("free-invoice-draft"));
+  // signIn clears all of storage, last-account with it, and an account the
+  // device doesn't know has the last person's draft cleared away (account
+  // switch, 2026-10-19) -- so who was here goes back with the draft.
+  const [draftBefore, lastAccount] = await page.evaluate(() => [localStorage.getItem("free-invoice-draft"), localStorage.getItem("last-account")]);
   await signIn(page, BASE);
-  await page.evaluate((d) => localStorage.setItem("free-invoice-draft", d), draftBefore);
+  await page.evaluate((d, who) => { localStorage.setItem("last-account", who); localStorage.setItem("free-invoice-draft", d); }, draftBefore, lastAccount);
   const saved = await page.evaluate(() => localStorage.getItem("free-invoice-draft"));
   check("draft kept as a quote", JSON.parse(saved).docType === "quote");
   await page.goto(`${BASE}/quotes/new?import=1`, { waitUntil: "networkidle0" });
