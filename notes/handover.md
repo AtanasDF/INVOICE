@@ -6,6 +6,14 @@ this section contradicts it.
 Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.
 
+## Waiting to merge: `wip/draft-autosave` (2026-10-20, cloud)
+
+New receipt and new invoice keep their draft in localStorage as they are typed and offer it
+back -- the iPhone fix the leave guard could not be. See the top of SESSIONS.md. Before
+merging: run `test-form-draft`, `test-draft-autosave`, `test-account-switch` and `test-clear`
+against `next start`; if the component-audit branch merges first, expect small conflicts in
+the two `new/page.tsx` files.
+
 ## Merged 2026-10-19
 
 `feature/account-scoped-storage` fast-forwarded into `main` (`13f8c74`) on Atanas's say-so,

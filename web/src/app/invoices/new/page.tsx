@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeaveGuard } from "@/lib/leaveGuard";
+import { useFormDraft } from "@/lib/useFormDraft";
+import { restoreContact } from "@/lib/formDraft";
+import DraftOffer from "@/components/DraftOffer";
 import { addDays } from "@/lib/today";
 import { money } from "@/lib/money";
 import { pricesFor, savedPrices } from "@/lib/savedPrices";
@@ -165,6 +168,32 @@ export default function NewInvoicePage() {
   const copiedNotesRef = useRef("");
   // Days from the invoice date to the due date, when copied terms set it.
   const [termsLength, setTermsLength] = useState<number | null>(() => (draft?.paymentTerms ? termsLengthOf(draft.paymentTerms) : null));
+  const kept = useFormDraft(
+    "invoice",
+    { clientId, clientName: clients.find((c) => c.id === clientId)?.name ?? "", customerText, date, dueDate, dueDateManual, paymentTerms, termsLength, items, cisRate, notes, tagsInput, imported },
+    saving
+  );
+
+  function restoreDraft() {
+    const f = kept.take();
+    if (!f) return;
+    const live = profile ? clients.filter((c) => c.kind === "client" && !c.archived).map((c) => c.id) : null;
+    const contact = restoreContact(f.clientId, f.clientName, f.customerText, live);
+    const day = f.date || todayIso();
+    setClientId(contact.clientId);
+    setCustomerText(contact.text);
+    setDate(day);
+    setDueDate(f.dueDate || addDays(day, 30));
+    setDueDateManual(f.dueDateManual);
+    setPaymentTerms(f.paymentTerms);
+    setTermsLength(f.termsLength);
+    setItems(f.items);
+    if (f.cisRate !== null) setCisRate(f.cisRate);
+    else setCisRateState(null);
+    setNotes(f.notes);
+    setTagsInput(f.tagsInput);
+    setImported(f.imported && !!draft);
+  }
 
   useEffect(() => {
     const load = Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
@@ -647,6 +676,7 @@ export default function NewInvoicePage() {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       });
       if (imported) clearFreeInvoiceDraft();
+      kept.finish();
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(saveFailed(err, "Couldn't save invoice."));
@@ -720,6 +750,7 @@ export default function NewInvoicePage() {
         </p>
       )}
       {scanError && <p role="alert" className="text-sm text-red-600">{scanError}</p>}
+      {kept.offer && <DraftOffer what="an invoice" savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
       {!copyMode && (
         <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
           <label className="text-xs text-neutral-500" htmlFor="describe-invoice">

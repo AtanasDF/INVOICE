@@ -4,6 +4,9 @@ const MISSING_TOTAL = "Enter the total paid before saving.";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeaveGuard } from "@/lib/leaveGuard";
+import { useFormDraft } from "@/lib/useFormDraft";
+import { restoreContact } from "@/lib/formDraft";
+import DraftOffer from "@/components/DraftOffer";
 import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
@@ -57,6 +60,32 @@ export default function NewReceiptPage() {
   useLeaveGuard(!saving && !!(vendor || supplierText || totalAmount || vatAmount || notes || lineItems.length || imageDataUrl));
   const [possibleDuplicate, setPossibleDuplicate] = useState<Receipt | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const kept = useFormDraft(
+    "receipt",
+    { clientId, clientName: clients.find((c) => c.id === clientId)?.name ?? "", supplierText, date, vendor, category, totalAmount, vatAmount, currency, fxRateInput, notes, lineItems, warrantyMonths, tagsInput, hadPhoto: !!imageDataUrl },
+    saving
+  );
+
+  function restoreDraft() {
+    const f = kept.take();
+    if (!f) return;
+    const live = loaded ? clients.filter((c) => c.kind === "supplier" && !c.archived).map((c) => c.id) : null;
+    const contact = restoreContact(f.clientId, f.clientName, f.supplierText, live);
+    setClientId(contact.clientId);
+    setSupplierText(contact.text);
+    setDate(f.date || todayISO());
+    setVendor(f.vendor);
+    if (f.category) setCategory(f.category);
+    setTotalAmount(f.totalAmount);
+    setVatAmount(f.vatAmount);
+    setCurrency(f.currency);
+    setFxRateInput(f.fxRateInput);
+    setNotes(f.notes);
+    setLineItems(f.lineItems);
+    setWarrantyMonths(f.warrantyMonths);
+    setTagsInput(f.tagsInput);
+  }
 
   useEffect(() => {
     Promise.all([clientsStore.all(), receiptsStore.all(), businessProfileStore.get()])
@@ -69,7 +98,8 @@ export default function NewReceiptPage() {
       })
       // The form still works without them: only the supplier list and the
       // usual category are missing, so say so rather than block the page.
-      .catch((err) => setError(loadFailed(err, "your suppliers and categories", "You can still fill this in.")));
+      .catch((err) => setError(loadFailed(err, "your suppliers and categories", "You can still fill this in.")))
+      .finally(() => setLoaded(true));
   }, []);
 
   const suppliers = clients.filter((c) => c.kind === "supplier" && !c.archived);
@@ -249,6 +279,7 @@ export default function NewReceiptPage() {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         lineItems,
       });
+      kept.finish();
       router.push("/receipts");
     } catch (err) {
       setError(saveFailed(err, "Couldn't save receipt."));
@@ -264,6 +295,16 @@ export default function NewReceiptPage() {
           Scan or upload a receipt, tag it with a supplier and category, and it is saved for later.
         </p>
       </div>
+
+      {kept.offer && (
+        <DraftOffer
+          what="a receipt"
+          savedAt={kept.offer.savedAt}
+          note={kept.offer.fields.hadPhoto ? "Its photo wasn't kept, so add it again." : undefined}
+          onRestore={restoreDraft}
+          onDiscard={kept.discard}
+        />
+      )}
 
       <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <div
