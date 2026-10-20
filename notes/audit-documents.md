@@ -208,3 +208,120 @@ the other shapes `Invoice INV-1.*`.
    order matches print.
 5. `wrap-anywhere` on the Free page and quote names; `lib/money.ts` in
    `InvoiceDocument`/`QuoteDocument`.
+
+---
+
+# Second pass, 2026-10-20 (cloud brief 8)
+
+The same four files and five sheets, against today's tree (`6f403a6`). Read-only; nothing
+in `web/` changed. **Line numbers above are the 2026-10-18 tree's; the ones below are
+today's.** How it was checked: the real `readSheet` / `sheetText` / `sheetCsv` / `sheetHtml` /
+`csvCell` (types stripped with Node's `stripTypeScriptTypes`, nothing rewritten) run in
+headless Chromium over markup copied from the sheets, with the display rules `innerText`
+depends on (`flex`, `grid`, `block`, `contents`, `pre-line`) stood in by hand. Marked
+*(ran)* or *(read)* as above. A cloud session has no `node_modules`, so html-to-image and
+jsPDF were not run.
+
+## The rule still holds
+
+`readSheet` reads only the element it is given (`sheetFile.ts:170-199`); `saveSheetAs`
+hands one element to every shape (`SaveAsMenu.tsx:25-40`); and each caller passes the
+element its PDF is made from: `SendInvoicePanel.tsx:131` and `:59` (the portal, `:101-108`,
+which covers the invoice, quote, statement and Free send card), `PublicInvoiceView.tsx:59`
+and `:40`, `PublicQuoteView.tsx:160` and `:61`, and `FreeInvoiceBuilder.tsx:275` / `:305` /
+`:340` (no `onPdf` there, so the PDF goes through `SaveAsMenu.tsx:29-30` on the same element).
+The email and share wording is still a second copy of the total, now at
+`invoices/[id]/page.tsx:793-797` and `:940-944` (which repeat `IssuedInvoice.tsx:27-31`),
+`SendByEmail.tsx:8-9` / `:25` and `PublicQuoteView.tsx:40`. It agrees today only because
+it calls the same functions.
+
+## What the first pass found, now
+
+| First-pass item | Today |
+|---|---|
+| 2a Free page totals lost | **Fixed** (`23e7e45`): the `tfoot` is read as `Label: figure` lines (`sheetFile.ts:192-195`). *(ran)*: Labour, Materials, Total, CIS deduction and Net payment due are all present. |
+| 2a CIS group headings dropped | **Open** *(ran)*. `th`-only rows are still filtered out (`sheetFile.ts:165`), so nothing in the text shapes says which lines are labour. |
+| 2d Statement order / `INV-0013 days late` | **Open, both** *(ran)*: `INV-001` + `12 days late` → `INV-00112 days late` (`sheetFile.ts:161` `textContent`, `StatementDocument.tsx:57-58`); "Total owing" comes out before the table, and so do the Free page's notes, bank details and footer (`sheetFile.ts:173-196`, single roots at `StatementDocument.tsx:18` and `InvoiceDocument.tsx:358`). |
+| 3a 200 lines blank on iPhone | **Fixed in code** *(read)*: `sheetPixelRatio` (`saveFile.ts:338-340`) keeps the capture under 16,777,216 px, about 1.6x at 200 lines, for both the PDF (`invoicePdf.ts:59`) and the pictures (`saveFile.ts:345`). Still never tried on the iPhone. |
+| 3c No BOM | **Fixed**: `CSV_BOM` (`csv.ts:3`, `sheetFile.ts:269`). |
+| 3c Formulas run | **Fixed** *(ran)*: `csvCell` (`csv.ts:9-13`). `=HYPERLINK("x")` → `"'=HYPERLINK(""x"")"`. `\r` is quoted now. |
+| 3c `−£` money is text | Open; by design as long as amounts carry `£`. |
+| `": "` split | **Open** *(ran)*, and it also splits the statutory sentence: `Reverse charge,VAT Act 1994 Section 55A applies` (`sheetFile.ts:264-265`, `reverseCharge.ts:62`). The words are all there, just across two cells. |
+| Negative line `£-50.00` | **Quote fixed** (`QuoteDocument.tsx:6-7` uses `money()`). **Free page open**: `formatMoney`, `InvoiceDocument.tsx:12-14`, also in the send-card total, `SendByEmail.tsx:25`. |
+| Unbroken long name | **Open**: Free page `InvoiceDocument.tsx:222`, `:272` (the `div` has `min-w-0` but the text has no wrap, so it spills over the title), `:323`; `QuoteDocument.tsx:21-30` (header flex with no `min-w-0`) and `:40`. **New:** `StatementDocument.tsx:25`, `:35`, and `IssuedInvoice`'s client email and address (`:65-66`). |
+| File names disagree | **Open** (`pdfFilenameFor`, `SendInvoicePanel.tsx:35-37`, against `tidyFileName`, `saveFile.ts:330-333`). See N3 for `pdfName`, which the first pass thought was safe. |
+| Plain-text alignment | Open (`sheetFile.ts:201`, `:213`). |
+| Tables read from the original child; SVG `className` | Open, latent (`sheetFile.ts:190`, `:174`). |
+| WebP or HEIC page throws in `pagesToPdf` | Open, latent (`documentPdf.ts:34`). |
+
+## New in this pass
+
+**N1. In a spreadsheet, a label and its value come apart, and then Excel changes the
+value. MEDIUM** *(ran for the bytes; Excel's behaviour is known, not tried)*
+The Free page prints its number, dates and bank details as `dt`/`dd` grid items
+(`InvoiceDocument.tsx:231-236`, `:249-256`, `:299-306`). `innerText` puts each on its own
+line, so the CSV gets `Invoice no.` / `0042` / `Sort code` / `12-03-56` / `Account
+number` / `01234567` as six separate rows. The file is correct. Excel shows **42**, drops
+the account number's leading zero, and reads `12-03-56` as **12/03/1956**. The issued
+invoice's `Sort code: 12-03-56` lines do pair up, but they leave the value bare, so Excel
+changes it the same way. This is the one shape where, as opened, a figure differs from the
+PDF. `csvCell` rightly leaves these values alone, since they are not formulas. If a fix is
+wanted, writing them as text (a `="..."` form) is it.
+
+**N2. A long block with no break point inside it can be cut through a line of text in the
+PDF. MEDIUM-LOW** *(read)*
+`pageSlices` cuts at the page limit when no break point falls in the page's lower 60%
+(`invoicePdf.ts:45-46`). Break points are `tr, section, header, footer, table, h1, p,
+dl > div` (`:8`). `IssuedInvoice`'s notes are a bare `div` (`:172-174`), and a single
+`whitespace-pre-line` `p` has no break inside it either (`QuoteDocument.tsx:95`,
+`InvoiceDocument.tsx:171`, `:211`). Long notes or terms that run over a page boundary can
+be sliced through a line. A 200-line invoice is fine, because every row is a break point.
+
+**N3. `pdfName` mangles non-Latin names. LOW** *(ran)*
+It keeps `\p{L}\p{N}` and turns everything else into spaces (`documentPdf.ts:143`).
+Combining marks (`\p{M}`) are "everything else", so `हिन्दी बिल` → `ह न द ब ल.pdf` and a
+decomposed `Café` → `Cafe.pdf`. Hindi, Bengali, Thai, and Arabic with its vowel
+marks are all hit (Copy, Files, the scan's file). `pdfName` and `tidyFileName` also cut
+with `slice(0, 80)`, which can leave half a surrogate pair. Checked: 79 letters plus an
+emoji ends in `\ud83d`.
+
+**N4. A comment in `csv.ts` says the opposite of the code. LOW** *(read)*
+`csv.ts:6-8` says `"+44 20..."` "is left as it is". The exemption (`:11`) only covers a
+plain number, so a phone number with spaces gets the apostrophe. The code is the right
+one: Excel would treat `+44 20 7946 0000` as a formula. The comment should change.
+
+**N5. `signedMoney` is now redundant** (`IssuedInvoice.tsx:13`): `money()` already prints
+`−£` (`money.ts:6`). Harmless.
+
+## The brief's cases today
+
+- **`<` or `&` in a name: correct in every shape** *(ran)*. React plus html-to-image
+  handle the PDF and pictures; `esc` covers every text node and the `<title>` in Word and
+  the web page (`sheetFile.ts:223`, `:227-239`); `'` is unescaped but nothing goes in an
+  attribute; text needs nothing; CSV is quoted and guarded. Nothing is escaped in one shape
+  and not another, now that CSV has its guard.
+- **CIS** is kept in every shape for both invoice sheets. On the Free page the grouping is
+  lost (above).
+- **Reverse-charge wording** is kept everywhere *(ran)*, split across two cells in CSV.
+- **Deposit deduction** is kept: the issued invoice's `-1 … −£50.00` row and the quote's
+  "Deposit to book the work" line *(ran)*.
+- **Zero total**: nothing breaks; `IssuedInvoice.tsx:35` guards the CIS share. A Free
+  invoice with no lines still carries "Describe the work on the first line" as a line item
+  in every shape, the PDF included.
+- **Missing logo**: safe (`IssuedInvoice.tsx:46`, `QuoteDocument.tsx:23`). Text shapes
+  never carry a picture.
+- **Non-Latin**: PDF and pictures rely on the browser's fallback font (not run here);
+  text shapes are UTF-8 with a BOM on the CSV; file names (N3, `pdfFilenameFor`) and `.txt`
+  alignment are the damage.
+
+## In order, if anything is to be done
+
+1. The statement's `INV-00112`: read cells with `innerText`, or put a space before the span.
+2. Walk single-root sheets one level down, so the order matches print, and keep `th`-only
+   rows as headings.
+3. N1, if the spreadsheet should protect identifiers from Excel.
+4. N2: make the notes a `p`, or break at line boxes.
+5. `wrap-anywhere` on the names; `money()` in `InvoiceDocument`; fix the `csv.ts` comment.
+
+Every one of these changes behaviour, so none was made. `test-save-as` and
+`test-statement` are the suites to run on the Mac against `next start` for any of them.
