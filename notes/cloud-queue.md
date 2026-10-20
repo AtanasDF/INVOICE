@@ -316,3 +316,38 @@ green) and the "say when it does not know" rule. If /privacy's description of wh
 stored changed, say so loudly in the report: that page has its own rule in CLAUDE.md.
 Report in notes/help-truth.md. Branch: wip/help-truth.
 ```
+
+## 17. The leftovers sweep — [ ]
+
+```
+Every audit since 18/10 wrote down what it left: notes/audit-components.md,
+audit-documents.md, audit-offline.md, audit-failure-paths.md, audit-api-routes.md,
+audit-sql.md, audit-worker.md, ios-safari.md, ios-forms-layout.md, ios-files-share.md,
+help-truth.md, and the "Left" lines in the top SESSIONS.md entries. Collect every item
+marked left, half, open or "for later". Sort them into three lists in notes/leftovers.md:
+(a) needs a decision from Atanas -- write the question in one line, don't do it;
+(b) needs a real iPhone, the live database or the Mac's camera clips -- say exactly what to
+run; (c) everything else. Then fix list (c), confirming each in the code first, with a test
+for each. Don't touch the camera capture code (DocumentCapture, lib/opencv, the auto-capture
+timing): it is waiting on an iPhone test. Branch: wip/leftovers.
+```
+
+## 18. Can everybody use it? — [ ]
+
+```
+Read CLAUDE.md, /accessibility's own statement, and the suites test-keyboard-only,
+test-big-text, test-tap-targets, test-labels and test-readable. Audit every page under
+web/src/app for WCAG 2.2 AA: every control has a name a screen reader says; focus order
+and a visible focus ring; nothing only by colour; error messages tied to their field
+(aria-describedby) and announced; dialogs and sheets trap focus and give it back;
+headings in order; images and icons labelled or hidden; contrast in all five themes and
+dark mode (the --n-* variables in globals.css); the camera screen usable without seeing
+the viewfinder. Confirm each in the code, fix the confirmed ones (labels, aria, focus,
+contrast tokens -- no layout redesign), and add source-reading guards so they stay fixed.
+If /accessibility now claims something untrue, correct it. Leave DocumentCapture's capture
+logic alone; its labels are fine to fix. Report in notes/audit-accessibility.md.
+Branch: wip/accessibility.
+```
+
+Briefs 8, 17 and 18 can run at the same time. Merge 8 first (it is in lib/invoicePdf,
+documentPdf, sheetFile, saveFile), then 18, then 17.
