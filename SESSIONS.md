@@ -95,7 +95,16 @@ without a conflict; the suite list, the logic tsconfig and both logs clashed onl
 both appended to the same line, and both sides were kept. **One real clash the merge did
 not show**: part 2 changed SendInvoicePanel's lock from a boolean to the invoice key, and
 part 1's new PDF-failure path, written in parallel, reset it to `false` -- each half
-typechecked alone, the merge did not. Fixed (`eda9f49`). tsc, eslint (excluding the
+typechecked alone, the merge did not. Fixed (`eda9f49`).
+
+**Browser suites run (46, against `next start` on 3100, two at a time):** 42 green first
+time. `test-check-company` crashed under the load and is 54/54 alone (its own dev server).
+`test-receipts-list` 54/55 was a stale assertion -- part 2 now keeps converted GBP to the
+penny (48.00/12.00, not 47.9976/11.9994); updated, 55/55. `test-address` 0/1 is the known
+pre-existing red. `test-inbox-ingest` 16/24 alone, the same eight every time, all with the
+reader never called: it stands in only for Anthropic, and the email import has read with
+Gemini since `ea1f3e9` (15/10), so it has been red on main since then. This branch's only
+change to that route is the penny maths after the read. The suite needs a Gemini stand-in. tsc, eslint (excluding the
 `web/.claude/worktrees/` copy a local session left, which lints its own `.next` and is not
 ours) and build clean; 13 logic/source suites green. **Browser suites not yet run** -- about
 fifty named across both halves' logs, which is near a full run on this 8 GB Mac.
