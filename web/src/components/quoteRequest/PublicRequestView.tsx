@@ -218,7 +218,7 @@ export default function PublicRequestView({ data, token }: { data: PublicQuoteRe
         )}
         {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
-      <p className="text-center text-xs text-neutral-400">Sent with {SITE_NAME}</p>
+      <p className="text-center text-xs text-neutral-500">Sent with {SITE_NAME}</p>
     </div>
   );
 }

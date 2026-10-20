@@ -137,7 +137,7 @@ function LinesTable({ d, t, dense, bold }: { d: FreeInvoiceDraft; t: DraftTotals
         ))}
         {!t.lines.length && (
           <tr className="border-b border-neutral-200">
-            <td colSpan={cols} className={`${cell} text-neutral-400`}>Describe the work on the first line</td>
+            <td colSpan={cols} className={`${cell} text-neutral-500`}>Describe the work on the first line</td>
           </tr>
         )}
       </tbody>
