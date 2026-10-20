@@ -1,5 +1,5 @@
 import { VAT_RATE_KINDS, type VatRateKind } from "@/lib/vat";
-import { todayISO, ukDate } from "@/lib/today";
+import { addDays, daysBetween, todayISO, ukDate } from "@/lib/today";
 
 // The half-typed new receipt and new invoice, kept on the device as they are
 // typed.
@@ -169,7 +169,7 @@ export function decodeDraft<K extends DraftKind>(kind: K, raw: string | null, no
   }
   if (!isObject(v) || v.version !== 1 || typeof v.savedAt !== "string") return null;
   const at = Date.parse(v.savedAt);
-  if (Number.isNaN(at) || at > now.getTime() + 60_000 || now.getTime() - at > DRAFT_MAX_AGE_DAYS * 86_400_000) return null;
+  if (Number.isNaN(at) || at > now.getTime() + 60_000 || daysBetween(ukDate(v.savedAt), ukDate(now)) > DRAFT_MAX_AGE_DAYS) return null;
   const fields = DRAFTS[kind].parse(v.fields) as FieldsOf<K> | null;
   if (!fields || !hasWork(kind, fields)) return null;
   return { savedAt: v.savedAt, fields };
@@ -212,7 +212,7 @@ export function draftWhen(savedAt: string, today: string = todayISO()): string {
   if (!day) return "earlier";
   const at = new Date(savedAt);
   if (day === today) return `today at ${LONDON_TIME.format(at)}`;
-  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const yesterday = addDays(today, -1);
   if (day === yesterday) return `yesterday at ${LONDON_TIME.format(at)}`;
   return `on ${LONDON_DAY.format(at)}`;
 }
