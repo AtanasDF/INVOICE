@@ -4,6 +4,29 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud round 3 combined on `integrate/cloud-round-3`, NOT merged
+
+Briefs 9-12 (api-routes, sql, worker, ios-safari) combined; only notes and the suite list
+clashed. **The SQL audit's three holes were checked against the LIVE database, read-only,
+and all three are real**: `authenticated` can execute `generate_recurring_invoice`
+(SECURITY DEFINER, no caller check); `authenticated` can update `business_profile.plan` and
+no trigger stops it; the five pre-017 FKs have no same-owner trigger. None exploited: 0
+recurring invoices, 0 paid accounts. The app never calls the recurring function as a user
+(only the cron, as service role) and Settings never writes `plan`, so 043-045 break
+nothing. NOT RUN -- waiting on Atanas.
+
+Green: test-migration-041/042/043 (16/15/51), rls-audit, utc-today, days-between,
+audit-guards 90/90, inbox-worker-types 17/17, inbox-worker 40/40, worker tsc, wrangler
+dry-run; against `next start`, one at a time: api-routes 126/126, help-chat 61/61,
+route-guards 57/57, send-document 18/18, feedback 10/10, price-finder 16/16,
+copy-document 19/19, help-chat-live 25/25, inbox-ingest 27/27, scan-wall 21/21 (was
+crashing on main), dashboard 30/30. **test-locked-doors 7/8, a timeout, twice** --
+not yet compared with main; stopped there because Atanas's Mac was slow (Mise is building
+in ~/code/desk* at the same time; nothing of Mise's was touched).
+
+Waiting on Atanas: run 043-045; `npx wrangler deploy` from worker/ (the Worker fixes are
+not live until then); merge.
+
 ## 2026-10-20 — SQL and RLS audit (cloud, brief 10), `wip/sql-audit`
 
 Every file in `web/supabase/` read. Three holes, each fixed by a migration that has **not
