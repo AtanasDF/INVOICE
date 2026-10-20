@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { todayISO } from "@/lib/today";
+import { bearerMatches } from "@/lib/bearer";
 
 export const runtime = "nodejs";
 // Cron work grows with the number of accounts, and killing it part-way is
@@ -30,7 +31,7 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!bearerMatches(authHeader, cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

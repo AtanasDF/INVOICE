@@ -11,6 +11,7 @@ import { vatForReading, workedOutNote } from "@/lib/vatFromRate";
 import { allowShared } from "@/lib/rateLimit";
 import { RELAYED_ERRORS } from "@/lib/extractors";
 import { gbpFigures } from "@/lib/receiptAmounts";
+import { bearerMatches } from "@/lib/bearer";
 
 export const runtime = "nodejs";
 // The same reader /api/scan needs 300s for, run once per attachment, up to
@@ -74,14 +75,15 @@ async function documentFile(attachment: IngestAttachment, documents: ScanResult[
 export async function POST(req: Request) {
   const webhookSecret = process.env.INBOX_WEBHOOK_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (!webhookSecret || authHeader !== `Bearer ${webhookSecret}`) {
+  if (!bearerMatches(authHeader, webhookSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!supabaseUrl || !serviceRoleKey || !anthropicKey) {
+  // Gemini reads and Claude stands in for it, so either key is enough.
+  const readerKey = process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!supabaseUrl || !serviceRoleKey || !readerKey) {
     return NextResponse.json({ error: "Inbox import isn't fully configured on this deployment." }, { status: 500 });
   }
 

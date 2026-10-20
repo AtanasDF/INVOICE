@@ -305,9 +305,15 @@ export async function POST(req: Request) {
   if (body.where === true) {
     const postcode = normalisePostcode(q);
     if (!postcode) return NextResponse.json({ error: "Not a postcode." }, { status: 400 });
-    const { body: found } = await getJson<{ result?: { latitude?: number; longitude?: number } }>(
-      `${POSTCODES}/postcodes/${encodeURIComponent(postcode)}`
-    );
+    let found: { result?: { latitude?: number; longitude?: number } } | null;
+    try {
+      ({ body: found } = await getJson<{ result?: { latitude?: number; longitude?: number } }>(
+        `${POSTCODES}/postcodes/${encodeURIComponent(postcode)}`
+      ));
+    } catch (err) {
+      console.error("address-search: postcode lookup failed:", err instanceof Error ? err.message : String(err));
+      return NextResponse.json({ error: "The postcode lookup isn't answering just now." }, { status: 503 });
+    }
     const at = found?.result;
     if (!at?.latitude || !at.longitude) return NextResponse.json({ error: "Postcode not found." }, { status: 404 });
     return NextResponse.json({ at: { lat: at.latitude, lon: at.longitude } });

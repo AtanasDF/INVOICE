@@ -3,6 +3,7 @@ import { type CompanySearchItem, tidyCompanyName, formatRegisteredAddress } from
 import { asCompanyNumber, type CompanyHit, type CompanyReport } from "@/lib/companyReport";
 import { buildReport, type ChargeList, type ControlList, type InsolvencyList, type OfficerList, type Profile } from "@/lib/companyReportBuild";
 import { addressKey, allowShared } from "@/lib/rateLimit";
+import { isSignedIn } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -51,13 +52,20 @@ const busy = (status: number) =>
     ? NextResponse.json({ configured: true, busy: true }, { status: 429 })
     : NextResponse.json({ configured: true, unavailable: true }, { status: 503 });
 
+// Strangers and accounts count against separate hourly totals, as in
+// /api/company-search, so a burst from outside can't use up the checks
+// that signed-in people make from the contact forms and /check-company.
+async function globalKey(kind: string, req: Request): Promise<string> {
+  return `${kind}:${(await isSignedIn(req.headers.get("authorization"))) ? "signed-in" : "anon"}:global`;
+}
+
 async function search(q: string, req: Request, key: string) {
   const cacheKey = q.toLowerCase();
   const hit = searchCache.get(cacheKey);
   if (hit && Date.now() - hit.at < SEARCH_CACHE_MS) return NextResponse.json({ configured: true, items: hit.items });
 
   const ip = addressKey(req.headers.get("x-forwarded-for"));
-  if (!(await allowShared(`check:ip:${ip}`, SEARCH_PER_IP, HOUR)) || !(await allowShared("check:global", SEARCH_GLOBAL, HOUR))) {
+  if (!(await allowShared(`check:ip:${ip}`, SEARCH_PER_IP, HOUR)) || !(await allowShared(await globalKey("check", req), SEARCH_GLOBAL, HOUR))) {
     return NextResponse.json({ configured: true, items: [], busy: true }, { status: 429 });
   }
 
@@ -84,7 +92,7 @@ async function report(number: string, req: Request, key: string) {
   if (hit && Date.now() - hit.at < REPORT_CACHE_MS) return NextResponse.json({ configured: true, report: hit.report });
 
   const ip = addressKey(req.headers.get("x-forwarded-for"));
-  if (!(await allowShared(`check-report:ip:${ip}`, REPORT_PER_IP, HOUR)) || !(await allowShared("check-report:global", REPORT_GLOBAL, HOUR))) {
+  if (!(await allowShared(`check-report:ip:${ip}`, REPORT_PER_IP, HOUR)) || !(await allowShared(await globalKey("check-report", req), REPORT_GLOBAL, HOUR))) {
     return NextResponse.json({ configured: true, busy: true }, { status: 429 });
   }
 
@@ -122,8 +130,8 @@ async function report(number: string, req: Request, key: string) {
   return NextResponse.json({ configured: true, report: built });
 }
 
-// Public, like the Free invoice page: anyone can check a UK company against
-// the Companies House register. Off, and saying so, until
+// Open to strangers at the API, though the /check-company page itself is
+// signed-in only; strangers count against their own total. Off, and saying so, until
 // COMPANIES_HOUSE_API_KEY is set.
 export async function GET(req: Request) {
   const key = process.env.COMPANIES_HOUSE_API_KEY;

@@ -3,6 +3,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { pagesToPdf, type DocPage } from "@/lib/documentPdf";
 import { todayISO } from "@/lib/today";
 import { canEmail, cutoffFor, sortOut, forOwner, emailSubject, emailBody, type AgeableRow } from "@/lib/photoAgeing";
+import { bearerMatches } from "@/lib/bearer";
 
 // Letting old photographs go (notes/ageing-photos-design.md).
 //
@@ -49,7 +50,7 @@ async function pageFor(admin: SupabaseClient, ref: string): Promise<DocPage | nu
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || req.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+  if (!bearerMatches(req.headers.get("authorization"), cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!ON) {

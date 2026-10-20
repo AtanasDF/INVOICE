@@ -53,15 +53,16 @@ for (const r of SIGNED_IN) {
 }
 for (const r of CRON) {
   const h = handler(code(r));
-  const gate = h.search(/authorization["')]*\s*!==\s*`Bearer \$\{cronSecret\}`|authHeader !== `Bearer \$\{cronSecret\}`/);
+  const gate = h.search(/bearerMatches\([\s\S]{0,60}?, cronSecret\)/);
   check(`${r}: the cron secret is checked before anything outward`, gate > 0 && gate < h.search(OUTWARD), `gate at ${gate}`);
-  check(`${r}: a missing CRON_SECRET refuses rather than opening`, /!cronSecret \|\|/.test(h));
+  // bearerMatches refuses everything while the secret is unset (test-leftovers runs it).
+  check(`${r}: a missing CRON_SECRET refuses rather than opening`, /!bearerMatches\([\s\S]{0,60}?, cronSecret\)/.test(h));
 }
 {
   const h = handler(code("inbox/ingest"));
-  const gate = h.search(/authHeader !== `Bearer \$\{webhookSecret\}`/);
+  const gate = h.search(/bearerMatches\(authHeader, webhookSecret\)/);
   check("inbox/ingest: the webhook secret is checked before anything outward", gate > 0 && gate < h.search(OUTWARD), `gate at ${gate}`);
-  check("inbox/ingest: a missing INBOX_WEBHOOK_SECRET refuses rather than opening", /!webhookSecret \|\|/.test(h));
+  check("inbox/ingest: a missing INBOX_WEBHOOK_SECRET refuses rather than opening", /!bearerMatches\(authHeader, webhookSecret\)/.test(h));
 }
 
 // ── Limits that are limits ────────────────────────────────────────────

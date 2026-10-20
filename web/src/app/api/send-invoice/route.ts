@@ -129,7 +129,7 @@ export async function POST(req: Request) {
   const fromName = `${issuerName.replace(/["<>\\\r\n]/g, "").trim()} via ${SITE_NAME}`;
   let res: Response;
   try {
-    res = await fetch("https://api.resend.com/emails", {
+    res = await fetch(`${process.env.RESEND_API_BASE ?? "https://api.resend.com"}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
   let copied = copyToSelf && !input.viewUrl;
   if (copyToSelf && input.viewUrl) {
     const own = { ...input, viewUrl: `${input.viewUrl}#o` };
-    const copyRes = await fetch("https://api.resend.com/emails", {
+    const copyRes = await fetch(`${process.env.RESEND_API_BASE ?? "https://api.resend.com"}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({

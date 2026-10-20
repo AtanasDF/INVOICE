@@ -91,6 +91,7 @@
     "../web/src/lib/saveFile.ts",
     "../web/src/lib/cameraInterruption.ts",
     "../web/src/lib/settleFew.ts",
-    "../web/src/lib/keptReadings.ts"
+    "../web/src/lib/keptReadings.ts",
+    "../web/src/lib/bearer.ts"
   ]
 }

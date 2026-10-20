@@ -98,6 +98,7 @@ export default function ClientsPage() {
   // Kept references, newest first, keyed by the number they were about.
   const [vatChecks, setVatChecks] = useState<VatCheck[]>([]);
   const [vatRegistered, setVatRegistered] = useState(false);
+  const [profileFailed, setProfileFailed] = useState(false);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [merging, setMerging] = useState<string | null>(null);
   // A ref, not the `disabled` state: React applies `disabled` on the render
@@ -125,7 +126,7 @@ export default function ClientsPage() {
       setBusinessName(p.businessName);
       setVatRegistered(p.vatRegistered);
       setMyVatNumber(p.vatNumber ?? "");
-    }, () => {});
+    }, () => setProfileFailed(true));
   }, []);
 
   function creditedOn(invoiceId: string) {
@@ -499,6 +500,9 @@ export default function ClientsPage() {
                 )}
                 {expanded && !editing && (
                   <div className="space-y-2 border-t p-4">
+                    {profileFailed && clientInvoices.some((inv) => inv.status === "draft") && (
+                      <p className="text-xs text-neutral-500">Drafts are shown without VAT: your settings didn&apos;t load.</p>
+                    )}
                     {clientInvoices.map((inv) => {
                       const overdue = isOverdue(inv.status, inv.dueDate);
                       return (
