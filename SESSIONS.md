@@ -4,6 +4,15 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Round 3 merged; migrations 043-045 live
+
+043, 044 and 045 run on the live database and each exercised as the Hidefield owner in a
+rolled-back transaction (detail in CLAUDE.md, rule 2). Atanas deployed the Worker himself
+from `integrate/cloud-round-3` (version `c1a59b45`). `test-locked-doors`, 7/8 twice while
+Mise was loading the Mac, was 10/10 on main and then 10/10 on round 3 once the Mac was
+quiet: load, not code. Round 3 fast-forwarded into main (`72a19c0`), so main's worker/ is
+what is live again.
+
 ## 2026-10-20 — Cloud round 3 combined on `integrate/cloud-round-3`, NOT merged
 
 Briefs 9-12 (api-routes, sql, worker, ios-safari) combined; only notes and the suite list

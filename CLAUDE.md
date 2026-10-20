@@ -37,8 +37,8 @@ session log what was added so he knows what to clear.
   where the sender would find out. Latest deploy **2026-10-20, version
   `c1a59b45-0228-4004-8765-5847adba7f66`**, by Atanas from `integrate/cloud-round-3`
   (the Worker audit's ten fixes: an unreachable app and a mistyped address now bounce
-  instead of vanishing). **Until that branch is merged, `main`'s worker/ is OLDER than
-  what is live, and a deploy from main would quietly undo the fixes.** Before that,
+  instead of vanishing). Merged into `main` the same afternoon, so `main`'s worker/ is again exactly
+  what is live. Before that,
   2026-10-09, `61dc60ef-d2e0-46e0-a846-0657467811d3`. First deployed
   2026-09-21 (`npx wrangler deploy` from `worker/`; wrangler is signed in on this Mac as
   atanaschoo@gmail.com, Cloudflare account 5926bcf52e541589a3003ab4dee95e16). Email
