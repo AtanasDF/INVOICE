@@ -82,6 +82,52 @@ Not green, and identical on a `main` build in the same container, so not this br
 test-quote-links (ignores BASE, connects to a fixed port 3316) and test-review-fixes
 (times out waiting, 0 checks). Still for the Mac: the list in notes/ios-forms-layout.md.
 
+## 2026-10-20 — iPhone camera and scanning fixes (cloud, brief 14), NOT merged
+
+Branch **`claude/brief-14-cloud-queue-aka0xo`** -- the brief said `wip/ios-camera`, but this
+cloud session was told to push only to its own branch; same thing, different name. Findings
+3, 4, 14, 15 and 16 of `notes/ios-safari.md`, each confirmed in the code first; all five
+were real. No schema change. The batch double-capture hole (`notes/batch-rearm.md`) was
+left alone, as the brief said.
+
+- **3, the camera torn down on an app switch.** `mute` no longer means lost.
+  `lib/cameraInterruption.ts` decides: hidden page -> wait (never reopen the camera while
+  nobody can see the prompt), ended -> reopen, muted -> wait until it has been visible for
+  2 s, then reopen. Detection and the frame watchdog pause while interrupted, and the
+  watchdog's count restarts on the way back. Camera permission still only through
+  lib/camera.
+- **4, readings lost on a reload or a link.** The readings (never the photos) are written
+  through to sessionStorage `scan-readings` on every change to the walk
+  (`lib/keptReadings.ts`, 12 h), classified personal in `lib/accountSwitch.ts`. After a
+  reload /scan offers them back before the camera opens; a restored document says its
+  photo wasn't kept and Save all leaves it for a look ("photo wasn't kept"). Leaving with
+  anything unsaved -- a link, Sign out, Back or a swipe -- asks first (`lib/useLeaveGuard.ts`,
+  Settings' catch with window.confirm). Discarding or agreeing to leave drops them.
+- **14, many photos crashing the tab.** Picked files are decoded two at a time
+  (`lib/settleFew.ts`), through `readUploads` in scanHandoff (UploadFilesButton,
+  UploadPanel) and the camera's own picker.
+- **15, canvases never released; a blank page saved.** Every canvas in a capture (frame,
+  still, warped page, thumbnails, work frames, the downscaler's) is set to 0x0 once read;
+  the warp's OpenCV images are freed in a finally; `"data:,"` is refused by the capture and
+  by the downscaler instead of being passed through as a "PDF".
+- **16, the watchdog dropping a shot.** It stands down while a capture is in flight, and a
+  shot dropped by a restart now says so.
+
+Green here: tsc, eslint, build (with placeholder Supabase env -- the cloud has no
+`.env.local`), new `test-ios-camera` 55/55 (added to run-all and tsconfig.logic),
+test-account-switch 23/23, test-audit-guards 90/90, test-camera-dark-source 11/11,
+test-promises 7/7. **No browser or camera suite has run** -- no Chrome or puppeteer here.
+
+**The Mac must run, against `next start`, before this merges:** the camera suites
+test-far, test-far-v2, test-far-recheck, test-autozoom, test-autozoom2, test-autozoom3,
+test-autozoom-out, test-conditions, test-bent, test-torch, test-torch-nocv, test-batch-swap,
+test-batch-stuck; then test-uploads, test-upload-panel, test-multi-docs, test-scan-wall,
+test-account-switch, test-camera-dark, test-camera-tip, test-camera-refusal,
+test-lost-pages, test-odd-files, test-exif-rotation, test-just-the-file. **On the iPhone:**
+items 3 of "Try these on the phone" in notes/ios-safari.md (batch of three, switch to
+Messages, come back -- the camera should simply resume), then a reload mid-batch should
+offer the readings back, and a header link mid-batch should ask.
+
 ## 2026-10-20 — Round 3 merged; migrations 043-045 live
 
 043, 044 and 045 run on the live database and each exercised as the Hidefield owner in a

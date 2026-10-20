@@ -63,6 +63,7 @@ function storedKeys(store: () => Storage): string[] {
 
 export const PERSONAL_SESSION_KEYS = [
   "scan-handoff-capture",    // a photograph of a receipt, mid-scan
+  "scan-readings",           // what was read off their receipts, unsaved
 ] as const;
 
 // Deliberately NOT cleared: these belong to the DEVICE, not the account, and
