@@ -173,7 +173,7 @@ const inv = code("app/invoices/[id]/page.tsx");
 check("credit note: a status update that fails says the note is saved", /creditNotesStore\.add\([\s\S]{0,500}syncStatus\([^;]*\)\.catch\(/.test(inv) && /credit note is saved, but/.test(inv));
 check("credit note removal: a status failure doesn't put it back on screen", /creditNotesStore\.remove\(id\);\s*\} catch \(err\) \{[\s\S]{0,700}return;\s*\}/.test(inv));
 check("payment removal: a failed re-read doesn't say it couldn't be removed", /paymentsStore\.remove\(id\);\s*\} catch \(err\) \{[\s\S]{0,120}return;\s*\}/.test(inv));
-check("send: a failed read-back doesn't say it wasn't sent", /markSentWithNumber\(invoice\.id\);\s*\} catch/.test(inv));
+check("send: a failed read-back doesn't say it wasn't sent", /markSentWithNumber\(invoice\.id\);\s*(?:kept\.finish\(\);\s*)?\} catch/.test(inv));
 check("merge: a failed re-read doesn't say the merge failed", /mergeInto\([\s\S]{0,400}\.then\([\s\S]{0,200}The merge went through/.test(code("app/clients/page.tsx")));
 check("turn into invoice: the payment terms are read inside the claim's release", /terms = \(await clientsStore\.all\(\)\)[\s\S]{0,140}\} catch \(err\) \{\s*await quotesStore\.releaseClaim/.test(code("app/quotes/[id]/page.tsx")));
 
