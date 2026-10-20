@@ -56,6 +56,22 @@ app; unsaved scan readings are lost on any navigation; the page-in animation's `
 puts the Feedback pill over every overlay (Chrome-reproducible). Also a correction for
 CLAUDE.md: `/scan?engine=gemini` can't be typed in the home-screen app. Nothing merged.
 
+## 2026-10-20 — Cloud brief 9: every API route audited (`wip/api-routes-audit`)
+
+All 25 routes read; table and reasons in `notes/audit-api-routes.md`. Four holes fixed, routes
+only: the paid model routes (invoice-from-text, price-guide, help-chat) and the email routes
+(send-invoice, send-document, quote-requests/send, feedback) counted in one instance's memory,
+so "N a day" and "N overall" were neither -- now `allowShared`, per account and overall; the
+email import counted emails rather than documents (5x its stated cap) and wrote the provider's
+or Postgres's raw text into the owner's needs-review notes. New `harness/test-api-routes.mjs`
+(126 checks, source-reading) fails 28 against the old code. test-help-chat-live's stand-in now
+answers `hit_rate_limit`. Checked here: tsc, eslint, build; test-route-guards 57/57 against
+`next start`, help-chat-live 25/25, inbox-ingest 27/27, and six logic suites green. **Before
+merging**, run test-send-document, test-feedback, test-price-finder and test-copy-document on
+the Mac. Left for Atanas: company-check shares one bucket between strangers and accounts (needs
+the page to send its bearer), the two new global caps' numbers, and whether the company lookups
+should stay public now the Free page isn't.
+
 ## 2026-10-20 — Migration 042 run, and quotes remember when they were sent
 
 Atanas said go. Backup 017 and migration-042 run on the live database (project

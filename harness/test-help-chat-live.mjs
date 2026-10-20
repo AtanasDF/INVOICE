@@ -29,6 +29,7 @@ const GOOD = "good-token";
 // per-account cap can be reached without waiting on retries), "busy" 429.
 let mode = "fail";
 const sent = [];
+const limitHits = new Map();
 
 const stub = http.createServer((req, res) => {
   const send = (status, body) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
@@ -38,10 +39,19 @@ const stub = http.createServer((req, res) => {
     if (bearer !== GOOD) return send(401, { message: "invalid token" });
     return send(200, { id: "11111111-1111-1111-1111-111111111111", aud: "authenticated", role: "authenticated", email: "someone@example.com" });
   }
-  // Anything else is the model.
   let raw = "";
   req.on("data", (d) => (raw += d));
   req.on("end", () => {
+    // The shared rate limit (migration-018), counted here the way the
+    // database counts it, so the caps below are the real ones and its calls
+    // are never mistaken for spending.
+    if ((req.url ?? "").startsWith("/rest/v1/rpc/hit_rate_limit")) {
+      const b = JSON.parse(raw || "{}");
+      const n = (limitHits.get(b.p_key) ?? 0) + 1;
+      limitHits.set(b.p_key, n);
+      return send(200, n <= b.p_limit);
+    }
+    // Anything else is the model.
     sent.push(raw);
     if (mode === "busy") return send(429, { error: { code: 429, message: "RESOURCE_EXHAUSTED" } });
     send(500, { error: { code: 500, message: "INTERNAL" } });

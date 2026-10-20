@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { allow, release } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 import { InvoiceEmailInput, invoiceEmailHtml, invoiceEmailSubject, invoiceEmailText } from "@/lib/invoiceEmail";
 import { SITE_NAME } from "@/lib/siteName";
 
@@ -107,19 +107,18 @@ export async function POST(req: Request) {
   };
 
   const key = `send:user:${user.id}`;
-  // Hour, then overall, then day: a request refused by one limit gives
-  // back what it took from the ones before, so waiting out the hourly limit
-  // never uses up the day. Sends that reach Resend count, failed or not.
-  if (!allow(key, USER_PER_HOUR, HOUR)) {
+  // Counted in the database, not in this instance's memory: a per-instance
+  // count forgets on every cold start and is kept separately by each
+  // instance, so "100 a day" and "60 an hour overall" were neither. Hour,
+  // then overall, then day, so waiting out the hourly limit never touches
+  // the day. Sends that reach Resend count, failed or not.
+  if (!(await allowShared(key, USER_PER_HOUR, HOUR))) {
     return NextResponse.json({ error: "Too many emails this hour. Try again later." }, { status: 429 });
   }
-  if (!allow("send:global", GLOBAL_PER_HOUR, HOUR)) {
-    release(key);
+  if (!(await allowShared("send:global", GLOBAL_PER_HOUR, HOUR))) {
     return NextResponse.json({ error: "Sending is busy right now. Try again in a little while." }, { status: 429 });
   }
-  if (!allow(`${key}:day`, USER_PER_DAY, DAY)) {
-    release(key);
-    release("send:global");
+  if (!(await allowShared(`${key}:day`, USER_PER_DAY, DAY))) {
     return NextResponse.json({ error: "That's the most emails for today. Try again tomorrow." }, { status: 429 });
   }
 

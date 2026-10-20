@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { allow } from "@/lib/rateLimit";
+import { allowShared } from "@/lib/rateLimit";
 import { FEEDBACK_MAX, feedbackEmailHtml, feedbackEmailSubject, feedbackEmailText } from "@/lib/feedbackEmail";
 import { SITE_NAME } from "@/lib/siteName";
 
@@ -9,6 +9,9 @@ export const runtime = "nodejs";
 const FROM = `${SITE_NAME} <feedback@invoiceover.com>`;
 const HOUR = 60 * 60 * 1000;
 const PER_HOUR = 20;
+// Every piece is emailed to FEEDBACK_TO, so a cap on everybody together keeps
+// a crowd of new accounts from filling that inbox.
+const GLOBAL_PER_HOUR = 200;
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 // Feedback is saved as the sender's own row, the same as the page did on
@@ -32,8 +35,11 @@ export async function POST(req: Request) {
   }
   const category = text(body.category, 40);
   const page = text(body.page, 200);
-  if (!allow(`feedback:${user.id}`, PER_HOUR, HOUR)) {
+  if (!(await allowShared(`feedback:${user.id}`, PER_HOUR, HOUR))) {
     return NextResponse.json({ error: "That's a lot of feedback for one hour. Try again a little later." }, { status: 429 });
+  }
+  if (!(await allowShared("feedback:global", GLOBAL_PER_HOUR, HOUR))) {
+    return NextResponse.json({ error: "A lot of feedback is arriving just now. Try again a little later." }, { status: 429 });
   }
 
   const asSender = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } });
