@@ -35,6 +35,14 @@ would change the total of any issued invoice with a half-penny line by a penny
 (`notes/audit-components.md`, section 7, worst-one 5). A parallel cloud branch does
 sections 1–4; expect small conflicts.
 
+## Waiting to merge: `wip/draft-autosave` (2026-10-20, cloud)
+
+New receipt and new invoice keep their draft in localStorage as they are typed and offer it
+back -- the iPhone fix the leave guard could not be. See the top of SESSIONS.md. Before
+merging: run `test-form-draft`, `test-draft-autosave`, `test-account-switch` and `test-clear`
+against `next start`. `main` (with the component audit) was merged into the branch on
+20/10; the two `new/page.tsx` files merged without a conflict.
+
 ## Merged 2026-10-19
 
 `feature/account-scoped-storage` fast-forwarded into `main` (`13f8c74`) on Atanas's say-so,

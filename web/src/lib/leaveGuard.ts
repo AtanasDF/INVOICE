@@ -4,8 +4,8 @@ import { useEffect } from "react";
 // back to a full page load, the worker answers it with /offline, and a half
 // typed receipt or invoice was gone under a page saying nothing had been lost
 // (notes/audit-offline.md 4c). The browser's own "Leave this page?" stops that
-// on a computer and on Android. iPhone Safari ignores beforeunload; this is
-// not a fix there.
+// on a computer and on Android. iPhone Safari ignores beforeunload, so there
+// the form is kept as it is typed instead (formDraft.ts) and offered back.
 export function useLeaveGuard(dirty: boolean) {
   useEffect(() => {
     if (!dirty) return;

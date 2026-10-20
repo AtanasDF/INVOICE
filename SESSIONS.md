@@ -152,6 +152,53 @@ of the project root. It needs its own `npm ci`.)
 **For the Mac before merging**, against `next start`: test-receipts-list (with `ea062a9`), test-review-fixes, and test-days-between and test-bills as
 part of the logic run. The camera and scan suites are unaffected: no file they use changed.
 
+## 2026-10-20 — New receipt and new invoice keep their draft as they are typed (cloud, `wip/draft-autosave`)
+
+**Not merged; on `wip/draft-autosave` for review on the Mac.** The leave guard from 19/10
+does nothing on iPhone Safari (it ignores beforeunload), so a link tapped with no signal
+still threw a half-typed form away on the one device Atanas uses. Now both forms write to
+localStorage on every change, the way the Free page keeps `free-invoice-draft`, and offer
+the draft back when the form next opens: "You were writing a receipt today at 14:05. It
+was kept on this device." with **Carry on with it** / **Throw it away** (which confirms).
+
+- Rules in `src/lib/formDraft.ts`, React wiring in `src/lib/useFormDraft.ts`, the banner in
+  `components/DraftOffer.tsx`. Each page gained one hook call, a `restoreDraft()` and
+  `kept.finish()` before the redirect; kept small because the component-audit branch
+  touches the same two files.
+- Keys `new-receipt-draft` and `new-invoice-draft`, both in `PERSONAL_LOCAL_KEYS`, so the
+  boot script clears them when a different account signs in. **test-account-switch's drift
+  check cannot see them** (they are reached through a table, not `localStorage.x(CONST)`),
+  so test-form-draft checks the classification itself.
+- **Photographs are never stored**: only named fields go through, and the draft notes a
+  photo was there so the offer says to add it again.
+- Decisions, stated rather than guessed (rule 7): a picked customer, a date or a category on
+  their own are not "work", so the dashboard's invoice-this-customer link cannot overwrite a
+  real draft; an untouched form never deletes the draft it is offering; **typing over the
+  offer keeps the newest work and drops the old draft** (the next tap may be the one that
+  loses it); drafts older than 30 days are not offered; a supplier/customer archived
+  meanwhile comes back as typed text, not as a link to the archived record.
+- `test-form-draft` (logic, 67) and `test-draft-autosave` (browser, 18), both in run-all.sh.
+  Mutations: a photo passed to the hook and a missing `finish()` each fail the logic suite;
+  disabling the write fails the browser suite 7/18.
+- tsc, eslint and build clean. **Browser suites were run here** against `next start` with
+  the pre-installed Chromium (a scratch copy of the harness with the Chrome path swapped and
+  `--no-sandbox`, since the container runs as root): test-draft-autosave 18/18, and the
+  suites that touch these forms all green -- test-clear 22, test-form-errors 10,
+  test-double-press 9, test-error-on-the-field 7, test-half-saved 20, test-two-tabs 13,
+  test-empty-account 143, test-lines 7, test-cis 14, test-exact-customer 6,
+  test-quote-not-invoice 8, test-saved-prices 15, test-reverse-charge 57,
+  test-no-silent-contacts 13, test-first-week 25, test-keyboards 12, test-half-connection
+  14, test-currency 22. Headless Linux Chromium is not his iPhone: worth one try on the
+  phone (type a receipt, switch to aeroplane mode, tap a link, come back).
+- Trap met: `pkill -f "next start"` and `pgrep -f next-server` match the shell running
+  them and kill it. Kill by PID from `ps -eo pid=,comm=`.
+- **01:15, `main` merged in** after the component audit landed on it. Only run-all.sh and
+  the two logs clashed (both appended); both `new/page.tsx` files merged clean. On the
+  merged tree: tsc, eslint, build clean; test-form-draft 67, test-account-switch 23,
+  test-draft-autosave 18, test-clear 22, test-double-press 11, test-form-errors 10,
+  test-half-saved 20, test-two-tabs 13, test-currency 22, test-cis 14, test-reverse-charge
+  57, test-audit-guards 56, test-component-money 61, test-audit-misc 15, all green.
+
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
 
 Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged

@@ -28,6 +28,8 @@ export const PERSONAL_LOCAL_KEYS = [
   "clients-not-duplicates",  // pairs of their client ids
   "receipts-link-skip",      // their receipt ids
   "invite-code",             // their own invite code
+  "new-receipt-draft",       // a half-typed receipt: supplier, amounts, notes
+  "new-invoice-draft",       // a half-typed invoice: customer, lines, prices
 ] as const;
 
 export const PERSONAL_SESSION_KEYS = [
