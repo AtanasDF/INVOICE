@@ -233,7 +233,7 @@ run without Cloudflare. Nothing under worker/ is live until Atanas runs
 change for a sender. Report in notes/audit-worker.md. Branch: wip/worker-audit.
 ```
 
-## 12. iPhone Safari, a report — [ ]
+## 12. iPhone Safari, a report — [x] (2026-10-20, `notes/ios-safari.md` on `wip/ios-safari`)
 
 ```
 Atanas uses the app almost entirely in iPhone Safari; the harness is desktop Chrome. List

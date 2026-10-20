@@ -44,6 +44,18 @@ worker tsc clean, wrangler dry-run bundles. Left open (route side): duplicates w
 late failure is resent, the email handler's fetch wait limit (unchecked, no docs
 access). Full detail and the sender-facing table in `notes/audit-worker.md`.
 
+## 2026-10-20 — iPhone Safari report (cloud brief 12), `wip/ios-safari`
+
+Read-only: no app code changed. `notes/ios-safari.md` lists 25 findings worst first, with a
+twelve-step "try these on the phone" list at the top. Five parallel read-throughs of `web/src`
+(storage and leave guards, inputs, layout, camera and files, share/download/push); the worst
+were re-read in the code before being written down. Top of the list: about 80 form controls
+under 16 px zoom the page on every tap (one CSS rule fixes it); receipt line items drop a typed
+decimal point (every browser); the camera restarts on iOS's ordinary `mute` when he switches
+app; unsaved scan readings are lost on any navigation; the page-in animation's `both` fill
+puts the Feedback pill over every overlay (Chrome-reproducible). Also a correction for
+CLAUDE.md: `/scan?engine=gemini` can't be typed in the home-screen app. Nothing merged.
+
 ## 2026-10-20 — Migration 042 run, and quotes remember when they were sent
 
 Atanas said go. Backup 017 and migration-042 run on the live database (project
