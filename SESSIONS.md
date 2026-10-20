@@ -4,6 +4,22 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — test-inbox-ingest given a Gemini stand-in, on `fix/inbox-ingest-gemini-stub`
+
+The suite had been red since 15/10 (16/24, the reader never called): it stood in only for
+Anthropic, and `ea1f3e9` made the email import read with Gemini first, so every read went
+to Google with a fake key, was refused, and fell back to a Claude stub whose script the
+checks no longer matched. **Now 27/27, run alone with its own dev server.** One stub
+answers both, told apart by path (`/interactions` is Gemini's Interactions API), each with
+its own script, every call recorded with its engine. New checks: the read is by Gemini; a
+refused Gemini key (401) falls back to Claude and nothing about the key reaches the row;
+both readers refusing asks Gemini before Claude; a cut-off read is not asked twice.
+
+**One app change, harness-only:** `extractWithGemini` (`src/lib/extractors.ts`) now honours
+`GEMINI_API_BASE` as the help chat already did. Unset in production, so the SDK uses
+Google's own address there; without it no suite could stand in for the default engine at
+all. tsc, eslint, build clean. **Not merged -- waiting on Atanas.**
+
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
 
 Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged

@@ -1,6 +1,6 @@
 // The email import route, /api/inbox/ingest, run for real: its own Next
 // dev server pointed at the harness's PostgREST stand-in (mock-server.mjs)
-// and at a stand-in Claude API on this machine, so the route, the reader's
+// and at stand-ins for the Gemini and Claude APIs on this machine, so the route, the reader's
 // client, the storage upload and every row it writes are the app's own --
 // and nothing reaches the live database or the real reader.
 //
@@ -29,21 +29,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
 
-// A stand-in for api.anthropic.com: answers /v1/messages from a script of
-// canned replies, one per call, and records what it was asked.
-const stub = { script: [], calls: [] };
+// One stand-in for both readers, told apart by the path: Gemini's
+// Interactions API (/v1beta/interactions) reads first, as it does live since
+// ea1f3e9, and api.anthropic.com's /v1/messages is the fallback. Each answers
+// from its own script of canned replies, one per call, and every call is
+// recorded with the engine that took it.
+const stub = { gemini: [], claude: [], calls: [] };
 const reply = (documents) => ({ status: 200, body: { id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5", stop_reason: "tool_use", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }, content: [{ type: "tool_use", id: "toolu_1", name: "record_documents", input: { documents } }] } });
 const overloaded = { status: 529, body: { type: "error", error: { type: "overloaded_error", message: "Overloaded" } } };
-const cutOff = { status: 200, body: { id: "msg_2", type: "message", role: "assistant", model: "claude-opus-5", stop_reason: "max_tokens", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 16000 }, content: [] } };
+const read = (documents) => ({ status: 200, body: { id: "int_1", status: "completed", steps: [{ type: "model_output", content: [{ type: "text", text: JSON.stringify({ documents }) }] }] } });
+const busy = { status: 503, body: { error: { code: 503, message: "UNAVAILABLE", status: "UNAVAILABLE" } } };
+const keyRefused = { status: 401, body: { error: { code: 401, message: "API key not valid.", status: "UNAUTHENTICATED" } } };
+const cutOff = { status: 200, body: { id: "int_2", status: "incomplete", steps: [] } };
 const stubServer = http.createServer((req, res) => {
   let raw = "";
   req.on("data", (c) => (raw += c));
   req.on("end", () => {
     let body = null;
     try { body = JSON.parse(raw); } catch {}
-    const blocks = body?.messages?.[0]?.content ?? [];
-    stub.calls.push({ tool: body?.tools?.[0]?.name, documents: blocks.filter((b) => b.type === "document").length, images: blocks.filter((b) => b.type === "image").length });
-    const r = stub.script.shift() ?? reply([]);
+    const gemini = /\/interactions/.test(req.url ?? "");
+    if (gemini) {
+      const input = body?.input ?? [];
+      stub.calls.push({ engine: "gemini", documents: input.filter((b) => b.type === "document").length, images: input.filter((b) => b.type === "image").length });
+    } else {
+      const blocks = body?.messages?.[0]?.content ?? [];
+      stub.calls.push({ engine: "claude", tool: body?.tools?.[0]?.name, documents: blocks.filter((b) => b.type === "document").length, images: blocks.filter((b) => b.type === "image").length });
+    }
+    const r = (gemini ? stub.gemini : stub.claude).shift() ?? (gemini ? read([]) : reply([]));
     res.writeHead(r.status, { "content-type": "application/json" });
     res.end(JSON.stringify(r.body));
   });
@@ -63,6 +75,8 @@ const env = {
   SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-key",
   ANTHROPIC_API_KEY: "fake-anthropic-key",
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${STUB}`,
+  GEMINI_API_KEY: "fake-gemini-key",
+  GEMINI_API_BASE: `http://127.0.0.1:${STUB}`,
 };
 const app = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], { cwd: WEB, env, stdio: ["ignore", "pipe", "pipe"] });
 app.stderr.on("data", (d) => process.env.VERBOSE && console.log("dev:", String(d).trim()));
@@ -81,7 +95,7 @@ async function pdf(pages, text) {
 const INVOICE = { documentType: "invoice", vendor: "Brightwork Ltd", date: "2026-09-14", dateAsPrinted: "14/09/2026", totalAmount: 1193.88, vatAmount: 198.98, invoiceNumber: "INV-1043", dueDate: "2026-09-28", dueDateAsPrinted: "28/09/2026", pages: [1], paidOnDocument: false, category: "Materials", lineItems: [{ description: "Plastering, ground floor", quantity: 12.5, unitPrice: 38.4 }] };
 const RECEIPT = { documentType: "receipt", vendor: "Toolstation", date: "2026-09-20", dateAsPrinted: "20/09/2026", totalAmount: 84.2, vatAmount: 14.03, pages: [2], paidOnDocument: true };
 const rows = () => db.tables.receipts;
-const reset = () => { db.tables.receipts = []; db.log.length = 0; stub.calls.length = 0; stub.script.length = 0; db.fail = {}; db.storageFails = false; };
+const reset = () => { db.tables.receipts = []; db.log.length = 0; stub.calls.length = 0; stub.gemini.length = 0; stub.claude.length = 0; db.fail = {}; db.storageFails = false; };
 const stored = () => db.log.filter((l) => String(l.key).startsWith("STORAGE "));
 
 try {
@@ -116,39 +130,54 @@ try {
 
   // A readable invoice.
   reset();
-  stub.script.push(reply([INVOICE]));
+  stub.gemini.push(read([INVOICE]));
   res = await post({ token: TOKEN, from: "ap@supplier.example", subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }] });
   r = rows()[0];
   check("a readable invoice becomes one row, waiting for review", res.status === 200 && rows().length === 1 && r?.needs_review === true && r?.document_type === "invoice", JSON.stringify({ status: res.status, rows: rows().length, type: r?.document_type }));
   check("...net of VAT, with the VAT, number, dates and lines from the read", Math.abs(r?.amount - 994.9) < 0.001 && r?.vat_amount === 198.98 && r?.invoice_number === "INV-1043" && r?.date === "2026-09-14" && r?.due_date === "2026-09-28" && r?.paid === false && r?.line_items?.length === 1 && r?.line_items[0].category === null, JSON.stringify({ amount: r?.amount, vat: r?.vat_amount, n: r?.invoice_number, date: r?.date, due: r?.due_date, paid: r?.paid, lines: r?.line_items }));
   check("...the PDF in the owner's own storage folder", /^storage:/.test(r?.image_data_url ?? "") && r.image_data_url.startsWith(`storage:${UID}/`) && r.image_data_url.endsWith(".pdf") && stored().length === 1 && stored()[0].contentType === "application/pdf", JSON.stringify({ image: r?.image_data_url, stored: stored() }));
-  check("...read once, as a PDF document block", stub.calls.length === 1 && stub.calls[0].tool === "record_documents" && stub.calls[0].documents === 1, JSON.stringify(stub.calls));
+  check("...read once, by Gemini, as a PDF document block", stub.calls.length === 1 && stub.calls[0].engine === "gemini" && stub.calls[0].documents === 1, JSON.stringify(stub.calls));
+
+  // Our own Gemini key refused: CLAUDE.md's fallback. The email is read by
+  // Claude instead and nothing about our key reaches the row.
+  reset();
+  stub.gemini.push(keyRefused);
+  stub.claude.push(reply([INVOICE]));
+  res = await post({ token: TOKEN, subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }] });
+  r = rows()[0];
+  check("a refused Gemini key falls back to Claude, which reads it", res.status === 200 && rows().length === 1 && r?.document_type === "invoice" && r?.invoice_number === "INV-1043" && !(r?.tags ?? []).includes("unread") && !/key|gemini/i.test(r?.notes ?? ""), JSON.stringify({ status: res.status, rows: rows().length, type: r?.document_type, tags: r?.tags, notes: r?.notes?.slice(0, 80) }));
+  check("...Gemini asked once, then Claude once with its tool and the PDF", stub.calls.length === 2 && stub.calls[0].engine === "gemini" && stub.calls[1].engine === "claude" && stub.calls[1].tool === "record_documents" && stub.calls[1].documents === 1, JSON.stringify(stub.calls));
 
   // The reader refuses: the document must not vanish.
   reset();
-  stub.script.push(overloaded, overloaded, overloaded, overloaded);
+  // Both readers: Gemini busy, so the fallback is asked, and Claude overloaded.
+  stub.gemini.push(...Array(10).fill(busy));
+  stub.claude.push(...Array(10).fill(overloaded));
   res = await post({ token: TOKEN, from: "ap@supplier.example", subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }] });
   r = rows()[0];
-  check("a document the reader refuses (529) is still filed for review", res.status === 200 && rows().length === 1 && r?.needs_review === true, JSON.stringify({ status: res.status, rows: rows().length }));
+  check("a document both readers refuse (503, then 529) is still filed for review", res.status === 200 && rows().length === 1 && r?.needs_review === true, JSON.stringify({ status: res.status, rows: rows().length }));
   check("...marked unread, with nothing invented for the figures", (r?.tags ?? []).includes("unread") && r?.amount === 0 && r?.vat_amount === 0 && /could not be read automatically/.test(r?.notes ?? "") && r?.vendor === "invoice-1043.pdf", JSON.stringify({ tags: r?.tags, amount: r?.amount, notes: r?.notes?.slice(0, 90), vendor: r?.vendor }));
   check("...with the document attached", r?.image_data_url?.startsWith(`storage:${UID}/`) && stored().length === 1, JSON.stringify({ image: r?.image_data_url }));
+  const engines = stub.calls.map((c) => c.engine);
+  check("...after Gemini was asked and then Claude, never the other way round", engines[0] === "gemini" && engines.includes("claude") && engines.lastIndexOf("gemini") < engines.indexOf("claude"), JSON.stringify(engines));
 
   reset();
-  stub.script.push(cutOff);
+  stub.gemini.push(cutOff);
   res = await post({ token: TOKEN, subject: "Long invoice", attachments: [{ filename: "long.pdf", mimeType: "application/pdf", base64: one }] });
   r = rows()[0];
-  check("a read cut off by its token budget is filed unread too, saying so", rows().length === 1 && (r?.tags ?? []).includes("unread") && /could not be read automatically \(/.test(r?.notes ?? ""), JSON.stringify({ rows: rows().length, notes: r?.notes?.slice(0, 120) }));
+  check("a read cut off by its token budget is filed unread too, saying so, and not asked twice", rows().length === 1 && stub.calls.length === 1 && (r?.tags ?? []).includes("unread") && /could not be read automatically \(/.test(r?.notes ?? ""), JSON.stringify({ rows: rows().length, notes: r?.notes?.slice(0, 120) }));
 
   // One refused must not take the others with it.
   reset();
-  stub.script.push(reply([INVOICE]), overloaded, overloaded, overloaded, overloaded);
+  stub.gemini.push(read([INVOICE]), ...Array(10).fill(busy));
+  stub.claude.push(...Array(10).fill(overloaded));
   res = await post({ token: TOKEN, subject: "Two files", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }, { filename: "statement.pdf", mimeType: "application/pdf", base64: one }] });
   const tagsOf = (row) => (row.tags ?? []).join(",");
   check("one attachment read and one refused gives two rows, one of each", res.status === 200 && rows().length === 2 && rows().filter((x) => tagsOf(x) === "via-email").length === 1 && rows().filter((x) => tagsOf(x) === "via-email,unread").length === 1, JSON.stringify(rows().map((x) => ({ vendor: x.vendor, tags: x.tags }))));
 
   // The database refuses the row: filed unread rather than lost.
   reset();
-  stub.script.push(reply([INVOICE]));
+  stub.gemini.push(read([INVOICE]));
   db.fail = { "POST receipts": 1 };
   res = await post({ token: TOKEN, subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }] });
   r = rows()[0];
@@ -156,7 +185,7 @@ try {
 
   // Storage down: the document stays inline.
   reset();
-  stub.script.push(reply([INVOICE]));
+  stub.gemini.push(read([INVOICE]));
   db.storageFails = true;
   res = await post({ token: TOKEN, subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/pdf", base64: one }] });
   r = rows()[0];
@@ -164,14 +193,14 @@ try {
 
   // Two documents in one PDF.
   reset();
-  stub.script.push(reply([INVOICE, RECEIPT]));
+  stub.gemini.push(read([INVOICE, RECEIPT]));
   res = await post({ token: TOKEN, subject: "Two in one", attachments: [{ filename: "bundle.pdf", mimeType: "application/pdf", base64: two }] });
   check("two documents in one PDF give two rows, each saying which it is", rows().length === 2 && rows().every((x, i) => new RegExp(`Document ${i + 1} of 2 in bundle.pdf`).test(x.notes ?? "")) && rows()[0].document_type === "invoice" && rows()[1].document_type === "receipt", JSON.stringify(rows().map((x) => ({ type: x.document_type, notes: x.notes?.slice(0, 40) }))));
   check("...each with its own pages cut out and stored", stored().length === 2 && stored().every((s) => s.bytes > 0) && rows().every((x) => x.image_data_url?.startsWith(`storage:${UID}/`)), JSON.stringify(stored()));
 
   // Five attachments at most, and only the types the reader takes.
   reset();
-  for (let i = 0; i < 5; i++) stub.script.push(reply([{ ...INVOICE, invoiceNumber: `INV-${i}` }]));
+  for (let i = 0; i < 5; i++) stub.gemini.push(read([{ ...INVOICE, invoiceNumber: `INV-${i}` }]));
   const six = [...Array(6)].map((_, i) => ({ filename: `inv-${i}.pdf`, mimeType: "application/pdf", base64: one }));
   res = await post({ token: TOKEN, subject: "Bulk", attachments: [{ filename: "notes.csv", mimeType: "text/csv", base64: "YSxi" }, ...six] });
   // Five read, plus ONE row saying what was left out -- the spreadsheet the
@@ -185,7 +214,7 @@ try {
 
   // A PDF a gateway labelled application/octet-stream is still a PDF.
   reset();
-  stub.script.push(reply([INVOICE]));
+  stub.gemini.push(read([INVOICE]));
   res = await post({ token: TOKEN, subject: "Invoice 1043", attachments: [{ filename: "invoice-1043.pdf", mimeType: "application/octet-stream", base64: one }] });
   r = rows()[0];
   check("an octet-stream PDF is read as a PDF, not filed as 'no usable attachment'", res.status === 200 && stub.calls.length === 1 && r?.document_type === "invoice" && r?.image_data_url?.endsWith(".pdf"), JSON.stringify({ calls: stub.calls.length, type: r?.document_type, image: r?.image_data_url }));

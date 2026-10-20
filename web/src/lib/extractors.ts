@@ -231,7 +231,13 @@ async function extractWithGemini<T>(opts: ExtractStructuredOptions, budgetMs: nu
   // where the budget says rather than at twice it.
   const client = new GoogleGenAI({
     apiKey,
-    httpOptions: { timeout: Math.round(budgetMs / 2), retryOptions: { attempts: 2, initialDelay: 1000, maxDelay: 3000 } },
+    httpOptions: {
+      timeout: Math.round(budgetMs / 2),
+      retryOptions: { attempts: 2, initialDelay: 1000, maxDelay: 3000 },
+      // Only ever a stand-in for the harness, as in the help chat. Unset in
+      // production, where the SDK uses Google's own address.
+      ...(process.env.GEMINI_API_BASE ? { baseUrl: process.env.GEMINI_API_BASE } : {}),
+    },
   });
 
   let interaction;
