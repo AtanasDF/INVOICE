@@ -1,8 +1,8 @@
 import { VAT_RATE_KINDS, type VatRateKind } from "@/lib/vat";
 import { addDays, daysBetween, todayISO, ukDate } from "@/lib/today";
 
-// The half-typed new receipt and new invoice, kept on the device as they are
-// typed.
+// The half-typed new receipt, new invoice and quote, and changes to a draft
+// invoice or quote, kept on the device as they are typed.
 //
 // useLeaveGuard asks "Leave this page?" before a full page load, which is what
 // a link tapped with no signal becomes. iPhone Safari ignores beforeunload, and
@@ -10,14 +10,21 @@ import { addDays, daysBetween, todayISO, ukDate } from "@/lib/today";
 // page never had this problem because it keeps `free-invoice-draft` as it goes;
 // this is the same idea for the two forms that write to his books.
 //
-// Both keys hold somebody's own work, so both are in PERSONAL_LOCAL_KEYS in
-// accountSwitch.ts and go when a different account signs in on the device.
+// Every key holds somebody's own work, so each is in PERSONAL_LOCAL_KEYS (or,
+// per record, PERSONAL_LOCAL_PREFIXES) in accountSwitch.ts and goes when a
+// different account signs in on the device.
 //
 // Photographs are never kept: a phone photo is megabytes as a data URL, and
 // localStorage holds about five in all, shared with the Free page's draft and
 // signature. The draft says a photo was there so it can be asked for again.
 export const RECEIPT_DRAFT_KEY = "new-receipt-draft";
 export const INVOICE_DRAFT_KEY = "new-invoice-draft";
+export const QUOTE_DRAFT_KEY = "new-quote-draft";
+// Changes to a record that already exists are kept per record, so editing
+// two draft invoices in turn never mixes them. Both prefixes are in
+// PERSONAL_LOCAL_PREFIXES in accountSwitch.ts.
+export const QUOTE_EDIT_PREFIX = "quote-edit:";
+export const INVOICE_EDIT_PREFIX = "invoice-edit:";
 
 // Long enough to come back after a week away, short enough that a forgotten
 // one doesn't greet him in spring.
@@ -64,8 +71,30 @@ export type InvoiceDraftFields = {
   imported: boolean;
 };
 
-export type DraftKind = "receipt" | "invoice";
-type FieldsOf<K extends DraftKind> = K extends "receipt" ? ReceiptDraftFields : InvoiceDraftFields;
+export type QuoteDraftFields = {
+  clientId: string;
+  number: string;
+  date: string;
+  validUntil: string;
+  items: InvoiceLineDraft[];
+  notes: string;
+  deposit: { kind: "percent" | "amount"; value: number } | null;
+};
+
+// A draft invoice being edited: what its page holds, not a new invoice's.
+export type InvoiceEditDraftFields = {
+  clientId: string;
+  date: string;
+  dueDate: string;
+  paymentTerms: string;
+  items: InvoiceLineDraft[];
+  cisRate: number | null;
+  notes: string;
+  tagsInput: string;
+};
+
+export type DraftKind = "receipt" | "invoice" | "quote" | "invoice-edit";
+export type FieldsOf<K extends DraftKind> = K extends "receipt" ? ReceiptDraftFields : K extends "invoice" ? InvoiceDraftFields : K extends "quote" ? QuoteDraftFields : InvoiceEditDraftFields;
 export type SavedDraft<K extends DraftKind> = { savedAt: string; fields: FieldsOf<K> };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -101,15 +130,19 @@ export function receiptDraftFields(v: unknown): ReceiptDraftFields | null {
   };
 }
 
-export function invoiceDraftFields(v: unknown): InvoiceDraftFields | null {
-  if (!isObject(v)) return null;
-  const items = (Array.isArray(v.items) ? v.items : []).filter(isObject).map((l): InvoiceLineDraft => ({
+const invoiceLines = (v: unknown): InvoiceLineDraft[] =>
+  (Array.isArray(v) ? v : []).filter(isObject).map((l): InvoiceLineDraft => ({
     description: str(l.description),
     quantity: num(l.quantity, 1),
     unitPrice: num(l.unitPrice, 0),
     vatRate: VAT_RATE_KINDS.includes(l.vatRate as VatRateKind) ? (l.vatRate as VatRateKind) : ("standard" as const),
     ...(l.kind === "labour" || l.kind === "materials" ? { kind: l.kind } : {}),
   }));
+const cisRateOf = (v: unknown) => (v === 20 || v === 30 ? v : null);
+
+export function invoiceDraftFields(v: unknown): InvoiceDraftFields | null {
+  if (!isObject(v)) return null;
+  const items = invoiceLines(v.items);
   return {
     clientId: str(v.clientId),
     clientName: str(v.clientName),
@@ -120,10 +153,38 @@ export function invoiceDraftFields(v: unknown): InvoiceDraftFields | null {
     paymentTerms: str(v.paymentTerms),
     termsLength: typeof v.termsLength === "number" && Number.isFinite(v.termsLength) ? v.termsLength : null,
     items: items.length ? items : [{ description: "", quantity: 1, unitPrice: 0, vatRate: "standard" }],
-    cisRate: v.cisRate === 20 || v.cisRate === 30 ? v.cisRate : null,
+    cisRate: cisRateOf(v.cisRate),
     notes: str(v.notes),
     tagsInput: str(v.tagsInput),
     imported: v.imported === true,
+  };
+}
+
+export function quoteDraftFields(v: unknown): QuoteDraftFields | null {
+  if (!isObject(v)) return null;
+  const d = v.deposit;
+  return {
+    clientId: str(v.clientId),
+    number: str(v.number),
+    date: isoDate(v.date),
+    validUntil: isoDate(v.validUntil),
+    items: invoiceLines(v.items),
+    notes: str(v.notes),
+    deposit: isObject(d) && (d.kind === "percent" || d.kind === "amount") ? { kind: d.kind, value: num(d.value, 0) } : null,
+  };
+}
+
+export function invoiceEditDraftFields(v: unknown): InvoiceEditDraftFields | null {
+  if (!isObject(v)) return null;
+  return {
+    clientId: str(v.clientId),
+    date: isoDate(v.date),
+    dueDate: isoDate(v.dueDate),
+    paymentTerms: str(v.paymentTerms),
+    items: invoiceLines(v.items),
+    cisRate: cisRateOf(v.cisRate),
+    notes: str(v.notes),
+    tagsInput: str(v.tagsInput),
   };
 }
 
@@ -139,12 +200,28 @@ export function invoiceHasWork(f: InvoiceDraftFields): boolean {
   return !!(f.customerText.trim() || f.notes.trim() || f.paymentTerms.trim() || f.tagsInput.trim() || f.items.some((i) => i.description.trim() || i.unitPrice));
 }
 
+export function quoteHasWork(f: QuoteDraftFields): boolean {
+  return !!(f.notes.trim() || f.deposit || f.items.some((i) => i.description.trim() || i.unitPrice));
+}
+
+// An edited draft invoice is work whenever it differs from the invoice as
+// saved, which only the page knows (useFormDraft's baseline): emptying a line
+// is as much a change as typing one.
+const always = () => true;
+
 const DRAFTS = {
   receipt: { key: RECEIPT_DRAFT_KEY, parse: receiptDraftFields, hasWork: receiptHasWork },
   invoice: { key: INVOICE_DRAFT_KEY, parse: invoiceDraftFields, hasWork: invoiceHasWork },
+  quote: { key: QUOTE_DRAFT_KEY, parse: quoteDraftFields, hasWork: quoteHasWork },
+  "invoice-edit": { key: "", parse: invoiceEditDraftFields, hasWork: always },
 } as const;
 
-export function draftKey(kind: DraftKind): string {
+// `scope` is the record being edited. A new quote has none; editing one is
+// kept under its own id. An edited invoice always has one, and without it
+// there is nowhere to keep it.
+export function draftKey(kind: DraftKind, scope?: string): string {
+  if (kind === "quote" && scope) return QUOTE_EDIT_PREFIX + scope;
+  if (kind === "invoice-edit") return scope ? INVOICE_EDIT_PREFIX + scope : "";
   return DRAFTS[kind].key;
 }
 
@@ -219,27 +296,38 @@ export function draftWhen(savedAt: string, today: string = todayISO()): string {
 
 // Storage is guarded throughout: private mode throws, a full store throws, and
 // neither should ever stop somebody typing.
-export function readFormDraft<K extends DraftKind>(kind: K): SavedDraft<K> | null {
+//
+// A per-record draft that has gone stale is removed when it is read, or the
+// keys of every invoice ever edited would pile up on the phone.
+export function readFormDraft<K extends DraftKind>(kind: K, scope?: string): SavedDraft<K> | null {
+  const key = draftKey(kind, scope);
+  if (!key) return null;
   try {
-    return decodeDraft(kind, localStorage.getItem(DRAFTS[kind].key), new Date());
+    const raw = localStorage.getItem(key);
+    const draft = decodeDraft(kind, raw, new Date());
+    if (raw && !draft && scope) localStorage.removeItem(key);
+    return draft;
   } catch {
     return null;
   }
 }
 
-export function writeFormDraft(kind: DraftKind, fields: unknown) {
+export function writeFormDraft(kind: DraftKind, fields: unknown, scope?: string) {
+  const key = draftKey(kind, scope);
   const encoded = encodeDraft(kind, fields, new Date());
-  if (!encoded) return;
+  if (!key || !encoded) return;
   try {
-    localStorage.setItem(DRAFTS[kind].key, encoded);
+    localStorage.setItem(key, encoded);
   } catch {
     // storage full or blocked -- the leave guard is all there is then
   }
 }
 
-export function clearFormDraft(kind: DraftKind) {
+export function clearFormDraft(kind: DraftKind, scope?: string) {
+  const key = draftKey(kind, scope);
+  if (!key) return;
   try {
-    localStorage.removeItem(DRAFTS[kind].key);
+    localStorage.removeItem(key);
   } catch {
     // nothing stored to clear
   }

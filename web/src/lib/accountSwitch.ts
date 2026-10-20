@@ -30,7 +30,36 @@ export const PERSONAL_LOCAL_KEYS = [
   "invite-code",             // their own invite code
   "new-receipt-draft",       // a half-typed receipt: supplier, amounts, notes
   "new-invoice-draft",       // a half-typed invoice: customer, lines, prices
+  "new-quote-draft",         // a half-typed quote: customer, lines, prices
 ] as const;
+
+// The same, one key per record: unsaved changes to a draft invoice or quote,
+// kept under its id (formDraft.ts).
+export const PERSONAL_LOCAL_PREFIXES = [
+  "invoice-edit:",
+  "quote-edit:",
+] as const;
+
+// A supplier's half-typed prices on a /r/ page, one key per link (answerDraft.ts).
+export const PERSONAL_SESSION_PREFIXES = [
+  "quote-request-answer:",
+] as const;
+
+// Every key in `keys` that starts with one of `prefixes`, which is what a
+// different account's arrival has to remove besides the fixed keys.
+export function personalPrefixed(keys: string[], prefixes: readonly string[] = PERSONAL_LOCAL_PREFIXES): string[] {
+  return keys.filter((k) => prefixes.some((p) => k.startsWith(p)));
+}
+
+// A getter, because naming sessionStorage at all throws where it is blocked.
+function storedKeys(store: () => Storage): string[] {
+  const keys: string[] = [];
+  try {
+    const s = store();
+    for (let i = 0; i < s.length; i++) keys.push(s.key(i) ?? "");
+  } catch {}
+  return keys;
+}
 
 export const PERSONAL_SESSION_KEYS = [
   "scan-handoff-capture",    // a photograph of a receipt, mid-scan
@@ -76,10 +105,11 @@ export function forgetOtherAccount(current: string | null): void {
     return; // storage blocked: nothing was stored to leave behind
   }
   const { local, session } = keysToClear(previous, current);
-  for (const k of local) {
+  const swapped = local.length > 0;
+  for (const k of [...local, ...(swapped ? personalPrefixed(storedKeys(() => localStorage)) : [])]) {
     try { localStorage.removeItem(k); } catch {}
   }
-  for (const k of session) {
+  for (const k of [...session, ...(swapped ? personalPrefixed(storedKeys(() => sessionStorage), PERSONAL_SESSION_PREFIXES) : [])]) {
     try { sessionStorage.removeItem(k); } catch {}
   }
   const remember = accountToRemember(previous, current);
@@ -108,11 +138,14 @@ export function forgetOtherAccount(current: string | null): void {
 export function accountBoot(authKey: string): string {
   return `try{
 var K=${JSON.stringify(authKey)},M=${JSON.stringify(LAST_ACCOUNT_KEY)};
-var L=${JSON.stringify(PERSONAL_LOCAL_KEYS)},S=${JSON.stringify(PERSONAL_SESSION_KEYS)};
+var L=${JSON.stringify(PERSONAL_LOCAL_KEYS)},P=${JSON.stringify(PERSONAL_LOCAL_PREFIXES)},S=${JSON.stringify(PERSONAL_SESSION_KEYS)},Q=${JSON.stringify(PERSONAL_SESSION_PREFIXES)};
 var r=localStorage.getItem(K),u=null;
 if(r){if(r.indexOf("base64-")===0)r=atob(r.slice(7));var s=JSON.parse(r);u=(s&&s.user&&s.user.id)||null;}
 if(u){var p=localStorage.getItem(M);
-if(p!==u){for(var i=0;i<L.length;i++)localStorage.removeItem(L[i]);for(var j=0;j<S.length;j++)sessionStorage.removeItem(S[j]);}
+if(p!==u){for(var i=0;i<L.length;i++)localStorage.removeItem(L[i]);
+for(var k=localStorage.length-1;k>=0;k--){var n=localStorage.key(k);for(var q=0;q<P.length;q++)if(n&&n.indexOf(P[q])===0){localStorage.removeItem(n);break;}}
+for(var j=0;j<S.length;j++)sessionStorage.removeItem(S[j]);
+for(var m=sessionStorage.length-1;m>=0;m--){var o=sessionStorage.key(m);for(var w=0;w<Q.length;w++)if(o&&o.indexOf(Q[w])===0){sessionStorage.removeItem(o);break;}}}
 localStorage.setItem(M,u);}
 }catch(e){}`.replace(/\s*\n\s*/g, "");
 }

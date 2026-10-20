@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Feedback, feedbackStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
 import { loadFailed } from "@/lib/errorText";
+import { useConfirmLeave } from "@/lib/leaveGuard";
 
 const CATEGORIES = ["Bug", "Confusing", "Missing feature", "Other"];
 
@@ -22,6 +23,8 @@ export default function FeedbackPage() {
   // sent" listing just the new note read as the whole history.
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
+  // iPhone Safari never asks before leaving, so the app does.
+  useConfirmLeave(!saving && !!message.trim(), "Leave without sending your message? What you've written goes.");
 
   useEffect(() => {
     feedbackStore

@@ -471,6 +471,20 @@ input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
 }
 
+/* iPhone zooms the page into any box under 16px and leaves it zoomed. The root
+   is -apple-system-body, 17px at the default size, so text-sm is about 15px
+   and text-xs under 13px -- about 80 boxes in the app. Unlayered, so it beats
+   Tailwind's utilities; only on touch, so a computer keeps the smaller type.
+   Not maximum-scale=1 in the viewport, which stops everybody zooming at all
+   (notes/ios-safari.md #1). */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+}
+
 /* How it feels to press things (Atanas, 2026-09-24: "I want a nicer feel when
    you click the buttons and move around the pages").
 
@@ -513,8 +527,12 @@ label.rounded-xl:active {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* backwards, not both: a finished animation that still holds opacity keeps its
+   element a stacking context for good, so every overlay's z-50 counted only
+   inside its page while the Feedback pill, a sibling of <main>, sat on top of
+   the camera, + Add and the photo viewer (notes/ios-safari.md #5). */
 main > * {
-  animation: page-in 180ms ease-out both;
+  animation: page-in 180ms ease-out backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -564,4 +582,39 @@ footer button {
   display: inline-block;
   padding-top: 0.375rem;
   padding-bottom: 0.375rem;
+}
+
+/* A phone on its side puts the Dynamic Island and the rounded corners on the
+   left or right, and viewportFit "cover" hands that space to the page. The
+   header, <main> and the footer only padded the top and bottom, so the app
+   name and the edge of every card sat under the island (notes/ios-safari.md
+   #22). Screen only: unlayered, this would otherwise beat print:px-0. */
+@media screen {
+  .safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* An open overlay holds the page still. Nothing locked it, so dragging the
+   backdrop of + Add or the photo viewer scrolled the page underneath, and a
+   list inside an overlay carried on into it at either end
+   (notes/ios-safari.md #23). Keyed on aria-modal, which every full-screen
+   overlay should carry anyway, so a new one gets this by being correct. */
+html:has([aria-modal="true"]) {
+  overflow: hidden;
+}
+[aria-modal="true"] .overflow-auto,
+[aria-modal="true"] .overflow-y-auto {
+  overscroll-behavior: contain;
+}
+
+/* With the keyboard up a fixed bar either hides behind it or floats in the
+   middle of the screen over the box being typed in. Touch only, and only
+   while something that brings the keyboard (or the picker wheel) up has
+   focus. */
+@media (pointer: coarse) {
+  html:has(:is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="range"], [type="color"]), textarea, select):focus) .hide-while-typing {
+    display: none;
+  }
 }

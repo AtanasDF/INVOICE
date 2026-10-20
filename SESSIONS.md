@@ -49,6 +49,39 @@ camera tip. tsc/eslint/build clean; help-chat 61/61, govuk-words, vocabulary, pl
 privacy-terms, terms-of-use, every-screen-explained, promises all green against
 `next start` (container Chromium). Before merging: nothing beyond a read of the diff.
 
+## 2026-10-20 — iPhone Safari: forms, inputs and layout (cloud, brief 13), NOT merged
+
+Branch `claude/brief-13-cloud-queue-u2loeu` (the brief said `wip/ios-forms-layout`; the
+cloud session was told to use this name). Findings 1, 2, 5, 6, 20, 21, 22 and 23 of
+`notes/ios-safari.md`, all confirmed in the code and all fixed; detail and what is left in
+`notes/ios-forms-layout.md`. The camera halves of #21 and #22 are in DocumentCapture and
+left for brief 14. No schema change.
+
+New: `test-ios-forms-layout` (52, source-reading, each fix proved by breaking it) and
+`test-ios-layout` (15, browser: **6/15 on a `main` build, 15/15 here** -- on main a receipt
+line turns 2.50 into 250 and the Feedback pill sits on top of + Add). Both in run-all.sh.
+`test-account-switch` extended (24). tsc, eslint, build clean (build with placeholder
+public Supabase env: there is no .env.local in the cloud).
+
+**This container can run the browser suites**: a two-line wrapper at the Mac's Chrome path
+(`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, outside the repo) execs
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome --no-sandbox`, and the app is built with
+`NEXT_PUBLIC_SUPABASE_URL=https://wecfwjxzyzzrcwbwnwpo.supabase.co` (public) and any anon
+key, because mockdb intercepts that origin. Results below are Chromium on Linux.
+
+Green against this branch, one at a time: test-ios-layout 15/15, test-draft-autosave 18,
+test-quotes 35, test-settings-save 41, test-big-text 22, test-public-request 30,
+test-feedback-page 11, test-fit-320 27, test-no-sideways 4, test-tap-targets 6, test-lines 7,
+test-clear 22, test-two-tabs 13, test-company-picker 18, test-free-draft 19,
+test-one-handed 17, test-dashboard 30, test-keyboard-only 45, test-form-errors 10,
+test-double-press 11, test-deposits 17, test-quote-vat-snapshot 10, test-payments 17,
+test-dark-mode 48, test-feel 10, test-mileage 5, test-vat-snapshot 4, test-cis 14,
+test-merge-contacts 11, test-quote-chase 17. Logic: test-ios-forms-layout 52,
+test-form-draft 67, test-account-switch 24.
+Not green, and identical on a `main` build in the same container, so not this branch's:
+test-quote-links (ignores BASE, connects to a fixed port 3316) and test-review-fixes
+(times out waiting, 0 checks). Still for the Mac: the list in notes/ios-forms-layout.md.
+
 ## 2026-10-20 — Round 3 merged; migrations 043-045 live
 
 043, 044 and 045 run on the live database and each exercised as the Hidefield owner in a

@@ -60,8 +60,9 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
           <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/40" />
           <div
             role="dialog"
+            aria-modal="true"
             aria-label="Add"
-            className="relative w-full max-w-sm rounded-t-2xl border bg-white p-4 text-left text-neutral-900 shadow-lg sm:rounded-2xl"
+            className="relative max-h-[calc(100dvh-1rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-t-2xl border bg-white p-4 text-left text-neutral-900 shadow-lg sm:rounded-2xl"
             style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
           >
             <p className="text-xs text-neutral-500">What are you adding?</p>

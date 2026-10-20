@@ -9,6 +9,7 @@ import type { RequestItem } from "@/lib/quoteCompare";
 import { RequestInput, newItemId } from "@/lib/quoteRequests";
 import { saveFailed } from "@/lib/errorText";
 import { todayIso } from "@/lib/freeInvoiceDraft";
+import { useConfirmLeave } from "@/lib/leaveGuard";
 
 const INPUT = "w-full rounded-lg border px-3 py-2";
 const blankLine = (): RequestItem => ({ id: newItemId(), description: "", quantity: 1, unit: "", note: "" });
@@ -31,6 +32,9 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
   const [saving, setSaving] = useState(false);
   const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [opened] = useState(() => JSON.stringify(v));
+  // iPhone Safari never asks before leaving, so the app does.
+  useConfirmLeave(!saving && (picked.length > 0 || JSON.stringify(v) !== opened), "Leave without saving this request? The list you've typed goes.");
   const set = (patch: Partial<RequestInput>) => setV((prev) => ({ ...prev, ...patch }));
   const setLine = (id: string, patch: Partial<RequestItem>) => set({ items: v.items.map((l) => (l.id === id ? { ...l, ...patch } : l)) });
 

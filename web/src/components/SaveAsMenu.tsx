@@ -116,7 +116,7 @@ export default function SaveAsMenu({
         {busy ? "Saving…" : label}
       </button>
       {open && (
-        <div id={listId} className="absolute right-0 z-30 mt-2 w-64 max-h-[70vh] overflow-y-auto rounded-xl border bg-white py-1 text-left text-neutral-900 shadow-lg">
+        <div id={listId} className="absolute right-0 z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] max-h-[70dvh] overflow-y-auto rounded-xl border bg-white py-1 text-left text-neutral-900 shadow-lg">
           {SAVE_FORMATS.map((f) => (
             <button
               key={f.kind}

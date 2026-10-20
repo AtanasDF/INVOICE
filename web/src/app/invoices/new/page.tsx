@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeaveGuard } from "@/lib/leaveGuard";
 import { useFormDraft } from "@/lib/useFormDraft";
@@ -734,7 +735,8 @@ export default function NewInvoicePage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">New invoice</h1>
+          <Link href="/invoices" className="text-sm text-neutral-500">← Invoices</Link>
+          <h1 className="mt-1 text-2xl font-bold">New invoice</h1>
           {/* What the number will be (Atanas, 2026-09-23: "it should give you
               the invoice with the next number in order as it is in the
               system"). It is only a preview: the real number is handed out by
@@ -971,14 +973,14 @@ export default function NewInvoicePage() {
                 onBlur={() => onDescriptionBlur(idx)}
               />
               <NumberInput
-                className={`${profile?.vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`}
+                className={`col-span-4 rounded-lg border px-3 py-2 text-right sm:col-span-2`}
                 placeholder="Qty"
                 aria-label="Quantity"
                 value={it.quantity}
                 onChange={(quantity) => updateItem(idx, { quantity })}
               />
               <NumberInput
-                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
+                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-8"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
                 placeholder="Unit price"
                 aria-label="Unit price"
                 value={it.unitPrice}
@@ -994,7 +996,7 @@ export default function NewInvoicePage() {
                   {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
                 </select>
               )}
-              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-1 min-h-11 min-w-11 text-sm text-neutral-600 underline">✕</button>
+              <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-sm text-neutral-600 underline">✕</button>
               {cisRate !== null && <LineKind item={it} onChange={(kind) => updateItem(idx, { kind })} />}
             </div>
           ))}

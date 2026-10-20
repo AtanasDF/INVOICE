@@ -267,7 +267,7 @@ export default function FilesPage() {
           aria-modal="true"
           aria-label={`${preview.vendor || preview.category || "Document"} preview`}
           className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4"
-          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))", paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
           onClick={closePreview}
         >
           <div className="flex items-center justify-between text-ink-on-dark">

@@ -7,6 +7,9 @@ import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
 import CustomerPicker, { NewCustomerStart } from "@/components/quote/CustomerPicker";
 import ClearFormButton from "@/components/ClearFormButton";
+import DraftOffer from "@/components/DraftOffer";
+import { quoteDraftFields } from "@/lib/formDraft";
+import { useFormDraft } from "@/lib/useFormDraft";
 import PriceFinder from "@/components/PriceFinder";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
@@ -31,7 +34,10 @@ const NO_ONE: NewCustomerStart = { name: "", email: "", address: "" };
 
 // newCustomer: a customer to add (one brought over from the Free page),
 // opened in the picker to start with. onClear: offered on a new quote.
-export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel, onClientAdded, newCustomer = null, onClear }: {
+// draftScope: the quote being edited; a new quote has none. Either way what is
+// typed is kept on the device until it is saved, because an iPhone reloads a
+// tab left in the background and never asks before it does.
+export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel, onClientAdded, newCustomer = null, onClear, draftScope }: {
   initial: QuoteFormValue;
   clients: Client[];
   vatRegistered: boolean;
@@ -41,8 +47,10 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   onClientAdded: (client: Client) => void;
   newCustomer?: NewCustomerStart | null;
   onClear?: () => void;
+  draftScope?: string;
 }) {
-  const [v, setV] = useState<QuoteFormValue>(initial.items.length ? initial : { ...initial, items: [{ ...BLANK_LINE }] });
+  const [start] = useState<QuoteFormValue>(() => (initial.items.length ? initial : { ...initial, items: [{ ...BLANK_LINE }] }));
+  const [v, setV] = useState<QuoteFormValue>(start);
   const anyone = () => clients.some((c) => !c.archived);
   const picked = clients.find((c) => c.id === v.clientId) ?? null;
   const [adding, setAdding] = useState<NewCustomerStart | null>(() => newCustomer ?? (anyone() || clients.some((c) => c.id === initial.clientId) ? null : NO_ONE));
@@ -55,6 +63,16 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   const lines = v.items.filter((l) => l.description.trim() || l.unitPrice);
   const totals = computeInvoiceTotals(lines, vatRegistered);
   const depositShown = depositGross({ deposit: v.deposit, items: lines }, vatRegistered);
+  const [baseline] = useState(() => JSON.stringify(quoteDraftFields(start)));
+  const kept = useFormDraft("quote", quoteDraftFields(v)!, saving, { scope: draftScope, baseline });
+
+  function restoreDraft() {
+    const f = kept.take();
+    if (!f) return;
+    // A customer archived since comes back unpicked rather than attached unseen.
+    setV({ ...f, clientId: clients.some((c) => c.id === f.clientId && !c.archived) ? f.clientId : "", items: f.items.length ? f.items : [{ ...BLANK_LINE }] });
+    setError(null);
+  }
 
   async function save() {
     if (adding) return setError("Finish adding the new customer (Add customer), or cancel it, first.");
@@ -69,6 +87,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
     setError(null);
     try {
       await onSave({ ...v, number: v.number.trim(), items: lines, deposit });
+      kept.finish();
     } catch (err) {
       setError(saveFailed(err, "Couldn't save the quote."));
       setSaving(false);
@@ -77,6 +96,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
 
   return (
     <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      {kept.offer && <DraftOffer what={draftScope ? "changes to this quote" : "a quote"} savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
       <div aria-invalid={error ? true : undefined} aria-describedby={error ? "quote-error" : undefined}>
       <CustomerPicker
         people={clients}
@@ -137,8 +157,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
               value={l.description}
               onChange={(e) => setLine(i, { description: e.target.value })}
             />
-            <NumberInput className={`${vatRegistered ? "col-span-3" : "col-span-4"} rounded-lg border px-3 py-2 text-right sm:col-span-2`} aria-label="Quantity" value={l.quantity} onChange={(quantity) => setLine(i, { quantity })} />
-            <NumberInput className={`${vatRegistered ? "col-span-4" : "col-span-7"} rounded-lg border px-3 py-2 text-right sm:col-span-3`} aria-label="Unit price" placeholder="Price £" value={l.unitPrice} onChange={(unitPrice) => setLine(i, { unitPrice })} />
+            <NumberInput className={`col-span-4 rounded-lg border px-3 py-2 text-right sm:col-span-2`} aria-label="Quantity" value={l.quantity} onChange={(quantity) => setLine(i, { quantity })} />
+            <NumberInput className={`${vatRegistered ? "col-span-4" : "col-span-8"} rounded-lg border px-3 py-2 text-right sm:col-span-3`} aria-label="Unit price" placeholder="Price £" value={l.unitPrice} onChange={(unitPrice) => setLine(i, { unitPrice })} />
             {vatRegistered && (
               <select aria-label="VAT rate" className="col-span-4 rounded-lg border px-1 py-2 text-xs sm:col-span-2" value={l.vatRate} onChange={(e) => setLine(i, { vatRate: e.target.value as VatRateKind })}>
                 {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
@@ -149,7 +169,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
               onClick={() => set({ items: v.items.filter((_, j) => j !== i) })}
               disabled={v.items.length === 1}
               aria-label={`Remove line ${i + 1}`}
-              className="col-span-1 text-sm text-neutral-500 disabled:opacity-30"
+              className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-sm text-neutral-500 disabled:opacity-30"
             >
               ✕
             </button>
@@ -215,7 +235,14 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           {saving ? "Saving…" : saveLabel}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+          <button
+            type="button"
+            onClick={() => {
+              kept.discard();
+              onCancel();
+            }}
+            className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
+          >
             Cancel
           </button>
         )}
@@ -228,6 +255,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
               setV({ clientId: "", number: v.number, date: today, validUntil: defaultValidUntil(today), items: [{ ...BLANK_LINE }], notes: "", deposit: null });
               setAdding(anyone() ? null : NO_ONE);
               setError(null);
+              kept.discard();
               onClear();
             }}
           />

@@ -2,6 +2,7 @@
 
 const MISSING_TOTAL = "Enter the total paid before saving.";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeaveGuard } from "@/lib/leaveGuard";
 import { useFormDraft } from "@/lib/useFormDraft";
@@ -16,6 +17,7 @@ import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { findDuplicate } from "@/lib/duplicates";
 import ClearFormButton from "@/components/ClearFormButton";
+import { NumberInput } from "@/components/free-invoice/fields";
 import ContactField, { type Usage } from "@/components/ContactField";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
@@ -298,7 +300,8 @@ export default function NewReceiptPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">New receipt</h1>
+        <Link href="/receipts" className="text-sm text-neutral-500">← Receipts &amp; bills</Link>
+        <h1 className="mt-1 text-2xl font-bold">New receipt</h1>
         <p className="mt-1 text-neutral-600">
           Scan or upload a receipt, tag it with a supplier and category, and it is saved for later.
         </p>
@@ -443,34 +446,35 @@ export default function NewReceiptPage() {
               Items — give each its own category to split this receipt across categories (e.g. Groceries + Household).
             </p>
             {lineItems.map((it, idx) => (
-              <div key={idx} className="grid grid-cols-12 items-center gap-2 text-sm">
+              <div key={idx} className="grid grid-cols-12 items-center gap-2 border-b pb-2 text-sm sm:border-0 sm:pb-0">
                 <input aria-label="Item"
-                  className="col-span-4 rounded-lg border px-2 py-1.5"
+                  className="col-span-12 rounded-lg border px-2 py-1.5 sm:col-span-4"
                   placeholder="Item"
                   value={it.description}
                   onChange={(e) => updateReceiptLine(idx, { description: e.target.value })}
                 />
-                <input aria-label="Qty"
-                  className="col-span-2 rounded-lg border px-2 py-1.5"
+                <NumberInput aria-label="Qty"
+                  className="col-span-3 rounded-lg border px-2 py-1.5 sm:col-span-2"
                   placeholder="Qty"
                   value={it.quantity}
-                  onChange={(e) => updateReceiptLine(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                  onChange={(n) => updateReceiptLine(idx, { quantity: n })}
                 />
-                <input aria-label="Price"
-                  className="col-span-2 rounded-lg border px-2 py-1.5"
+                <NumberInput aria-label="Price"
+                  className="col-span-4 rounded-lg border px-2 py-1.5 sm:col-span-2"
                   placeholder="Price"
                   value={it.unitPrice}
-                  onChange={(e) => updateReceiptLine(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
+                  onChange={(n) => updateReceiptLine(idx, { unitPrice: n })}
                 />
                 <select
-                  className="col-span-3 rounded-lg border px-2 py-1.5"
+                  aria-label="Category"
+                  className="col-span-5 rounded-lg border px-2 py-1.5 sm:col-span-3"
                   value={it.category ?? ""}
                   onChange={(e) => updateReceiptLine(idx, { category: e.target.value || null })}
                 >
                   <option value="">No category</option>
                   {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <button type="button" onClick={() => removeReceiptLine(idx)} aria-label={`Remove item ${idx + 1}`} className="col-span-1 text-neutral-600">✕</button>
+                <button type="button" onClick={() => removeReceiptLine(idx)} aria-label={`Remove item ${idx + 1}`} className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-neutral-600">✕</button>
               </div>
             ))}
           </div>

@@ -130,7 +130,7 @@ function Header() {
           than the screen, and because neither would shrink the row simply
           ran off the side -- taking the menu's own panel with it, since that
           is positioned against the row's right edge. */}
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
+      <div className="safe-x mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
         <Link href="/" className="min-w-0 wrap-anywhere text-lg font-semibold">
           {SITE_NAME}
         </Link>
@@ -258,8 +258,8 @@ function FeedbackButton() {
   return (
     <Link
       href="/feedback"
-      className={`fixed right-5 z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden${overBottomBar ? " max-sm:hidden" : ""}`}
-      style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+      className={`hide-while-typing fixed z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden${overBottomBar ? " max-sm:hidden" : ""}`}
+      style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))", right: "calc(1.25rem + env(safe-area-inset-right))" }}
     >
       Feedback
     </Link>
@@ -308,14 +308,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Header />
       <FocusOnNavigate target={main} />
       {/* Room at the foot on a phone, so the Feedback pill never sits on a last card's buttons. */}
-      <main ref={main} tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
+      <main ref={main} tabIndex={-1} className="safe-x mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
       {/* Small, quiet, and on every page: an advertiser, an app store and a
           cautious tradesman all want to find these before handing over an
           email address. Never printed -- a customer's invoice is not the
           place for them. */}
-      <footer className="mx-auto w-full max-w-4xl px-4 pb-24 pt-2 text-xs text-neutral-500 sm:pb-8 print:hidden">
+      <footer className="safe-x mx-auto w-full max-w-4xl px-4 pb-24 pt-2 text-xs text-neutral-500 sm:pb-8 print:hidden">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-4">
           <span>{SITE_NAME}</span>
           <HelpLink />
