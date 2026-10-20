@@ -4,6 +4,15 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Round 4 started: `wip/ios-files-share` tested, on `integrate/cloud-round-4`
+
+Brief 15 (iPhone Safari: files, sharing, downloads, links) merged onto
+`integrate/cloud-round-4` with no conflict. tsc, eslint, build clean; its 34 named suites
+against `next start`, ONE at a time this round (the Mac shares with Mise), all green first
+time. Its claim that `test-component-money` was red on main held: a stale check from the
+component audit that forbade "sent N days ago", which migration-042 made honest. Fixed on
+main (`609e979`). Briefs 13, 14 and 16 still running in the cloud. Not merged.
+
 ## 2026-10-20 — iPhone Safari: files, sharing, downloads and links (cloud, brief 15), `wip/ios-files-share`
 
 Findings 7-13, 17-19, 24 and 25 of `notes/ios-safari.md`, each read in the code first; all
