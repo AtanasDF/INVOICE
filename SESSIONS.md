@@ -4,6 +4,46 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 (cloud) — Quotes record when they were sent, on `feature/quote-sent-at`
+
+Branched from `fix/audit-components`, where the quote chase had been reworded to "dated N
+days ago" because quotes kept no send time. **Not merged, and must not be before the
+migration is run (rule 4). The migration has NOT been run** -- a cloud session cannot.
+
+- **SQL**: `web/supabase/017-backup-before-migration-042.sql` (snapshot
+  `quotes_backup_20261020`, RLS on, anon/authenticated revoked, both-way verify queries,
+  commented restore) and `migration-042-quote-sent-at.sql` (`quotes.sent_at timestamptz`,
+  nullable, no default). No function sends a quote: the only one that writes `quotes` is
+  `respond_to_quote_link`, which moves sent -> accepted/declined, so none is redefined.
+  Existing quotes keep null; guessing them from `quote_links.created_at` was rejected
+  (a link may be a resend, a hand-sent quote has none).
+- **Proved against pglite**: `harness/test-migration-042.mjs`, 15/15 -- both files run
+  twice, backup equal by content both ways, RLS on and no grants on the snapshot (checked
+  to FAIL with the revoke removed, the scaffolding mimics Supabase's default grants),
+  column shape, no existing value moved, owner can stamp only their own quote as
+  `authenticated`, and an online answer keeps sent_at.
+- **App**: `quotesStore.setStatus` (from a draft) and `markSent` stamp `sent_at` in the
+  same write as `vat_registered`, through one `updateQuote` that on PGRST204 drops
+  `sent_at` first and `vat_registered` second -- dropping both at once, as the old retry
+  would have, loses the VAT snapshot on every send until 042 runs. Reopening an answered
+  quote keeps the first send. The chase rule moved to `src/lib/quoteChase.ts`: counts from
+  the London day of `sent_at` and says "sent", else from `quotes.date` and says "dated".
+  `/q/` never sees sentAt.
+- **Tests**: `test-quote-age` (logic, 20/20, includes the 00:30 BST send) added to
+  `tsconfig.logic.json` and `run-all.sh` with `test-migration-042`. `test-quote-chase`
+  extended to 17 checks (send time wins, drafted-long-ago-sent-recently not nagged, Mark as
+  sent stamps it, reopen keeps it, a database without the column). **Run here against a
+  real `next start` with the container's Linux Chromium** (a scratch copy of mockdb pointed
+  at it): test-quote-chase 17/17, test-quote-vat-snapshot 10/10, test-quotes 35/35,
+  test-quote-not-invoice 8/8, test-answer-clash 7/7, test-public-reads 21/21;
+  test-utc-today 18/18 and test-migration-041 16/16. tsc, eslint, build clean.
+
+**For the Mac**: run backup 017, verify it both ways, run 042, run its footer checks and
+the rolled-back exercise. Then the browser suites test-quote-chase, test-quote-links,
+test-quotes-fixes, test-quote-vat-snapshot, test-quotes, test-quote-not-invoice,
+test-answer-clash (the two not run here need the Mac's own launcher), plus the logic
+test-quote-age and test-migration-042. Only then merge.
+
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
 
 Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged
