@@ -45,7 +45,7 @@ check("/check-company sends the sign-in with both of its requests", (checker.mat
 // The invoice page and its store
 const storage = src("lib/storage.ts");
 const updateDraft = storage.slice(storage.indexOf("async updateDraft("), storage.indexOf("async markSentWithNumber("));
-check("an invoice's draft edit only ever touches a draft", /\.eq\("id", id\)\.eq\("status", "draft"\)\.select\("id"\)/.test(updateDraft) && /already been sent/.test(updateDraft));
+check("an invoice's draft edit only ever touches a draft", /\.eq\("id", id\)\.eq\("status", "draft"\)\.select\("id"\)/.test(updateDraft) && /isn.t a draft any more, or has gone/.test(updateDraft));
 const inv = src("app/invoices/[id]/page.tsx");
 const saveDraft = inv.slice(inv.indexOf("async function saveDraftOnly"), inv.indexOf("function openSendPanel"));
 check("Save draft: a failed read-back after a good save doesn't say it didn't save",

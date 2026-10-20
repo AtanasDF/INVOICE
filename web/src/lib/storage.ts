@@ -758,7 +758,7 @@ export const invoicesStore = {
     if (patch.cisRate !== undefined) dbPatch.cis_rate = patch.cisRate;
     const { data, error } = await supabase.from("invoices").update(dbPatch).eq("id", id).eq("status", "draft").select("id");
     if (error) throw error;
-    if (!data?.length) throw new Error("This invoice has already been sent, so it can't be edited. Reload to see it.");
+    if (!data?.length) throw new Error("This invoice isn't a draft any more, or has gone, so it couldn't be saved. Reload to see it.");
   },
   // Atomically assigns the real invoice number, advances the account's
   // number counter, and flips status to sent -- one Postgres transaction
