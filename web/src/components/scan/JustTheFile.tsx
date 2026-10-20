@@ -105,7 +105,7 @@ export default function JustTheFile({ pages, suggestedName }: { pages: DocPage[]
 
   return (
     <div className="w-full rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-      <h3 className="font-medium">Just the file</h3>
+      <h2 className="font-medium">Just the file</h2>
       <p className="mt-1 text-sm text-neutral-600">
         For a document that isn&apos;t one of your own costs — somebody else&apos;s invoice, a delivery note, a
         certificate. It becomes a PDF on this device. <strong>Nothing is added to your records and no supplier is

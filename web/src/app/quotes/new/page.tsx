@@ -67,7 +67,7 @@ export default function NewQuotePage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/quotes" className="text-sm text-neutral-500">← Quotes</Link>
+        <Link href="/quotes" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Quotes</Link>
         <h1 className="mt-1 text-2xl font-bold">New quote</h1>
         <p className="mt-1 text-neutral-600">What the job will cost. It stays a draft until you send it.</p>
       </div>

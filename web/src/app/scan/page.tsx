@@ -1681,6 +1681,7 @@ export default function ScanPage() {
                 <div className="flex items-center gap-2 self-end pb-2">
                   <label className="text-xs text-neutral-500 whitespace-nowrap">1 {form.currency} =</label>
                   <input
+                    aria-label={`Pounds to 1 ${form.currency}`}
                     className="w-28 rounded-lg border px-2 py-1.5 text-sm"
                     value={form.fxRateInput}
                     onChange={(e) => patch({ fxRateInput: e.target.value })}

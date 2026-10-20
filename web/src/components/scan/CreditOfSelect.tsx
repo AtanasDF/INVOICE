@@ -28,7 +28,7 @@ export default function CreditOfSelect({ invoices, clients, clientId, vendor, va
   return (
     <div>
       <label className="text-xs text-neutral-500">Credit note for</label>
-      <select className="w-full rounded-lg border px-3 py-2" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select aria-label="Credit note for" className="w-full rounded-lg border px-3 py-2" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">No linked invoice</option>
         {ordered.map((inv) => (
           <option key={inv.id} value={inv.id}>{invoiceLabel(inv, clients)}</option>

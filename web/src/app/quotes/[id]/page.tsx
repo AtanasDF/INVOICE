@@ -358,7 +358,7 @@ export default function QuotePage() {
     return (
       <div className="space-y-6">
         <div>
-          <button onClick={() => setEditing(false)} className="text-sm text-neutral-500">← Back to the quote</button>
+          <button onClick={() => setEditing(false)} className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Back to the quote</button>
           <h1 className="mt-1 text-2xl font-bold">Edit quote {q.number}</h1>
         </div>
         <QuoteForm
@@ -429,7 +429,7 @@ export default function QuotePage() {
   return (
     <div className="space-y-6">
       <div className="print:hidden">
-        <Link href="/quotes" className="text-sm text-neutral-500">← Quotes</Link>
+        <Link href="/quotes" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Quotes</Link>
         <div className="mt-1 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">

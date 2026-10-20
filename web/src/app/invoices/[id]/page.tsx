@@ -644,7 +644,7 @@ export default function InvoiceViewPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <Link href="/invoices" className="text-sm text-neutral-500">← Invoices</Link>
+            <Link href="/invoices" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Invoices</Link>
             <h1 className="mt-1 text-2xl font-bold">Draft invoice</h1>
             <p className="mt-1 text-neutral-600">
               Nothing&apos;s been sent yet — everything here, including the client and line items, is still
@@ -802,7 +802,7 @@ export default function InvoiceViewPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/invoices" className="text-sm text-neutral-500 print:hidden">← Invoices</Link>
+      <Link href="/invoices" className="text-sm text-neutral-500 print:hidden"><span aria-hidden="true">←</span> Invoices</Link>
       <Tip id="invoice-how" className="print:hidden">
         How it works: record money as it comes in and the invoice keeps its own score &mdash; part paid, then paid,
         without you setting it. &ldquo;Mark as paid&rdquo; records whatever is still owed. The link is private to this

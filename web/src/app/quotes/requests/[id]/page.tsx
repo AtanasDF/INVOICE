@@ -192,7 +192,7 @@ export default function QuoteRequestPage() {
     return (
       <div className="space-y-6">
         <div>
-          <button onClick={() => setEditing(false)} className="text-sm text-neutral-500">← Back to the request</button>
+          <button onClick={() => setEditing(false)} className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Back to the request</button>
           <h1 className="mt-1 text-2xl font-bold">Edit the list</h1>
         </div>
         <RequestForm
@@ -246,7 +246,7 @@ export default function QuoteRequestPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/quotes/requests" className="text-sm text-neutral-500">← Quotes from suppliers</Link>
+          <Link href="/quotes/requests" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Quotes from suppliers</Link>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold">{r.title}</h1>
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${open ? "bg-neutral-100 text-neutral-800" : "bg-neutral-200 text-neutral-600"}`}>{open ? "Open" : "Closed"}</span>

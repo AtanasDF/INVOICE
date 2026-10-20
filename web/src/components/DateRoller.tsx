@@ -124,6 +124,7 @@ function Column({ label, items, selected, onPick, disabled = false }: {
           >
             {i.label}
             {i.dot && <span aria-hidden className="h-1 w-1 rounded-full bg-neutral-400" />}
+            {i.dot && <span className="sr-only">, has files</span>}
           </button>
         ))}
         <div aria-hidden className="h-7" />

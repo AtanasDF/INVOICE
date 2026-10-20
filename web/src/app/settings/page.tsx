@@ -42,6 +42,7 @@ import { loadFailed, saveFailed, authFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { logoSrc, prepareLogo, uploadLogo } from "@/lib/logo";
 import VatNumberInput from "@/components/VatNumberInput";
+import { FILE_RING } from "@/lib/fileRing";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -630,7 +631,7 @@ export default function SettingsPage() {
                 <p className="mt-1 text-sm text-neutral-600">No logo yet. It goes at the top of your invoices and quotes.</p>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
-                <label aria-disabled={logoBusy} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${SMALL_BUTTON}`}>
+                <label aria-disabled={logoBusy} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${FILE_RING} ${SMALL_BUTTON}`}>
                   {logoBusy ? "Adding…" : logoPreview || logoUrl ? "Change logo" : "Add a logo"}
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickLogo} disabled={logoBusy} />
                 </label>

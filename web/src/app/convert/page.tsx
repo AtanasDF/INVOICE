@@ -71,6 +71,8 @@ export default function ConvertPage() {
           type="file"
           multiple
           className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(e) => {
             add(e.target.files);
             e.target.value = "";

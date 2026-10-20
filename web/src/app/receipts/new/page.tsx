@@ -300,7 +300,7 @@ export default function NewReceiptPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/receipts" className="text-sm text-neutral-500">← Receipts &amp; bills</Link>
+        <Link href="/receipts" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Receipts &amp; bills</Link>
         <h1 className="mt-1 text-2xl font-bold">New receipt</h1>
         <p className="mt-1 text-neutral-600">
           Scan or upload a receipt, tag it with a supplier and category, and it is saved for later.
@@ -350,7 +350,17 @@ export default function NewReceiptPage() {
           ) : (
             <>
               <DocumentIcon className="h-8 w-8 text-neutral-400" />
-              <p className="text-sm text-neutral-600">Drop a photo here, or click to browse</p>
+              {/* The zone answers a click and a drop; this is the way in for a keyboard. */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileRef.current?.click();
+                }}
+                className="text-sm text-neutral-600"
+              >
+                Drop a photo here, or click to browse
+              </button>
             </>
           )}
           <input
@@ -423,6 +433,7 @@ export default function NewReceiptPage() {
           <div className="flex items-center gap-2">
             <label className="text-xs text-neutral-500 whitespace-nowrap">1 {currency} =</label>
             <input
+              aria-label={`Pounds to 1 ${currency}`}
               className="w-28 rounded-lg border px-2 py-1.5 text-sm"
               value={fxRateInput}
               onChange={(e) => setFxRateInput(e.target.value)}

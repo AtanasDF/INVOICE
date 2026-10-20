@@ -735,7 +735,7 @@ export default function NewInvoicePage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/invoices" className="text-sm text-neutral-500">← Invoices</Link>
+          <Link href="/invoices" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Invoices</Link>
           <h1 className="mt-1 text-2xl font-bold">New invoice</h1>
           {/* What the number will be (Atanas, 2026-09-23: "it should give you
               the invoice with the next number in order as it is in the

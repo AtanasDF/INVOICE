@@ -622,6 +622,7 @@ function ReceiptsPage() {
                     <div>
                       <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
                       <input
+                        aria-label={isInvoice ? "Invoice number" : "Credit note number"}
                         className="w-full rounded-lg border px-3 py-2 text-sm"
                         value={editDraft.invoiceNumber}
                         onChange={(e) => setEditDraft({ ...editDraft, invoiceNumber: e.target.value })}
@@ -677,6 +678,7 @@ function ReceiptsPage() {
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-neutral-500 whitespace-nowrap">1 {editDraft.currency} =</label>
                     <input
+                      aria-label={`Pounds to 1 ${editDraft.currency}`}
                       className="w-28 rounded-lg border px-2 py-1.5 text-sm"
                       value={editDraft.fxRateInput}
                       onChange={(e) => setEditDraft({ ...editDraft, fxRateInput: e.target.value })}
@@ -770,7 +772,7 @@ function ReceiptsPage() {
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 text-sm">
                 <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
-                  Details {detailsOpen ? "▴" : "▾"}
+                  Details <span aria-hidden="true">{detailsOpen ? "▴" : "▾"}</span>
                 </button>
                 {/* gap-x only: they sit on one line at an ordinary text size
                     and the list is held to compact cards, but at twice the

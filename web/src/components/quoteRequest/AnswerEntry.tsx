@@ -141,7 +141,7 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
   return (
     <div className="space-y-6">
       <div>
-        <button onClick={onCancel} className="text-sm text-neutral-500">← Back to the request</button>
+        <button onClick={onCancel} className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Back to the request</button>
         <h1 className="mt-1 text-2xl font-bold">Prices from {supplierName}</h1>
         <p className="mt-1 text-neutral-600">Type in what they quoted, or attach their quote and have its lines read.</p>
       </div>

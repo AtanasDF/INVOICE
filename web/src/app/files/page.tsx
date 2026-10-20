@@ -305,9 +305,9 @@ export default function FilesPage() {
               </button>
               <span className="text-sm text-neutral-600">{previewTotalPages === 1 ? "One page" : `${previewTotalPages} pages`}, as one file.</span>
             </div>
-            {fileNote && <p className="mt-2 text-sm text-neutral-700">{fileNote}</p>}
+            <p role="status" className={fileNote ? "mt-2 text-sm text-neutral-700" : "sr-only"}>{fileNote ?? ""}</p>
             {fileError && <p role="alert" className="mt-2 text-sm text-red-600">{fileError}</p>}
-            <EmailFileForm file={makeFile} idPrefix="library" />
+            <EmailFileForm file={makeFile} idPrefix="library" level={2} />
           </div>
           {previewTotalPages > 1 && (
             <div className="mt-4 flex items-center justify-center gap-4 text-sm text-ink-on-dark" onClick={(e) => e.stopPropagation()}>

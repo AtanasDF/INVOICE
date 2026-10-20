@@ -63,7 +63,7 @@ export default function VatPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/expenses" className="text-sm text-neutral-500">← Expenses</Link>
+        <Link href="/expenses" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Expenses</Link>
         <h1 className="mt-1 text-2xl font-bold">VAT</h1>
         <p className="mt-1 text-neutral-600">The figures for a quarter, worked out from your invoices and receipts. Check them, then copy them into HMRC&apos;s form.</p>
       </div>

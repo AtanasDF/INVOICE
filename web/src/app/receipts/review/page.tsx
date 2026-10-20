@@ -147,7 +147,7 @@ export default function ReviewQueuePage() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/receipts" className="text-sm text-neutral-500">← Receipts &amp; bills</Link>
+        <Link href="/receipts" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Receipts &amp; bills</Link>
         <h1 className="mt-1 text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">
           Receipts that came in by email — check what was read off them before they count toward your records.
@@ -230,6 +230,7 @@ export default function ReviewQueuePage() {
                         <div>
                           <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
                           <input
+                            aria-label={isInvoice ? "Invoice number" : "Credit note number"}
                             className="w-full rounded-lg border px-3 py-2 text-sm"
                             value={draft.invoiceNumber}
                             onChange={(e) => updateDraft(r.id, { invoiceNumber: e.target.value })}

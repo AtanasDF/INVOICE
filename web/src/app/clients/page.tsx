@@ -288,12 +288,14 @@ export default function ClientsPage() {
         <div className="flex w-fit max-w-full flex-wrap rounded-lg border text-sm">
           <button
             onClick={() => setTab("client")}
+            aria-pressed={tab === "client"}
             className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             Customers
           </button>
           <button
             onClick={() => setTab("supplier")}
+            aria-pressed={tab === "supplier"}
             className={`px-4 py-1.5 ${tab === "supplier" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             Suppliers

@@ -134,6 +134,7 @@ export default function ResetPasswordPage() {
           autoComplete="new-password"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="New password"
+          aria-label="New password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -144,6 +145,7 @@ export default function ResetPasswordPage() {
           autoComplete="new-password"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Confirm new password"
+          aria-label="Confirm new password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />

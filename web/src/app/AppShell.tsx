@@ -52,7 +52,9 @@ function Menu({ label, here, width, children }: { label: string; here: boolean; 
       if (box.current?.open) box.current.open = false;
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      // Only its own Escape: every menu listens on the document, and focusing
+      // a closed one's summary pulled the caret out of a search box or a sheet.
+      if (e.key !== "Escape" || !box.current?.open) return;
       shut();
       box.current?.querySelector("summary")?.focus();
     };

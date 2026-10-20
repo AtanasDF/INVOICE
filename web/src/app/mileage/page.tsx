@@ -178,7 +178,7 @@ export default function MileagePage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/expenses" className="text-sm text-neutral-500">← Expenses</Link>
+        <Link href="/expenses" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Expenses</Link>
         <h1 className="mt-1 text-2xl font-bold">Mileage</h1>
         <p className="mt-1 text-neutral-600">
           Business miles at HMRC&apos;s rates: {RATES.car.first * 100}p a mile for the first {RATES.car.threshold.toLocaleString()} in the tax year, then{" "}

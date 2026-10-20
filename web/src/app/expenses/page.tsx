@@ -142,24 +142,28 @@ export default function ExpensesPage() {
           <div className="flex flex-wrap rounded-lg border text-sm">
             <button
               onClick={() => setPeriodMode("week")}
+              aria-pressed={periodMode === "week"}
               className={`px-3 py-1.5 ${periodMode === "week" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Week
             </button>
             <button
               onClick={() => setPeriodMode("month")}
+              aria-pressed={periodMode === "month"}
               className={`px-3 py-1.5 ${periodMode === "month" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Month
             </button>
             <button
               onClick={() => setPeriodMode("year")}
+              aria-pressed={periodMode === "year"}
               className={`px-3 py-1.5 ${periodMode === "year" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Year
             </button>
             <button
               onClick={() => setPeriodMode("custom")}
+              aria-pressed={periodMode === "custom"}
               className={`px-3 py-1.5 ${periodMode === "custom" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Custom
@@ -197,12 +201,14 @@ export default function ExpensesPage() {
       <div className="flex rounded-lg border text-sm w-fit print:hidden">
         <button
           onClick={() => setViewMode("expenses")}
+          aria-pressed={viewMode === "expenses"}
           className={`px-3 py-1.5 ${viewMode === "expenses" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
         >
           Expenses only
         </button>
         <button
           onClick={() => setViewMode("combined")}
+          aria-pressed={viewMode === "combined"}
           className={`px-3 py-1.5 ${viewMode === "combined" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
         >
           Combined with invoices

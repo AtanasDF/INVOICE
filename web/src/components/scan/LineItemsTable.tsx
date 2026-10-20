@@ -31,10 +31,11 @@ export default function LineItemsTable({ lines, currency, onChange }: {
           {lines.map((line, i) => (
             <tr key={i} className="border-b last:border-0">
               <td className="py-1 pr-2">
-                <input className={cell} value={line.description} onChange={(e) => onChange(i, { description: e.target.value })} />
+                <input aria-label={`Item ${i + 1}`} className={cell} value={line.description} onChange={(e) => onChange(i, { description: e.target.value })} />
               </td>
               <td className="py-1 pr-2">
                 <input
+                  aria-label={`Item ${i + 1} quantity`}
                   className={`${cell} text-right`}
                   inputMode="decimal"
                   value={line.quantity}
@@ -43,6 +44,7 @@ export default function LineItemsTable({ lines, currency, onChange }: {
               </td>
               <td className="py-1 pr-2">
                 <input
+                  aria-label={`Item ${i + 1} price`}
                   className={`${cell} text-right`}
                   inputMode="decimal"
                   value={line.unitPrice}

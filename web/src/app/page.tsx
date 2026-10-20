@@ -42,6 +42,7 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 import { BILL_DUE_SOON_DAYS, dueSoon, isBill } from "@/lib/bills";
 import { daysBetween, todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import { FILE_RING } from "@/lib/fileRing";
 
 // The dashboard is a scanner (Atanas, 2026-09-23: "the scanner is going to
 // play the role of the first page"). One big button for the commonest thing
@@ -57,7 +58,7 @@ const TAB = "min-w-0 flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-medi
 
 function ScanIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-8 w-8">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-8 w-8" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2" />
       <circle cx="12" cy="12" r="3.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -478,11 +479,11 @@ function Dashboard() {
           be the file input itself, or it takes two taps to open the camera. */}
       <section aria-label="Scan something" className="space-y-3">
         {isIOS && readScannerMode() === "native" ? (
-          <label aria-disabled={scanHandoffBusy} className={`${BIG_SCAN} cursor-pointer`}>
+          <label aria-disabled={scanHandoffBusy} className={`${BIG_SCAN} cursor-pointer ${FILE_RING}`}>
             <ScanIcon />
             <span>{scanHandoffBusy ? "Preparing…" : "Scan a receipt or bill"}</span>
             <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
-            <input type="file" accept="image/*" capture="environment" onChange={onIOSScanCapture} disabled={scanHandoffBusy} className="hidden" />
+            <input type="file" accept="image/*" capture="environment" onChange={onIOSScanCapture} disabled={scanHandoffBusy} className="sr-only" />
           </label>
         ) : (
           <Link href="/scan" className={BIG_SCAN}>
@@ -744,7 +745,7 @@ function Dashboard() {
                 <>
                   <span className="min-w-0 wrap-anywhere">
                     #{o.invoice.number} · {o.clientName}
-                    {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · due {shortDate(o.invoice.dueDate)}</span>}
+                    {o.invoice.dueDate && <span className={overdue ? "text-red-700" : "text-neutral-500"}> · {overdue ? "overdue, was due" : "due"} {shortDate(o.invoice.dueDate)}</span>}
                   </span>
                   <span className="shrink-0 font-medium">{money(o.amountDue)}</span>
                 </>
@@ -863,13 +864,13 @@ function Dashboard() {
       <section aria-label="Other tools" className="border-t pt-5">
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-            <FolderIcon /> Your file library &rarr;
+            <FolderIcon /> Your file library <span aria-hidden="true">&rarr;</span>
           </Link>
           <Link href="/recurring" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-            <RepeatIcon /> Recurring expenses &rarr;
+            <RepeatIcon /> Recurring expenses <span aria-hidden="true">&rarr;</span>
           </Link>
           <Link href="/recurring/invoices" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
-            <RepeatIcon /> Recurring invoices &rarr;
+            <RepeatIcon /> Recurring invoices <span aria-hidden="true">&rarr;</span>
           </Link>
         </div>
       </section>
