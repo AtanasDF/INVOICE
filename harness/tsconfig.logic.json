@@ -85,6 +85,9 @@
     "../web/src/lib/expensePeriod.ts",
     "../web/src/lib/dates.ts",
     "../web/src/lib/companyReport.ts",
-    "../web/src/lib/convert.ts"
+    "../web/src/lib/convert.ts",
+    "../web/src/lib/cameraInterruption.ts",
+    "../web/src/lib/settleFew.ts",
+    "../web/src/lib/keptReadings.ts"
   ]
 }

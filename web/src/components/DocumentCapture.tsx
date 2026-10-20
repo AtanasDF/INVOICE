@@ -17,6 +17,8 @@ import {
 } from "@/lib/platform";
 import { SAFARI_CAMERA_TIP, forgetCameraDenial, openCamera } from "@/lib/camera";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
+import { DECODE_AT_ONCE, isBlankDataUrl, settleFew } from "@/lib/settleFew";
+import { MUTE_GRACE_MS, interruptionAction, watchdogMayFire } from "@/lib/cameraInterruption";
 import { useWakeLock } from "@/lib/wakeLock";
 import { PhotoIcon, TorchIcon } from "@/components/icons";
 import BatchReview, { Shot, groupShots } from "@/components/scan/BatchReview";
@@ -603,8 +605,17 @@ function workGrey(cv: CVModule, source: HTMLCanvasElement): WorkMats | null {
   ctx.drawImage(source, 0, 0, w, h);
   const m = createMats(cv, w, h);
   m.src.data.set(ctx.getImageData(0, 0, w, h).data);
+  release(small);
   cv.cvtColor(m.src, m.gray, cv.COLOR_RGBA2GRAY);
   return m;
+}
+
+// A canvas set to 0x0 gives its memory back. iOS counts every live canvas
+// in the tab against one limit and collects them late, so on a long batch the
+// still, the frame and the warped page from each shot added up until
+// getContext failed and toDataURL handed back "data:,".
+function release(...canvases: (HTMLCanvasElement | null | undefined)[]) {
+  for (const c of canvases) if (c) c.width = c.height = 0;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -644,6 +655,7 @@ function greyThumb(source: HTMLCanvasElement, w: number, h: number): number[] {
     if (!hctx) return [];
     hctx.imageSmoothingQuality = "high";
     hctx.drawImage(src, 0, 0, half.width, half.height);
+    if (src !== source) release(src);
     src = half;
   }
   const c = document.createElement("canvas");
@@ -654,6 +666,7 @@ function greyThumb(source: HTMLCanvasElement, w: number, h: number): number[] {
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(src, 0, 0, w, h);
   const d = ctx.getImageData(0, 0, w, h).data;
+  release(c, src !== source ? src : null);
   const out: number[] = [];
   for (let i = 0; i < d.length; i += 4) out.push(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
   return out;
@@ -851,6 +864,11 @@ export default function DocumentCapture({
   const framesRef = useRef(0);
   const lastFrameTimeRef = useRef(-1);
   const lastFrameAtRef = useRef(0);
+  // iOS has muted the track or the page is hidden: detection and the frame
+  // watchdog wait for it to come back rather than tearing the camera down.
+  const interruptedRef = useRef(false);
+  // A shot is being taken, so a frozen preview is the still, not a dead camera.
+  const capturingRef = useRef(false);
   // OpenCV is loaded the moment the live-camera path mounts. "failed"
   // carries the real error text: it is the diagnostic the user will
   // screenshot, so it is never rewritten into something friendlier.
@@ -1141,6 +1159,7 @@ export default function DocumentCapture({
 
     let cancelled = false;
     let detecting = false;
+    let unwatch = () => {};
 
     async function start() {
       cvRef.current = null;
@@ -1246,14 +1265,50 @@ export default function DocumentCapture({
         framesRef.current = 0;
         lastFrameTimeRef.current = -1;
         lastFrameAtRef.current = performance.now();
-        // The track says so itself when the system takes the camera away.
-        // Left attached: the track is stopped and dropped on cleanup, and
-        // the handler is guarded by cancelled either way.
-        const lost = () => {
-          if (!cancelled) cameraLost();
+        // The track says so itself when the system takes the camera away --
+        // and also, with `mute`, when iOS merely pauses it for an app switch,
+        // Control Centre or a call, which it undoes by itself on the way back.
+        // Only a track that has ended, or is still muted a while after the
+        // page is back in view, is reopened (lib/cameraInterruption.ts).
+        // The track's listeners stay attached: it is stopped and dropped on
+        // cleanup, and the handler is guarded by cancelled either way.
+        interruptedRef.current = false;
+        let visibleSince = performance.now();
+        let graceTimer: ReturnType<typeof setTimeout> | null = null;
+        const check = () => {
+          if (cancelled || !track) return;
+          const now = performance.now();
+          const action = interruptionAction({
+            ended: track.readyState === "ended",
+            muted: track.muted,
+            hidden: document.hidden,
+            visibleForMs: document.hidden ? 0 : now - visibleSince,
+          });
+          interruptedRef.current = action === "wait";
+          // The pictures stopped on purpose; the watchdog counts from now.
+          if (action === "carry-on") lastFrameAtRef.current = now;
+          else if (action === "restart") cameraLost();
         };
-        track?.addEventListener("ended", lost);
-        track?.addEventListener("mute", lost);
+        const onVisibility = () => {
+          if (graceTimer) clearTimeout(graceTimer);
+          graceTimer = null;
+          if (!document.hidden) {
+            visibleSince = performance.now();
+            graceTimer = setTimeout(check, MUTE_GRACE_MS + 100);
+          }
+          check();
+        };
+        track?.addEventListener("ended", check);
+        track?.addEventListener("mute", check);
+        track?.addEventListener("unmute", check);
+        document.addEventListener("visibilitychange", onVisibility);
+        unwatch = () => {
+          if (graceTimer) clearTimeout(graceTimer);
+          document.removeEventListener("visibilitychange", onVisibility);
+        };
+        // Muted while it was being opened (the app switched mid-prompt): the
+        // same rule, from the start.
+        if (track?.muted || document.hidden) check();
         setStatus("live");
         if (isIOS() && opened.asked) setCameraHint(true);
         rafRef.current = requestAnimationFrame(loop);
@@ -1280,7 +1335,9 @@ export default function DocumentCapture({
     // OpenCV work is throttled, and never overlaps itself.
     function loop(timestamp: number) {
       if (cancelled) return;
-      if (statusRef.current === "live") {
+      // Interrupted: nothing to look at and nothing to take until iOS gives
+      // the camera back.
+      if (statusRef.current === "live" && !interruptedRef.current) {
         watchFrames(timestamp);
         drawOverlay();
         if (!detecting && timestamp - lastRunRef.current >= DETECT_INTERVAL_MS) {
@@ -1295,8 +1352,9 @@ export default function DocumentCapture({
     }
 
     // Paused first, because it is both the likelier one and the cheaper fix:
-    // play() again keeps the stream, the zoom and the torch. rAF doesn't run
-    // in a background tab, so leaving the app and coming back can't trip this.
+    // play() again keeps the stream, the zoom and the torch. Leaving the app
+    // and coming back can't trip this: the page going out of view counts as
+    // an interruption, and the count restarts when it comes back.
     function watchFrames(timestamp: number) {
       const video = videoRef.current;
       if (!video) return;
@@ -1308,6 +1366,7 @@ export default function DocumentCapture({
       }
       if (timestamp - lastFrameAtRef.current < STALLED_MS) return;
       lastFrameAtRef.current = timestamp;
+      if (!watchdogMayFire(interruptedRef.current, capturingRef.current)) return;
       const track = streamRef.current?.getVideoTracks()[0];
       if (video.paused && track?.readyState === "live") {
         video.play().catch(() => cameraLost());
@@ -1613,6 +1672,7 @@ export default function DocumentCapture({
     start();
     return () => {
       cancelled = true;
+      unwatch();
       stopStream();
     };
     // retryKey is intentionally a dependency purely to let retry() force
@@ -1773,7 +1833,10 @@ export default function DocumentCapture({
       const score = (turn: number) => {
         const p = place(turn);
         const c = drawTurned(bitmap, turn, p.x, p.y, p.w, p.h, thumbW * 4, thumbH * 4);
-        return c ? likeness(greyThumb(c, thumbW, thumbH), target) : 0;
+        if (!c) return 0;
+        const like = likeness(greyThumb(c, thumbW, thumbH), target);
+        release(c);
+        return like;
       };
       // The decoder applies the camera's orientation, so a still the same
       // way round as the video is taken as it comes. One on its side is
@@ -1850,51 +1913,69 @@ export default function DocumentCapture({
     const frame = document.createElement("canvas");
     frame.width = Math.round(region.sw);
     frame.height = Math.round(region.sh);
-    const fctx = frame.getContext("2d");
-    if (!fctx) return null;
-    fctx.drawImage(video, region.sx, region.sy, region.sw, region.sh, 0, 0, frame.width, frame.height);
-
-    const cv = cvRef.current;
-    if (!quad || !cv) return frame.toDataURL("image/jpeg", 0.92);
-    const still = await stillOfRegion(video, region, frame);
-    const corners = still ? cornersInStill(cv, still, frame, quad) : null;
-    const full = corners && still ? still : frame;
-
+    let still: HTMLCanvasElement | null = null;
+    let out: HTMLCanvasElement | null = null;
     try {
-      const src = cv.imread(full);
-      // The quad rescaled from the 480px work frame to the full-resolution
-      // frame before the output size is measured, so a page captured from
-      // further away still uses every native pixel available.
-      const [tl, tr, br, bl] = corners ?? scaleQuad(quad, full.width, full.height);
-      const outW = Math.round(Math.max(dist(br, bl), dist(tr, tl)));
-      const outH = Math.round(Math.max(dist(tr, br), dist(tl, bl)));
+      const fctx = frame.getContext("2d");
+      if (!fctx) return null;
+      fctx.drawImage(video, region.sx, region.sy, region.sw, region.sh, 0, 0, frame.width, frame.height);
 
-      const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
-      const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, outW, 0, outW, outH, 0, outH]);
-      const M = cv.getPerspectiveTransform(srcTri, dstTri);
-      const dst = new cv.Mat();
-      cv.warpPerspective(src, dst, M, new cv.Size(outW, outH));
+      const cv = cvRef.current;
+      if (!quad || !cv) return frame.toDataURL("image/jpeg", 0.92);
+      still = await stillOfRegion(video, region, frame);
+      const corners = still ? cornersInStill(cv, still, frame, quad) : null;
+      const full = corners && still ? still : frame;
 
-      const out = document.createElement("canvas");
-      out.width = outW;
-      out.height = outH;
-      cv.imshow(out, dst);
+      // Freed whether the warp works or throws: a throw used to leave all
+      // five behind in OpenCV's own memory.
+      const mats: { delete(): void }[] = [];
+      try {
+        const src = cv.imread(full);
+        mats.push(src);
+        // The quad rescaled from the 480px work frame to the full-resolution
+        // frame before the output size is measured, so a page captured from
+        // further away still uses every native pixel available.
+        const [tl, tr, br, bl] = corners ?? scaleQuad(quad, full.width, full.height);
+        const outW = Math.round(Math.max(dist(br, bl), dist(tr, tl)));
+        const outH = Math.round(Math.max(dist(tr, br), dist(tl, bl)));
 
-      src.delete();
-      srcTri.delete();
-      dstTri.delete();
-      M.delete();
-      dst.delete();
+        const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+        mats.push(srcTri);
+        const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, outW, 0, outW, outH, 0, outH]);
+        mats.push(dstTri);
+        const M = cv.getPerspectiveTransform(srcTri, dstTri);
+        mats.push(M);
+        const dst = new cv.Mat();
+        mats.push(dst);
+        cv.warpPerspective(src, dst, M, new cv.Size(outW, outH));
 
-      return out.toDataURL("image/jpeg", 0.92);
-    } catch {
-      return full.toDataURL("image/jpeg", 0.92);
+        out = document.createElement("canvas");
+        out.width = outW;
+        out.height = outH;
+        cv.imshow(out, dst);
+        return out.toDataURL("image/jpeg", 0.92);
+      } catch {
+        return full.toDataURL("image/jpeg", 0.92);
+      } finally {
+        for (const m of mats) m.delete();
+      }
+    } finally {
+      release(frame, still, out);
+    }
+  }
+
+  async function capture() {
+    capturingRef.current = true;
+    try {
+      await shoot();
+    } finally {
+      capturingRef.current = false;
     }
   }
 
   // Straight to the parent with no review step; the pages strip there
   // offers a retake.
-  async function capture() {
+  async function shoot() {
     // The flash comes once the photo is actually taken: the camera's still
     // can take a moment, and the hint asks the person to hold still till
     // then. Anything that stops the stream meanwhile (Back, a retry) drops
@@ -1910,17 +1991,20 @@ export default function DocumentCapture({
         ? { pts: quadRef.current.pts, coverage: lastCoverageRef.current, print: lastPrintRef.current }
         : null;
     }
+    // Said out loud: a shot dropped because the camera restarted under it
+    // used to leave somebody holding still with no flash and no message.
+    const dropped = () => showFailure("The camera restarted before that photo was taken. Hold still and it'll take it again.");
     let dataUrl: string;
     try {
       const image = await renderCapture();
-      if (streamRef.current !== stream) return;
-      if (!image) throw new Error("Couldn't read that image.");
+      if (streamRef.current !== stream) return dropped();
+      if (!image || isBlankDataUrl(image)) throw new Error("Couldn't read that image.");
       setFlash(true);
       const [scaled] = await Promise.all([downscaleImageDataUrl(image), new Promise((r) => setTimeout(r, FLASH_MS))]);
-      if (streamRef.current !== stream) return;
+      if (streamRef.current !== stream) return dropped();
       dataUrl = scaled;
     } catch (err) {
-      if (streamRef.current !== stream) return;
+      if (streamRef.current !== stream) return dropped();
       setFlash(false);
       setSaving(false);
       capturedRef.current = false;
@@ -1981,7 +2065,7 @@ export default function DocumentCapture({
     if (!files.length) return;
     try {
       if (multi) {
-        const read = await Promise.allSettled(files.map(readFile));
+        const read = await settleFew(files, DECODE_AT_ONCE, readFile);
         addShots(read.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])));
         const failed = read.filter((r) => r.status === "rejected").length;
         if (failed) showFailure(`${failed} of ${files.length} file${files.length === 1 ? "" : "s"} couldn't be read and ${failed === 1 ? "was" : "were"} left out.`);
