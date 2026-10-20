@@ -4,6 +4,22 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud brief 8: the printed document, second pass (`wip/printed-document`)
+
+Read-only. `notes/audit-documents.md` already held a first pass (2026-10-18), so this one
+is **appended** to it, not written over it. The rule holds: every Save as shape reads the
+element the PDF is made from. Fixed since the first pass: the Free page totals (tfoot),
+the CSV BOM and formula guard, the iPhone canvas cap, and the quote's `£-50.00`. Still
+open: the statement's `INV-001` + "12 days late" reads `INV-00112 days late` in every text
+shape; single-root sheets (Free page, statement) come out out of order; the Free page's
+labour/materials headings are dropped; and unbroken long names overflow the Free page,
+quote and statement. New: Excel turns the CSV's lone `0042` / `01234567` / `12-03-56` into
+42, a number with no leading zero, and a date; a long notes block can be cut through a line
+in the PDF; `pdfName` strips combining marks (Hindi, Thai, Arabic); and the `csv.ts` comment
+contradicts its code. Checked by running the real sheetFile/csv code in headless Chromium;
+html-to-image and jsPDF were not run (no node_modules). Nothing in `web/` changed, so no
+suites need running for this branch.
+
 ## 2026-10-20 — Round 4a live, then the camera fixes live for the iPhone test
 
 Atanas: merge 4a (`15eb531`), then "merge the camera fixes so I can try them on the
