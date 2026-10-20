@@ -97,7 +97,7 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
                   <th scope="col" className="sticky left-0 z-10 min-w-28 border-b bg-white py-2 pr-2 text-left text-xs font-medium text-neutral-500">Item</th>
                   {offers.map((o) => (
                     <th key={o.id} scope="col" className="min-w-24 border-b px-1 py-2 text-right align-bottom font-medium">
-                      <span className="block max-w-28 truncate" title={o.name}>{o.name}</span>
+                      <span className="block max-w-28 line-clamp-2 wrap-anywhere" title={o.name}>{o.name}</span>
                       {isExpired(o, today) && <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-600">Expired</span>}
                     </th>
                   ))}
@@ -142,7 +142,7 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
                             >
                               <span className="block font-medium">{formatPence(c.ex)}</span>
                               {cheapest.includes(o.id) && <span className={`block text-xs ${picked ? "text-neutral-300" : "text-neutral-500"}`}>Cheapest</span>}
-                              {c.note && <span className={`block max-w-28 truncate text-xs ${picked ? "text-neutral-300" : "text-neutral-500"}`} title={c.note}>{c.note}</span>}
+                              {c.note && <span className={`block max-w-28 line-clamp-2 wrap-anywhere text-xs ${picked ? "text-neutral-300" : "text-neutral-500"}`} title={c.note}>{c.note}</span>}
                             </button>
                           </td>
                         );

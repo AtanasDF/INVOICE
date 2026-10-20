@@ -68,11 +68,11 @@ export default function RootLayout({
             shown -- or have its own work wiped by a clear arriving late. */}
         <script dangerouslySetInnerHTML={{ __html: accountBoot(AUTH_STORAGE_KEY) }} />
       </head>
-      <body className="min-h-screen bg-neutral-50 text-neutral-900">
+      <body className="min-h-dvh bg-neutral-50 text-neutral-900">
         {/* Listening before anything else renders: an error thrown by the
             app itself is exactly the one nobody would otherwise hear about. */}
         <ReportErrors />
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-dvh flex-col">
           <AppShell>{children}</AppShell>
         </div>
       </body>

@@ -28,7 +28,7 @@
 <body>
 <main>
   <h1>No signal just now</h1>
-  <p>Nothing has been lost. Everything you have saved is still there, and will be waiting when you have a bar or two.</p>
+  <p>Everything you have saved is still there, and will be waiting when you have a bar or two.</p>
   <div class="card">
     <h2>What you can do meanwhile</h2>
     <ul>
@@ -37,7 +37,8 @@
     </ul>
   </div>
   <p>When the signal comes back, this page will load by itself if you pull it down, or tap below.</p>
-  <a href="/">Try again</a>
+  <!-- Served at the address that was asked for, so an empty href reloads that page, not the dashboard. -->
+  <a href="">Try again</a>
 </main>
 </body>
 </html>

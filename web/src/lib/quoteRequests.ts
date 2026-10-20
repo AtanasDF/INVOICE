@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { currentUserId, newLinkToken } from "./storage";
-import { RECEIPTS_BUCKET } from "./receiptsBucket";
+import { PRIVATE_FILE_CACHE, RECEIPTS_BUCKET } from "./receiptsBucket";
 import type { LinePrice, Offer, Picks, RequestItem } from "./quoteCompare";
 import { SIGNED_OUT } from "@/lib/errorText";
 
@@ -231,7 +231,7 @@ export async function uploadQuoteDocument(rowId: string, dataUrl: string): Promi
   const blob = await (await fetch(dataUrl)).blob();
   const ext = blob.type === "application/pdf" ? "pdf" : blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
   const path = `${user_id}/quote-requests/${rowId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false });
+  const { error } = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false, cacheControl: PRIVATE_FILE_CACHE });
   if (error) throw new Error("Their document couldn't be stored. Check your connection and try again.");
   return path;
 }

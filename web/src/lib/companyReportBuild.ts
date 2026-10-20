@@ -1,4 +1,5 @@
 import { formatRegisteredAddress } from "@/lib/companyLookup";
+import { daysBetween, ukDate } from "@/lib/today";
 import { ACCOUNT_TYPE, COMPANY_BIRTH, COMPANY_STATUS, COMPANY_TYPE, CONTROL, INSOLVENCY_CASE, INSOLVENCY_DATE, OFFICER_ROLE, PSC_STATEMENT, SIC, STATUS_DETAIL } from "@/lib/companyHouseTerms";
 import { ageText, type Charge, type CompanyReport, type Controller, count, type Filing, type InsolvencyCase, longDate, type Officer, registerUrl, spanText } from "@/lib/companyReport";
 
@@ -92,14 +93,14 @@ const JURISDICTION: Record<string, string> = {
   "non-eu": "outside the EU",
 };
 
-const day = 24 * 60 * 60 * 1000;
-const dateOnly = (iso: string) => Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
-
+// Whole London days and months: the hour after midnight on a summer night,
+// asking UTC said a deadline that passed yesterday hadn't passed yet.
 function monthsSince(iso: string, now: Date): number | null {
-  const from = new Date(dateOnly(iso));
-  if (isNaN(from.getTime())) return null;
-  let m = (now.getUTCFullYear() - from.getUTCFullYear()) * 12 + (now.getUTCMonth() - from.getUTCMonth());
-  if (now.getUTCDate() < from.getUTCDate()) m--;
+  const from = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  const to = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ukDate(now));
+  if (!from || !to) return null;
+  let m = (Number(to[1]) - Number(from[1])) * 12 + (Number(to[2]) - Number(from[2]));
+  if (Number(to[3]) < Number(from[3])) m--;
   return Math.max(0, m);
 }
 
@@ -107,7 +108,7 @@ function filing(f: FilingDates | undefined, now: Date): Filing | null {
   if (!f) return null;
   const lastMadeUpTo = f.last_accounts?.made_up_to ?? f.last_made_up_to ?? null;
   const nextDue = f.next_accounts?.due_on ?? f.next_due ?? null;
-  const late = nextDue ? Math.floor((now.getTime() - dateOnly(nextDue)) / day) : 0;
+  const late = nextDue && /^\d{4}-\d{2}-\d{2}/.test(nextDue) ? daysBetween(nextDue.slice(0, 10), ukDate(now)) : 0;
   const overdue = (f.next_accounts?.overdue ?? f.overdue ?? false) || late > 0;
   const out: Filing = {
     lastMadeUpTo,

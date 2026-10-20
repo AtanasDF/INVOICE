@@ -10,6 +10,7 @@ import { pdfFilenameFor } from "@/components/SendInvoicePanel";
 import type { PublicQuote } from "@/lib/publicQuote";
 import { customerFailed, PDF_FAILED } from "@/lib/errorText";
 import { SITE_NAME } from "@/lib/siteName";
+import { documentFileName } from "@/lib/documentName";
 
 type Answer = "accepted" | "declined";
 
@@ -157,7 +158,7 @@ export default function PublicQuoteView({ data, token }: { data: PublicQuote; to
         <button onClick={download} disabled={making} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50">
           {making ? "Making the PDF…" : "Download PDF"}
         </button>
-        <SaveAsMenu sheet={() => sheetRef.current} name={`Quote ${q.number}`} onPdf={download} />
+        <SaveAsMenu sheet={() => sheetRef.current} name={documentFileName("quote", q.number, "")} onPdf={download} />
         <button onClick={() => window.print()} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
           Print
         </button>

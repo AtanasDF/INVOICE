@@ -6,6 +6,15 @@ export function money(n: number): string {
   return n < 0 ? `−£${shown.replace("-", "")}` : `£${shown}`;
 }
 
+// The same in another currency's symbol, minus sign in front: the Free page
+// printed a discount line as "£-50.00".
+// Not rounded first, so a half-penny line shows as it always has (whether
+// lines round is a question for Atanas, notes/leftovers.md).
+export function moneyIn(symbol: string, n: number): string {
+  const shown = Math.abs(n).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n < 0 && shown !== "0.00" ? `−${symbol}${shown}` : `${symbol}${shown}`;
+}
+
 // The same figure without its £, for a line that says the currency itself.
 export function amount(n: number): string {
   return (Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

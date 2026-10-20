@@ -92,6 +92,9 @@
     "../web/src/lib/cameraInterruption.ts",
     "../web/src/lib/settleFew.ts",
     "../web/src/lib/keptReadings.ts",
-    "../web/src/lib/bearer.ts"
+    "../web/src/lib/bearer.ts",
+    "../web/src/lib/companyReportBuild.ts",
+    "../web/src/lib/documentName.ts",
+    "../web/src/lib/documentPdf.ts"
   ]
 }

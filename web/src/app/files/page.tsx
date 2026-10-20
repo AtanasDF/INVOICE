@@ -298,7 +298,7 @@ export default function FilesPage() {
           </div>
           {/* Every document here can leave: saved as one file, or emailed
               to anyone (Atanas, 2026-09-22). */}
-          <div className="mt-4 max-h-[45vh] overflow-y-auto rounded-xl bg-white p-4 text-neutral-900" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-4 max-h-[45dvh] overflow-y-auto rounded-xl bg-white p-4 text-neutral-900" onClick={(e) => e.stopPropagation()}>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={saveFile} disabled={makingFile} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 {makingFile ? "Making the file…" : "Save it"}

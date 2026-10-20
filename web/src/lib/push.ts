@@ -55,6 +55,14 @@ export async function enablePush(): Promise<PushSubscription> {
   }
 }
 
+// A bill reminder left on the lock screen after sign-out still names the
+// supplier and the amount to whoever has the phone next.
+export async function clearShownNotifications(): Promise<void> {
+  if (!("serviceWorker" in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+  for (const n of (await reg?.getNotifications()) ?? []) n.close();
+}
+
 /** Returns the endpoint that was unsubscribed, so the caller can remove its stored row too. */
 export async function disablePush(): Promise<string | null> {
   const sub = await getExistingSubscription();

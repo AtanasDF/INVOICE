@@ -623,6 +623,9 @@ function ReceiptsPage() {
                       <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
                       <input
                         className="w-full rounded-lg border px-3 py-2 text-sm"
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
                         value={editDraft.invoiceNumber}
                         onChange={(e) => setEditDraft({ ...editDraft, invoiceNumber: e.target.value })}
                       />
@@ -732,7 +735,11 @@ function ReceiptsPage() {
                     title={`The photograph was emailed to you on ${shortDate(r.details.photoAgedAt, today)}. The receipt itself is still here.`}
                     className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-neutral-100 text-center text-[9px] leading-tight text-neutral-500"
                   >
-                    Emailed to you
+                    {/* The date was only in the title, which a phone never shows. */}
+                    <span>
+                      Emailed to you
+                      <span className="block">{shortDate(r.details.photoAgedAt, today)}</span>
+                    </span>
                   </div>
                 ) : null}
                 <div className="min-w-0 flex-1">

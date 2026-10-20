@@ -8,6 +8,10 @@ import { SITE_NAME } from "@/lib/siteName";
 // margin; a PDF's own pages are copied in as they are.
 export type DocPage = { dataUrl: string; mediaType: string };
 
+// Said as they are by the pages that make a PDF; anything else is pdf-lib's.
+export const PDF_LOCKED = "That PDF is locked with a password. Open it, save a copy without the password, and use that.";
+export const PICTURE_KIND = "That kind of picture can't go into a PDF. Save it as a JPEG or PNG and add that.";
+
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 18;
 
@@ -27,10 +31,15 @@ export async function pagesToPdf(pages: DocPage[], title: string): Promise<Uint8
     const bytes = bytesOf(p.dataUrl);
     if (p.mediaType === "application/pdf") {
       const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      // pdf-lib can't decrypt, and an encrypted PDF's pages copied across
+      // came out as garbage with no error.
+      if (src.isEncrypted) throw new Error(PDF_LOCKED);
       const copied = await doc.copyPages(src, src.getPageIndices());
       copied.forEach((pg) => doc.addPage(pg));
       continue;
     }
+    // Anything else went to embedJpg and threw pdf-lib's own words.
+    if (p.mediaType !== "image/png" && p.mediaType !== "image/jpeg") throw new Error(PICTURE_KIND);
     const img = p.mediaType === "image/png" ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
     const landscape = img.width > img.height;
     const [w, h] = landscape ? [A4[1], A4[0]] : A4;

@@ -247,6 +247,7 @@ export function readFreeInvoiceDraft(): FreeInvoiceDraft | null {
     return {
       ...base,
       ...stored,
+      signature: stored.signature === SAVED_SIGNATURE ? readSavedSignature().image : (stored.signature ?? base.signature),
       issuer: { ...base.issuer, ...stored.issuer },
       bank: { ...base.bank, ...stored.bank },
       customer: { ...base.customer, ...stored.customer },
@@ -266,9 +267,15 @@ export function readFreeInvoiceDraft(): FreeInvoiceDraft | null {
   }
 }
 
+// The signature is a picture of tens of kilobytes, and the draft is written on
+// every keystroke: when it is the one kept under SIGNATURE_KEY anyway, the
+// draft says so instead of holding a second copy. iPhone storage is small.
+const SAVED_SIGNATURE = "saved-signature";
+
 export function writeFreeInvoiceDraft(d: FreeInvoiceDraft) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...d, version: 1 }));
+    const signature = d.signature && d.signature === readSavedSignature().image ? SAVED_SIGNATURE : d.signature;
+    localStorage.setItem(KEY, JSON.stringify({ ...d, signature, version: 1 }));
   } catch {
     // private mode / storage blocked -- the draft just won't survive a reload
   }

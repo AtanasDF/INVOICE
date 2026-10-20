@@ -74,7 +74,7 @@ function Menu({ label, here, width, children }: { label: string; here: boolean; 
           <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </summary>
-      <div className={`absolute right-0 z-30 mt-2 ${width} max-h-[80vh] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>{children}</div>
+      <div className={`absolute right-0 z-30 mt-2 ${width} max-h-[80dvh] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>{children}</div>
     </details>
   );
 }

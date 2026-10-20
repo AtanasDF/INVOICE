@@ -13,51 +13,115 @@ export type SheetBlock = { kind: "text"; lines: string[] } | { kind: "table"; ta
 export type SheetDoc = { title: string; blocks: SheetBlock[] };
 
 const text = (el: Element | null | undefined) => (el as HTMLElement | null)?.innerText?.replace(/\s+\n/g, "\n").trim() ?? "";
-const cells = (row: Element, sel: string) => [...row.querySelectorAll(sel)].map((c) => (c.textContent ?? "").replace(/\s+/g, " ").trim());
+
+// textContent, so a heading styled upper-case is read as written, with a space
+// where a block sits inside the cell: "INV-001" over "3 days late" used to
+// come out as "INV-0013 days late".
+function cellText(cell: Element): string {
+  const parts: string[] = [];
+  const walk = (n: Node) => {
+    if (n.nodeType === Node.TEXT_NODE) return void parts.push(n.textContent ?? "");
+    if (!(n instanceof Element)) return;
+    const block = n !== cell && n.isConnected && getComputedStyle(n).display === "block";
+    if (block) parts.push(" ");
+    n.childNodes.forEach(walk);
+    if (block) parts.push(" ");
+  };
+  walk(cell);
+  return parts.join("").replace(/\s+/g, " ").trim();
+}
+const cells = (row: Element, sel: string) => [...row.querySelectorAll(sel)].map(cellText);
 
 function readTable(table: HTMLTableElement): SheetTable {
   const head = [...table.querySelectorAll("thead tr")].flatMap((r) => cells(r, "th"));
-  const rows = [...table.querySelectorAll("tbody tr")].map((r) => cells(r, "td")).filter((r) => r.some(Boolean));
+  // A labour/materials heading is a th spanning the row, and reading only
+  // td left the lines with nothing to say which group they were in.
+  const rows = [...table.querySelectorAll("tbody tr")].map((r) => cells(r, "td, th[scope=rowgroup]")).filter((r) => r.some(Boolean));
   return { head, rows };
+}
+
+// A figure on its own line belongs to the label above it: the statement
+// prints "Total owing" and "£380.00" side by side as two spans, which reads
+// as two lines and left the spreadsheet with nothing to pair.
+const FIGURE = /^[−-]?(?:[A-Z]{3}\s)?[£€$]?[−-]?\d[\d,]*(?:\.\d+)?$/;
+function pairFigures(lines: string[]): string[] {
+  const out: string[] = [];
+  for (const line of lines) {
+    const prev = out[out.length - 1];
+    if (prev !== undefined && FIGURE.test(line) && !FIGURE.test(prev) && !prev.includes(": ")) out[out.length - 1] = `${prev}: ${line}`;
+    else out.push(line);
+  }
+  return out;
 }
 
 /** The sheet's words and its item table, in the order they are printed. */
 export function readSheet(sheet: HTMLElement): SheetDoc {
-  const title = text(sheet.querySelector("h1")) || "Document";
+  const title = (sheet.querySelector("h1")?.textContent ?? "").replace(/\s+/g, " ").trim() || "Document";
+  // A sheet wrapped in one element (the statement, the Free page's article)
+  // was read as one block, every word before every table.
+  let root: Element = sheet;
+  while (root.children.length === 1 && !(root.children[0] instanceof HTMLTableElement)) root = root.children[0];
   const blocks: SheetBlock[] = [];
-  for (const child of [...sheet.children] as HTMLElement[]) {
-    if (child.className.includes("print:hidden")) continue;
+  let titleDropped = false;
+  for (const child of [...root.children] as HTMLElement[]) {
+    if (child.classList.contains("print:hidden")) continue;
     const clone = child.cloneNode(true) as HTMLElement;
     for (const hidden of [...clone.querySelectorAll('[class*="print:hidden"], [class*="sr-only"]')]) hidden.remove();
-    const tables = [...clone.querySelectorAll("table")] as HTMLTableElement[];
-    for (const t of tables) t.remove();
     // innerText needs the node in the page to know what is on a line.
     clone.style.position = "fixed";
     clone.style.left = "-10000px";
     clone.style.width = `${child.offsetWidth || 794}px`;
     document.body.appendChild(clone);
-    const lines = text(clone)
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    clone.remove();
-    if (lines.length) blocks.push({ kind: "text", lines });
-    for (const t of [...child.querySelectorAll("table")] as HTMLTableElement[]) {
-      blocks.push({ kind: "table", table: readTable(t) });
+    // Read from the clone, so what is hidden inside a table stays hidden.
+    const tables: SheetBlock[] = [];
+    for (const t of [...clone.querySelectorAll("table")] as HTMLTableElement[]) {
+      tables.push({ kind: "table", table: readTable(t) });
       // The Free page prints every total in the footer, a label and a figure
       // a row: read as "Total due: £480.00", the way IssuedInvoice prints them.
       const foot = [...t.querySelectorAll("tfoot tr")].map((r) => cells(r, "td, th").filter(Boolean)).filter((r) => r.length);
-      if (foot.length) blocks.push({ kind: "text", lines: foot.map((r) => (r.length > 1 ? `${r.slice(0, -1).join(" ")}: ${r[r.length - 1]}` : r[0])) });
+      if (foot.length) tables.push({ kind: "text", lines: foot.map((r) => (r.length > 1 ? `${r.slice(0, -1).join(" ")}: ${r[r.length - 1]}` : r[0])) });
+      t.remove();
     }
+    let lines = pairFigures(
+      text(clone)
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+    );
+    clone.remove();
+    // The title is printed once, above everything, by every format.
+    if (!titleDropped && lines.length && lines[0].toLowerCase() === title.toLowerCase()) {
+      lines = lines.slice(1);
+      titleDropped = true;
+    }
+    if (lines.length) blocks.push({ kind: "text", lines });
+    blocks.push(...tables);
   }
   return { title, blocks };
 }
 
-const pad = (s: string, n: number) => s + " ".repeat(Math.max(0, n - s.length));
+// Columns line up by what an editor shows, not by UTF-16 units: a CJK
+// character takes two columns, an accent none, an emoji two.
+export function displayWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    if (/\p{Mn}|\p{Me}|\u200d|\ufe0f/u.test(ch)) continue;
+    w += /\p{Extended_Pictographic}/u.test(ch) ||
+      (c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf) || (c >= 0xac00 && c <= 0xd7a3) ||
+      (c >= 0xf900 && c <= 0xfaff) || (c >= 0xfe30 && c <= 0xfe4f) || (c >= 0xff00 && c <= 0xff60) ||
+      (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x20000 && c <= 0x3fffd)
+      ? 2
+      : 1;
+  }
+  return w;
+}
+
+const pad = (s: string, n: number) => s + " ".repeat(Math.max(0, n - displayWidth(s)));
 
 /** Plain text, the columns lined up so it reads in any editor or email. */
 export function sheetText(doc: SheetDoc): string {
-  const out: string[] = [doc.title, "=".repeat(doc.title.length), ""];
+  const out: string[] = [doc.title, "=".repeat(displayWidth(doc.title)), ""];
   for (const block of doc.blocks) {
     if (block.kind === "text") {
       out.push(...block.lines, "");
@@ -65,7 +129,7 @@ export function sheetText(doc: SheetDoc): string {
     }
     const { head, rows } = block.table;
     const all = head.length ? [head, ...rows] : rows;
-    const widths = all.reduce<number[]>((w, row) => row.map((c, i) => Math.max(w[i] ?? 0, c.length)), []);
+    const widths = all.reduce<number[]>((w, row) => row.map((c, i) => Math.max(w[i] ?? 0, displayWidth(c))), []);
     for (const [i, row] of all.entries()) {
       out.push(row.map((c, j) => (j === row.length - 1 ? c : pad(c, widths[j]))).join("  ").trimEnd());
       if (i === 0 && head.length) out.push(widths.map((w) => "-".repeat(w)).join("  "));
@@ -116,8 +180,10 @@ export function sheetCsv(doc: SheetDoc): string {
       continue;
     }
     for (const line of block.lines) {
-      const at = line.lastIndexOf(": ");
-      rows.push(at > 0 ? [line.slice(0, at), line.slice(at + 2)] : [line]);
+      // Only a line with one label in it is a label and a value: "Registered
+      // name: X. Company number: 123." is a sentence and stays one cell.
+      const at = line.indexOf(": ");
+      rows.push(at > 0 && at === line.lastIndexOf(": ") ? [line.slice(0, at), line.slice(at + 2)] : [line]);
     }
     rows.push([]);
   }

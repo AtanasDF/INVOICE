@@ -229,7 +229,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
           onPointerMove={move}
           onPointerUp={up}
           onPointerCancel={up}
-          className="h-36 w-full touch-none rounded-lg border bg-sheet"
+          className="h-36 w-full touch-none select-none rounded-lg border bg-sheet [-webkit-touch-callout:none]"
           aria-label="Sign here"
         />
         {!dirty && <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-neutral-400">Sign here with your finger</p>}

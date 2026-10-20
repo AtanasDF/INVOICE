@@ -47,8 +47,10 @@ export default function ConvertPage() {
     } catch (err) {
       // Our own sentences go through; pdf-lib's and the browser's do not.
       const said = err instanceof Error ? err.message : "";
+      const file = files.length > 1 ? (err as { file?: string } | null)?.file : undefined;
       if (!WRITTEN_FOR_PEOPLE.has(said)) console.error("convert failed:", err);
-      setError(WRITTEN_FOR_PEOPLE.has(said) ? said : "Those files couldn't be changed. Try one at a time.");
+      if (WRITTEN_FOR_PEOPLE.has(said)) setError(file ? `${file}: ${said}` : said);
+      else setError(file ? `${file} couldn't be changed. Try it on its own, or leave it out.` : "Those files couldn't be changed. Try one at a time.");
     } finally {
       setBusy(null);
     }

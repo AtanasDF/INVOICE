@@ -36,7 +36,7 @@ export default function GlobalNotFound() {
             it has run. It is the same boot script the root layout uses. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
-      <body className="min-h-screen bg-neutral-50 text-neutral-900">
+      <body className="min-h-dvh bg-neutral-50 text-neutral-900">
         <main className="mx-auto max-w-2xl px-4 py-10">
           <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
             <h1 className="text-2xl font-bold">That page isn&apos;t here</h1>

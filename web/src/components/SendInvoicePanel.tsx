@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { INPUT } from "@/components/free-invoice/fields";
 import { saveFailed, PDF_FAILED } from "@/lib/errorText";
 import { defaultNote } from "@/lib/invoiceEmail";
+import { documentFileName } from "@/lib/documentName";
 
 type Status =
   | { kind: "idle" }
@@ -33,7 +34,7 @@ export type InvoiceEmailFields = {
 export type SendDocType = "invoice" | "quote";
 
 export function pdfFilenameFor(number: string, docType: SendDocType = "invoice"): string {
-  return `${docType === "quote" ? "Quote" : "Invoice"}${number ? `-${number.replace(/[^\w.-]+/g, "-")}` : ""}.pdf`;
+  return documentFileName(docType, number);
 }
 
 // The words that go with the PDF in the share sheet.

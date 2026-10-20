@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
+// After a deploy, a part of the page this tab hasn't loaded yet may no longer
+// exist on the server. reset() re-runs the same old bundle and fails the same
+// way for ever; only loading the page afresh gets the new one.
+const STALE_CHUNK = /Failed to load chunk|ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script failed/i;
+
 // The last line of defence: whatever broke, nothing here is lost -- the
 // records are in the database, not on the screen -- and one tap re-renders
 // the page rather than leaving him on a dead white screen.
@@ -10,6 +15,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   useEffect(() => {
     console.error(error);
   }, [error]);
+  const stale = STALE_CHUNK.test(error.message ?? "");
 
   return (
     <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
@@ -18,7 +24,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         Nothing has been lost — your invoices and receipts are saved. Try the page again, or go back to the dashboard.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={reset} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+        <button type="button" onClick={stale ? () => window.location.reload() : reset} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
           Try again
         </button>
         <Link href="/" className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
