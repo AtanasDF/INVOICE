@@ -247,3 +247,54 @@ For each: where in the code, what he would see, how sure, the fix, and whether o
 iPhone can confirm it. Change no app code. notes/ios-safari.md, worst first, with a short
 "try these on the phone" list at the top. Branch: wip/ios-safari.
 ```
+
+## 13. iPhone Safari fixes: forms, inputs and layout — [ ]
+
+```
+Read notes/ios-safari.md first. Fix findings 1, 2, 5, 6, 20, 21, 22 and 23: tapping a box
+zooms the page (16px rule for form controls), the receipt line price that drops a decimal
+point, the Feedback pill drawn over overlays, the forms that keep work only in memory
+(extend the draft autosave in lib/formDraft.ts and lib/useFormDraft.ts where it fits; never
+store photos), no way back in the home-screen app, larger text running off the screen,
+landscape padding (safe areas), and the keyboard with fixed bars and no scroll lock behind
+overlays. Confirm each in the code first. Stay in CSS, layout components and the form
+pages: two other sessions are changing the camera/scan code and the share/download code.
+Add source-reading guards (like test-no-hardcoded-colour) so each fix can't silently come
+back, and list the browser suites the Mac must run. Branch: wip/ios-forms-layout.
+```
+
+## 14. iPhone Safari fixes: the camera and scanning — [ ]
+
+```
+Read notes/ios-safari.md first. Fix findings 3, 4, 14, 15 and 16: an interruption (iOS
+`mute` on switching app) tears the camera down and asks for permission again; unsaved scan
+readings lost on any navigation or reload; choosing many photos at once can crash the
+tab; canvases never released and a blank page can be saved; the capture watchdog
+dropping a shot while the still is taken. Read CLAUDE.md's camera section carefully: camera
+permission goes only through src/lib/camera.ts, and the batch scanner has a known
+double-capture bug (notes/batch-rearm.md) that you must NOT try to fix here -- it needs the
+camera suites on the Mac. Stay in DocumentCapture, the scan page, scan handoff and lib
+helpers. Readings kept across a reload must be personal storage keys classified in
+lib/accountSwitch.ts. Put the rules in lib with logic suites; list the camera and browser
+suites the Mac must run (test-far, test-autozoom*, test-conditions, test-batch-*).
+Branch: wip/ios-camera.
+```
+
+## 15. iPhone Safari fixes: files, sharing, downloads and links — [ ]
+
+```
+Read notes/ios-safari.md first. Fix findings 7-13, 17-19, 24 and 25: push instructions
+never shown in a Safari tab, "press Copy link again" that can never work, CSV/JSON exports
+revoked before Safari saves them, downloads in the home-screen app, the receipt photo box
+that opens only the camera, the first Share press doing nothing, a supplier's document
+that silently fails to open, the 7-day storage eviction (say so where it matters), the
+home-screen app and Safari being separate (sign-in and drafts), his own opens of a customer
+link pushing "your customer opened it", the offline page stuck on Loading, and the smaller
+items. Confirm each in the code first. Remember src/lib/saveFile.ts is the only place a
+file is handed to the device. Stay in save/share/clipboard/push/offline code and the
+service worker: two other sessions are changing forms/layout and the camera.
+Branch: wip/ios-files-share.
+```
+
+Briefs 13-15 come from the Safari report. They can run at the same time; merge them on the
+Mac in the order 13, 15, 14, and run the camera suites before 14 goes in.
