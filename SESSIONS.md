@@ -130,6 +130,38 @@ days ago"), `test-paper-sheet` (the .paper-sheet CSS block was split), `test-dar
 `test-send-document`, `test-copy-document`, `test-save-as`, `test-dashboard`. And on the
 iPhone, in Dark: open the scanner and look at the shutter, the zoom pills and a failure.
 
+## 2026-10-20 — The file converter audited: twenty real faults, fixed on `wip/converter-audit` (cloud)
+
+Brief 2 of `notes/cloud-queue.md`. Every finding was reproduced before it was
+fixed -- pdf-lib and pdf.js run in Node, and the page itself in headless
+Chromium 141 against a `next start` build with the harness's mock database.
+Full list with file:line in `notes/audit-convert.md`. **Not merged; nothing
+here touches the database.**
+
+- **Silent loss, the worst of it:** any PDF with a password (even a
+  permissions-only one that opens anywhere) was merged into garbage with no
+  error; a PDF cut short gave one page of five; a page that couldn't be drawn
+  was skipped and the rest renumbered; a scanned PDF to text was an empty file;
+  data to spreadsheet wrote `[object Object]`; a repeated header lost a column;
+  an inch mark (`3"`) swallowed every later row of a CSV.
+- **Never worked:** WEBP/GIF/HEIC to PDF; any Windows (CRLF) text file to PDF;
+  PDF to pictures in a browser without `Map.prototype.getOrInsertComputed`
+  (pdf.js 6's modern build) -- now the legacy build and a renamed worker.
+- **Wrong:** phone photos sideways in a PDF (EXIF ignored); one 8,000-letter
+  word froze the page for 94 s; a long file name couldn't be emailed.
+- iPhone's 24 MP photos are now drawn within iOS Safari's 16.7 MP canvas limit
+  -- **not reproduced, no iPhone here**.
+- `test-convert`: 11 new checks, 25/25 here; **14/25 against the old code**, each
+  new check failing as predicted. New `test-convert-logic` (47, no browser),
+  fixtures in `harness/convert-files/` (`gen-convert-files.py`).
+- Left open, in the notes: main-thread blocking on huge files (needs a worker),
+  500-page PDFs, `/copy` sharing holes 1-2 through `documentPdf`, the formula
+  guard now applying to CSV-to-CSV (the project's rule; Atanas may want an
+  exception).
+- **The Mac must run** `test-convert`, `test-convert-logic`, `test-copy-document`,
+  `test-save-as`, `test-weight`, `test-odd-files`, `test-exif-rotation` on a fresh
+  build, and the iPhone: a 24 MP photo to Picture and PDF, a PDF to Picture.
+
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 
 **Merged into `main` on Atanas's say-so** (fast-forward to `32e963d`, exactly the tested

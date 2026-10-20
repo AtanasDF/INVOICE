@@ -7,12 +7,21 @@ export const NO_CANVAS = "This browser can't change pictures.";
 export const NO_PICTURE = "That picture couldn't be made.";
 export const NO_PAGES = "This browser can't draw the pages.";
 export const UNREADABLE = "That file couldn't be read.";
-export const WRITTEN_FOR_PEOPLE: ReadonlySet<string> = new Set([NO_CANVAS, NO_PICTURE, NO_PAGES, UNREADABLE]);
+export const PDF_LOCKED = "That PDF is locked with a password. Open it, save a copy without the password, and use that.";
+export const PDF_DAMAGED = "That PDF is damaged, so not all of it could be read.";
+export const NO_WORDS = "That PDF has no words to take out: its pages are pictures, like a scan. Turn it into a picture instead.";
+export const NO_PDF_LETTERS = "That file has letters or symbols a PDF can't be made with here. Plain text or Web page will keep them.";
+export const NOT_DATA = "That data file has a mistake in it, so it couldn't be read.";
+export const WRITTEN_FOR_PEOPLE: ReadonlySet<string> = new Set([NO_CANVAS, NO_PICTURE, NO_PAGES, UNREADABLE, PDF_LOCKED, PDF_DAMAGED, NO_WORDS, NO_PDF_LETTERS, NOT_DATA]);
 
 // Turning one kind of file into another (Atanas, 2026-09-22: "every file
 // needs to be able to be turned into every other file so the app works as a
 // file transformer too"). Everything happens on the device: nothing is
 // uploaded, nothing is read by anyone, and nothing costs anything.
+
+import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
+import type { DocPage } from "@/lib/documentPdf";
+import { CSV_BOM, csvCell } from "@/lib/csv";
 
 export type Kind = "image" | "pdf" | "text" | "other";
 export type Target = "pdf" | "png" | "jpg" | "webp" | "txt" | "csv" | "json" | "html";
@@ -50,7 +59,9 @@ export function targetsFor(kinds: Kind[]): Target[] {
   return TARGETS.map((t) => t.target).filter((t) => kinds.every((k) => CAN[k].includes(t)));
 }
 
-const baseName = (name: string) => name.replace(/\.[^.]+$/, "") || "file";
+// Kept short: /api/send-document cuts a name at 90 letters before it checks
+// for ".pdf", so a long one, or one with "and 3 more" added, couldn't be emailed.
+const baseName = (name: string) => name.replace(/\.[^.]+$/, "").replace(/[\x00-\x1f\x7f]+/g, " ").trim().slice(0, 60).trim() || "file";
 
 export async function readDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -61,77 +72,185 @@ export async function readDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+/** What the bytes say a picture is, whatever its name or type claims. */
+export function pictureFormat(b: Uint8Array): "png" | "jpeg" | "other" {
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "png";
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "jpeg";
+  return "other";
+}
+
+/** The turn a JPEG's EXIF asks for: 1 is upright, and so is saying nothing. */
+export function jpegOrientation(b: Uint8Array): number {
+  let i = 2;
+  while (i + 4 <= b.length && b[i] === 0xff) {
+    const marker = b[i + 1];
+    if (marker === 0xda || marker === 0xd9) break;
+    if (marker === 0xe1 && String.fromCharCode(...b.subarray(i + 4, i + 10)) === "Exif\0\0") {
+      const t = i + 10;
+      const le = b[t] === 0x49;
+      const u16 = (o: number) => (le ? b[o] | (b[o + 1] << 8) : (b[o] << 8) | b[o + 1]);
+      const u32 = (o: number) => (le ? (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0 : ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0);
+      const ifd = t + u32(t + 4);
+      for (let k = 0, n = u16(ifd); k < n && ifd + 14 + k * 12 <= b.length; k++) {
+        const e = ifd + 2 + k * 12;
+        if (u16(e) === 0x0112) return u16(e + 8) || 1;
+      }
+      return 1;
+    }
+    i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+  }
+  return 1;
+}
+
+// iOS Safari draws nothing on a canvas over 16.7 million pixels (4096 x 4096),
+// and the iPhone's own 24 and 48 megapixel photos are over it.
+const MAX_AREA = 16_777_216;
+const MAX_SIDE = 16_384;
+
+/** The size to draw a picture at so every browser will: its own, or smaller to the same shape. */
+export function fitCanvas(w: number, h: number): { width: number; height: number } {
+  const k = Math.min(1, Math.sqrt(MAX_AREA / (w * h)), MAX_SIDE / w, MAX_SIDE / h);
+  return { width: Math.max(1, Math.floor(w * k)), height: Math.max(1, Math.floor(h * k)) };
+}
+
+async function canvasBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92));
+  // Safari keeps a canvas's memory until it is collected, and a PDF of many
+  // pages runs out of it part way through.
+  canvas.width = 0;
+  canvas.height = 0;
+  if (!blob) throw new Error(NO_PICTURE);
+  return blob;
+}
+
 async function imageAs(file: Blob, type: "image/png" | "image/jpeg" | "image/webp"): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error(UNREADABLE);
+  });
+  const { width, height } = fitCanvas(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error(NO_CANVAS);
   // A picture with see-through parts goes onto white, or a JPEG turns it black.
   if (type !== "image/png") {
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
   }
-  ctx.drawImage(bitmap, 0, 0);
+  ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close?.();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92));
-  if (!blob) throw new Error(NO_PICTURE);
-  return blob;
+  return canvasBlob(canvas, type);
 }
 
 async function pdfjs() {
-  const lib = await import("pdfjs-dist");
+  // The legacy build: the modern one calls Map.prototype.getOrInsertComputed
+  // while drawing a page, which only the newest browsers have, so a PDF
+  // turned into pictures failed in a Chromium a few months old.
+  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   // The worker is a file of its own, copied into public/vendor at build time.
-  lib.GlobalWorkerOptions.workerSrc = `/vendor/pdf.worker-${lib.version}.mjs`;
+  lib.GlobalWorkerOptions.workerSrc = `/vendor/pdf.worker-legacy-${lib.version}.mjs`;
   return lib;
 }
 
-async function pdfPagesAsImages(file: Blob, type: "image/png" | "image/jpeg"): Promise<Blob[]> {
+async function openPdf(file: Blob): Promise<PDFDocumentProxy> {
   const lib = await pdfjs();
-  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  try {
+    return await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  } catch (err) {
+    const name = (err as { name?: string } | null)?.name;
+    if (name === "PasswordException") throw new Error(PDF_LOCKED);
+    if (name === "InvalidPDFException") throw new Error(PDF_DAMAGED);
+    throw err;
+  }
+}
+
+async function pdfPagesAsImages(doc: PDFDocumentProxy, type: "image/png" | "image/jpeg"): Promise<Blob[]> {
   const out: Blob[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
-    // Twice the page's own size, so the words stay sharp.
-    const viewport = page.getViewport({ scale: 2 });
+    // Twice the page's own size, so the words stay sharp, unless that is more
+    // than the browser will draw.
+    const own = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: fitCanvas(own.width * 2, own.height * 2).width / own.width });
     const canvas = document.createElement("canvas");
-    canvas.width = Math.ceil(viewport.width);
-    canvas.height = Math.ceil(viewport.height);
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error(NO_PAGES);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92));
-    if (blob) out.push(blob);
+    // A page that couldn't be made used to be skipped, so page 8 came out
+    // named page 7 and nothing said one was missing.
+    out.push(await canvasBlob(canvas, type));
+    page.cleanup();
   }
-  await doc.cleanup();
   return out;
 }
 
-async function pdfAsText(file: Blob): Promise<string> {
-  const lib = await pdfjs();
-  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+/** One page's words, a line where the PDF ends one. */
+export function pageText(items: readonly object[]): string {
+  let line = "";
+  const lines: string[] = [];
+  for (const item of items) {
+    if (!("str" in item)) continue;
+    line += String(item.str);
+    if ("hasEOL" in item && item.hasEOL) {
+      lines.push(line.trimEnd());
+      line = "";
+    }
+  }
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines.join("\n").trim();
+}
+
+/** Every page's words. A page with none says so, rather than vanishing, and a PDF with none at all is not an empty file. */
+export function pdfWords(pages: string[]): string {
+  if (!pages.some(Boolean)) throw new Error(NO_WORDS);
+  return pages.map((p, i) => p || `[Page ${i + 1} is a picture, so it has no words to take out.]`).join("\n\n") + "\n";
+}
+
+async function pdfAsText(doc: PDFDocumentProxy): Promise<string> {
   const pages: string[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
-    const content = await page.getTextContent();
-    let line = "";
-    const lines: string[] = [];
-    for (const item of content.items) {
-      if (!("str" in item)) continue;
-      line += item.str;
-      if (item.hasEOL) {
-        lines.push(line.trimEnd());
-        line = "";
-      }
-    }
-    if (line.trim()) lines.push(line.trimEnd());
-    pages.push(lines.join("\n").trim());
+    pages.push(pageText((await page.getTextContent()).items));
+    page.cleanup();
   }
-  await doc.cleanup();
-  return pages.filter(Boolean).join("\n\n").trim() + "\n";
+  return pdfWords(pages);
+}
+
+/** A file as pages for one PDF. */
+async function pdfPagesOf(file: File): Promise<DocPage[]> {
+  if (kindOf(file) === "pdf") {
+    const doc = await openPdf(file);
+    try {
+      const { PDFDocument } = await import("pdf-lib");
+      const own = await PDFDocument.load(new Uint8Array(await file.arrayBuffer()), { ignoreEncryption: true }).catch(() => null);
+      // pdf-lib can't decrypt. A PDF with only a permissions password (a bank
+      // statement, say) opens anywhere, but its pages copied across came out
+      // as garbage. pdf.js reads it, so its pages go in as pictures.
+      if (own?.isEncrypted) {
+        const pictures = await pdfPagesAsImages(doc, "image/jpeg");
+        return Promise.all(pictures.map(async (b) => ({ dataUrl: await readDataUrl(b), mediaType: "image/jpeg" })));
+      }
+      // pdf-lib reads what it can of a damaged file and carries on: a PDF cut
+      // short gave one page of its five, and no error.
+      if (!own || own.getPageCount() !== doc.numPages) throw new Error(PDF_DAMAGED);
+      return [{ dataUrl: await readDataUrl(file), mediaType: "application/pdf" }];
+    } finally {
+      await doc.loadingTask.destroy();
+    }
+  }
+  const head = new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer());
+  const format = pictureFormat(head);
+  if (format === "png" || (format === "jpeg" && jpegOrientation(head) === 1)) return [{ dataUrl: await readDataUrl(file), mediaType: `image/${format}` }];
+  // pdf-lib takes PNG and JPEG only, by their bytes rather than their name,
+  // and lays a JPEG down as stored, ignoring the turn the camera wrote beside
+  // it -- so a WEBP, GIF or HEIC failed every time and a phone photo came out
+  // on its side. The browser draws all of them the right way up.
+  return [{ dataUrl: await readDataUrl(await imageAs(file, "image/jpeg")), mediaType: "image/jpeg" }];
 }
 
 /** A row of a comma or tab separated file, quotes and all. */
@@ -140,7 +259,10 @@ export function parseCsv(text: string): string[][] {
   let row: string[] = [];
   let cell = "";
   let quoted = false;
-  const sep = text.includes("\t") && !text.includes(",") ? "\t" : ",";
+  // Decided by the first line: a tab-separated file with "1,200.00" anywhere
+  // in it used to be read as commas, splitting the money and keeping the tabs.
+  const first = text.slice(0, 65536).split("\n").find((l) => l.trim()) ?? "";
+  const sep = first.split("\t").length > first.split(",").length ? "\t" : ",";
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (quoted) {
@@ -151,7 +273,9 @@ export function parseCsv(text: string): string[][] {
       else cell += c;
       continue;
     }
-    if (c === '"') quoted = true;
+    // Only a quote that opens a cell starts a quoted one: the inch mark in
+    // `Pipe 3" copper` swallowed every row after it into one cell.
+    if (c === '"' && cell === "") quoted = true;
     else if (c === sep) {
       row.push(cell);
       cell = "";
@@ -169,13 +293,56 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
-const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-const toCsv = (rows: string[][]) => rows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
+const toCsv = (rows: string[][]) => CSV_BOM + rows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
+
+/** A file's data, if it is JSON: named so, or looking so and reading as it. */
+export function jsonIn(name: string, raw: string): unknown {
+  if (!/\.json$/i.test(name) && !/^\s*[[{]/.test(raw)) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+const cellOf = (v: unknown) => (v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v));
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+/** Data as rows: a list of records is a table under their names; anything else, a row each. Nothing is left out. */
+export function jsonRows(data: unknown): string[][] {
+  const list: unknown[] = Array.isArray(data) ? data : [data];
+  if (list.length && list.every(isRecord)) {
+    const keys = [...new Set(list.flatMap((r) => Object.keys(r)))];
+    if (keys.length) return [keys, ...list.map((r) => keys.map((k) => cellOf(r[k])))];
+  }
+  return list.map((r) => (Array.isArray(r) ? r.map(cellOf) : [cellOf(r)]));
+}
+
+/** Rows as records under the first row's names. A name used twice, or a row longer than the first, keeps every cell. */
+export function rowsToRecords(rows: string[][]): unknown {
+  const [head, ...rest] = rows;
+  if (!head || !rest.length) return rows;
+  const width = rows.reduce((n, r) => Math.max(n, r.length), 0);
+  const used = new Set<string>();
+  const names = Array.from({ length: width }, (_, i) => {
+    const base = head[i]?.trim() || `column ${i + 1}`;
+    let name = base;
+    for (let n = 2; used.has(name); n++) name = `${base} ${n}`;
+    used.add(name);
+    return name;
+  });
+  return rest.map((r) => Object.fromEntries(names.map((h, i) => [h, r[i] ?? ""])));
+}
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
-  return (doc.body.textContent ?? "").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  // textContent reads a script's code as words, and runs <p>Total</p><p>£40</p>
+  // together as "Total£40".
+  doc.body.querySelectorAll("script, style, noscript, template").forEach((el) => el.remove());
+  doc.body.querySelectorAll("br, p, div, li, tr, h1, h2, h3, h4, h5, h6, table, section, article, header, footer, blockquote, pre").forEach((el) => el.after("\n"));
+  doc.body.querySelectorAll("td, th").forEach((el) => el.after("\t"));
+  return (doc.body.textContent ?? "").replace(/[ \t]+\n/g, "\n").replace(/\n[ \t]+/g, "\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 
 function textToHtml(text: string, title: string): string {
@@ -195,6 +362,40 @@ function rowsToHtml(rows: string[][], title: string): string {
 `;
 }
 
+/** Lines of words that fit `room`, a word wider than a line cut where it runs out. */
+export function wrapText(text: string, widthOf: (s: string) => number, room: number): string[] {
+  const lines: string[] = [];
+  for (const raw of text.split("\n")) {
+    if (!raw.trim()) {
+      lines.push("");
+      continue;
+    }
+    let line = "";
+    for (const word of raw.split(" ")) {
+      const next = line ? `${line} ${word}` : word;
+      if (widthOf(next) <= room) {
+        line = next;
+        continue;
+      }
+      if (line) lines.push(line);
+      // Measured from the front. Measuring the whole word and taking a letter
+      // off at a time froze the page for 94 seconds on one 8,000-letter word,
+      // which is a JSON file with no spaces in it.
+      let rest = word;
+      for (;;) {
+        let cut = 1;
+        while (cut < rest.length && widthOf(rest.slice(0, cut + 1)) <= room) cut++;
+        if (cut >= rest.length) break;
+        lines.push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+      }
+      line = rest;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
 /** Words laid onto A4 pages, wrapped where the line runs out. */
 async function textToPdf(text: string, title: string): Promise<Blob> {
   const { PDFDocument, StandardFonts } = await import("pdf-lib");
@@ -205,32 +406,13 @@ async function textToPdf(text: string, title: string): Promise<Blob> {
   const margin = 50;
   const width = 595.28;
   const height = 841.89;
-  const room = width - margin * 2;
-  const lines: string[] = [];
-  for (const raw of text.replace(/\t/g, "    ").split("\n")) {
-    if (!raw.trim()) {
-      lines.push("");
-      continue;
-    }
-    let line = "";
-    for (const word of raw.split(" ")) {
-      const next = line ? `${line} ${word}` : word;
-      if (font.widthOfTextAtSize(next, size) <= room) line = next;
-      else {
-        if (line) lines.push(line);
-        // A word longer than the page is cut where it runs out.
-        let rest = word;
-        while (font.widthOfTextAtSize(rest, size) > room) {
-          let cut = rest.length;
-          while (cut > 1 && font.widthOfTextAtSize(rest.slice(0, cut), size) > room) cut--;
-          lines.push(rest.slice(0, cut));
-          rest = rest.slice(cut);
-        }
-        line = rest;
-      }
-    }
-    lines.push(line);
-  }
+  const words = text.replace(/\r\n?/g, "\n").replace(/\t/g, "    ").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, " ");
+  // The built-in font writes Western European letters and no others, and
+  // pdf-lib stops at the first it can't -- which was a carriage return, so
+  // every file saved on Windows failed, as did a Cyrillic name or a tick.
+  const writable = new Set(font.getCharacterSet());
+  for (const ch of words) if (ch !== "\n" && !writable.has(ch.codePointAt(0)!)) throw new Error(NO_PDF_LETTERS);
+  const lines = wrapText(words, (s) => font.widthOfTextAtSize(s, size), width - margin * 2);
   const step = size * 1.45;
   const perPage = Math.floor((height - margin * 2) / step);
   for (let i = 0; i < Math.max(1, Math.ceil(lines.length / perPage)); i++) {
@@ -256,9 +438,8 @@ export async function convertFiles(files: File[], target: Target): Promise<Made[
 
   if (target === "pdf" && kinds.every((k) => k === "image" || k === "pdf")) {
     const { pagesToPdf } = await import("@/lib/documentPdf");
-    const pages = await Promise.all(
-      files.map(async (f) => ({ dataUrl: await readDataUrl(f), mediaType: f.type || (kindOf(f) === "pdf" ? "application/pdf" : "image/jpeg") }))
-    );
+    const pages: DocPage[] = [];
+    for (const f of files) pages.push(...(await pdfPagesOf(f)));
     const bytes = await pagesToPdf(pages, name);
     return [{ name: `${files.length > 1 ? `${name} and ${files.length - 1} more` : name}.pdf`, blob: new Blob([bytes as BlobPart], { type: "application/pdf" }) }];
   }
@@ -273,19 +454,25 @@ export async function convertFiles(files: File[], target: Target): Promise<Made[
       continue;
     }
     if (kind === "pdf") {
-      if (target === "txt") {
-        made.push({ name: `${stem}.txt`, blob: new Blob([await pdfAsText(file)], { type: "text/plain;charset=utf-8" }) });
-        continue;
+      const doc = await openPdf(file);
+      try {
+        if (target === "txt") {
+          made.push({ name: `${stem}.txt`, blob: new Blob([await pdfAsText(doc)], { type: "text/plain;charset=utf-8" }) });
+          continue;
+        }
+        const pages = await pdfPagesAsImages(doc, target === "png" ? "image/png" : "image/jpeg");
+        pages.forEach((blob, i) => made.push({ name: pages.length > 1 ? `${stem} page ${i + 1}.${target}` : `${stem}.${target}`, blob }));
+      } finally {
+        await doc.loadingTask.destroy();
       }
-      const type = target === "png" ? "image/png" : "image/jpeg";
-      const pages = await pdfPagesAsImages(file, type);
-      pages.forEach((blob, i) => made.push({ name: pages.length > 1 ? `${stem} page ${i + 1}.${target}` : `${stem}.${target}`, blob }));
       continue;
     }
     // Words, rows or data.
     const raw = await file.text();
     const isHtml = /\.(html?)$/i.test(file.name) || /^\s*<(!doctype|html)/i.test(raw);
-    const isJson = /\.json$/i.test(file.name) || /^\s*[[{]/.test(raw);
+    const data = isHtml ? undefined : jsonIn(file.name, raw);
+    const isJson = data !== undefined;
+    if (!isJson && /\.json$/i.test(file.name) && (target === "csv" || target === "json")) throw new Error(NOT_DATA);
     const words = isHtml ? htmlToText(raw) : raw;
     if (target === "txt") {
       made.push({ name: `${stem}.txt`, blob: new Blob([words], { type: "text/plain;charset=utf-8" }) });
@@ -296,32 +483,17 @@ export async function convertFiles(files: File[], target: Target): Promise<Made[
       continue;
     }
     if (target === "html") {
-      const rows = !isHtml && !isJson ? parseCsv(raw) : null;
+      // Only a spreadsheet becomes a table: a letter with a comma in every line
+      // used to come out cut into cells.
+      const rows = !isHtml && !isJson && (/\.(csv|tsv)$/i.test(file.name) || /csv|tab-separated/.test(file.type)) ? parseCsv(raw) : null;
       made.push({ name: `${stem}.html`, blob: new Blob([isHtml ? raw : rows && rows.length > 1 ? rowsToHtml(rows, stem) : textToHtml(words, stem)], { type: "text/html;charset=utf-8" }) });
       continue;
     }
     if (target === "csv") {
-      let rows: string[][];
-      if (isJson) {
-        const data = JSON.parse(raw);
-        const list: Record<string, unknown>[] = Array.isArray(data) ? data : [data];
-        const keys = [...new Set(list.flatMap((r) => (r && typeof r === "object" ? Object.keys(r) : [])))];
-        rows = keys.length ? [keys, ...list.map((r) => keys.map((k) => String((r as Record<string, unknown>)?.[k] ?? "")))] : list.map((r) => [String(r)]);
-      } else {
-        rows = parseCsv(words);
-      }
-      made.push({ name: `${stem}.csv`, blob: new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" }) });
+      made.push({ name: `${stem}.csv`, blob: new Blob([toCsv(isJson ? jsonRows(data) : parseCsv(words))], { type: "text/csv;charset=utf-8" }) });
       continue;
     }
-    // json
-    let data: unknown;
-    if (isJson) data = JSON.parse(raw);
-    else {
-      const rows = parseCsv(words);
-      const [head, ...rest] = rows;
-      data = head && rest.length ? rest.map((r) => Object.fromEntries(head.map((h, i) => [h || `column ${i + 1}`, r[i] ?? ""]))) : rows;
-    }
-    made.push({ name: `${stem}.json`, blob: new Blob([JSON.stringify(data, null, 2) + "\n"], { type: "application/json" }) });
+    made.push({ name: `${stem}.json`, blob: new Blob([JSON.stringify(isJson ? data : rowsToRecords(parseCsv(words)), null, 2) + "\n"], { type: "application/json" }) });
   }
   return made;
 }

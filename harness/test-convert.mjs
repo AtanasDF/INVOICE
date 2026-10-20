@@ -1,7 +1,8 @@
 // Change a file (Atanas, 2026-09-22: "every file needs to be able to be
 // turned into every other file so the app works as a file transformer
 // too"). Real files go in, real files come out, and each one is opened and
-// checked: a picture, a PDF of three pages, and a spreadsheet.
+// checked: a picture, a PDF of three pages, and a spreadsheet -- and the
+// awkward ones in convert-files/ (gen-convert-files.py).
 import fs from "node:fs";
 // The app's own page counter, compiled into gen/ by the runner.
 import { pdfPageCount } from "./gen/lib/pdfPages.js";
@@ -129,6 +130,80 @@ try {
   file = await waitFor(".html");
   const html = file ? fs.readFileSync(DL + file, "utf8") : "";
   check("...or a web page with the rows in a table", !!file && html.includes("<table>") && html.includes("Plasterboard"), html.slice(0, 160));
+
+  // ---- Awkward files (notes/audit-convert.md) ----
+  const FILES = HERE + "convert-files/";
+  const alert = () => page.evaluate(() => document.querySelector('[role="alert"]')?.textContent ?? "");
+  const pdfOut = async () => {
+    await saveMade();
+    const f = await waitFor(".pdf");
+    return f ? fs.readFileSync(DL + f) : null;
+  };
+
+  const { PDFDocument, StandardFonts } = await import("./gen/node_modules/pdf-lib/cjs/index.js");
+  const sizes = async (buf) => (await PDFDocument.load(buf)).getPages().map((pg) => [pg.getWidth(), pg.getHeight()]);
+
+  await reset();
+  await choose(FILES + "owner-only.pdf");
+  await press("PDF");
+  let out = await pdfOut();
+  const ownerPages = out ? await pdfPageCount(`data:application/pdf;base64,${out.toString("base64")}`) : 0;
+  check("a PDF with only a permissions password comes out with its page drawn, not copied across as garbage", !!out && ownerPages === 1 && out.toString("latin1").includes("/Subtype /Image"), `${ownerPages} pages, ${await alert()}`);
+
+  for (const target of ["PDF", "Picture", "Plain text"]) {
+    await reset();
+    await choose(FILES + "locked.pdf");
+    await press(target);
+    await page.waitForFunction(() => document.querySelector('[role="alert"]'), { timeout: 30000 }).catch(() => {});
+    check(`a PDF locked with a password says so (${target})`, /locked with a password/.test(await alert()), await alert());
+  }
+
+  await reset();
+  const five = await PDFDocument.create();
+  const helv = await five.embedFont(StandardFonts.Helvetica);
+  for (let n = 1; n <= 5; n++) five.addPage().drawText(`Page ${n} ${" ".repeat(2000)}x`, { font: helv, size: 12, x: 50, y: 700 });
+  const whole = await five.save({ useObjectStreams: false });
+  fs.writeFileSync(DL + "cut.pdf", whole.subarray(0, Math.floor(whole.length * 0.3)));
+  await choose(DL + "cut.pdf");
+  await press("PDF");
+  await page.waitForFunction(() => document.querySelector('[role="alert"]') || /is ready/.test(document.body.innerText), { timeout: 30000 }).catch(() => {});
+  check("a PDF cut short is refused as damaged, not merged as one page of five", /damaged/.test(await alert()), await alert());
+
+  await reset();
+  await choose(FILES + "scanned.pdf");
+  await press("Plain text");
+  await page.waitForFunction(() => document.querySelector('[role="alert"]') || /is ready/.test(document.body.innerText), { timeout: 30000 }).catch(() => {});
+  check("a PDF with no words asked for as text says so, instead of an empty file", /no words to take out/.test(await alert()), await alert());
+
+  await reset();
+  await choose(FILES + "photo.webp");
+  await press("PDF");
+  out = await pdfOut();
+  check("a WEBP picture becomes a PDF (pdf-lib takes PNG and JPEG only)", !!out && out.subarray(0, 5).toString() === "%PDF-", await alert());
+
+  await reset();
+  await choose(FILES + "sideways.jpg");
+  await press("PDF");
+  out = await pdfOut();
+  const box = out ? (await sizes(out))[0] : null;
+  check("a phone photo held upright is upright in the PDF, not on its side", !!box && box[0] < box[1], JSON.stringify(box));
+
+  await reset();
+  await choose(FILES + "big.jpg");
+  await press("Picture");
+  await saveMade();
+  file = await waitFor(".png");
+  const png = file ? fs.readFileSync(DL + file) : null;
+  const dims = png ? [png.readUInt32BE(16), png.readUInt32BE(20)] : null;
+  check("a 24-megapixel photo comes out at no more than iOS Safari will draw, the same shape", !!dims && dims[0] * dims[1] <= 16_777_216 && Math.abs(dims[0] / dims[1] - 5712 / 4284) < 0.01, JSON.stringify(dims) + " " + (await alert()));
+
+  await reset();
+  await choose(FILES + "page.html");
+  await press("Plain text");
+  await saveMade();
+  file = await waitFor(".txt");
+  const pageWords = file ? fs.readFileSync(DL + file, "utf8") : "";
+  check("a web page's words keep their lines and leave its script out", /Total\n£40\.00/.test(pageWords) && !pageWords.includes("secret"), JSON.stringify(pageWords));
 
   // ---- Something we can't change ----
   await reset();

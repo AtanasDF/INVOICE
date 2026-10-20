@@ -76,7 +76,9 @@ export default function ConvertPage() {
             e.target.value = "";
           }}
         />
-        <button type="button" onClick={() => picker.current?.click()} className={`${BIG} w-full bg-neutral-900 text-white`}>
+        {/* Adding or removing a file while one list is being changed showed that
+            list's results as "ready" beside a different list. */}
+        <button type="button" disabled={!!busy} onClick={() => picker.current?.click()} className={`${BIG} w-full bg-neutral-900 text-white disabled:opacity-50`}>
           Choose files
         </button>
 
@@ -88,7 +90,7 @@ export default function ConvertPage() {
                   <span className="block truncate text-sm font-medium wrap-anywhere">{f.name}</span>
                   <span className="block text-xs text-neutral-500">{KIND_WORDS[kinds[i]]} · {Math.max(1, Math.round(f.size / 1024))} KB</span>
                 </span>
-                <button type="button" onClick={() => remove(i)} className="shrink-0 text-sm font-medium text-neutral-600 underline">
+                <button type="button" disabled={!!busy} onClick={() => remove(i)} className="shrink-0 text-sm font-medium text-neutral-600 underline disabled:opacity-50">
                   Remove
                 </button>
               </li>
