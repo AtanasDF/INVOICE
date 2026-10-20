@@ -4,6 +4,33 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud brief 3: what the stale suites duplicate (`wip/stale-suites`)
+
+A report, nothing deleted or edited in `harness/`. `notes/suite-map.md` has one line per
+stale copy and per `test-*.mjs`, found by comparing every `check(...)` by label and by
+expression, then reading each unmatched one against the live suite and the app.
+
+- **"47" is 44 copies plus three live runners** (`run-all.sh`, `run-one.sh`,
+  `run-bent-suites.sh`) sharing the `run-` prefix. Delete by the list, never by prefix.
+- **One copy holds unique ground: `qux-test-public-company`** -- the customer's `/q/` page
+  showing Attn + VAT for a company and neither for a private person, through
+  `publicQuote.ts`'s own mapping, plus a real `/q/` page at 375px. Nothing that runs
+  checks either. Every other unmatched check in the 44 was rewritten on purpose in the live
+  suite (listed in the file).
+- **Bigger, and outside the 47: `test-receipts-list-3302` is marked SUPERSEDED but is the
+  only suite on the strict supplier-link banner, per-row ticks, remembered skips, the ✕
+  dismissal and `details.noSupplier`** -- 25 checks, and `supplierLinks.ts` has no logic
+  suite. Recommended moving it to PENDING or into the run on the Mac; not done here (no
+  suite edits, and other branches are changing the run lists).
+- The six `test-deposits` copies add nothing, but `test-deposits` itself is PENDING, so the
+  deposit/balance flow runs nowhere. `test-settings-add`'s 35 unmatched names were not
+  checked by hand.
+- Five more copy families (`md-`, `ql-`, `qr-regress-`, `rl-`, `sa-`) and the `-v2` /
+  `-3100` clip copies hold nothing unique.
+
+No browser suite was run (cloud). Brief ticked in `notes/cloud-queue.md`; a pointer added
+under the stale-suites item in `notes/handover.md`.
+
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 
 **Merged into `main` on Atanas's say-so** (fast-forward to `32e963d`, exactly the tested

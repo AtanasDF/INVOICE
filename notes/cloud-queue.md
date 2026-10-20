@@ -75,7 +75,7 @@ Write findings to notes/audit-convert.md with a concrete failure for each, commi
 branch and push. No behaviour changes.
 ```
 
-## 3. What the 47 stale suites actually duplicate — [ ]
+## 3. What the 47 stale suites actually duplicate — [x] (2026-10-20, `notes/suite-map.md`, branch `wip/stale-suites`)
 
 ```
 Read harness/README.md and CLAUDE.md. harness/test-suites-report.mjs tracks which
