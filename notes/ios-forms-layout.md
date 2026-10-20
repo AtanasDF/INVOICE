@@ -77,7 +77,8 @@ page's More button ends at 577px on a 390px phone.
   6/15 on `main`.
 - **Extended:** `test-account-switch` (24, the boot script names every prefix).
 - **Green against `next start` of this branch, in this container (Chromium, one at a time):**
-  see the session log for the list and counts.
+  30 browser suites, listed with counts in the session log. `test-quote-links` (fixed port
+  3316, ignores BASE) and `test-review-fixes` (times out) fail identically on `main` here.
 
 **The Mac should still run**, against `next start`, before this merges: everything above,
 plus `test-draft-autosave`, `test-form-draft`, `test-quotes`, `test-quote-links`,
