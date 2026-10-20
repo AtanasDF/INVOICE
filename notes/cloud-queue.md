@@ -248,7 +248,7 @@ iPhone can confirm it. Change no app code. notes/ios-safari.md, worst first, wit
 "try these on the phone" list at the top. Branch: wip/ios-safari.
 ```
 
-## 13. iPhone Safari fixes: forms, inputs and layout — [ ]
+## 13. iPhone Safari fixes: forms, inputs and layout — [x] (2026-10-20, `notes/ios-forms-layout.md` on `claude/brief-13-cloud-queue-u2loeu`; all 8 fixed, camera parts left to 14)
 
 ```
 Read notes/ios-safari.md first. Fix findings 1, 2, 5, 6, 20, 21, 22 and 23: tapping a box

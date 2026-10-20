@@ -23,7 +23,9 @@ import {
   DEVICE_KEYS,
   LAST_ACCOUNT_KEY,
   PERSONAL_LOCAL_KEYS,
+  PERSONAL_LOCAL_PREFIXES,
   PERSONAL_SESSION_KEYS,
+  PERSONAL_SESSION_PREFIXES,
   accountBoot,
   accountToRemember,
   keysToClear,
@@ -107,6 +109,10 @@ const boot = accountBoot("sb-test-auth-token");
 check("the boot script carries the real auth key, not a template", boot.includes("sb-test-auth-token") && !boot.includes("JSON.stringify"),
   "an un-interpolated template compiles fine and does nothing at all");
 check("...and names every personal key", PERSONAL_LOCAL_KEYS.every((k) => boot.includes(k)) && PERSONAL_SESSION_KEYS.every((k) => boot.includes(k)));
+// Per-record keys (a draft invoice's edits under its id) can't be named one by
+// one, so the boot script has to walk storage for them; test-ios-forms-layout
+// runs it against a fake storage to prove it does.
+check("...and every per-record prefix", [...PERSONAL_LOCAL_PREFIXES, ...PERSONAL_SESSION_PREFIXES].every((k) => boot.includes(k)) && PERSONAL_LOCAL_PREFIXES.length > 0);
 check("...and can read a base64 session as well as plain JSON", boot.includes("base64-") && boot.includes("atob"));
 check("...and never throws, whatever storage does", /^try\{/.test(boot) && /catch\(e\)\{\}$/.test(boot));
 const layout = fs.readFileSync(path.join(REPO, "web/src/app/layout.tsx"), "utf8");

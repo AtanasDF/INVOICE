@@ -4,6 +4,26 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — iPhone Safari: forms, inputs and layout (cloud, brief 13), NOT merged
+
+Branch `claude/brief-13-cloud-queue-u2loeu` (the brief said `wip/ios-forms-layout`; the
+cloud session was told to use this name). Findings 1, 2, 5, 6, 20, 21, 22 and 23 of
+`notes/ios-safari.md`, all confirmed in the code and all fixed; detail and what is left in
+`notes/ios-forms-layout.md`. The camera halves of #21 and #22 are in DocumentCapture and
+left for brief 14. No schema change.
+
+New: `test-ios-forms-layout` (52, source-reading, each fix proved by breaking it) and
+`test-ios-layout` (15, browser: **6/15 on a `main` build, 15/15 here** -- on main a receipt
+line turns 2.50 into 250 and the Feedback pill sits on top of + Add). Both in run-all.sh.
+`test-account-switch` extended (24). tsc, eslint, build clean (build with placeholder
+public Supabase env: there is no .env.local in the cloud).
+
+**This container can run the browser suites**: a two-line wrapper at the Mac's Chrome path
+(`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, outside the repo) execs
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome --no-sandbox`, and the app is built with
+`NEXT_PUBLIC_SUPABASE_URL=https://wecfwjxzyzzrcwbwnwpo.supabase.co` (public) and any anon
+key, because mockdb intercepts that origin. Results below are Chromium on Linux.
+
 ## 2026-10-20 — Round 3 merged; migrations 043-045 live
 
 043, 044 and 045 run on the live database and each exercised as the Hidefield owner in a
