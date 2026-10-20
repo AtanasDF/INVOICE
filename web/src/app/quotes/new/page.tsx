@@ -55,7 +55,7 @@ export default function NewQuotePage() {
           initial: { clientId: "", number: nextQuoteNumber(quotes), date, validUntil: defaultValidUntil(date), items: [], notes: "", deposit: null },
         });
       })
-      .catch((err) => setError(loadFailed(err, "your clients", "You can still fill this in.")));
+      .catch((err) => setError(loadFailed(err, "your clients", "Check your connection, then reload the page.")));
   }, []);
 
   async function save(v: QuoteFormValue) {

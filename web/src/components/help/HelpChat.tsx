@@ -22,6 +22,7 @@ export default function HelpChat() {
   // render AFTER the first press, so two quick presses both get through and
   // both spend a question.
   const inFlight = useRef(false);
+  const emailing = useRef(false);
 
   async function headers() {
     const { data } = await supabase.auth.getSession();
@@ -61,6 +62,8 @@ export default function HelpChat() {
   // The whole conversation goes, not just the last question: what the chat
   // got wrong is the reason they are writing.
   async function emailIt() {
+    if (emailing.current) return;
+    emailing.current = true;
     setError(null);
     try {
       const res = await fetch("/api/feedback", {
@@ -73,6 +76,8 @@ export default function HelpChat() {
       else setSent(true);
     } catch {
       setError("Couldn't send that just now.");
+    } finally {
+      emailing.current = false;
     }
   }
 

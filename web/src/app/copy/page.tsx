@@ -10,6 +10,7 @@ import { shortDate } from "@/lib/dates";
 import { todayISO } from "@/lib/today";
 import Tip from "@/components/Tip";
 import EmailFileForm from "@/components/EmailFileForm";
+import { saveBlob } from "@/lib/saveFile";
 
 // Copy any paper: photos (straightened by the scanner) or files, in order,
 // into one PDF to save, share or email. Nothing is read by the AI and
@@ -95,12 +96,7 @@ export default function CopyDocumentPage() {
   async function saving() {
     const m = await make();
     if (!m) return;
-    const url = URL.createObjectURL(m.blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = m.name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    saveBlob(m.name, m.blob);
     setNote(`Saved as ${m.name}.`);
   }
 

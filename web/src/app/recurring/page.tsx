@@ -11,6 +11,7 @@ import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 function RecurringTabs() {
   return (
@@ -92,13 +93,12 @@ export default function RecurringExpensesPage() {
     setSaving(true);
     try {
       const day = Math.min(28, Math.max(1, parseInt(dayOfMonth, 10) || 1));
-      const total = parseFloat(totalAmount) || 0;
-      const vat = parseFloat(vatAmount) || 0;
+      const { netGbp, vatGbp } = receiptGbp(totalAmount, vatAmount, "GBP", "");
       const created = await recurringExpensesStore.add({
         description,
         category,
-        amount: Math.max(0, total - vat),
-        vatAmount: vat,
+        amount: netGbp,
+        vatAmount: vatGbp,
         supplierId,
         dayOfMonth: day,
         nextDueDate: nextDueFromDay(day),
@@ -182,8 +182,8 @@ export default function RecurringExpensesPage() {
     }
   }
 
-  async function removeRecurring(id: string) {
-    if (!window.confirm("Remove this repeating expense? It stops being made each month, and this can't be undone.")) return;
+  async function removeRecurring(id: string, description: string) {
+    if (!window.confirm(`Remove the repeating expense "${description}"? It stops being made each month, and this can't be undone.`)) return;
     setError(null);
     try {
       await recurringExpensesStore.remove(id);
@@ -281,7 +281,7 @@ export default function RecurringExpensesPage() {
                   <button onClick={() => toggleActive(item)} className="text-sm text-neutral-600 underline">
                     {item.active ? "Pause" : "Resume"}
                   </button>
-                  <button onClick={() => removeRecurring(item.id)} className="text-sm text-neutral-600 underline">
+                  <button onClick={() => removeRecurring(item.id, item.description)} className="text-sm text-neutral-600 underline">
                     Remove
                   </button>
                 </div>

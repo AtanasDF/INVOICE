@@ -44,6 +44,138 @@ was kept on this device." with **Carry on with it** / **Throw it away** (which c
   phone (type a receipt, switch to aeroplane mode, tap a link, come back).
 - Trap met: `pkill -f "next start"` and `pgrep -f next-server` match the shell running
   them and kill it. Kill by PID from `ps -eo pid=,comm=`.
+- **01:15, `main` merged in** after the component audit landed on it. Only run-all.sh and
+  the two logs clashed (both appended); both `new/page.tsx` files merged clean. On the
+  merged tree: tsc, eslint, build clean; test-form-draft 67, test-account-switch 23,
+  test-draft-autosave 18, test-clear 22, test-double-press 11, test-form-errors 10,
+  test-half-saved 20, test-two-tabs 13, test-currency 22, test-cis 14, test-reverse-charge
+  57, test-audit-guards 56, test-component-money 61, test-audit-misc 15, all green.
+
+## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
+
+Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged
+without a conflict; the suite list, the logic tsconfig and both logs clashed only because
+both appended to the same line, and both sides were kept. **One real clash the merge did
+not show**: part 2 changed SendInvoicePanel's lock from a boolean to the invoice key, and
+part 1's new PDF-failure path, written in parallel, reset it to `false` -- each half
+typechecked alone, the merge did not. Fixed (`eda9f49`).
+
+**Browser suites run (46, against `next start` on 3100, two at a time):** 42 green first
+time. `test-check-company` crashed under the load and is 54/54 alone (its own dev server).
+`test-receipts-list` 54/55 was a stale assertion -- part 2 now keeps converted GBP to the
+penny (48.00/12.00, not 47.9976/11.9994); updated, 55/55. `test-address` 0/1 is the known
+pre-existing red. `test-inbox-ingest` 16/24 alone, the same eight every time, all with the
+reader never called: it stands in only for Anthropic, and the email import has read with
+Gemini since `ea1f3e9` (15/10), so it has been red on main since then. This branch's only
+change to that route is the penny maths after the read. The suite needs a Gemini stand-in. tsc, eslint (excluding the
+`web/.claude/worktrees/` copy a local session left, which lints its own `.next` and is not
+ours) and build clean; 13 logic/source suites green. **Browser suites not yet run** -- about
+fifty named across both halves' logs, which is near a full run on this 8 GB Mac.
+
+Left for Atanas from part 2: whether invoice lines are rounded inside
+`computeInvoiceTotals` (moves an issued invoice with a half-penny line by a penny). Four
+more cloud sessions sent the same evening: converter (brief 2), stale suites (3), dead
+weight (7, report only), and draft autosave for receipts/new and invoices/new.
+
+## 2026-10-19 (cloud) — Component audit sections 1-4 worked through, on `wip/audit-components-1`
+
+A cloud session: no browser, no `.env.local`, no database. **Not merged.** A second cloud
+session took sections 5-7 and the misc defects at the same time, so every change here is
+small and local to the finding.
+
+Every finding in sections 1-4 of `notes/audit-components.md` was opened in the code before
+it was believed. **All real: 50 fixed, 2 skipped (already fixed by `517a74f`), 0 false, 0
+left.** Each is marked in the notes file.
+
+- **1. Once-only presses** (21): a ref checked on entry wherever an insert or a send was
+  guarded only by `disabled` or state -- Same again, Duplicate, Save draft, three "Add as
+  new customer/supplier", Save customer, Save receipt, quote requests, feedback, the help
+  chat's email, the batch camera's Use N pages (two scans each off the allowance), Read
+  it now, all the sign-in sends, the email-in address (two tokens, the one shown possibly
+  dead). The two `run()` helpers set `busyRef` and never read it.
+- **2. Failed loads** (12): /scan's lists failure is its own note and is retried; new
+  invoice's load had no catch at all; **mileage priced every mile at 45p when the trips
+  hadn't loaded** (worst finding 7, not in `517a74f`) and now loads them first or refuses;
+  reminders, register, shared company link, "not found", statement, Money.
+- **3. Error text** (11): `authFailed()` (lib/errorText.ts) says GoTrue's errors by code,
+  so "Invalid login credentials" and the rate-limit text no longer reach people; a link's
+  `error_description` is never shown as written; "Load failed" is gone from feedback,
+  emailing a file and the price guide; emailing an invoice says PDF_FAILED; an offline
+  exchange rate no longer blames "your records".
+- **4. Removals** (6): Archive, Reset to defaults (names the categories that go), Forget my
+  saved signature, Clear form on an import, and the two recurring removals now say which.
+
+Checked here: `tsc`, `eslint .` and `npm run build` clean (the build needs placeholder
+`NEXT_PUBLIC_SUPABASE_URL`/keys in a cloud session, or it dies on "Invalid URL" collecting
+`/api/inbox/ingest`). New `harness/test-audit-guards.mjs` (56 checks, logic + source,
+runs anywhere) is green and fails when a fix is reverted; `errorText.ts` and `fx.ts` were
+added to `tsconfig.logic.json`. test-govuk-words, test-utc-today, test-promises,
+test-public-reads and test-csv-safety still green.
+
+**Before merging, on the Mac, against `next start`** (none of these has been run on this
+branch): `test-double-press` (two new cases, written blind -- check a selector before
+believing a failure), `test-settings-save` (now accepts the Reset dialog),
+`test-people-check`, `test-sign-up`, `test-feedback-page`, `test-feedback`,
+`test-mileage`, `test-money-screen`, `test-reminders-ui`, `test-quotes`, `test-quotes-ux`,
+`test-quote-requests`, `test-check-company`, `test-company-picker`,
+`test-no-silent-contacts`, `test-statement`, `test-clear`, `test-free-draft`,
+`test-price-finder`, `test-send-document`, `test-copy-document`, `test-scan-wall`,
+`test-upload-panel`, `test-currency`, `test-quiet-failures`, `test-write-fails`,
+`test-said-so`, `test-dashboard`, and the batch-camera runner for `DocumentCapture`.
+
+Left: `AnswerEntry` "Couldn't read their quote." runs `extractPages` through `errorText`,
+so offline it says "Load failed" -- same shape as the PriceFinder fix, outside the list.
+
+## 2026-10-19 — Component audit sections 5–7 and the misc defects, on `wip/audit-components-2` (cloud)
+
+A cloud session, so: no browser, no database, no `.env.local`. **Not merged; nothing here
+is live.** Branch `wip/audit-components-2`, five commits on `f08edea`. A second cloud
+session is doing sections 1–4 at the same time, so expect small conflicts in `scan/page.tsx`
+or `receipts/page.tsx` when both land. Every finding was opened in the code before it was
+believed; each is marked in `notes/audit-components.md` (fixed / false / left, with why).
+
+**Counts: 34 findings looked at, none of them false outright. 31 fixed, 2 half (quotes "sent N days ago": wording fixed, timing left; the Free-page engine: half already fixed), 1 left for a decision (rounding invoice lines).**
+- Section 7, money and dates (done first): 8 real, 7 fixed, 1 half (quotes "sent N days
+  ago": the wording now says "dated", because quotes keep no send time; counting from the
+  real send needs a `sent_at` migration). Plus worst-one 4, the CIS penny, which section 7
+  points at and which was still live: fixed (`cisAfterCredit`, reproduced first: −£9.57
+  above £86.17). Worst-one 5's own `money` copy in QuoteDocument fixed.
+- **Left for Atanas: worst-one 5's unrounded line amounts.** The only way the printed lines
+  can add up is rounding each line inside `computeInvoiceTotals`, which would move the total
+  of an already-issued invoice with a half-penny line by a penny -- and the balance, a
+  recorded "paid" and a VAT return with it. A decision about the record, not a display fix.
+- Section 5, hex: 1 real (lock-on green in classes) → `--lock-on` token; the rest agreed
+  legitimate.
+- Section 6, camera in dark mode: 13 items, all real, all fixed by one rule --
+  `.camera-screen` on the camera's four panels puts the light values back (the same block
+  as `.paper-sheet`); the review sheet stays outside and follows the theme. Tip's "Got it"
+  is ink-on-dark.
+- Misc: 9 read; 8 real and fixed, the Free-page engine half false (it already started on
+  Gemini, f09e2b5; the picker shown to everyone was real and is fixed).
+
+Shape of the money fixes: `lib/receiptAmounts.ts` (`receiptGbp`, `gbpFigures`,
+`rateAfterReview`, `grossOf`) replaced six copies of the receipt maths -- unrounded, and all
+through `parseFloat`, so "1,200.00" typed as a total saved as **£1**; `lib/expensePeriod.ts`
+(the week box that crashed Expenses, the category split in whole pennies);
+`amountOrNull` moved from a component into `lib/money.ts` (re-exported, so callers are
+unchanged) beside a new `roundMoney`; `shortDate`/`longDate` turn a timestamp into its
+London day.
+
+Checks here: tsc, eslint, build all clean (build needs a placeholder
+`NEXT_PUBLIC_SUPABASE_URL` in the cloud, nothing to do with this branch). New logic suites
+`test-component-money` 61/61, `test-audit-misc` 15/15, `test-camera-dark-source` 11/11;
+every pure-logic suite in run-all green; `test-account-switch` updated for the engine
+change (23/23).
+
+**The Mac must run before merging** (rebuild, `next start`, then): `test-camera-dark`
+(NEW, never run -- needs large.mjpeg), `test-quote-chase` (assertion changed to "dated 9
+days ago"), `test-paper-sheet` (the .paper-sheet CSS block was split), `test-dark-mode`,
+`test-readable`, `test-worst-phone`, `test-tips`, `test-camera-tip`, `test-camera-refusal`,
+`test-file-strip`, `test-free-draft`, `test-mileage`, `test-receipts-list`,
+`test-review-fixes`, `test-currency`, `test-vat-return`, `test-cis`, `test-quotes`,
+`test-quote-requests`, `test-check-company`, `test-inbox-ingest`, `test-settings-save`,
+`test-send-document`, `test-copy-document`, `test-save-as`, `test-dashboard`. And on the
+iPhone, in Dark: open the scanner and look at the shutter, the zoom pills and a failure.
 
 ## 2026-10-19 — Nine cloud-audit findings checked in the code, all real, fixed on `fix/audit-findings`
 

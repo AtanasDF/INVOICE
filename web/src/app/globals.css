@@ -51,6 +51,10 @@
      looks like, so drawing near-black ink on a dark pad would have been
      invisible while you signed and correct on the document. */
   --sheet: #ffffff;
+  /* The camera's "page found" green, the same in every theme because the
+     screen it is drawn on is always black. The canvas outline uses the same
+     value in DocumentCapture's GREEN. */
+  --lock-on: #4ade80;
   /* The body rule below is unlayered, so it beats Tailwind's own utilities
      whatever their specificity: `bg-neutral-50` on <body> has never actually
      applied. Pointing these at the scale makes the page surface follow the
@@ -221,6 +225,7 @@
   --color-white: var(--paper);
   --color-ink-on-dark: var(--ink-on-dark);
   --color-sheet: var(--sheet);
+  --color-lock-on: var(--lock-on);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -264,15 +269,24 @@
    turns into #191b1f with pale writing -- so a phone in dark mode emailed
    its customer a black invoice, and a signature drawn in near-black ink
    vanished into it. The same values as print, scoped to the sheet; Tailwind's
-   own defaults for the colours dark mode lightens. */
-[data-theme="dark"] .paper-sheet {
+   own defaults for the colours dark mode lightens.
+
+   The camera is the other half of the same problem. Its screens are bg-black,
+   which never changes, and every control on them was drawn for the light
+   values: a white shutter ring, a white "Take a photo" button with dark
+   writing, a red failure box under white words, a grey readout. Dark mode
+   turned the white into #191b1f and the dark writing pale, so on black the
+   shutter all but vanished, the readout CLAUDE.md asks people to screenshot
+   was invisible, and white words sat on light pink. The camera's own panels
+   carry .camera-screen and get the light values back; the review sheet that
+   opens over them does not, and follows the lights like any other page. */
+[data-theme="dark"] .paper-sheet,
+[data-theme="dark"] .camera-screen {
   color-scheme: light;
   --n-50: #fafafa; --n-100: #f5f5f5; --n-200: #e5e5e5; --n-300: #d4d4d4;
   --n-400: #a3a3a3; --n-500: #6b6b6b; --n-600: #525252; --n-700: #404040;
   --n-800: #262626; --n-900: #171717; --n-950: #0a0a0a;
   --paper: #ffffff;
-  --accent: #404040;
-  --accent-soft: #f5f5f5;
   --color-red-50: oklch(97.1% 0.013 17.38); --color-red-100: oklch(93.6% 0.032 17.717);
   --color-red-400: oklch(70.4% 0.191 22.216); --color-red-600: oklch(57.7% 0.245 27.325);
   --color-red-700: oklch(50.5% 0.213 27.518); --color-red-800: oklch(44.4% 0.177 26.899);
@@ -281,6 +295,10 @@
   --color-amber-800: oklch(47.3% 0.137 46.201); --color-green-100: oklch(96.2% 0.044 156.743);
   --color-green-700: oklch(52.7% 0.154 150.069); --color-green-800: oklch(44.8% 0.119 151.328);
   --color-blue-100: oklch(93.2% 0.032 255.585); --color-blue-800: oklch(42.4% 0.199 265.638);
+}
+[data-theme="dark"] .paper-sheet {
+  --accent: #404040;
+  --accent-soft: #f5f5f5;
 }
 
 /* The size a person has ALREADY chosen on their phone.

@@ -114,6 +114,8 @@ export default function DraftEditor({ draft, onChange }: { draft: FreeInvoiceDra
   const [hasSaved, setHasSaved] = useState(() => !!readSavedSignature().image);
 
   function forgetSaved() {
+    // The only copy is on this device; a stray press would lose a drawn one.
+    if (!window.confirm("Forget the signature saved on this device? You'll need to draw it again.")) return;
     saveSignature(null, "");
     setHasSaved(false);
   }

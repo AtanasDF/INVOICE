@@ -6,13 +6,42 @@ this section contradicts it.
 Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.
 
+## Component audit MERGED and live (2026-10-20, `32f675d`)
+
+Both cloud halves (`wip/audit-components-1` and `-2`, 81 fixes) were combined on
+`fix/audit-components`, tested on the Mac (46 browser suites against `next start`, all
+green or explained) and fast-forwarded into `main` on Atanas's OK. The two sections
+below describe those branches before the merge. Still open:
+- `test-inbox-ingest` is red on main since 15/10 (8 checks): it stands in only for
+  Anthropic and the email import reads with Gemini. It needs a Gemini stand-in.
+- Atanas's call: whether invoice lines round to the penny inside computeInvoiceTotals.
+- In flight in the cloud: wip/converter-audit, wip/stale-suites, wip/dead-weight,
+  wip/draft-autosave, wip/network-off, feature/quote-sent-at (needs a migration, rule 4),
+  wip/days-between.
+
+## Audit sections 1-4: fixed on `wip/audit-components-1`, NOT merged (2026-10-19, cloud)
+
+50 findings fixed, 2 already done by `517a74f`, none false. Needs the browser suites
+listed at the top of SESSIONS.md run on the Mac before it merges. A second cloud branch
+covers sections 5-7 and the misc defects; expect small conflicts where both touched a file.
+
+## Waiting to merge: `wip/audit-components-2` (cloud, 2026-10-19)
+
+Audit sections 5–7 and the misc defects: 34 checked, 31 fixed, 2 half, 1 left for a decision. **Not merged.**
+Before merging, run the browser suites listed at the top of SESSIONS.md on the Mac
+(`test-camera-dark` is new and has never run). **One decision for Atanas:** whether a
+line on an invoice should be rounded to the penny before the total is added up -- it
+would change the total of any issued invoice with a half-penny line by a penny
+(`notes/audit-components.md`, section 7, worst-one 5). A parallel cloud branch does
+sections 1–4; expect small conflicts.
+
 ## Waiting to merge: `wip/draft-autosave` (2026-10-20, cloud)
 
 New receipt and new invoice keep their draft in localStorage as they are typed and offer it
 back -- the iPhone fix the leave guard could not be. See the top of SESSIONS.md. Before
 merging: run `test-form-draft`, `test-draft-autosave`, `test-account-switch` and `test-clear`
-against `next start`; if the component-audit branch merges first, expect small conflicts in
-the two `new/page.tsx` files.
+against `next start`. `main` (with the component audit) was merged into the branch on
+20/10; the two `new/page.tsx` files merged without a conflict.
 
 ## Merged 2026-10-19
 

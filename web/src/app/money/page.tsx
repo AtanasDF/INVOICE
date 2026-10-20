@@ -38,6 +38,9 @@ export default function MoneyPage() {
   const [vatRegistered, setVatRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Kept apart from the action's error: one state served both, so a failed
+  // "Mark paid" hid every figure that had loaded until the page was reloaded.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const today = todayISO();
   // Marking a bill paid writes to the record; `disabled` lands a render too
@@ -54,7 +57,7 @@ export default function MoneyPage() {
         setPayments(pays);
         setVatRegistered(profile.vatRegistered);
       })
-      .catch((err) => setError(loadFailed(err, "your money")))
+      .catch((err) => setLoadError(loadFailed(err, "your money")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -118,6 +121,7 @@ export default function MoneyPage() {
       </div>
       <Tip id="money-how">How it works: what is late is at the top of each list. Chase an invoice, or mark a bill paid, without leaving this page.</Tip>
 
+      {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {done && <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{done}</p>}
 
@@ -127,7 +131,7 @@ export default function MoneyPage() {
           because a zero looks like an answer. */}
       {loading ? (
         <p className="text-sm text-neutral-500">Loading&hellip;</p>
-      ) : error ? null : (
+      ) : loadError ? null : (
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[

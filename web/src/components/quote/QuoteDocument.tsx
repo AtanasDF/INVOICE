@@ -3,7 +3,9 @@ import type { BusinessProfile, Client, Quote } from "@/lib/storage";
 import { VAT_RATE_LABELS, computeInvoiceTotals } from "@/lib/vat";
 import { depositGross } from "@/lib/quoteDeposit";
 
-export const money = (n: number) => `£${(Math.round(n * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// The app's one formatter: this copy printed a discount line as "£-50.00".
+import { money } from "@/lib/money";
+export { money };
 
 export function quoteTotal(quote: Quote, vatRegistered: boolean): number {
   return Math.round(computeInvoiceTotals(quote.items, vatRegistered).total * 100) / 100;

@@ -122,8 +122,11 @@ export default function QuotePage() {
   // in for every one of five actions -- fine while the database's own words
   // showed through underneath it, and useless the moment they stopped.
   async function run(action: () => Promise<void>, doing: string) {
-    setBusy(true);
+    // Checked on entry: a second press in the same tick was refused by the
+    // conditional update and told the person their quote had changed.
+    if (busyRef.current) return;
     busyRef.current = true;
+    setBusy(true);
     genRef.current++;
     setError(null);
     try {
@@ -142,7 +145,8 @@ export default function QuotePage() {
     return (
       <div className="space-y-2">
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <p className="text-sm text-neutral-600">Quote not found.</p>
+        {/* Only when the load worked: a dropped connection is not a missing quote. */}
+        {!error && <p className="text-sm text-neutral-600">Quote not found.</p>}
         <Link href="/quotes" className="text-sm font-medium text-neutral-700 underline">Back to quotes</Link>
       </div>
     );

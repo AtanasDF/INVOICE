@@ -7,6 +7,7 @@ import DateRoller, { RollerValue } from "@/components/DateRoller";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import { money } from "@/lib/money";
+import { grossOf } from "@/lib/receiptAmounts";
 
 // The file library, on the page he keeps coming back to (Atanas, 2026-09-24).
 // One rectangle with a switch, not two stacked -- which is the mistake taken
@@ -38,7 +39,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
       href: `/receipts?open=${r.id}`,
       date: r.date,
       title: r.vendor || "Receipt",
-      note: money(r.amount ?? 0),
+      note: money(grossOf(r)),
       src: r.imageDataUrl ?? null,
       aged: !!r.details?.photoAgedAt,
     }));

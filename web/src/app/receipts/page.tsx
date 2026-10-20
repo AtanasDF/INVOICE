@@ -16,6 +16,7 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 import { daysBetween, dueSoon } from "@/lib/bills";
 import { todayISO } from "@/lib/today";
 import { addMonths } from "@/lib/recurrence";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 type ReceiptDraft = {
   clientId: string;
@@ -71,24 +72,7 @@ function draftForReceipt(r: Receipt): ReceiptDraft {
 // typed is the total actually paid, converted to GBP at save time, never
 // a raw net figure typed directly.
 function draftGbpAmounts(draft: ReceiptDraft, documentType: DocumentType) {
-  const total = parseFloat(draft.totalAmount) || 0;
-  const vat = parseFloat(draft.vatAmount) || 0;
-  const isCredit = documentType === "credit_note";
-  const net = (totalGbp: number, vatGbp: number) => (isCredit ? -(totalGbp - vatGbp) : Math.max(0, totalGbp - vatGbp));
-  if (draft.currency === "GBP") {
-    return { netGbp: net(total, vat), vatGbp: isCredit ? -vat : vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
-  }
-  const rate = parseFloat(draft.fxRateInput) || 0;
-  const totalGbp = total * rate;
-  const vatGbp = vat * rate;
-  return {
-    netGbp: net(totalGbp, vatGbp),
-    vatGbp: isCredit ? -vatGbp : vatGbp,
-    originalAmount: total,
-    originalVatAmount: vat,
-    originalCurrency: draft.currency,
-    fxRate: rate,
-  };
+  return receiptGbp(draft.totalAmount, draft.vatAmount, draft.currency, draft.fxRateInput, documentType === "credit_note");
 }
 
 // Every card says what the document is: the page holds receipts and
@@ -814,7 +798,7 @@ function ReceiptsPage() {
                     )}
                     {r.originalCurrency && r.originalAmount != null && (
                       <span className="text-neutral-600">
-                        {" "}(from {r.originalCurrency} {r.originalAmount.toFixed(2)} @ {r.fxRate?.toFixed(4)})
+                        {" "}(from {r.originalCurrency} {r.originalAmount.toFixed(2)}{r.fxRate !== null ? ` @ ${r.fxRate.toFixed(4)}` : ", pounds corrected by hand"})
                       </span>
                     )}
                   </div>

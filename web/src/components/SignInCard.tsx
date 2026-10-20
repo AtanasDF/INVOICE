@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { saveFailed, PASSWORDS_DIFFER } from "@/lib/errorText";
+import { authFailed, PASSWORDS_DIFFER } from "@/lib/errorText";
 import { THROWAWAY_REFUSED, isThrowawayEmail } from "@/lib/throwawayEmail";
 import { readSource } from "@/lib/source";
 import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites";
@@ -82,6 +82,10 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // All three sends share it. `disabled` lands a render late, so two presses
+  // in one tick sent two emails (the second refused, its refusal shown beside
+  // "Sent again"), or spent the one-use people-check token twice.
+  const busyNow = useRef(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [code, setCode] = useState("");
@@ -97,7 +101,10 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const reason = hash.get("error_description") ?? "";
       if (!reason) return;
-      setError(/expired|invalid/i.test(reason) ? "That link has run out or was already used. Sign in and, if it asks, send yourself a new one." : reason.replace(/\+/g, " "));
+      // Only ever our own sentence: the reason is Supabase's wording, or
+      // whatever somebody typed into a link they sent.
+      if (!/expired|invalid/i.test(reason)) console.error("sign-in link", reason);
+      setError(/expired|invalid/i.test(reason) ? "That link has run out or was already used. Sign in and, if it asks, send yourself a new one." : "That link didn't work. Sign in and, if it asks, send yourself a new one.");
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }, 0);
     return () => clearTimeout(timer);
@@ -123,6 +130,8 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       setError(WRONG_CODE);
       return;
     }
+    if (busyNow.current) return;
+    busyNow.current = true;
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -131,15 +140,17 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       if (error) throw error;
       setInfo("That's you. Signing you in…");
     } catch (err) {
-      setError(/expired|invalid/i.test(err instanceof Error ? err.message : "") ? "That code has run out or isn't right. Check it, or send the email again." : saveFailed(err, "Couldn't check the code just now."));
+      setError(/expired|invalid/i.test(err instanceof Error ? err.message : "") ? "That code has run out or isn't right. Check it, or send the email again." : authFailed(err, "Couldn't check the code just now."));
     } finally {
+      busyNow.current = false;
       setBusy(false);
     }
   }
 
   async function resend() {
     const to = pendingEmail || email;
-    if (!to) return;
+    if (!to || busyNow.current) return;
+    busyNow.current = true;
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -148,8 +159,9 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       if (error) throw error;
       setInfo(`Sent again to ${to}. Give it a minute, and look in the junk folder too.`);
     } catch (err) {
-      setError(peopleCheckProblem(err) ?? saveFailed(err, "Couldn't send it again just now."));
+      setError(peopleCheckProblem(err) ?? authFailed(err, "Couldn't send it again just now."));
     } finally {
+      busyNow.current = false;
       setBusy(false);
     }
   }
@@ -168,6 +180,8 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
       setError(PASSWORDS_DIFFER);
       return;
     }
+    if (busyNow.current) return;
+    busyNow.current = true;
     setBusy(true);
     try {
       if (mode === "forgot") {
@@ -214,8 +228,10 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
         }
       }
     } catch (err) {
-      setError(peopleCheckProblem(err) ?? saveFailed(err, "Something went wrong."));
+      const doing = mode === "forgot" ? "Couldn't send the email just now." : mode === "signup" ? "Couldn't make the account just now." : "Couldn't sign you in just now.";
+      setError(peopleCheckProblem(err) ?? authFailed(err, `${doing} Try again in a minute.`));
     } finally {
+      busyNow.current = false;
       setBusy(false);
       // Spent either way: a token is good for one attempt, so a second try
       // needs a fresh one.

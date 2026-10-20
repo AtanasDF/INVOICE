@@ -29,7 +29,7 @@ export default function Tip({ id, children, dark, className = "" }: { id: string
           writeTipCount(id, TIP_SHOWS);
           setVisible(false);
         }}
-        className={`shrink-0 text-xs font-medium underline ${dark ? "text-white/80" : "text-neutral-600"}`}
+        className={`shrink-0 text-xs font-medium underline ${dark ? "text-ink-on-dark/80" : "text-neutral-600"}`}
       >
         Got it
       </button>

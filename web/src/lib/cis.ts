@@ -48,3 +48,14 @@ export function creditOffDue(charge: { total: number; due: number }, credited: n
   if (charge.total <= 0 || charge.due === charge.total) return credited;
   return Math.round((pence(credited) * charge.due) / charge.total) / 100;
 }
+
+// The CIS line an invoice prints once a credit note is on it. It was the CIS
+// scaled by the share still billed and rounded on its own, while the amount
+// due took the credit off through creditOffDue, rounded separately: £100 with
+// £10 CIS and a £4.25 credit printed -£9.57 and -£4.25 above "Amount due
+// £86.17", which adds up to £86.18. Worked back from the same figures the
+// amount due uses, so Total, CIS and credit notes always add up to it.
+export function cisAfterCredit(charge: { total: number; due: number; cis: number }, credited: number): number {
+  if (credited <= 0) return charge.cis;
+  return Math.max(0, pence(charge.cis) - (pence(credited) - pence(creditOffDue(charge, credited)))) / 100;
+}

@@ -111,8 +111,13 @@ try {
   cats = await categoryList();
   check("Add them adds what's missing, keeps the edit, Other stays last", cats[0] === "Bricks & mortar" && cats.includes("Salaries & PAYE") && cats.at(-1) === "Other" && cats.filter((c) => c === "Other").length === 1, JSON.stringify(cats));
   check("nothing more to offer once added", !(await bodyText(page)).includes("list also has"));
+  // It asks first, naming the categories that go (notes/audit-components.md,
+  // section 4): one press used to replace the list, and the next Save kept it.
+  let resetAsked = "";
+  page.once("dialog", (d) => { resetAsked = d.message(); d.accept().catch(() => {}); });
   await click("Reset to defaults");
   await sleep(200);
+  check("Reset to defaults asks first, naming what goes", resetAsked.includes("Bricks & mortar"), resetAsked);
   cats = await categoryList();
   check("Reset to defaults gives the kind's list", cats[0] === "Materials & stock" && cats.includes("Salaries & PAYE") && !cats.includes("Bricks & mortar"), JSON.stringify(cats.slice(0, 3)));
 

@@ -228,8 +228,11 @@ export default function ClientsPage() {
   // hides it from client/supplier pickers on new records without
   // touching anything it's already linked to.
   async function toggleArchived(c: Client) {
-    setError(null);
     const next = !c.archived;
+    // It drops out of every picker on one press, right beside Remove, which
+    // asks; this asks too, by name, so the wrong row can be caught.
+    if (next && !window.confirm(`Archive ${c.name}? They stop appearing when you pick a ${c.kind === "client" ? "customer" : "supplier"}. Nothing already made for them changes, and you can unarchive them.`)) return;
+    setError(null);
     setClients((prev) => prev.map((x) => (x.id === c.id ? { ...x, archived: next } : x)));
     try {
       await (next ? clientsStore.archive(c.id) : clientsStore.unarchive(c.id));

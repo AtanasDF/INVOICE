@@ -12,6 +12,7 @@ import { loadFailed } from "@/lib/errorText";
 import TextCustomer from "@/components/TextCustomer";
 import QuotesTabs from "@/components/quoteRequest/QuotesTabs";
 import AddAnything from "@/components/AddAnything";
+import { daysBetween } from "@/lib/bills";
 
 // Quiet for this long after sending is worth a nudge.
 const QUIET_DAYS = 5;
@@ -39,7 +40,10 @@ export default function QuotesPage() {
   // A sent quote keeps the VAT setting it went out under (migration-033);
   // a draft, and anything from before the column, follows Settings.
   const vatOf = (q: Quote) => q.vatRegistered ?? profile?.vatRegistered ?? false;
-  const days = (iso: string) => Math.floor((Date.parse(today) - Date.parse(iso)) / 86_400_000);
+  // A quote keeps no record of when it was sent, so the count runs from its
+  // own date and says so: "sent 17 days ago" was a claim about a day nobody
+  // knew. Counting from the real send needs a sent_at column (a migration).
+  const days = (iso: string) => daysBetween(iso, today);
   // Sent, still good, and quiet for long enough to be worth a nudge.
   const quiet = quotes.filter((q) => q.status === "sent" && days(q.date) >= QUIET_DAYS && (!q.validUntil || q.validUntil >= today));
 
@@ -78,7 +82,7 @@ export default function QuotesPage() {
                     {q.number} · {clientName(q.clientId)}
                   </Link>
                   <span className="text-sm text-neutral-600">
-                    {total} · sent {days(q.date)} days ago{q.validUntil ? ` · holds until ${shortDate(q.validUntil)}` : ""}
+                    {total} · dated {days(q.date)} days ago{q.validUntil ? ` · holds until ${shortDate(q.validUntil)}` : ""}
                   </span>
                 </div>
                 {client ? (

@@ -266,6 +266,13 @@ function FeedbackButton() {
   );
 }
 
+// /help is behind the sign-in, so for a stranger on the front door the link
+// only sent them back to /login.
+function HelpLink() {
+  const { user } = useAuth();
+  return user ? <Link href="/help" className="underline">How it works</Link> : null;
+}
+
 // Where the keyboard goes when the page changes. Next announces the new
 // title, but focus stays on the link that was just followed -- which is now
 // in the header of a different page, so the next Tab carries on from the
@@ -311,7 +318,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mx-auto w-full max-w-4xl px-4 pb-24 pt-2 text-xs text-neutral-500 sm:pb-8 print:hidden">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-4">
           <span>{SITE_NAME}</span>
-          <Link href="/help" className="underline">How it works</Link>
+          <HelpLink />
           <Link href="/how-to-invoice" className="underline">How to invoice</Link>
           <Link href="/privacy" className="underline">Your information</Link>
           <Link href="/terms" className="underline">Terms</Link>

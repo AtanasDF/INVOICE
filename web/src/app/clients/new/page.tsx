@@ -66,6 +66,7 @@ export default function NewClientPage() {
   const [endUserDeclared, setEndUserDeclared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   // A file picked with "Upload a file" on the list is read instead of
   // opening the camera.
   const [capturing, setCapturing] = useState(() => searchParams.get("scan") === "1" && !uploadMarked());
@@ -125,7 +126,7 @@ export default function NewClientPage() {
     }
   }
 
-  const filled = !!(name || email || address || vatNumber || paymentTerms || defaultCurrency || contactPerson || phone || found.length || !isCompany || !remindersEnabled);
+  const filled = !!(name || email || address || vatNumber || paymentTerms || defaultCurrency || contactPerson || phone || found.length || !isCompany || !remindersEnabled || endUserDeclared);
 
   function clearForm() {
     setIsCompany(true);
@@ -138,6 +139,7 @@ export default function NewClientPage() {
     setContactPerson("");
     setPhone("");
     setRemindersEnabled(true);
+    setEndUserDeclared(false);
     setError(null);
     setReadError(null);
     setFound([]);
@@ -164,6 +166,8 @@ export default function NewClientPage() {
   async function addClient(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return setError(NO_NAME);
+    if (savingNow.current) return;
+    savingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -187,6 +191,7 @@ export default function NewClientPage() {
       router.push(`/clients?tab=${kind}`);
     } catch (err) {
       setError(saveFailed(err, `Couldn't save this ${kind === "client" ? "customer" : "supplier"}.`));
+      savingNow.current = false;
       setSaving(false);
     }
   }

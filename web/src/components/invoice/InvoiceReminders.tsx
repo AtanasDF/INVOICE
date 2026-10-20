@@ -5,6 +5,7 @@ import Link from "next/link";
 import { REMINDER_SCHEDULE, addDays, laterReminders, reminderDueToday } from "@/lib/reminderTemplates";
 import { Client, Invoice, remindersSentStore } from "@/lib/storage";
 import { todayISO } from "@/lib/today";
+import { loadFailed } from "@/lib/errorText";
 
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
@@ -12,6 +13,9 @@ const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toL
 // coming, and why there are none when there aren't.
 export default function InvoiceReminders({ invoice, client, amountDue, hasPayments }: { invoice: Invoice; client: Client | null; amountDue: number; hasPayments: boolean }) {
   const [sent, setSent] = useState<Map<string, string> | null>(null);
+  // A failed read used to be an empty map, so every reminder already sent
+  // said "Not sent", and the one in its window "Goes out today" though it had.
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -20,8 +24,8 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
       .then((rows) => {
         if (live) setSent(new Map(rows.map((r) => [r.kind, r.sentAt])));
       })
-      .catch(() => {
-        if (live) setSent(new Map());
+      .catch((err) => {
+        if (live) setError(loadFailed(err, "which reminders have gone out"));
       });
     return () => {
       live = false;
@@ -63,6 +67,10 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
             </>
           )}
         </p>
+      ) : error ? (
+        <p role="alert" className="mt-1 text-sm text-red-600">{error}</p>
+      ) : !sent ? (
+        <p className="mt-1 text-sm text-neutral-500">Loading…</p>
       ) : (
         <ul className="mt-2 space-y-1 text-sm">
           {REMINDER_SCHEDULE.map((r) => {
@@ -78,7 +86,7 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
           })}
         </ul>
       )}
-      {!reason && <p className="mt-2 text-xs text-neutral-500">Sent to {client!.email}. Change the wording in Settings.</p>}
+      {!reason && !error && <p className="mt-2 text-xs text-neutral-500">Sent to {client!.email}. Change the wording in Settings.</p>}
     </div>
   );
 }

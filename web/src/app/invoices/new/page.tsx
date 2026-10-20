@@ -29,7 +29,7 @@ import UploadFilesButton from "@/components/UploadFilesButton";
 import ContactField, { type Usage } from "@/components/ContactField";
 import ClearFormButton from "@/components/ClearFormButton";
 import { dropUploadMarker, takeUploads, uploadMarked } from "@/lib/scanHandoff";
-import { saveFailed, SIGNED_OUT } from "@/lib/errorText";
+import { loadFailed, saveFailed, SIGNED_OUT } from "@/lib/errorText";
 
 type ScanLineItem = { description: string; quantity: number; unitPrice: number };
 type ScanApiResult = {
@@ -145,6 +145,7 @@ export default function NewInvoicePage() {
   const [notes, setNotes] = useState<string>(draft?.notes ?? "");
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // A file picked with "Upload a file" on the list is copied instead of
@@ -157,6 +158,7 @@ export default function NewInvoicePage() {
   const [typedNote, setTypedNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [newCustomer, setNewCustomer] = useState<ScannedCustomer | null>(null);
   const [addingClient, setAddingClient] = useState(false);
+  const addingClientNow = useRef(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [imported, setImported] = useState(!!draft);
@@ -195,7 +197,11 @@ export default function NewInvoicePage() {
     setImported(f.imported && !!draft);
   }
 
-  useEffect(() => {
+  // It had no catch: a failed load left the customer picker empty, the
+  // number preview gone and the totals worked out without VAT, with nothing
+  // to say so -- and a copy then awaited the rejection and blamed the reading.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  function loadLists(): Promise<Lists> {
     const load = Promise.all([clientsStore.all(), invoicesStore.all(), businessProfileStore.get()]).then(([c, inv, biz]) => {
       setClients(c);
       setPastInvoices(inv);
@@ -210,6 +216,27 @@ export default function NewInvoicePage() {
       return { clients: c, pastInvoices: inv, vatRegistered: biz.vatRegistered };
     });
     listsRef.current = load;
+    load.then(
+      () => setLoadError(null),
+      (err) => {
+        // Asked again by the next copy, rather than failing it for good.
+        if (listsRef.current === load) listsRef.current = null;
+        setLoadError(loadFailed(err, "your customers and settings", "Until they load the customer list is empty and the totals leave out VAT. Reload the page to try again."));
+      }
+    );
+    return load;
+  }
+
+  async function readyLists(): Promise<Lists> {
+    try {
+      return await (listsRef.current ?? loadLists());
+    } catch {
+      throw new Error("Couldn't load your customers, so the copy wasn't filled in. Check your connection and try again.");
+    }
+  }
+
+  useEffect(() => {
+    loadLists();
   }, []);
 
   function discardImport() {
@@ -459,7 +486,7 @@ export default function NewInvoicePage() {
       });
       const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; error?: string };
       if (!res.ok || !body.template) throw new Error(body.error || "Couldn't read the invoice.");
-      const lists = await (listsRef.current ?? Promise.resolve(fallbackLists()));
+      const lists = await readyLists();
       applyCopy(body.template, lists);
     } catch (err) {
       setScanError(saveFailed(err, "Couldn't read the invoice."));
@@ -484,7 +511,7 @@ export default function NewInvoicePage() {
       });
       const body = (await res.json().catch(() => ({}))) as { template?: InvoiceTemplate; vat?: TypedVat; error?: string };
       if (!res.ok || !body.template) throw new Error(body.error || "Couldn't turn that into an invoice.");
-      const lists = await (listsRef.current ?? Promise.resolve(fallbackLists()));
+      const lists = await readyLists();
       const vat = body.vat ?? null;
       applyCopy(body.template, lists, { vat });
       const warnings = [
@@ -498,10 +525,6 @@ export default function NewInvoicePage() {
     } finally {
       setTyping(false);
     }
-  }
-
-  function fallbackLists(): Lists {
-    return { clients, pastInvoices, vatRegistered: profile?.vatRegistered ?? false };
   }
 
   // A scan shows whether VAT was charged, so its lines follow that; typed
@@ -617,7 +640,8 @@ export default function NewInvoicePage() {
   }
 
   async function addScannedClient() {
-    if (!newCustomer) return;
+    if (!newCustomer || addingClientNow.current) return;
+    addingClientNow.current = true;
     setAddingClient(true);
     setAddClientError(null);
     try {
@@ -651,6 +675,7 @@ export default function NewInvoicePage() {
     } catch (err) {
       setAddClientError(saveFailed(err, "Couldn't add the customer."));
     } finally {
+      addingClientNow.current = false;
       setAddingClient(false);
     }
   }
@@ -658,6 +683,8 @@ export default function NewInvoicePage() {
   const totals = computeInvoiceTotals(items, profile?.vatRegistered ?? false);
 
   async function save() {
+    if (savingNow.current) return;
+    savingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -680,6 +707,7 @@ export default function NewInvoicePage() {
       router.push(`/invoices/${inv.id}`);
     } catch (err) {
       setError(saveFailed(err, "Couldn't save invoice."));
+      savingNow.current = false;
       setSaving(false);
     }
   }
@@ -715,6 +743,7 @@ export default function NewInvoicePage() {
               Will be <span className="font-medium text-neutral-900">{suggestedInvoiceNumber(profile.invoicePrefix, profile.invoiceNextNumber)}</span> when you send it
             </p>
           )}
+          {loadError && <p role="alert" className="mt-1 text-sm text-red-600">{loadError}</p>}
         </div>
         <CaptureButton
           onOpen={() => setCapture("attach")}
@@ -1000,7 +1029,11 @@ export default function NewInvoicePage() {
           </div>
           <CisSummary items={items} rate={cisRate} total={totals.total} />
           <div className="flex justify-end pt-1">
-            <ClearFormButton onClear={clearForm} disabled={saving || scanning || typing || addingClient || !filled} />
+            <ClearFormButton
+              onClear={clearForm}
+              disabled={saving || scanning || typing || addingClient || !filled}
+              also={imported ? "The invoice you photographed on the Free page goes too, and is not kept." : undefined}
+            />
           </div>
           <p className="text-right text-xs text-neutral-500">
             Saves as a draft — fully editable until you mark it sent, which is what assigns its invoice number, locks the rest in, and starts the due-date clock.

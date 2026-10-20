@@ -167,5 +167,38 @@ try {
   check("recurring schedule: two presses set up one, not two",
     db.tables.recurring_invoices.length === schedulesBefore + 1,
     JSON.stringify(db.tables.recurring_invoices.map((r) => r.description)));
+
+  // ── notes/audit-components.md section 1 (wip/audit-components-1) ──
+  // Written in a cloud session with no browser: NOT YET RUN. If one of these
+  // fails, check the selector before believing the app.
+  const setValue = (sel, v) => page.evaluate((s, val) => {
+    const el = document.querySelector(s);
+    if (!el) throw new Error("no " + s);
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, sel, v);
+
+  // A new contact: `clients` has no unique name, so two presses made two.
+  await page.goto(`${BASE}/clients/new`, { waitUntil: "networkidle0" });
+  await page.waitForSelector("#new-contact-name", { timeout: 20000 });
+  await setValue("#new-contact-name", "Double Press Joinery");
+  await sleep(400);
+  const saveLabel = await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).find((t) => /^Save (customer|supplier)$/.test(t)));
+  await pressTwice(page, saveLabel);
+  await sleep(2500);
+  check("new contact: two presses save one, not two",
+    db.tables.clients.filter((c) => c.name === "Double Press Joinery").length === 1,
+    JSON.stringify(db.tables.clients.map((c) => c.name)));
+
+  // A receipt typed in: both presses passed the duplicate check, which reads
+  // the list loaded on arrival, so the expense was counted twice.
+  await page.goto(`${BASE}/receipts/new`, { waitUntil: "networkidle0" });
+  await page.waitForSelector('input[aria-label="Total"]', { timeout: 20000 });
+  await setValue('input[aria-label="Total"]', "37.40");
+  await sleep(400);
+  const receiptsBefore = db.tables.receipts.length;
+  await pressTwice(page, "Save receipt");
+  await sleep(2500);
+  check("new receipt: two presses save one, not two", db.tables.receipts.length === receiptsBefore + 1, JSON.stringify(db.tables.receipts.map((r) => [r.vendor, r.amount])));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

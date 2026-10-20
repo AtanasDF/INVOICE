@@ -19,6 +19,7 @@ import ClearFormButton from "@/components/ClearFormButton";
 import ContactField, { type Usage } from "@/components/ContactField";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -55,6 +56,7 @@ export default function NewReceiptPage() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useLeaveGuard(!saving && !!(vendor || supplierText || totalAmount || vatAmount || notes || lineItems.length || imageDataUrl));
@@ -173,27 +175,11 @@ export default function NewReceiptPage() {
   }
 
   // GBP-equivalent net/VAT for whatever's currently in the form, plus the
-  // original-currency figures to store alongside for reference. This is
-  // the one place the currency conversion actually happens -- both the
+  // original-currency figures to store alongside for reference -- both the
   // duplicate check and the save itself read from here, so they can never
   // disagree with each other.
   function gbpAmounts() {
-    const total = parseFloat(totalAmount) || 0;
-    const vat = parseFloat(vatAmount) || 0;
-    if (currency === "GBP") {
-      return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
-    }
-    const rate = parseFloat(fxRateInput) || 0;
-    const totalGbp = total * rate;
-    const vatGbp = vat * rate;
-    return {
-      netGbp: Math.max(0, totalGbp - vatGbp),
-      vatGbp,
-      originalAmount: total,
-      originalVatAmount: vat,
-      originalCurrency: currency,
-      fxRate: rate,
-    };
+    return receiptGbp(totalAmount, vatAmount, currency, fxRateInput);
   }
 
   function addReceiptLine() {
@@ -241,6 +227,7 @@ export default function NewReceiptPage() {
   // drifting apart.
   async function addReceipt(e: React.FormEvent) {
     e.preventDefault();
+    if (savingNow.current) return;
     if (!totalAmount) return setError(MISSING_TOTAL);
     const rateSays = rateProblem(currency, fxRateInput);
     if (rateSays) {
@@ -256,6 +243,7 @@ export default function NewReceiptPage() {
       }
     }
 
+    savingNow.current = true;
     setError(null);
     setSaving(true);
     try {
@@ -283,6 +271,7 @@ export default function NewReceiptPage() {
       router.push("/receipts");
     } catch (err) {
       setError(saveFailed(err, "Couldn't save receipt."));
+      savingNow.current = false;
       setSaving(false);
     }
   }

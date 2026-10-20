@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { misreadYear, noTotalRead } from "@/lib/scanSanity";
 import JustTheFile from "@/components/scan/JustTheFile";
-import { amount, money as gbp } from "@/lib/money";
+import { amount, amountOrNull, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import { CATEGORIES, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
@@ -39,6 +39,7 @@ import { topUpOffered } from "@/lib/scanAllowance";
 import { todayISO } from "@/lib/today";
 import { vatForReading, vatFromRate, workedOutNote } from "@/lib/vatFromRate";
 import Tip from "@/components/Tip";
+import { receiptGbp } from "@/lib/receiptAmounts";
 
 type TransactionalType = "invoice" | "receipt" | "credit_note";
 type Mode = TransactionalType | "archival" | "contact";
@@ -280,15 +281,7 @@ function formFromResult(result: ScanResult, f: Form, touched: Set<keyof Form>, s
 // Same conversion as the manual Receipts form: figures stay in
 // `currency` until save time, when they're converted to GBP.
 function gbpAmounts(f: Form) {
-  const total = parseFloat(f.totalAmount) || 0;
-  const vat = parseFloat(f.vatAmount) || 0;
-  if (f.currency === "GBP") {
-    return { netGbp: Math.max(0, total - vat), vatGbp: vat, originalAmount: null, originalVatAmount: null, originalCurrency: null, fxRate: null };
-  }
-  const rate = parseFloat(f.fxRateInput) || 0;
-  const totalGbp = total * rate;
-  const vatGbp = vat * rate;
-  return { netGbp: Math.max(0, totalGbp - vatGbp), vatGbp, originalAmount: total, originalVatAmount: vat, originalCurrency: f.currency, fxRate: rate };
+  return receiptGbp(f.totalAmount, f.vatAmount, f.currency, f.fxRateInput);
 }
 
 function saveProblem(f: Form): string | null {
@@ -361,8 +354,8 @@ function prepareSave(f: Form, docPages: CapturedFile[], supplierList: Client[], 
     tags: [],
     lineItems: f.lines.map((l) => ({
       description: l.description,
-      quantity: parseFloat(l.quantity) || 0,
-      unitPrice: parseFloat(l.unitPrice) || 0,
+      quantity: amountOrNull(l.quantity) ?? 0,
+      unitPrice: amountOrNull(l.unitPrice) ?? 0,
       category: null,
     })),
     documentType: SAVED_TYPE[mode],
@@ -423,6 +416,10 @@ export default function ScanPage() {
   const isIOS = useIsIOS();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  // Kept apart from scanError: the camera opens on arrival, so a failed load
+  // landed behind it, and the first document shown wiped it -- leaving an
+  // empty supplier picker and the built-in categories with nothing to say why.
+  const [listsFailed, setListsFailed] = useState(false);
   // A refusal is not a failure -- it carries what to offer next, which a
   // string cannot. Kept beside the message so the wall can show its button.
   const [refusal, setRefusal] = useState<unknown>(null);
@@ -534,6 +531,7 @@ export default function ScanPage() {
       })
       .catch((err) => {
         setScanning(false);
+        setListsFailed(true);
         setScanError(saveFailed(err, "Couldn't load your suppliers and receipts."));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -570,6 +568,7 @@ export default function ScanPage() {
     const usual = mostUsedCategory(r.map((receipt) => receipt.category));
     if (usual) setForm((f) => (f.category ? f : { ...f, category: usual }));
     listsLoadedRef.current = true;
+    setListsFailed(false);
     return { cats, suppliers: c.filter((x) => x.kind === "supplier" && !x.archived), receipts: r };
   }
 
@@ -757,6 +756,7 @@ export default function ScanPage() {
     // message about the limit, with no Try again anywhere.
     setRefusal(null);
     setWalk({ docs: entries, current: entries[0].id });
+    if (!lists && !listsLoadedRef.current) loadLists().catch(() => {});
     const limit = limiter(READ_CONCURRENCY);
     entries.forEach((e) => readDoc(e, cats, limit));
     openDoc(entries[0]);
@@ -893,12 +893,19 @@ export default function ScanPage() {
       setSaveError("Enter a supplier name first.");
       return;
     }
+    // The same ref as Save: both presses would check exactSupplier against
+    // the same stale list and make two suppliers of one name.
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveError(null);
     try {
-      const existing = exactSupplier(name, suppliers);
+      // Checked against [] when the lists never loaded, which made a second
+      // supplier of a name already there.
+      const known = listsLoadedRef.current ? suppliers : (await loadLists()).suppliers;
+      const existing = exactSupplier(name, known);
       if (existing) {
-        pickSupplier(existing.id);
+        pickSupplier(existing.id, known);
         setSupplierDuplicate(true);
         return;
       }
@@ -918,11 +925,12 @@ export default function ScanPage() {
         remindersEnabled: true,
       });
       setClients((prev) => [...prev, created]);
-      pickSupplier(created.id, [...suppliers, created]);
+      pickSupplier(created.id, [...known, created]);
       setSupplierSaved(true);
     } catch (err) {
       setSaveError(saveFailed(err, "Couldn't save."));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -1126,12 +1134,12 @@ export default function ScanPage() {
   const amounts = gbpAmounts(form);
   const money = (n: number) => (form.currency === "GBP" ? gbp(n) : `${form.currency} ${amount(n)}`);
   const linesSum = form.lines.reduce((sum, l) => sum + lineTotalOf(l), 0);
-  const enteredTotal = parseFloat(form.totalAmount);
+  const enteredTotal = amountOrNull(form.totalAmount) ?? NaN;
   const linesMismatch =
     form.lines.length > 0 &&
     !Number.isNaN(enteredTotal) &&
     Math.abs(linesSum - enteredTotal) > 0.02 + 1e-9 &&
-    Math.abs(linesSum - (enteredTotal - (parseFloat(form.vatAmount) || 0))) > 0.02 + 1e-9;
+    Math.abs(linesSum - (enteredTotal - (amountOrNull(form.vatAmount) ?? 0))) > 0.02 + 1e-9;
   const saveLabel =
     (mode === "archival" ? "Save to your files" : `Save ${TYPE_WORD[mode as TransactionalType]?.toLowerCase() ?? "document"}`) +
     (remaining ? " and next" : "");
@@ -1345,6 +1353,11 @@ export default function ScanPage() {
 
       <fieldset disabled={scanning || bulk !== null} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         {errorBanner}
+        {listsFailed && !scanError && (
+          <p role="alert" className="text-sm text-red-600">
+            Couldn&apos;t load your suppliers and categories, so the lists here are missing yours. Check your connection; saving tries again.
+          </p>
+        )}
 
         {mode === "contact" ? (
           <>
@@ -1523,7 +1536,7 @@ export default function ScanPage() {
                   onChange={(e) =>
                     patch({
                       totalAmount: e.target.value,
-                      ...(form.vatWorkedOut !== null ? { vatAmount: String(vatFromRate(parseFloat(e.target.value), form.vatWorkedOut) ?? "") } : {}),
+                      ...(form.vatWorkedOut !== null ? { vatAmount: String(vatFromRate(amountOrNull(e.target.value), form.vatWorkedOut) ?? "") } : {}),
                     })
                   }
                   inputMode="decimal"
@@ -1535,7 +1548,7 @@ export default function ScanPage() {
                     nobody checked. There is one in his real records, saved
                     beside a real £8.50 from the same supplier on the same day.
                     Said, not blocked: a genuinely free item exists. */}
-                {noTotalRead(parseFloat(form.totalAmount) || 0, parseFloat(form.vatAmount) || 0) && (
+                {noTotalRead(amountOrNull(form.totalAmount) ?? 0, amountOrNull(form.vatAmount) ?? 0) && (
                   <p className="mt-1 text-xs text-amber-700">
                     Nothing was read as the total. Put in what the document says, or it goes into your records as costing nothing.
                   </p>

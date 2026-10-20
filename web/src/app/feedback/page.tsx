@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Tip from "@/components/Tip";
 import { usePathname } from "next/navigation";
 import { Feedback, feedbackStore } from "@/lib/storage";
@@ -16,6 +16,7 @@ export default function FeedbackPage() {
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
 
@@ -31,7 +32,8 @@ export default function FeedbackPage() {
   // person's and emails it to the maker; a failed send keeps the text.
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || savingNow.current) return;
+    savingNow.current = true;
     setError(null);
     setSent(null);
     setSaving(true);
@@ -43,13 +45,20 @@ export default function FeedbackPage() {
         body: JSON.stringify({ message, category, page: pathname }),
       });
       const body = (await res.json().catch(() => ({}))) as { id?: string; createdAt?: string; emailed?: boolean; error?: string };
-      if (!res.ok || !body.id) throw new Error(body.error || "Couldn't send feedback. Try again in a minute.");
+      // The route's own sentences are written for people; a thrown error is
+      // the browser's ("Load failed") or the auth library's, and is not.
+      if (!res.ok || !body.id) {
+        setError(body.error || "Couldn't send feedback. Try again in a minute.");
+        return;
+      }
       setItems((prev) => [{ id: body.id!, message: message.trim(), category, page: pathname, createdAt: body.createdAt ?? new Date().toISOString() }, ...prev]);
       setMessage("");
       setSent("Sent. Thank you.");
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Couldn't send feedback. Try again in a minute.");
+      console.error("feedback", err);
+      setError("Couldn't send feedback. Check your connection and try again.");
     } finally {
+      savingNow.current = false;
       setSaving(false);
     }
   }

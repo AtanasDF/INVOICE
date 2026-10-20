@@ -50,6 +50,13 @@ export async function getFxRate(from: string, to: string = "GBP"): Promise<numbe
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Exchange rate lookup timed out -- enter it manually.");
     }
+    // A dropped connection (TypeError "Load failed") or a page that isn't
+    // JSON. The callers pass this through saveFailed, which turned the first
+    // into "Couldn't reach your records" -- the wrong service, and without
+    // the way round it.
+    if (err instanceof TypeError || err instanceof SyntaxError) {
+      throw new Error("Couldn't reach the exchange-rate service -- enter a rate manually.");
+    }
     throw err;
   } finally {
     clearTimeout(timeout);

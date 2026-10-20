@@ -19,7 +19,7 @@ export default function NewQuoteRequestPage() {
     clientsStore
       .all()
       .then((all) => setSuppliers(all.filter((c) => c.kind === "supplier" && !c.archived)))
-      .catch((err) => setError(loadFailed(err, "your suppliers", "You can still fill this in.")));
+      .catch((err) => setError(loadFailed(err, "your suppliers", "Check your connection, then reload the page.")));
   }, []);
 
   // The suppliers are added after the request exists; if that fails, the
