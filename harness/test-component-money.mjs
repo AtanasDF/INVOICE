@@ -119,7 +119,9 @@ check("a scan line total is rounded to the penny before it is shown", /roundMone
 check("the scan page saves its lines through amountOrNull", !/parseFloat/.test(src("app/scan/page.tsx")));
 check("shortDate turns a timestamp into its London day", /ukDate/.test(src("lib/dates.ts")));
 const quotes = src("app/quotes/page.tsx");
-check("the quotes list no longer claims to know when a quote was sent", !/sent \{days\(/.test(quotes) && /dated \{days\(/.test(quotes));
+// Since migration-042 a quote can honestly say "sent": the wording now comes from
+// quoteAgeText, which says "dated" whenever there is no recorded send time.
+check("the quotes list says a quote's age through quoteAgeText, never its own guess", /quoteAgeText\(/.test(quotes) && !/sent \{days\(/.test(quotes));
 
 check("quotes print money through the app's one formatter (it printed \"£-50.00\")", /import \{ money \} from "@\/lib\/money"/.test(src("components/quote/QuoteDocument.tsx")) && !/export const money =/.test(src("components/quote/QuoteDocument.tsx")));
 
