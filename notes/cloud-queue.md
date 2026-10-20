@@ -219,7 +219,7 @@ onward, exactly as hard rule 2 says. Never claim they ran. Report in notes/audit
 Branch: wip/sql-audit.
 ```
 
-## 11. The email-inbox Worker — [ ]
+## 11. The email-inbox Worker — [x] (2026-10-20, `wip/worker-audit`: notes/audit-worker.md; 10 found and fixed, NOT live until `wrangler deploy`)
 
 ```
 Audit worker/, the Cloudflare Worker that takes emailed receipts for invoiceover.com to

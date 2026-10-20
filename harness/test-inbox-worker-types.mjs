@@ -60,7 +60,11 @@ check("...at least as long as a single scan is given", maxDuration(route) >= max
 // ---- A message it could not hand over is not thrown away --------------------
 const failBranch = worker.slice(worker.indexOf("if (!res.ok)"), worker.indexOf("} catch (err)"));
 check("the Worker rejects an email it could not hand over", /message\.setReject\(/.test(failBranch), failBranch.slice(0, 200));
-check("...with something a person could read, not a status code", /setReject\("[A-Z][^"]{20,}"\)/.test(failBranch), (/setReject\([^)]*\)/.exec(failBranch) ?? ["none"])[0]);
+// The words are constants now, one per reason; each must be a sentence.
+const rejectWords = [...worker.matchAll(/const REJECT_\w+ = "([^"]*)"/g)].map((m) => m[1]);
+check("...with something a person could read, not a status code", /setReject\((res\.status === 404 \? )?REJECT_\w+/.test(failBranch) && rejectWords.length >= 2 && rejectWords.every((w) => /^[A-Z].{20,}\.$/.test(w)), JSON.stringify(rejectWords));
+const catchBranch = worker.slice(worker.indexOf("} catch (err)"));
+check("...and rejects when it throws, rather than logging and returning", /message\.setReject\(/.test(catchBranch.slice(0, catchBranch.indexOf("\n    }"))), catchBranch.slice(0, 300));
 
 // ---- Type before budget -----------------------------------------------------
 const loop = worker.slice(worker.indexOf("for (const a of chosen)"), worker.indexOf("const text = parsed.text"));

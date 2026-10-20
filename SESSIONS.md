@@ -30,6 +30,20 @@ Left as a decision for Atanas: invite bonuses can be farmed through the RPCs wha
 -043 51/51, rls-audit 5/5, utc-today 18/18. No app code changed, so tsc, eslint and build
 were not needed.
 
+## 2026-10-20 — Cloud: email Worker audit (brief 11), `wip/worker-audit`
+
+Not live: worker/ only ships with `npx wrangler deploy` on the Mac. Ten findings fixed in
+`worker/src/index.ts`, all confirmed by a check that fails on the old code (24/40 there,
+40/40 now). The worst: the app unreachable (fetch throws) and a mistyped address were
+both swallowed after Cloudflare had accepted the email. Both now bounce. Also fixed: the
+text uncounted in the 4.5 MB body, image/jpg and x-pdf aliases, an octet-stream with no
+extension sniffed by its bytes, signature icons filed as receipts, a related PDF dropped
+unnamed, the header From instead of the bounce address. `setReject` is a PERMANENT
+error, so the old "retries for days" comment was wrong. test-inbox-worker-types 17/17,
+worker tsc clean, wrangler dry-run bundles. Left open (route side): duplicates when a
+late failure is resent, the email handler's fetch wait limit (unchecked, no docs
+access). Full detail and the sender-facing table in `notes/audit-worker.md`.
+
 ## 2026-10-20 — Migration 042 run, and quotes remember when they were sent
 
 Atanas said go. Backup 017 and migration-042 run on the live database (project
