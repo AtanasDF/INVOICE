@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 // Rolling to a date with a thumb (Atanas, 2026-09-24: "something like a
 // roller, the one you just roll and the days are changing... so you can be
@@ -80,6 +80,7 @@ function Column({ label, items, selected, onPick, disabled = false }: {
   disabled?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const uid = useId();
 
   // Keep what is chosen in the middle, including when it changes from outside
   // (the period button, or a year with no such month).
@@ -105,6 +106,9 @@ function Column({ label, items, selected, onPick, disabled = false }: {
         aria-label={label}
         aria-disabled={disabled}
         tabIndex={disabled ? -1 : 0}
+        // The arrows move the choice while focus stays on the list, so the
+        // list has to say which option is now the one.
+        aria-activedescendant={items.some((i) => i.key === selected) ? `${uid}-${selected}` : undefined}
         onKeyDown={onKey}
         className={`mt-1 h-20 snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-lg border bg-white text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${disabled ? "opacity-40" : ""}`}
       >
@@ -116,6 +120,8 @@ function Column({ label, items, selected, onPick, disabled = false }: {
             key={i.key}
             type="button"
             data-key={i.key}
+            id={`${uid}-${i.key}`}
+            tabIndex={-1}
             role="option"
             aria-selected={i.key === selected}
             disabled={disabled}
@@ -124,6 +130,7 @@ function Column({ label, items, selected, onPick, disabled = false }: {
           >
             {i.label}
             {i.dot && <span aria-hidden className="h-1 w-1 rounded-full bg-neutral-400" />}
+            {i.dot && <span className="sr-only">, has files</span>}
           </button>
         ))}
         <div aria-hidden className="h-7" />

@@ -88,7 +88,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
     <section aria-label="Your file library" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href="/files" className="text-lg font-bold underline-offset-2 hover:underline">
-          Your file library &rarr;
+          Your file library <span aria-hidden="true">&rarr;</span>
         </Link>
         <span className="text-xs text-neutral-500">{shown.length} of {all.length}</span>
       </div>

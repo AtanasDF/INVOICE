@@ -577,7 +577,7 @@ function ReceiptsPage() {
       </details>
 
       {openMissing && (
-        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           That receipt isn&apos;t here any more. It may have been merged into another one. Everything you do have is below.
         </p>
       )}
@@ -622,6 +622,7 @@ function ReceiptsPage() {
                     <div>
                       <label className="text-xs text-neutral-500">{isInvoice ? "Invoice number" : "Credit note number"}</label>
                       <input
+                        aria-label={isInvoice ? "Invoice number" : "Credit note number"}
                         className="w-full rounded-lg border px-3 py-2 text-sm"
                         autoCapitalize="characters"
                         autoCorrect="off"
@@ -680,6 +681,9 @@ function ReceiptsPage() {
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-neutral-500 whitespace-nowrap">1 {editDraft.currency} =</label>
                     <input
+                      aria-label={`Pounds to 1 ${editDraft.currency}`}
+                      aria-invalid={(!!editError && editError === rateProblem(editDraft.currency, editDraft.fxRateInput)) || undefined}
+                      aria-describedby={!!editError && editError === rateProblem(editDraft.currency, editDraft.fxRateInput) ? "receipt-edit-error" : undefined}
                       className="w-28 rounded-lg border px-2 py-1.5 text-sm"
                       value={editDraft.fxRateInput}
                       onChange={(e) => setEditDraft({ ...editDraft, fxRateInput: e.target.value })}
@@ -703,7 +707,7 @@ function ReceiptsPage() {
                   value={editDraft.notes}
                   onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
                 />
-                {editError && <p role="alert" className="text-sm text-red-600">{editError}</p>}
+                {editError && <p id="receipt-edit-error" role="alert" className="text-sm text-red-600">{editError}</p>}
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveEditReceipt(r)}
@@ -777,7 +781,7 @@ function ReceiptsPage() {
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 text-sm">
                 <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
-                  Details {detailsOpen ? "▴" : "▾"}
+                  Details <span aria-hidden="true">{detailsOpen ? "▴" : "▾"}</span>
                 </button>
                 {/* gap-x only: they sit on one line at an ordinary text size
                     and the list is held to compact cards, but at twice the

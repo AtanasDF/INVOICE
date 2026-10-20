@@ -10,6 +10,8 @@ type Status = "checking" | "ready" | "expired" | "offline" | "done";
 // The library hands a dropped connection back as an error like any other,
 // and "That link has run out" for it sent somebody to ask for a new link
 // when reloading with a bar of signal would have done.
+const TOO_SHORT = "Your new password needs to be at least 6 characters.";
+
 const offline = (err: unknown) => {
   const e = err as { name?: unknown; message?: unknown } | null;
   return e?.name === "AuthRetryableFetchError" || (typeof e?.message === "string" && /failed to fetch|networkerror|load failed|network request failed/i.test(e.message));
@@ -59,7 +61,7 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
     if (password.length < 6) {
-      setError("Your new password needs to be at least 6 characters.");
+      setError(TOO_SHORT);
       return;
     }
     if (password !== confirmPassword) {
@@ -134,6 +136,9 @@ export default function ResetPasswordPage() {
           autoComplete="new-password"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="New password"
+          aria-label="New password"
+          aria-invalid={error === TOO_SHORT || undefined}
+          aria-describedby={error === TOO_SHORT ? "reset-error" : undefined}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -144,10 +149,13 @@ export default function ResetPasswordPage() {
           autoComplete="new-password"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Confirm new password"
+          aria-label="Confirm new password"
+          aria-invalid={error === PASSWORDS_DIFFER || undefined}
+          aria-describedby={error === PASSWORDS_DIFFER ? "reset-error" : undefined}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p id="reset-error" role="alert" className="text-sm text-red-600">{error}</p>}
         <button
           disabled={saving}
           className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"

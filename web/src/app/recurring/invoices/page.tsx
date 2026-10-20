@@ -296,12 +296,15 @@ export default function RecurringInvoicesPage() {
           <div className="text-right text-sm text-neutral-600">Subtotal: {money(totals.subtotal)}</div>
         )}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {made && (
-          <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-            Draft invoice made for {made.name}.{" "}
-            <Link href={`/invoices/${made.id}`} className="font-medium underline">Open it</Link>
-          </p>
-        )}
+        {/* Always mounted, so what goes into it is read out; one that arrives with its words often is not. */}
+        <div role="status">
+          {made && (
+            <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+              Draft invoice made for {made.name}.{" "}
+              <Link href={`/invoices/${made.id}`} className="font-medium underline">Open it</Link>
+            </p>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-3">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {saving ? "Saving…" : "Add recurring invoice"}

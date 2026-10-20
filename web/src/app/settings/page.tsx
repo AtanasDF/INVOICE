@@ -42,6 +42,7 @@ import { loadFailed, saveFailed, authFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { logoSrc, prepareLogo, uploadLogo } from "@/lib/logo";
 import VatNumberInput from "@/components/VatNumberInput";
+import { FILE_RING } from "@/lib/fileRing";
 
 // A limited company must show its registered name and number on its
 // invoices (Companies Act 2006 s.82); a sole trader has neither, and
@@ -76,6 +77,8 @@ type FormValues = {
   latePaymentInterest: boolean;
   logoUrl: string | null;
 };
+
+const NO_CATEGORY = "Add at least one category before saving.";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -364,7 +367,7 @@ export default function SettingsPage() {
     setError(null);
     setSaved(false);
     if (categories.filter((c) => c.trim()).length === 0) {
-      setError("Add at least one category before saving.");
+      setError(NO_CATEGORY);
       return false;
     }
     setSaving(true);
@@ -630,9 +633,9 @@ export default function SettingsPage() {
                 <p className="mt-1 text-sm text-neutral-600">No logo yet. It goes at the top of your invoices and quotes.</p>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
-                <label aria-disabled={logoBusy} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${SMALL_BUTTON}`}>
+                <label aria-disabled={logoBusy} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${FILE_RING} ${SMALL_BUTTON}`}>
                   {logoBusy ? "Adding…" : logoPreview || logoUrl ? "Change logo" : "Add a logo"}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickLogo} disabled={logoBusy} />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-invalid={!!logoError || undefined} aria-describedby={logoError ? "logo-error" : undefined} onChange={pickLogo} disabled={logoBusy} />
                 </label>
                 {(logoPreview || logoUrl) && (
                   <button type="button" onClick={removeLogo} className={SMALL_BUTTON}>
@@ -640,7 +643,7 @@ export default function SettingsPage() {
                   </button>
                 )}
               </div>
-              {logoError && <p role="alert" className="mt-1 text-sm text-red-600">{logoError}</p>}
+              {logoError && <p id="logo-error" role="alert" className="mt-1 text-sm text-red-600">{logoError}</p>}
             </div>
           )}
         </div>
@@ -789,6 +792,8 @@ export default function SettingsPage() {
               className="w-full min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm sm:w-auto"
               placeholder="Add a category (e.g. Childcare)"
               aria-label="New category"
+              aria-invalid={error === NO_CATEGORY || undefined}
+              aria-describedby={error === NO_CATEGORY ? "settings-error" : undefined}
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
               onKeyDown={(e) => {
@@ -909,8 +914,8 @@ export default function SettingsPage() {
               {!dirty && saved && !migrationPending && <span className="text-sm text-neutral-700">Saved.</span>}
             </div>
           )}
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-          <p role="status" className="sr-only">{saved && !migrationPending ? "Saved." : ""}</p>
+          {error && <p id="settings-error" role="alert" className="text-sm text-red-600">{error}</p>}
+          <p role="status" className="sr-only">{saved ? (migrationPending ? "Saved, apart from what you're using the app for and the registered company details." : "Saved.") : ""}</p>
           {saved && migrationPending && (
             <p className="text-sm text-amber-700">
               Saved, apart from what you&apos;re using the app for and the registered company details: those need a
@@ -983,6 +988,7 @@ export default function SettingsPage() {
               <button type="button" onClick={copyInboxAddress} className="rounded-lg border px-3 py-2 text-sm font-medium text-neutral-700">
                 {inboxCopied === "yes" ? "Copied" : inboxCopied === "no" ? "Couldn't copy" : "Copy"}
               </button>
+              <span role="status" className="sr-only">{inboxCopied === "yes" ? "Address copied." : inboxCopied === "no" ? "Couldn't copy the address." : ""}</span>
               <button type="button" onClick={regenerateInboxToken} disabled={inboxBusy} className={SMALL_BUTTON}>
                 {inboxBusy ? "Working…" : "Get a new address"}
               </button>
@@ -1017,7 +1023,7 @@ export default function SettingsPage() {
           <button type="button" onClick={emailSignInLink} disabled={signInBusy || !user?.email} className={`mt-2 ${SMALL_BUTTON}`}>
             {signInBusy ? "Sending…" : "Email me a sign-in link"}
           </button>
-          {signInNote && <p role="status" className="mt-2 text-sm text-neutral-600">{signInNote}</p>}
+          <p role="status" className={signInNote ? "mt-2 text-sm text-neutral-600" : "sr-only"}>{signInNote ?? ""}</p>
           {signInError && <p role="alert" className="mt-2 text-sm text-red-600">{signInError}</p>}
         </div>
 

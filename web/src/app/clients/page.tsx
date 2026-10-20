@@ -289,12 +289,14 @@ export default function ClientsPage() {
         <div className="flex w-fit max-w-full flex-wrap rounded-lg border text-sm">
           <button
             onClick={() => setTab("client")}
+            aria-pressed={tab === "client"}
             className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             Customers
           </button>
           <button
             onClick={() => setTab("supplier")}
+            aria-pressed={tab === "supplier"}
             className={`px-4 py-1.5 ${tab === "supplier" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             Suppliers
@@ -311,7 +313,7 @@ export default function ClientsPage() {
       {/* A merge repoints invoices, receipts and quotes and archives one of
           the two records. Saying so in a plain <p> told a screen reader
           nothing at all about the largest change on this page. */}
-      {merged && <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">{merged}</p>}
+      <p role="status" className={merged ? "rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700" : "sr-only"}>{merged ?? ""}</p>
       {duplicates.map((pair) => (
         <div key={pairKey(pair)} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
           <p className="text-sm">

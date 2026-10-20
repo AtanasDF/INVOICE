@@ -35,6 +35,8 @@ const todayIso = () => todayISO();
 // harness/test-error-on-the-field.mjs.
 const NO_MILES = "How many miles was it?";
 
+const NEED_POSTCODES = "Put a postcode at each end and I'll work out roughly how far it is.";
+
 export default function MileagePage() {
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
   const [date, setDate] = useState(todayIso);
@@ -88,7 +90,7 @@ export default function MileagePage() {
     const a = normalisePostcode(from);
     const b = normalisePostcode(to);
     if (!a || !b) {
-      setMeasured("Put a postcode at each end and I'll work out roughly how far it is.");
+      setMeasured(NEED_POSTCODES);
       return;
     }
     setMeasuring(true);
@@ -183,7 +185,7 @@ export default function MileagePage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/expenses" className="text-sm text-neutral-500">← Expenses</Link>
+        <Link href="/expenses" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Expenses</Link>
         <h1 className="mt-1 text-2xl font-bold">Mileage</h1>
         <p className="mt-1 text-neutral-600">
           Business miles at HMRC&apos;s rates: {RATES.car.first * 100}p a mile for the first {RATES.car.threshold.toLocaleString()} in the tax year, then{" "}
@@ -210,11 +212,11 @@ export default function MileagePage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-neutral-500" htmlFor="m-from">From</label>
-            <input id="m-from" className={INPUT} placeholder="Postcode or place" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input id="m-from" aria-invalid={(measured === NEED_POSTCODES && !normalisePostcode(from)) || undefined} aria-describedby={measured === NEED_POSTCODES && !normalisePostcode(from) ? "m-measured" : undefined} className={INPUT} placeholder="Postcode or place" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div>
             <label className="text-xs text-neutral-500" htmlFor="m-to">To</label>
-            <input id="m-to" className={INPUT} placeholder="Postcode or place" value={to} onChange={(e) => setTo(e.target.value)} />
+            <input id="m-to" aria-invalid={(measured === NEED_POSTCODES && !normalisePostcode(to)) || undefined} aria-describedby={measured === NEED_POSTCODES && !normalisePostcode(to) ? "m-measured" : undefined} className={INPUT} placeholder="Postcode or place" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -243,7 +245,8 @@ export default function MileagePage() {
             There and back
           </button>
         </div>
-        {measured && <p className="text-xs text-neutral-500">{measured}</p>}
+        {/* Always there: "Work it out" disables while it works, and the answer also rewrites Miles. */}
+        <p id="m-measured" role="status" className={measured ? "text-xs text-neutral-500" : "sr-only"}>{measured ?? ""}</p>
         <div>
           <label className="text-xs text-neutral-500" htmlFor="m-purpose">What for (optional)</label>
           <input id="m-purpose" className={INPUT} placeholder="e.g. Site visit, collecting materials" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
@@ -260,11 +263,14 @@ export default function MileagePage() {
           </p>
         )}
         {error && <p id="m-error" role="alert" className="text-sm text-red-600">{error}</p>}
-        {saved && (
-          <p role="status" className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
-            {saved} <Link href="/expenses" className="font-medium underline">See your expenses</Link>
-          </p>
-        )}
+        {/* Always mounted, so what goes into it is read out; one that arrives with its words often is not. */}
+        <div role="status">
+          {saved && (
+            <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">
+              {saved} <Link href="/expenses" className="font-medium underline">See your expenses</Link>
+            </p>
+          )}
+        </div>
         <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : "Save the trip"}
         </button>

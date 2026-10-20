@@ -207,7 +207,7 @@ export default function NewClientPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href={kind === "supplier" ? "/clients?tab=supplier" : "/clients"} className="text-sm text-neutral-500">← Customers &amp; suppliers</Link>
+        <Link href={kind === "supplier" ? "/clients?tab=supplier" : "/clients"} className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Customers &amp; suppliers</Link>
         <h1 className="mt-1 text-2xl font-bold">New {kind === "client" ? "customer" : "supplier"}</h1>
         <p className="mt-1 text-neutral-600">
           Customers are who you invoice. Suppliers are who invoices or receipts come from.
@@ -238,6 +238,7 @@ export default function NewClientPage() {
                   key={i}
                   type="button"
                   onClick={() => fill(c, i)}
+                  aria-pressed={picked === i}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${picked === i ? "bg-neutral-900 text-white" : "border text-neutral-700"}`}
                 >
                   {c.name}

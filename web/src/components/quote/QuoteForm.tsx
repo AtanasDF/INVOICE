@@ -37,6 +37,13 @@ const NO_ONE: NewCustomerStart = { name: "", email: "", address: "" };
 // draftScope: the quote being edited; a new quote has none. Either way what is
 // typed is kept on the device until it is saved, because an iPhone reloads a
 // tab left in the background and never asks before it does.
+// Each refusal is tied to the box it is about; a save failure is about none.
+const NO_CUSTOMER = "Pick who the quote is for.";
+const STILL_ADDING = "Finish adding the new customer (Add customer), or cancel it, first.";
+const NO_NUMBER = "Give the quote a number.";
+const DEPOSIT_PERCENT = "A deposit percentage is between 0 and 100.";
+const DEPOSIT_AMOUNT = "The deposit has to be more than £0 and no more than the total.";
+
 export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, onSave, onCancel, onClientAdded, newCustomer = null, onClear, draftScope }: {
   initial: QuoteFormValue;
   clients: Client[];
@@ -75,14 +82,14 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   }
 
   async function save() {
-    if (adding) return setError("Finish adding the new customer (Add customer), or cancel it, first.");
-    if (!v.clientId) return setError("Pick who the quote is for.");
-    if (!v.number.trim()) return setError("Give the quote a number.");
+    if (adding) return setError(STILL_ADDING);
+    if (!v.clientId) return setError(NO_CUSTOMER);
+    if (!v.number.trim()) return setError(NO_NUMBER);
     if (!lines.length) return setError("Add at least one line.");
     // Stored to 2 decimals, so check what will be stored.
     const deposit = v.deposit && { ...v.deposit, value: Math.round(v.deposit.value * 100) / 100 };
-    if (deposit?.kind === "percent" && !(deposit.value > 0 && deposit.value < 100)) return setError("A deposit percentage is between 0 and 100.");
-    if (deposit?.kind === "amount" && !(deposit.value > 0 && deposit.value <= Math.round(totals.total * 100) / 100)) return setError("The deposit has to be more than £0 and no more than the total.");
+    if (deposit?.kind === "percent" && !(deposit.value > 0 && deposit.value < 100)) return setError(DEPOSIT_PERCENT);
+    if (deposit?.kind === "amount" && !(deposit.value > 0 && deposit.value <= Math.round(totals.total * 100) / 100)) return setError(DEPOSIT_AMOUNT);
     setSaving(true);
     setError(null);
     try {
@@ -97,8 +104,9 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   return (
     <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       {kept.offer && <DraftOffer what={draftScope ? "changes to this quote" : "a quote"} savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
-      <div aria-invalid={error ? true : undefined} aria-describedby={error ? "quote-error" : undefined}>
       <CustomerPicker
+        invalid={error === NO_CUSTOMER}
+        describedBy={error === NO_CUSTOMER || error === STILL_ADDING ? "quote-error" : undefined}
         people={clients}
         value={v.clientId}
         onChange={(clientId) => set({ clientId })}
@@ -109,7 +117,6 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           setError(null);
         }}
       />
-      </div>
       {/* Atanas, 2026-09-23: "so people can check companies before they send
           the quotation". Right here is the moment -- somebody is about to put
           their prices in front of a company they may know nothing about. When
@@ -129,7 +136,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-neutral-500">Quote number</label>
-          <input aria-label="Quote number" className={INPUT} value={v.number} onChange={(e) => set({ number: e.target.value })} />
+          <input aria-label="Quote number" aria-invalid={error === NO_NUMBER || undefined} aria-describedby={error === NO_NUMBER ? "quote-error" : undefined} className={INPUT} value={v.number} onChange={(e) => set({ number: e.target.value })} />
         </div>
         <div>
           <label className="text-xs text-neutral-500">Date</label>
@@ -209,6 +216,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
             <NumberInput
               className="w-28 rounded-lg border px-3 py-2 text-right"
               aria-label={v.deposit.kind === "percent" ? "Deposit percentage" : "Deposit amount"}
+              aria-invalid={error === DEPOSIT_PERCENT || error === DEPOSIT_AMOUNT || undefined}
+              aria-describedby={error === DEPOSIT_PERCENT || error === DEPOSIT_AMOUNT ? "quote-error" : undefined}
               value={v.deposit.value}
               onChange={(value) => set({ deposit: { ...v.deposit!, value } })}
             />

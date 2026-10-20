@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadIcon } from "@/components/icons";
 import { ScanHandoff, readUploads, stashUploads } from "@/lib/scanHandoff";
+import { FILE_RING } from "@/lib/fileRing";
 
 // Under a camera button: photos or PDFs already on the phone, straight to
 // the page that reads them (href), or to this page's own reader (onFiles).
@@ -65,10 +66,10 @@ export default function UploadFilesButton({
 
   return (
     <div className={className}>
-      <label aria-disabled={busy || disabled} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${buttonClassName}`}>
+      <label aria-disabled={busy || disabled} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${FILE_RING} ${buttonClassName}`}>
         <UploadIcon className="h-4 w-4" />
         {busy ? "Reading files…" : label ?? (multiple ? "Upload from files" : "Upload a file")}
-        <input type="file" accept={camera ? "image/*" : "image/*,application/pdf"} {...(camera ? { capture: "environment" as const } : {})} multiple={!camera && multiple} className="hidden" onChange={onChange} disabled={busy || disabled} />
+        <input type="file" accept={camera ? "image/*" : "image/*,application/pdf"} {...(camera ? { capture: "environment" as const } : {})} multiple={!camera && multiple} className="sr-only" onChange={onChange} disabled={busy || disabled} />
       </label>
       {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
     </div>

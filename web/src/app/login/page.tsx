@@ -14,7 +14,8 @@ function LoginInner() {
 export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm space-y-4">
-      <p className="text-sm font-medium text-neutral-500">{SITE_NAME} — invoices, receipts, and expenses in one place.</p>
+      {/* The page's one h1, so the card's "Sign in" h2 sits under something. */}
+      <h1 className="text-sm font-medium text-neutral-500">{SITE_NAME} — invoices, receipts, and expenses in one place.</h1>
       <Suspense fallback={<SignInCard />}>
         <LoginInner />
       </Suspense>

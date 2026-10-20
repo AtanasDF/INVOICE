@@ -82,7 +82,7 @@ export default function People({ contacts, invoiceCounts }: { contacts: Client[]
                     {(invoiceCounts.get(c.id) ?? 0) > 0 && ` · ${invoiceCounts.get(c.id)} invoice${invoiceCounts.get(c.id) === 1 ? "" : "s"}`}
                   </span>
                 </span>
-                <span className="shrink-0 text-sm font-medium text-neutral-700">New invoice &rarr;</span>
+                <span className="shrink-0 text-sm font-medium text-neutral-700">New invoice <span aria-hidden="true">&rarr;</span></span>
               </Link>
             </li>
           ))}

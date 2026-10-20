@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react";
 import type { CapturedFile } from "@/components/DocumentCapture";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
+import { FILE_RING } from "@/lib/fileRing";
 
 // iOS Safari only opens the camera from a file input activated inside
 // the user's own tap, so on the native-camera path the trigger IS the
@@ -66,7 +67,7 @@ export default function CaptureButton({ onCapture, onOpen, beforeOpen, className
   }
 
   return (
-    <label className={disabled ? `${className} opacity-50` : className} aria-disabled={disabled} aria-busy={busy}>
+    <label className={`${disabled ? `${className} opacity-50` : className} ${FILE_RING}`} aria-disabled={disabled} aria-busy={busy}>
       {children}
       <input
         type="file"
@@ -77,7 +78,7 @@ export default function CaptureButton({ onCapture, onOpen, beforeOpen, className
         // gesture iOS needs to open the camera, and the current document is
         // only replaced once the new photo actually arrives.
         onChange={onChange}
-        className="hidden"
+        className="sr-only"
       />
     </label>
   );

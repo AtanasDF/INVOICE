@@ -67,7 +67,7 @@ export default function PublicInvoiceView({ data, token }: { data: PublicInvoice
       <div className="paper-sheet rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
         <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf logo={data.logo} />
       </div>
-      <p className="text-center text-xs text-neutral-400 print:hidden">Sent with {SITE_NAME}</p>
+      <p className="text-center text-xs text-neutral-500 print:hidden">Sent with {SITE_NAME}</p>
       <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
         <div ref={sheetRef} className="paper-sheet bg-white text-neutral-900" style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT, padding: PAGE_MARGIN }}>
           <IssuedInvoice invoice={data.invoice} client={data.client} profile={data.profile} creditNotes={data.creditNotes} payments={data.payments} forPdf logo={data.logo} />

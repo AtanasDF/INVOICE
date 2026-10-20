@@ -735,7 +735,7 @@ export default function NewInvoicePage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/invoices" className="text-sm text-neutral-500">← Invoices</Link>
+          <Link href="/invoices" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Invoices</Link>
           <h1 className="mt-1 text-2xl font-bold">New invoice</h1>
           {/* What the number will be (Atanas, 2026-09-23: "it should give you
               the invoice with the next number in order as it is in the
@@ -767,6 +767,7 @@ export default function NewInvoicePage() {
               : "Scan an invoice you've sent before to copy it."}
             {copied?.currency && ` Amounts were in ${copied.currency}; this account invoices in £, so check them.`}
           </span>
+          <span role="status" className="sr-only">{copied ? "Copied from your scan. Dated today. Check everything before saving." : ""}</span>
           <CaptureButton
             onOpen={() => setCapture("copy")}
             onCapture={onInvoiceCopied}
@@ -809,7 +810,10 @@ export default function NewInvoicePage() {
             </button>
             <span className="text-xs text-neutral-500">On a phone you can tap the microphone on the keyboard and say it.</span>
           </div>
-          {typedNote && <p className={`mt-2 text-sm ${typedNote.ok ? "text-neutral-600" : "text-red-600"}`}>{typedNote.text}</p>}
+          {typedNote && !typedNote.ok && <p role="alert" className="mt-2 text-sm text-red-600">{typedNote.text}</p>}
+          {typedNote?.ok && <p className="mt-2 text-sm text-neutral-600">{typedNote.text}</p>}
+          {/* The button disables while it works, so the outcome has to be said. */}
+          <p role="status" className="sr-only">{typedNote?.ok ? typedNote.text : ""}</p>
         </div>
       )}
       {imported && draft && (
@@ -834,7 +838,7 @@ export default function NewInvoicePage() {
               {newCustomer.archivedId
                 ? `${newCustomer.name} is an archived customer`
                 : `${newCustomer.name} isn't one of your customers yet`}
-              {addClientError && <span className="block text-red-600">{addClientError}</span>}
+              {addClientError && <span role="alert" className="block text-red-600">{addClientError}</span>}
             </span>
             <button
               type="button"

@@ -52,11 +52,15 @@ export default function Accessibility() {
         </li>
         <li className={LI}>
           <strong>Dark, light, and five colours.</strong> Every one of them measured for contrast on the pages a new
-          account meets first, because the ordinary grey was failing before anybody checked.
+          account meets first, because the ordinary grey was failing before anybody checked. Every pairing of a text
+          colour with its background in the app&apos;s code is also worked out in all six, so a screen the first check
+          never opens is covered too.
         </li>
         <li className={LI}>
           <strong>Keyboard only.</strong> Every screen can be used without a mouse, and following a link moves you into
-          the new page rather than leaving you where the old one was.
+          the new page rather than leaving you where the old one was. The first key press offers a way past the menus.
+          A panel that opens over the page keeps the keyboard inside it, Escape closes it, and you are put back where you
+          were.
         </li>
         <li className={LI}>
           <strong>Refusals say which box they are about.</strong> If a form will not save, the box at fault is marked
@@ -89,9 +93,10 @@ export default function Accessibility() {
           paid to try this app.
         </li>
         <li className={LI}>
-          <strong>The camera.</strong> Scanning a receipt means aiming a phone at a piece of paper. We have not worked
-          out how somebody who cannot see the viewfinder does that, and the honest answer today is: type it in instead,
-          which every screen allows.
+          <strong>The camera.</strong> Scanning a receipt means aiming a phone at a piece of paper. The camera now says out
+          loud whether a page is in view, what to do to get it, when it takes the photo and how many it has. But nobody
+          who cannot see has tried it, and it has not been tried with VoiceOver, so we do not know that it is enough. Typing
+          a receipt in, which every screen allows, is still the sure way.
         </li>
         <li className={LI}>
           <strong>Colour on charts.</strong> The spending chart reads its colours from the theme and is described in

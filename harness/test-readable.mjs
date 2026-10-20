@@ -246,7 +246,7 @@ try {
     lang: document.documentElement.lang,
     title: document.title,
   }));
-  check("one heading, a language and a title, so a screen reader knows where it is", headings.h1 === 1 && headings.lang === "en" && headings.title.length > 0, JSON.stringify(headings));
+  check("one heading, a language and a title, so a screen reader knows where it is", headings.h1 === 1 && headings.lang === "en-GB" && headings.title.length > 0, JSON.stringify(headings));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

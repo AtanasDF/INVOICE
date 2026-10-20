@@ -64,6 +64,7 @@ export default function AddressFields({ address, onAddress, label = "Address", s
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
+  const postcodeRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The query whose answer the list is waiting for: a slower, older answer
   // is dropped.
@@ -228,14 +229,19 @@ export default function AddressFields({ address, onAddress, label = "Address", s
                 : `${lead}Tap one to fill it in. Addresses © OpenStreetMap contributors.`;
 
   return (
-    <div className="space-y-2">
-      <span className="text-xs text-neutral-500">{label}</span>
+    // A group named by its label: with two blocks on one page, "Postcode" alone
+    // did not say whose.
+    <div role="group" aria-labelledby={`${id}-label`} className="space-y-2">
+      <span id={`${id}-label`} className="text-xs text-neutral-500">{label}</span>
       <input id={`${id}-line1`} className={INPUT} autoComplete={mine ? "address-line1" : "off"} placeholder={streetPlaceholder} aria-label={streetPlaceholder} value={parts.line1} onChange={(e) => set({ line1: e.target.value })} onKeyDown={onEnter} />
       <input id={`${id}-line2`} className={INPUT} autoComplete={mine ? "address-line2" : "off"} placeholder="Flat, building or area (optional)" aria-label="Flat, building or area" value={parts.line2} onChange={(e) => set({ line2: e.target.value })} onKeyDown={onEnter} />
       <div className="grid grid-cols-2 gap-2">
         <input id={`${id}-town`} className={INPUT} autoComplete={mine ? "address-level2" : "off"} placeholder="Town or city" aria-label="Town or city" value={parts.town} onChange={(e) => set({ town: e.target.value })} onKeyDown={onEnter} />
         <input
           id={`${id}-postcode`}
+          ref={postcodeRef}
+          aria-invalid={result?.badPostcode || undefined}
+          aria-describedby={result?.badPostcode ? `${id}-note` : undefined}
           className={`${INPUT} uppercase`}
           autoComplete={mine ? "postal-code" : "off"}
           autoCapitalize="characters"
@@ -269,9 +275,12 @@ export default function AddressFields({ address, onAddress, label = "Address", s
       {result && (
         <div className="overflow-hidden rounded-lg border bg-white text-neutral-900">
           {items.length > 0 && (
-            <ul role="listbox" aria-label="Addresses found" className="max-h-72 overflow-y-auto">
+            // A list of buttons, not a listbox: an option role makes what is
+            // inside it presentational, so the button stopped being one, and
+            // there was no arrow-key model behind the role anyway.
+            <ul aria-label="Addresses found" className="max-h-72 overflow-y-auto">
               {items.map((m) => (
-                <li key={m.id} role="option" aria-selected={false}>
+                <li key={m.id} data-address-option>
                   <button type="button" onClick={() => pick(m)} className="w-full border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-neutral-50">
                     <span className={`block text-sm ${m.partial ? "text-neutral-700" : "font-medium"}`}>{m.label}</span>
                     {m.detail && <span className="block text-xs text-neutral-500">{m.detail}</span>}
@@ -281,7 +290,7 @@ export default function AddressFields({ address, onAddress, label = "Address", s
             </ul>
           )}
           <div className="flex items-center justify-between gap-2 border-t bg-neutral-50 px-3 py-1.5">
-            <p className="text-xs text-neutral-600">{note}</p>
+            <p id={`${id}-note`} className="text-xs text-neutral-600">{note}</p>
             <div className="flex shrink-0 items-center gap-3">
               {/* Taking the Find button away must not leave somebody stuck
                   when the lookup is simply down: that is the only moment a
@@ -292,7 +301,14 @@ export default function AddressFields({ address, onAddress, label = "Address", s
                   Try again
                 </button>
               )}
-              <button type="button" onClick={() => setResult(null)} className="text-xs font-medium text-neutral-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setResult(null);
+                  postcodeRef.current?.focus();
+                }}
+                className="text-xs font-medium text-neutral-700"
+              >
                 Close
               </button>
             </div>
@@ -300,6 +316,8 @@ export default function AddressFields({ address, onAddress, label = "Address", s
         </div>
       )}
       {fetching && <p className="text-xs text-neutral-500">Fetching the address…</p>}
+      {/* The search runs by itself as somebody types, so what it found has to be said. */}
+      <p role="status" className="sr-only">{searching ? "Searching…" : fetching ? "Fetching the address…" : result ? `${items.length ? `${items.length === 1 ? "One address" : `${items.length} addresses`} found. ` : ""}${note}` : ""}</p>
       {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
     </div>
   );

@@ -45,6 +45,14 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept,
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+  // Escape goes back to the camera, the sheet's one way out that loses nothing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onKeepScanning();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onKeepScanning]);
   const labels: string[] = [];
   let doc = 0;
   let page = 1;
@@ -95,6 +103,7 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept,
                       <label className="flex items-center gap-1.5 text-xs text-neutral-700">
                         <input
                           type="checkbox"
+                          aria-label={`Scan ${i + 1} is a page of the one before`}
                           checked={s.joinPrev}
                           onChange={(e) => onChange(shots.map((x) => (x.id === s.id ? { ...x, joinPrev: e.target.checked } : x)))}
                         />
@@ -105,7 +114,12 @@ export default function BatchReview({ shots, onChange, onKeepScanning, onAccept,
                     )}
                     <button
                       type="button"
-                      onClick={() => onChange(removeShot(shots, s.id))}
+                      onClick={() => {
+                        onChange(removeShot(shots, s.id));
+                        // The button goes with its tile; focus would fall to the page.
+                        titleRef.current?.focus();
+                      }}
+                      aria-label={`Remove scan ${i + 1}`}
                       className="text-xs font-medium text-neutral-600"
                     >
                       Remove

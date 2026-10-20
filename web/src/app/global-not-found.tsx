@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function GlobalNotFound() {
   return (
-    <html lang="en">
+    <html lang="en-GB">
       <head>
         {/* Without this the page ignores a chosen theme, because nothing above
             it has run. It is the same boot script the root layout uses. */}

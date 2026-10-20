@@ -58,6 +58,7 @@ export default function OrderLists({ plan, request, from, emailOf }: { plan: Pla
                     <button type="button" onClick={() => copy(order, text)} className={SECONDARY}>
                       {copied === order.offer.id ? "Copied" : "Copy"}
                     </button>
+                    <span role="status" className="sr-only">{copied === order.offer.id ? "Order copied." : ""}</span>
                     {email && (
                       <a href={`mailto:${email}?subject=${encodeURIComponent(`Order: ${request.title}`)}&body=${encodeURIComponent(text)}`} className={SECONDARY}>
                         Email

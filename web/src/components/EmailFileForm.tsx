@@ -22,11 +22,14 @@ export default function EmailFileForm({
   heading = "Or email it to someone",
   idPrefix = "email-file",
   className = "space-y-2 border-t pt-4",
+  level = 3,
 }: {
   file: () => Promise<{ blob: Blob; name: string } | null>;
   heading?: string;
   idPrefix?: string;
   className?: string;
+  // An h3 under the h2 of /convert and /copy; straight under an h1 elsewhere.
+  level?: 2 | 3;
 }) {
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
@@ -85,7 +88,7 @@ export default function EmailFileForm({
 
   return (
     <form onSubmit={send} className={className}>
-      <h3 className="font-semibold">{heading}</h3>
+      {level === 2 ? <h2 className="font-semibold">{heading}</h2> : <h3 className="font-semibold">{heading}</h3>}
       <label htmlFor={`${idPrefix}-to`} className="text-sm text-neutral-700">
         Their email address
       </label>
@@ -98,7 +101,7 @@ export default function EmailFileForm({
         {sending ? "Sending…" : "Send"}
       </button>
       <p className="text-xs text-neutral-600">It goes from {SITE_NAME} with your email address to reply to.</p>
-      {note && <p className="text-sm text-neutral-700">{note}</p>}
+      <p role="status" className={note ? "text-sm text-neutral-700" : "sr-only"}>{note ?? ""}</p>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     </form>
   );

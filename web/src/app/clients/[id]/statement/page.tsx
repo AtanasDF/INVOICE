@@ -63,7 +63,7 @@ export default function StatementPage() {
   return (
     <div className="space-y-6">
       <div className="print:hidden">
-        <Link href="/clients" className="text-sm text-neutral-500">← Customers &amp; suppliers</Link>
+        <Link href="/clients" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Customers &amp; suppliers</Link>
         <h1 className="mt-1 text-2xl font-bold">Statement</h1>
         {/* "Loading…" stood beside a failed load for good, and for ever on an
             id that is none of this account's contacts. */}
@@ -101,6 +101,7 @@ export default function StatementPage() {
               <button type="button" onClick={copy} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
                 {copied === "yes" ? "Copied" : copied === "no" ? "Couldn't copy. Use Share instead" : "Copy the figures"}
               </button>
+              <span role="status" className="sr-only">{copied === "yes" ? "Figures copied." : copied === "no" ? "Couldn't copy. Use Share instead." : ""}</span>
             </ShareButtons>
           </div>
 

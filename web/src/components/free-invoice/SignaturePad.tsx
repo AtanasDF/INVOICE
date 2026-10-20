@@ -232,7 +232,7 @@ export default function SignaturePad({ value, onChange }: { value: string | null
           className="h-36 w-full touch-none select-none rounded-lg border bg-sheet [-webkit-touch-callout:none]"
           aria-label="Sign here"
         />
-        {!dirty && <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-neutral-400">Sign here with your finger</p>}
+        {!dirty && <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-neutral-500">Sign here with your finger</p>}
         <div className="pointer-events-none absolute inset-x-6 bottom-8 border-b border-dashed border-neutral-300" />
       </div>
       <div className="flex flex-wrap gap-2">

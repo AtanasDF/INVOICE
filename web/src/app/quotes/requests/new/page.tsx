@@ -33,7 +33,7 @@ export default function NewQuoteRequestPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/quotes/requests" className="text-sm text-neutral-500">← Quotes from suppliers</Link>
+        <Link href="/quotes/requests" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Quotes from suppliers</Link>
         <h1 className="mt-1 text-2xl font-bold">New quote request</h1>
         <p className="mt-1 text-neutral-600">List what you need; each supplier gets their own email with a link to price it.</p>
       </div>

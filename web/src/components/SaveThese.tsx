@@ -101,7 +101,7 @@ export default function SaveThese({ receipts, clients, from, to, supplier }: {
       )}
 
       {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
-      {done && <p role="status" className="mt-2 text-sm text-neutral-700">{done}</p>}
+      <p role="status" className={done ? "mt-2 text-sm text-neutral-700" : "sr-only"}>{done ?? ""}</p>
     </div>
   );
 }
