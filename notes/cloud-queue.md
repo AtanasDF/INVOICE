@@ -298,3 +298,21 @@ Branch: wip/ios-files-share.
 
 Briefs 13-15 come from the Safari report. They can run at the same time; merge them on the
 Mac in the order 13, 15, 14, and run the camera suites before 14 goes in.
+
+## 16. Do the help pages still tell the truth? — [ ]
+
+```
+Read CLAUDE.md (the help chat in the environment section). The help ladder is
+src/lib/helpPrompt.ts (HELP_JOURNEYS), src/lib/helpFacts.ts (a hand-written line per
+page), the walkthroughs on /help, the Tips (src/lib/tips.ts and the Tip texts), and the
+public articles (/how-to-invoice, /privacy, /terms, /security, /accessibility). Since they
+were written, a lot changed: Gemini became the default reader, scan limits went live,
+draft autosave, quote send times, the email Worker now bounces mail, the plan can't be
+changed by an account, the iPhone notes in notes/ios-safari.md. For every sentence that
+states a fact about the app, check it against the code. List what is now false, missing
+or misleading, and fix the wording -- only those text files and the help pages, nothing
+else. Keep the house words (test-govuk-words, test-vocabulary, test-plain-words must stay
+green) and the "say when it does not know" rule. If /privacy's description of what is
+stored changed, say so loudly in the report: that page has its own rule in CLAUDE.md.
+Report in notes/help-truth.md. Branch: wip/help-truth.
+```
