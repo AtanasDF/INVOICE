@@ -81,6 +81,8 @@ export async function loadPublicQuote(token: string, client?: SupabaseClient): P
       // What it was priced under when it was sent; null follows the
       // account's setting, as it always did.
       vatRegistered: q.vat_registered ?? null,
+      // When the owner sent it is the owner's business, not the customer's.
+      sentAt: null,
     },
     client: customer
       ? {

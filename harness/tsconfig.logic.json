@@ -68,6 +68,7 @@
     "../web/src/lib/warmScanner.ts",
     "../web/src/lib/pagePrint.ts",
     "../web/src/lib/bills.ts",
+    "../web/src/lib/quoteChase.ts",
     "../web/src/lib/quoteCompare.ts",
     "../web/src/lib/accountSwitch.ts",
     "../web/src/lib/formDraft.ts",

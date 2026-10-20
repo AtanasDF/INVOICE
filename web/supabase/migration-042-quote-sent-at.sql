@@ -1,0 +1,78 @@
+-- Remember when a quote was sent.
+--
+-- WHAT IS BROKEN NOW. The quotes list nudges about a quote that has been out
+-- for five days without an answer, and used to say "sent 17 days ago". A
+-- quote keeps no send time, so that was counted from `quotes.date` -- the
+-- date written on the quote, which is often the day it was drafted. A quote
+-- drafted on the 1st and emailed on the 15th was "sent 19 days ago" on the
+-- 20th, and was nagged about on the 6th, before the customer had seen it.
+-- The component audit caught it and the wording became "dated N days ago",
+-- which is true but not what anybody wants to know.
+--
+-- `sent_at` is the moment the quote left draft: emailed, its link copied or
+-- shared (both mark it sent first), or accepted/declined straight from a
+-- draft agreed on the phone. The app stamps it in the same update as
+-- `vat_registered` (migration-033), because it is the same moment.
+--
+-- NO DATABASE FUNCTION SENDS A QUOTE. Checked: the only function that
+-- updates `quotes` is `respond_to_quote_link` (026, redefined in 041), and it
+-- moves sent -> accepted/declined; the quote already had its sent_at by
+-- then. Nothing else in web/supabase writes quotes.status. So this file
+-- redefines no function, and the stamping lives in `quotesStore`.
+--
+-- Putting a quote back to sent (the owner reopening an answered one so the
+-- customer can answer again) KEEPS the first sent_at: it is not a new send,
+-- and the chase should keep counting from when the customer first had it.
+--
+-- EXISTING QUOTES KEEP NULL. They could be guessed from
+-- `quote_links.created_at`, but a link is made when it is copied or emailed,
+-- which may be a resend, and a quote sent by hand has no link at all. A
+-- guessed date is exactly what the "only what is sure" rule forbids, so the
+-- app shows those as "dated N days ago", counting from quotes.date, as today.
+--
+-- Backup: 017-backup-before-migration-042.sql, run and verified first.
+-- One nullable column, no default, no row rewritten. Additive and idempotent:
+-- safe to run twice.
+
+alter table public.quotes add column if not exists sent_at timestamptz;
+
+comment on column public.quotes.sent_at is
+  'When the quote left draft (sent, or answered straight from a draft). Null on drafts and on quotes from before migration-042. Set by the app; reopening an answered quote keeps the first one.';
+
+-- The owner already has update on every quotes column (migration-020, the
+-- "own quotes" policy), so there is no grant or policy to add.
+
+-- ---------------------------------------------------------------------------
+-- Check afterwards:
+-- ---------------------------------------------------------------------------
+--   select column_name, data_type, is_nullable, column_default
+--     from information_schema.columns
+--    where table_schema = 'public' and table_name = 'quotes' and column_name = 'sent_at';
+--   -- sent_at | timestamp with time zone | YES | (null)
+--
+--   select count(*) filter (where sent_at is null) as no_send_time,
+--          count(*) filter (where sent_at is not null) as send_time
+--     from public.quotes;
+--   -- every existing quote under no_send_time
+--
+-- And that no existing value moved: run both `except` checks from the backup
+-- file again, comparing every column but sent_at, and both must still be 0:
+--   select count(*) from (
+--     select id, user_id, client_id, number, date, valid_until, items, notes, status, invoice_id,
+--            deposit_percent, deposit_amount, deposit_invoice_id, deposit_claimed, vat_registered, created_at
+--       from quotes
+--     except
+--     select id, user_id, client_id, number, date, valid_until, items, notes, status, invoice_id,
+--            deposit_percent, deposit_amount, deposit_invoice_id, deposit_claimed, vat_registered, created_at
+--       from quotes_backup_20261020
+--   ) t;
+--
+-- Exercise as the owner, inside a transaction that rolls back (rule 3).
+-- Replace the user id with a real one from auth.users and the quote id with
+-- one of theirs that is a draft; the raise undoes everything:
+--   begin;
+--   set local role authenticated;
+--   select set_config('request.jwt.claims', '{"sub":"<user uuid>","role":"authenticated"}', true);
+--   update public.quotes set status = 'sent', sent_at = now() where id = '<draft quote uuid>' returning sent_at;
+--   do $$ begin raise exception 'rolled back on purpose'; end $$;
+--   rollback;
