@@ -69,6 +69,89 @@ component-money, camera-dark-source, rls-audit, error-report.
 `JOBS=1` if he's at the Mac. Watch `test-company-picker` and `test-no-silent-contacts`
 especially: ContactField's Add now reads `clients` once more before inserting.
 
+## 2026-10-20 (cloud) — One signed `daysBetween`, on `wip/days-between`
+
+A cloud session, branched from `fix/audit-components` (which merges first). **Not merged.**
+
+`daysBetween` was not four copies but **twelve**: three named functions and nine inline
+`/ 86_400_000` sums. What each returned, and what its caller needed:
+
+| Where | Returned | Caller needs | Now |
+|---|---|---|---|
+| lib/bills.ts `daysBetween` | signed, rounded, UTC-pinned | dueSoon, due labels, quotes "quiet for" | moved to lib/today.ts unchanged |
+| lib/duplicates.ts `daysBetween` | **unsigned, unrounded**, raw parse | "within 3 days either way" | `Math.abs(daysBetween(...))` |
+| lib/freeInvoiceDraft.ts `daysBetween` | null if unreadable or backwards | a gap to copy, else the next fallback | `forwardGap()` wrapping it |
+| app/page.tsx ageing buckets | signed, floored | days past due | `daysBetween(due, today)` |
+| lib/moneyScreen.ts, lib/statement.ts `days` | signed, floored | days late (>0 / max 0) | `daysBetween(due, today)` |
+| lib/taxEstimate.ts x3, TaxSoFar `daysUntil` | signed, rounded | SA notice day, days into the year, year length | `daysBetween` |
+| DraftEditor `setDate` | rounded, else 30 | a quote's validity gap | `daysBetween`, same fallback |
+| invoices/new `copiedTermsDays` | unrounded then rounded, else null | printed terms gap | `daysBetween`, same fallback |
+
+On two plain dates every copy gives the same whole number (floor and round agree on an
+exact multiple of a day), so **no caller's behaviour changes**. That is checked, not
+argued: `harness/test-days-between.mjs` (51 checks, logic + source, runs anywhere) keeps
+each old copy **verbatim** as an oracle and compares it with its replacement over about
+200,000 pairs of real dates each (Dec 2023 to Dec 2026: both clock changes every year,
+every month end, 29 February from both sides): **0 differences**. It also checks the new
+function on its own (both signs, both clock changes, month ends, a leap day, a tax year),
+and gets the same answer with the machine in London, UTC, Los Angeles and Kiritimati.
+
+**The one difference anywhere, found by the suite, not by me:** the copies that handed the
+bare string to `Date.parse` read a half-date like `"2026-1"` as 1 January 2026 and counted
+from there (292 days to today); the pinned form says NaN. No caller can be given one --
+date columns, `<input type="date">` (which yields "" or a whole date), todayISO/addDays,
+and documentDate.ts (full ISO or null) are the only sources -- so it is pinned in the
+suite as known rather than "fixed". 30 February rolls on to 2 March in every copy, old
+and new alike.
+
+The guard reads web/src and fails on any division by a day length, a helper given an old
+name, or `getTime() - new Date(`. Proved by putting a floor copy back into statement.ts
+(caught), making the function count from London midnight (5 clock-change checks fail) and
+making it unsigned (14 fail). Two excuses are named in the suite, each checked to be still
+needed: address-search's 24-hour rate window, and:
+
+- **Flagged, not changed: `lib/companyReportBuild.ts` asks UTC what day it is.** A
+  Companies House deadline's `late` is `floor((now - dueDate at UTC midnight) / day)`, so
+  from 00:00 to 01:00 BST on the day after the deadline a company's accounts or
+  confirmation statement read as not yet overdue (unless Companies House's own `overdue`
+  flag already says so). The CLAUDE.md "What day it is" bug, for an hour a summer night.
+  Fix is one line -- `daysBetween(nextDue.slice(0, 10), ukDate(now))` -- but it changes
+  behaviour, which this branch promised not to, so it is Atanas's call.
+
+test-bills now imports daysBetween from today.js and its old "no more than 4 copies"
+check is "none outside lib/today.ts". test-days-between is in run-all.sh after test-bills.
+
+Checked here: `tsc --noEmit`, `eslint .` (excluding the `web/.claude/worktrees/` copy) and
+`npm run build` clean (placeholder Supabase URL/keys). Logic suites green: test-days-between
+51/51, test-bills 36/36, test-tax-rules, test-free-totals, test-next-number, test-utc-today,
+test-awkward-dates, test-money-invariants, test-more-money-invariants, test-audit-guards,
+test-weekly-summary.
+
+**Browser suites, run here** -- the first time a cloud session has run any: against
+`next start` (production build, placeholder keys, `NEXT_PUBLIC_SUPABASE_URL` set to the
+project's public URL so `mockdb.mjs` intercepts it) with Chromium from `/opt/pw-browsers`,
+from a scratch copy of the harness with only `executablePath` and `--no-sandbox` changed.
+**Green (16):** test-money-screen 25/25, test-statement 18/18, test-midnight 8/8, test-tax
+5/5, test-cis 14/14, test-dashboard 30/30, test-quotes 35/35, test-free-draft 19/19,
+test-free-quote 5/5, test-late-payment 14/14, test-getting-started 16/16, test-payments
+17/17, test-big-account 22/22, test-awkward-money 22/22, test-what-surfaces 14/14,
+test-first-week 25/25. **Not green, and identically so on a build of
+`origin/fix/audit-components` (f0e4c06), so not this branch's:**
+- test-receipts-list 54/55 -- "the GBP figures are the EUR ones converted ONCE" gets
+  48 / 12 where it expects 47.9976 / 11.9994: the EUR receipt's GBP figures are saved
+  rounded to pence. **Settled since:** `ea062a9` on fix/audit-components made the suite
+  expect the penny figures -- the rounding was deliberate and the assertion stale. Merged in.
+- test-review-fixes 0/0 -- "Waiting failed: 15000ms exceeded" before its first check.
+  Could be this container; re-run on the Mac.
+
+So a cloud session CAN run browser suites that need no camera clips: point `executablePath`
+at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` and add `--no-sandbox` in a copy.
+(A worktree with a symlinked `node_modules` will not build: Turbopack refuses a symlink out
+of the project root. It needs its own `npm ci`.)
+
+**For the Mac before merging**, against `next start`: test-receipts-list (with `ea062a9`), test-review-fixes, and test-days-between and test-bills as
+part of the logic run. The camera and scan suites are unaffected: no file they use changed.
+
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
 
 Both cloud halves merged onto `fix/audit-components` (from `main`). The code merged

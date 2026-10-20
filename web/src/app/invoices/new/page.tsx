@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeaveGuard } from "@/lib/leaveGuard";
-import { addDays } from "@/lib/today";
+import { addDays, daysBetween } from "@/lib/today";
 import { money } from "@/lib/money";
 import { pricesFor, savedPrices } from "@/lib/savedPrices";
 import { useRouter } from "next/navigation";
@@ -49,8 +49,8 @@ function copiedTermsDays(t: InvoiceTemplate): number | null {
   const printed = t.paymentTerms ? termsLengthOf(t.paymentTerms) : null;
   if (printed !== null) return printed;
   if (!t.date || !t.dueDate) return null;
-  const gap = (Date.parse(t.dueDate) - Date.parse(t.date)) / 86_400_000;
-  return Number.isFinite(gap) && gap >= 0 ? Math.round(gap) : null;
+  const gap = daysBetween(t.date, t.dueDate);
+  return Number.isFinite(gap) && gap >= 0 ? gap : null;
 }
 
 // archivedId: an archived client of the same name, offered back rather

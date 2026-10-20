@@ -1,15 +1,14 @@
 import { TaxEstimate, nextSelfAssessmentDate, yearBillDue } from "@/lib/taxEstimate";
 import { longDate } from "@/components/invoice/InvoiceDocument";
+import { daysBetween } from "@/lib/today";
 
 const money = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
 const exact = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const daysUntil = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
-
 export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
   const nothing = e.invoicesCounted === 0 && e.receiptsCounted === 0;
   const next = nextSelfAssessmentDate(e.through);
-  const inDays = daysUntil(e.through, next.date);
+  const inDays = daysBetween(e.through, next.date);
   // Nothing to report, or too early to say, is one line of news -- so it gets
   // one line, not a heading with a paragraph under it and the whole apparatus
   // of a card that has nothing to put in it.

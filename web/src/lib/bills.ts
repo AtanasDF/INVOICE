@@ -1,4 +1,4 @@
-import { addDays } from "@/lib/today";
+import { addDays, daysBetween } from "@/lib/today";
 import type { Receipt } from "@/lib/storage";
 
 // What counts as a bill, and when one is due soon enough to say so.
@@ -19,17 +19,8 @@ import type { Receipt } from "@/lib/storage";
 // So: one definition, one number, and harness/test-bills.mjs checks that no
 // screen has quietly grown its own copy again.
 //
-// `daysBetween` is counted here rather than imported because it is itself
-// written out FOUR times -- app/page.tsx, app/receipts/page.tsx,
-// lib/duplicates.ts and lib/freeInvoiceDraft.ts -- and the copies are not
-// equivalent: duplicates.ts returns an UNSIGNED difference and does not round,
-// so anybody reusing it for "is this overdue" would get the wrong sign without
-// a word. Giving that primitive a single home is its own change; this file
-// does not depend on which copy wins.
-//
-// Both endpoints are bare YYYY-MM-DD, which JavaScript parses as UTC midnight,
-// so the difference is an exact multiple of a day even across a BST boundary --
-// the rounding is belt and braces, not a fudge.
+// The day count itself is `daysBetween` in lib/today.ts, signed, with its own
+// suite (test-days-between) -- this file used to hold one of its copies.
 
 // Within this many days -- or already late -- is "due soon".
 //
@@ -61,10 +52,6 @@ export function dueSoon(dueDate: string | null, today: string): boolean {
   return !!dueDate && daysBetween(today, dueDate) <= BILL_DUE_SOON_DAYS;
 }
 
-/** Whole days from one plain date to another, negative when `to` is in the past. */
-export function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-}
 
 /**
  * The same rule as `isBill`, as database columns, for the one caller that has
