@@ -38,7 +38,7 @@ export const HELP_JOURNEYS: HelpJourney[] = [
     summary: "Make one, send it, and see what is owed.",
     start: "/invoices/new",
     steps: [
-      { caption: "Start from Make an invoice. The number is filled in for you and goes up by one each time." },
+      { caption: "Start from Make an invoice. The number it will get is shown at the top, one on from your last." },
       { caption: "Pick who it is for. Typing a name that is not there yet offers to add them." },
       { caption: "Put in what you did and what it costs. Add a line for each thing." },
       { caption: "Check the total. If you are VAT registered the VAT is worked out and shown on its own." },

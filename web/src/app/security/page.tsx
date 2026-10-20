@@ -16,10 +16,11 @@ const LI = "mt-2 text-neutral-800";
 // a risk, and a process that tells them within 72 hours.
 //
 // It points at the feedback form rather than an email address on purpose.
-// invoiceover.com's mail goes to the inbox-import Worker, which silently
-// drops anything that is not a per-user inbox address -- so a message to
-// security@ would vanish with no bounce, which is worse than having no
-// address at all. The feedback route emails a real person.
+// invoiceover.com's mail goes to the inbox-import Worker, which bounces
+// anything that is not a per-user inbox address (since 2026-10-20; before
+// that it dropped it silently) -- so a message to security@ would come back
+// as "no import address here", which is no use to somebody reporting a hole.
+// The feedback route emails a real person.
 export default function Security() {
   return (
     <div className="mx-auto max-w-2xl py-4">

@@ -426,8 +426,8 @@ function Dashboard() {
           lives in GettingStarted instead, which is below the tiles and is what
           a new account is reading anyway. */}
       <Tip id="dashboard-welcome">
-        Point the camera at a receipt, a bill or an old invoice. Anything you photograph is read for you &mdash;
-        customers, suppliers and expenses appear as you go.
+        Point the camera at a receipt, a bill or an old invoice. What is on it is read for you and filled in, ready
+        for you to check and save.
       </Tip>
 
       {showOverdueBanner && !bannerDismissed && (

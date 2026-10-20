@@ -4,6 +4,22 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Help text checked against the app (cloud, brief 16), NOT merged
+
+Branch `claude/brief-16-cloud-queue-hrozjb` (the brief named `wip/help-truth`; the cloud
+session was pinned to this one). Report in `notes/help-truth.md`. **/privacy was wrong:**
+it said Anthropic reads a document only where somebody turned it on, but the Gemini
+fallback, the business-card read and "describe an invoice" all reach Anthropic by default;
+and Cloudflare (Turnstile, email import) and the automatic payment reminders were not
+named. Fixed, with the scan-count and browser-draft lines. Also false and fixed: recurring
+invoices "weekly, monthly or yearly" and "go out on their own", recurring expenses "created
+for you", clients holding bank details, /money's description and Chase, /jobs having
+quotes, the dashboard's four tools, /accessibility's "checked every build". Left for a
+decision: the recurring-expenses empty state, the two Claude-first routes, the home-screen
+camera tip. tsc/eslint/build clean; help-chat 61/61, govuk-words, vocabulary, plain-words,
+privacy-terms, terms-of-use, every-screen-explained, promises all green against
+`next start` (container Chromium). Before merging: nothing beyond a read of the diff.
+
 ## 2026-10-20 — Round 3 merged; migrations 043-045 live
 
 043, 044 and 045 run on the live database and each exercised as the Hidefield owner in a

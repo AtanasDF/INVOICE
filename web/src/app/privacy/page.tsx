@@ -32,6 +32,7 @@ export default function Privacy() {
         <li className={LI}>Your email address, so you can sign in and we can send you the app&apos;s own emails.</li>
         <li className={LI}>What you put in: invoices, quotes, customers, suppliers, expenses and your business details.</li>
         <li className={LI}>The photographs and files you scan or upload, and what was read from them.</li>
+        <li className={LI}>How many documents you have had read each day and each month, so the daily limit can be kept.</li>
         <li className={LI}>If you arrived from a flyer, the short code on it — so we know which flyer worked. Nothing else about where you came from.</li>
         <li className={LI}>
           If you ask the help chat a question, the question itself — so we can see what the app failed to explain and
@@ -52,14 +53,24 @@ export default function Privacy() {
       <ul className="list-disc space-y-1 pl-5">
         <li className={LI}><strong>Supabase</strong> stores your records and your files, and handles signing in.</li>
         <li className={LI}><strong>Vercel</strong> runs the website itself.</li>
-        <li className={LI}><strong>Resend</strong> sends the emails — confirming your address, and any invoice or document you choose to email.</li>
+        <li className={LI}><strong>Resend</strong> sends the emails — confirming your address, any invoice or document you choose to email,
+          and the payment reminders to your customers if you leave them switched on.</li>
+        <li className={LI}>
+          <strong>Cloudflare</strong> runs the check that you are a person when you sign in, and receives any receipt you
+          email in to your own import address before passing it to us.
+        </li>
         <li className={LI}>
           <strong>Google</strong> reads the documents you scan. When you photograph a receipt, that picture is sent to
           be read, and what comes back is what fills in the form. It is not used to train anything.{" "}
-          <strong>Anthropic</strong> can read them instead, but only on a device where you have turned that on
-          yourself — it is not what happens by default.
+          <strong>Anthropic</strong> reads them instead when Google is too slow or busy to answer, so the reading still
+          works. Anthropic also reads a business card or letterhead you photograph to add a contact, and an invoice you
+          describe in your own words. It is not used to train anything either.
         </li>
       </ul>
+      <p className={P}>
+        Some boxes look things up as you type. An address is looked up with postcodes.io and OpenStreetMap, a company
+        with Companies House, and a VAT number with HMRC where that check is turned on. They are sent what is in the box, and nothing else about you.
+      </p>
       <p className={P}>
         We do not give your information to anyone else, unless the law makes us.
       </p>
@@ -70,7 +81,7 @@ export default function Privacy() {
         Economic Area. Nothing about your account is stored outside it.
       </p>
       <p className={P}>
-        The one thing that leaves is a document you scan: the picture is sent to Google in the{" "}
+        The one thing that leaves is a document you have read for you: the picture is sent to Google in the{" "}
         <strong>United States</strong> to be read, and what comes back fills in the form. The picture itself stays with
         us; they are not given your account, your name, or anything else you have here, and they do not use it to train
         anything. Google is certified under the UK-US Data Bridge, which is the arrangement that makes that transfer
@@ -78,10 +89,10 @@ export default function Privacy() {
         also takes typing.
       </p>
       <p className={P}>
-        If you have turned on Anthropic as the reader on your own device, that picture goes to the{" "}
-        <strong>United States</strong> as well. Anthropic is not certified under the UK-US Data Bridge, so that transfer
-        rests on the contract terms we have with them rather than on that arrangement. It is not what happens unless you
-        have switched it on yourself.
+        When Anthropic reads it instead — because Google was too slow or busy, or because it is a business card, a
+        letterhead or an invoice described in words — it goes to the <strong>United States</strong> as well. Anthropic
+        is not certified under the UK-US Data Bridge, so that transfer rests on the contract terms we have with them
+        rather than on that arrangement. Typing it in by hand avoids this too.
       </p>
 
       <h2 className={H}>Why we are allowed to keep it</h2>
@@ -121,7 +132,9 @@ export default function Privacy() {
       <h2 className={H}>Cookies</h2>
       <p className={P}>
         There are none for advertising, and none that follow you around. The app stores a few things in your browser so
-        it works: whether you are signed in, which colour you picked, and which panel you last had open.
+        it works: whether you are signed in, which colour you picked, which panel you last had open, your signature
+        if you sign an invoice, and an invoice or receipt you have started typing and not yet saved, so it is not lost if
+        the page closes. A draft like that stays on your device only, and is not offered back after 30 days.
       </p>
 
       <h2 className={H}>Asking us something</h2>
@@ -130,7 +143,7 @@ export default function Privacy() {
         person who made it.
       </p>
 
-      <p className="mt-10 text-sm text-neutral-500">Last changed 23 September 2026.</p>
+      <p className="mt-10 text-sm text-neutral-500">Last changed 20 October 2026.</p>
     </div>
   );
 }
