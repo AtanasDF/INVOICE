@@ -62,13 +62,31 @@ Checked here: `tsc --noEmit`, `eslint .` (excluding the `web/.claude/worktrees/`
 test-awkward-dates, test-money-invariants, test-more-money-invariants, test-audit-guards,
 test-weekly-summary.
 
-**Browser suites, run here** (in progress at this commit; final list in the next one):
-against `next start` with Chromium from `/opt/pw-browsers`, from a scratch copy of the
-harness with only `executablePath` and `--no-sandbox` changed. Green so far:
-test-money-screen 25/25, test-statement 18/18, test-midnight 8/8, test-tax 5/5, test-cis
-14/14, test-dashboard 30/30, test-quotes 35/35, test-free-draft 19/19. test-receipts-list
-54/55: "the GBP figures are the EUR ones converted ONCE" got 48/12 for 47.9976/11.9994 --
-money rounding, not dates; being checked against a build of the base branch.
+**Browser suites, run here** -- the first time a cloud session has run any: against
+`next start` (production build, placeholder keys, `NEXT_PUBLIC_SUPABASE_URL` set to the
+project's public URL so `mockdb.mjs` intercepts it) with Chromium from `/opt/pw-browsers`,
+from a scratch copy of the harness with only `executablePath` and `--no-sandbox` changed.
+**Green (16):** test-money-screen 25/25, test-statement 18/18, test-midnight 8/8, test-tax
+5/5, test-cis 14/14, test-dashboard 30/30, test-quotes 35/35, test-free-draft 19/19,
+test-free-quote 5/5, test-late-payment 14/14, test-getting-started 16/16, test-payments
+17/17, test-big-account 22/22, test-awkward-money 22/22, test-what-surfaces 14/14,
+test-first-week 25/25. **Not green, and identically so on a build of
+`origin/fix/audit-components` (f0e4c06), so not this branch's:**
+- test-receipts-list 54/55 -- "the GBP figures are the EUR ones converted ONCE" gets
+  48 / 12 where it expects 47.9976 / 11.9994: the EUR receipt's GBP figures are saved
+  rounded to pence. Money rounding, presumably from the audit branch's part 2; **worth
+  looking at before fix/audit-components merges.**
+- test-review-fixes 0/0 -- "Waiting failed: 15000ms exceeded" before its first check.
+  Could be this container; re-run on the Mac.
+
+So a cloud session CAN run browser suites that need no camera clips: point `executablePath`
+at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` and add `--no-sandbox` in a copy.
+(A worktree with a symlinked `node_modules` will not build: Turbopack refuses a symlink out
+of the project root. It needs its own `npm ci`.)
+
+**For the Mac before merging**, against `next start`: test-receipts-list (to see whether the
+pence rounding is the base's), test-review-fixes, and test-days-between and test-bills as
+part of the logic run. The camera and scan suites are unaffected: no file they use changed.
 
 ## 2026-10-20 — The two component-audit halves combined on `fix/audit-components`
 
