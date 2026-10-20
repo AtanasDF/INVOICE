@@ -162,7 +162,7 @@ Write notes/audit-dead-code.md: one line each, with the evidence that nothing ca
 and how confident you are. Propose, do not remove. Branch, push.
 ```
 
-## 8. The printed document, every shape it takes — [ ]
+## 8. The printed document, every shape it takes — [x] (2026-10-20, `wip/printed-document`: second pass appended to notes/audit-documents.md; 6 of the first pass fixed since, 5 new, no behaviour changed)
 
 ```
 Read CLAUDE.md on how a document leaves the app (Save as, seven shapes) and audit
