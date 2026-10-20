@@ -4,6 +4,28 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-20 — Cloud round 2 combined on `integrate/cloud-round-2`
+
+Six cloud branches merged onto `integrate/cloud-round-2` from `main` (after
+`fix/inbox-ingest-gemini-stub` went to main, test-inbox-ingest 27/27): stale-suites and
+dead-weight (reports only), converter-audit, network-off, days-between, draft-autosave.
+Notes files clashed every time (both sides kept); `run-all.sh` twice (suites unioned); real
+code only in `invoices/new` and `receipts/new`, network-off and draft-autosave both
+editing the same load and imports -- every hunk was additions on both sides, kept.
+
+**The merge found one bug no branch could have**: days-between's new guard caught
+draft-autosave's `formDraft.ts` counting days in milliseconds twice, written in parallel.
+Fixed through `daysBetween`/`addDays`, same 30-day limit.
+
+Run against `next start`: 67 suites named by the six branches, 65 green first time;
+`test-days-between` was the catch above (51/51 after), `test-free-quote` died on a missing
+button under two-at-a-time load and is 13/13 alone. After the fix and a rebuild:
+test-form-draft 67/67, test-draft-autosave 18/18, test-free-draft 19/19, test-clear 22/22,
+test-quote-not-invoice 8/8. tsc, eslint, build clean.
+
+Not in this: `feature/quote-sent-at`, which waits on migration 042 (rule 4). Four more cloud
+sessions sent: API routes, SQL/RLS, the inbox Worker, iPhone Safari (report).
+
 ## 2026-10-20 — test-inbox-ingest given a Gemini stand-in, on `fix/inbox-ingest-gemini-stub`
 
 The suite had been red since 15/10 (16/24, the reader never called): it stood in only for
