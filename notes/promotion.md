@@ -45,6 +45,35 @@ dearer per person than the depots, and to a crowd with no common problem — wor
   for the phone it is being read on (see "Get the app" in `notes/launch-plan.md`).
 - One sentence on what it is. Not features.
 
+## The message: get paid faster (Atanas, 2026-10-21)
+
+*"We need to offer it with the like: get paid faster, due to the quotation and payment
+requests and reminders."* The big apps (QuickBooks, Xero, FreeAgent, Sage) sell
+bookkeeping; this is the line that is ours, and every piece of it is already built and
+live, so it can be said without a footnote:
+
+- **Quote, then invoice in one tap.** A quote goes out as a link the customer can
+  **Accept or Decline** from their phone; accepted, it turns into the invoice, with a
+  deposit invoice first if one was asked for.
+- **The invoice is a link, not an attachment.** The customer opens it on their phone,
+  and **you are told the moment they first open it**.
+- **Reminders chase for you.** Polite emails go by themselves: 3 days before it is due,
+  on the day, then 7, 14 and 30 days late, the last one able to add the statutory
+  late-payment interest for a business customer. Nobody has to write the awkward email.
+- **Part payments and what is still owed** are tracked per invoice, and the reminders
+  chase only the balance.
+
+Lines to try on a flyer or the front door (pick one, test it at a depot):
+- "Send the quote. Get the yes. Get paid -- without chasing."
+- "Your invoices chase themselves."
+- "Know the minute they've opened it."
+
+**One thing NOT to say yet: "pay by card" or "pay instantly".** The customer cannot pay
+inside the app today; the invoice shows the bank details and they pay by transfer.
+"Payment requests" in this message means the invoice link and the reminders, not a
+payment button. If card or Open Banking payments are added later, this is where the
+promise grows.
+
 ## Invite a friend
 
 His ask: "maybe we can give them some bonus for inviting friends, yeah, add that."
