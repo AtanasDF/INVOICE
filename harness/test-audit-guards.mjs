@@ -164,7 +164,7 @@ check("feedback: a send doesn't wipe the history's load error", /setLoadError\(l
 check("receipts: 'isn't here any more' never after a failed load", /openMissing = !loading && !loadFailedNow &&/.test(code("app/receipts/page.tsx")));
 const nr = code("app/receipts/new/page.tsx");
 check("new receipt: the lists' error is its own line", /setListsError\(loadFailed\(/.test(nr));
-check("new receipt: the duplicate check never runs against a list that didn't load", /if \(listsError && !confirmedDuplicate\)[\s\S]{0,120}receiptsStore\.all\(\)/.test(nr) && /duplicateOf\(saved\)/.test(nr));
+check("new receipt: the duplicate check never runs against a list that didn't load", /if \(\(listsError \|\| listStale\.current\) && !confirmedDuplicate\)[\s\S]{0,120}receiptsStore\.all\(\)/.test(nr) && /duplicateOf\(saved\)/.test(nr));
 check("contact field: adding from the register asks the saved list again first", /async function add\(\)[\s\S]{0,700}await clientsStore\.all\(\)[\s\S]{0,300}clientsStore\.add\(/.test(code("components/ContactField.tsx")));
 check("/scan: its load failures say so with loadFailed", !/saveFailed\(err, "Couldn't load/.test(code("app/scan/page.tsx")));
 

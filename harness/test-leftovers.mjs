@@ -40,12 +40,12 @@ const check1 = src("app/api/company-check/route.ts");
 check("company-check: strangers and accounts count against separate totals", /isSignedIn\(/.test(check1) && /"signed-in" : "anon"/.test(check1) && !/"check:global"|"check-report:global"/.test(check1));
 check("company-check: the comment no longer calls /check-company public like the Free page", !/Public, like the Free invoice page/.test(raw("app/api/company-check/route.ts")));
 const checker = src("components/check-company/CompanyChecker.tsx");
-check("/check-company sends the sign-in with both of its requests", (checker.match(/authHeaders\(\)/g) ?? []).length >= 2);
+check("/check-company sends the sign-in with both of its requests", (checker.match(/signedInHeaders\(\)/g) ?? []).length >= 2 && /authHeaders\(\)\.catch/.test(checker));
 
 // The invoice page and its store
 const storage = src("lib/storage.ts");
 const updateDraft = storage.slice(storage.indexOf("async updateDraft("), storage.indexOf("async markSentWithNumber("));
-check("an invoice's draft edit only ever touches a draft", /\.eq\("id", id\)\.eq\("status", "draft"\)\.select\("id"\)/.test(updateDraft) && /already been sent/.test(updateDraft));
+check("an invoice's draft edit only ever touches a draft", /\.eq\("id", id\)\.eq\("status", "draft"\)\.select\("id"\)/.test(updateDraft) && /isn.t a draft any more, or has gone/.test(updateDraft));
 const inv = src("app/invoices/[id]/page.tsx");
 const saveDraft = inv.slice(inv.indexOf("async function saveDraftOnly"), inv.indexOf("function openSendPanel"));
 check("Save draft: a failed read-back after a good save doesn't say it didn't save",

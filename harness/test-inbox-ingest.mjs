@@ -236,6 +236,9 @@ try {
   check("...every row says which email and which part it came from", rows().every((x) => x.details?.emailMessageId === MID) && new Set(rows().map((x) => x.details?.emailPart)).size === 2, JSON.stringify(rows().map((x) => x.details)));
   db.tables.receipts = db.tables.receipts.filter((x) => x.details?.emailPart !== "1");
   stub.calls.length = 0;
+  stub.gemini.length = 0;
+  stub.claude.length = 0;
+  stub.gemini.push(read([RECEIPT]));
   res = await post(twoFiles);
   check("...and a part whose row never went in is read the second time", res.status === 200 && stub.calls.length === 1 && rows().length === 2, JSON.stringify({ calls: stub.calls.length, rows: rows().length }));
   const before = rows().length;

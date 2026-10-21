@@ -63,7 +63,7 @@ try {
   check("receipt: one item left after removing one", rows === 1, String(rows));
   await clickClear();
   const rv = await page.evaluate(() => ({ vendor: document.querySelector('input[placeholder="Shop or supplier"]').value, total: document.querySelector('input[placeholder^="Total paid"]').value, items: document.querySelectorAll('button[aria-label^="Remove item"]').length, date: document.querySelector('input[type=date]').value }));
-  check("receipt: cleared (vendor, total, items; date todayISO())", rv.vendor === "" && rv.total === "" && rv.items === 0 && rv.date === new Date().toISOString().slice(0, 10), JSON.stringify(rv));
+  check("receipt: cleared (vendor, total, items; date todayISO())", rv.vendor === "" && rv.total === "" && rv.items === 0 && rv.date === todayISO(), JSON.stringify(rv));
   check("receipt: nothing saved", db.tables.receipts.length === 0);
   await shot(page, "clear-receipt");
 
