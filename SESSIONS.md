@@ -4,6 +4,22 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-21 — Round 5 PAUSED half-tested on `integrate/cloud-round-5` (Atanas needed the Mac)
+
+Combined so far: `wip/printed-document` (report only), `wip/leftovers` up to `af850f4`,
+and accessibility (`claude/brief-18-cloud-queue-2yb3gl`). tsc, eslint, build clean.
+**Not yet in:** leftovers' two later commits (`e6747ce`, `d574528`) and brief 19
+(`claude/brief-19-cloud-queue-oyr8zh`), which was pushed before it could take leftovers in
+-- both fixed the statement's "INV-00112 days late" and the dropped labour/materials
+headings, so expect a real clash in sheetFile and settle it by hand.
+
+Stopped at 49 of 64 suites, one at a time against `next start`: 42 green. Not green, none
+yet compared with main: test-api-routes 123/126, test-audit-guards 89/90,
+test-inbox-ingest 30/31, test-address-stubbed 25/26, test-big-text 21/22,
+test-delight 8/9; test-address 0/1 is the known pre-existing red, and test-public-company
+does not exist (named in a report by mistake). Next: compare those six with main, then
+the rest of the list, then brief 19. Nothing merged.
+
 ## 2026-10-20 — Cloud brief 8: the printed document, second pass (`wip/printed-document`)
 
 Read-only. `notes/audit-documents.md` already held a first pass (2026-10-18), so this one
