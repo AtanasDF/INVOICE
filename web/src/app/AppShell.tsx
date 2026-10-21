@@ -307,8 +307,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const main = useRef<HTMLElement>(null);
   return (
     <AuthProvider>
-      {/* WCAG 2.4.1: past the header and its five menus in one key. Hidden until a keyboard lands on it. */}
-      <a href="#main" className="sr-only rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50">
+      {/* WCAG 2.4.1: past the header and its five menus in one key. Hidden until a keyboard lands on it; its padding only then, or sr-only keeps a 64x32 box of it over the header. */}
+      <a href="#main" className="sr-only rounded-lg bg-neutral-900 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:px-4 focus:py-2">
         Skip to the page
       </a>
       <Header />

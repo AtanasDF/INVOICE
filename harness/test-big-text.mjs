@@ -130,6 +130,9 @@ try {
     for (const b of document.querySelectorAll("button, a[href]")) {
       const r = b.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
+      // sr-only: one pixel, hidden on purpose until a keyboard lands on it
+      // (the skip link), so there is nothing on screen to tap.
+      if (r.width <= 1 && r.height <= 1) continue;
       // Inside a menu that is shut: laid out, but nobody is looking at it
       // and it is not meant to be tappable until the menu is opened.
       const details = b.closest("details");

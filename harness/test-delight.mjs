@@ -55,7 +55,9 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some((e) => e.innerText.includes("Paid")), { timeout: 8000 });
   const c2 = await page.evaluate(() => [...document.querySelectorAll('[role="status"]')].find((e) => e.innerText.includes("Paid"))?.innerText);
   check("quick mark paid from the list celebrates too", c2.includes("£120.00 from Acme Ltd"), c2);
-  const passThrough = await page.evaluate(() => { const o = [...document.querySelectorAll('[role="status"]')].find((e) => e.innerText.includes("Paid")); return getComputedStyle(o).pointerEvents; });
+  // The announcement is its own hidden live region now; the overlay is the
+  // card's fixed backdrop, and that is what must let taps through.
+  const passThrough = await page.evaluate(() => getComputedStyle(document.querySelector(".paid-pop").closest(".fixed")).pointerEvents);
   check("taps elsewhere go through to the page", passThrough === "none", passThrough);
   await page.evaluate(() => document.querySelector(".paid-pop").click());
   await sleep(200);
