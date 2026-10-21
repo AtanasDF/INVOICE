@@ -73,8 +73,10 @@ check("spreadsheet: a label and a value split into two cells", /^\uFEFF?Total du
 check("spreadsheet: a line with two labels in it stays one cell", /^"?Registered name: Acme Ltd\. Company number: 123\."?$/m.test(csv), csv);
 const sheet = src("lib/sheetFile.ts");
 check("sheet: a labour/materials heading row is read with its lines", /th\[scope=rowgroup\]/.test(sheet));
-check("sheet: a block inside a cell is read with a space, not run together", /getComputedStyle\(n\)\.display === "block"/.test(sheet));
-check("sheet: a sheet wrapped in one element is read child by child", /while \(root\.children\.length === 1/.test(sheet));
+// Both behaviours run for real in test-statement-cells and test-sheet-order;
+// these only notice if the code that does them goes.
+check("sheet: a block inside a cell is read with a space, not run together", /const block = n !== cell && startsLine\(n\)/.test(sheet) && /tagName === "BR"/.test(sheet));
+check("sheet: a sheet wrapped in one element is read child by child", /only\.length === 1 && !\(only\[0\] instanceof HTMLTableElement\)/.test(sheet));
 check("sheet: tables are read from the copy with the hidden parts taken out", /clone\.querySelectorAll\("table"\)/.test(sheet) && !/child\.querySelectorAll\("table"\)/.test(sheet));
 check("sheet: an SVG child can't throw on className", /child\.classList\.contains\("print:hidden"\)/.test(sheet) && !/child\.className\.includes/.test(sheet));
 check("sheet: the title is read as written, not upper-cased by the style, and printed once", /querySelector\("h1"\)\?\.textContent/.test(sheet) && /titleDropped/.test(sheet));
@@ -89,8 +91,10 @@ check("file name: the emailed attachment is named the same way", /documentFileNa
 const { moneyIn } = await import("./gen/lib/money.js");
 check("Free page money: a discount reads −£50.00, not £-50.00", moneyIn("£", -50) === "−£50.00" && moneyIn("€", 1234.5) === "€1,234.50" && moneyIn("£", -0.001) === "£0.00");
 check("the Free page's formatMoney is that one", /export const formatMoney = moneyIn;/.test(src("components/invoice/InvoiceDocument.tsx")));
-check("long names wrap on the Free sheet and the quote", (src("components/invoice/InvoiceDocument.tsx").match(/tracking-tight wrap-anywhere">\{(d\.issuer|i)\.name/g) ?? []).length === 3 &&
-  /font-bold wrap-anywhere">\{profile\.businessName/.test(src("components/quote/QuoteDocument.tsx")) && /font-medium wrap-anywhere">\{client\?\.name/.test(src("components/quote/QuoteDocument.tsx")));
+// Class order is Prettier's business, so look for the class, not its place.
+const wraps = (name) => new RegExp(`className="[^"]*\\bwrap-anywhere\\b[^"]*">\\{${name}`, "g");
+check("long names wrap on the Free sheet and the quote", (src("components/invoice/InvoiceDocument.tsx").match(wraps("(?:d\\.issuer|i)\\.name")) ?? []).length === 3 &&
+  wraps("profile\\.businessName").test(src("components/quote/QuoteDocument.tsx")) && wraps("client\\?\\.name").test(src("components/quote/QuoteDocument.tsx")));
 
 const { pagesToPdf, PDF_LOCKED, PICTURE_KIND } = await import("./gen/lib/documentPdf.js");
 const dataUrl = (f, type) => `data:${type};base64,${fs.readFileSync(`${REPO}/harness/convert-files/${f}`).toString("base64")}`;

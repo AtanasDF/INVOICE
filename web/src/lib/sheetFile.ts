@@ -17,12 +17,22 @@ const text = (el: Element | null | undefined) => (el as HTMLElement | null)?.inn
 // textContent, so a heading styled upper-case is read as written, with a space
 // where a block sits inside the cell: "INV-001" over "3 days late" used to
 // come out as "INV-0013 days late".
+const BLOCK_TAGS = /^(ADDRESS|BLOCKQUOTE|DD|DIV|DL|DT|H[1-6]|LI|OL|P|SECTION|UL)$/;
+
+// A cell read outside the page has no computed style, so its tags decide.
+function startsLine(n: Element): boolean {
+  if (!n.isConnected) return BLOCK_TAGS.test(n.tagName);
+  const display = getComputedStyle(n).display;
+  return !display.startsWith("inline") && display !== "contents";
+}
+
 function cellText(cell: Element): string {
   const parts: string[] = [];
   const walk = (n: Node) => {
     if (n.nodeType === Node.TEXT_NODE) return void parts.push(n.textContent ?? "");
     if (!(n instanceof Element)) return;
-    const block = n !== cell && n.isConnected && getComputedStyle(n).display === "block";
+    if (n.tagName === "BR") return void parts.push(" ");
+    const block = n !== cell && startsLine(n);
     if (block) parts.push(" ");
     n.childNodes.forEach(walk);
     if (block) parts.push(" ");
@@ -59,8 +69,11 @@ export function readSheet(sheet: HTMLElement): SheetDoc {
   const title = (sheet.querySelector("h1")?.textContent ?? "").replace(/\s+/g, " ").trim() || "Document";
   // A sheet wrapped in one element (the statement, the Free page's article)
   // was read as one block, every word before every table.
+  // Only a wrapper that holds a table is looked inside, and a screen-only
+  // button beside it does not count as a second block.
+  const printed = (el: Element) => [...el.children].filter((c) => !c.classList.contains("print:hidden"));
   let root: Element = sheet;
-  while (root.children.length === 1 && !(root.children[0] instanceof HTMLTableElement)) root = root.children[0];
+  for (let only = printed(root); only.length === 1 && !(only[0] instanceof HTMLTableElement) && only[0].querySelector("table"); only = printed(root)) root = only[0];
   const blocks: SheetBlock[] = [];
   let titleDropped = false;
   for (const child of [...root.children] as HTMLElement[]) {
