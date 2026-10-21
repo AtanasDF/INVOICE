@@ -34,8 +34,10 @@ session log what was added so he knows what to clear.
   `npx wrangler deploy` from `worker/` on this Mac — and nothing in the repo says so.
   Commit `1564983` sat undeployed from 2026-09-28 to 2026-10-09 for exactly that reason,
   which meant Cloudflare went on DESTROYING an emailed invoice instead of rejecting it
-  where the sender would find out. Latest deploy **2026-10-20, version
-  `c1a59b45-0228-4004-8765-5847adba7f66`**, by Atanas from `integrate/cloud-round-3`
+  where the sender would find out. Latest deploy **2026-10-21, version
+  `2d1a74b5-f627-4ab9-b566-03026b9b6279`**, by Atanas from `integrate/cloud-round-5`
+  (it adds `messageId`, which the app files duplicates by once round 5 is on main; the
+  app before that ignores the field). Before that, 2026-10-20, `c1a59b45-0228-4004-8765-5847adba7f66`, by Atanas from `integrate/cloud-round-3`
   (the Worker audit's ten fixes: an unreachable app and a mistyped address now bounce
   instead of vanishing). Merged into `main` the same afternoon, so `main`'s worker/ is again exactly
   what is live. Before that,
