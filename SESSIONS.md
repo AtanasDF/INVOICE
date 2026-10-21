@@ -4,6 +4,26 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+## 2026-10-21 — Round 5 complete on `integrate/cloud-round-5`, NOT merged
+
+Resumed after the overnight pause. Added leftovers' last two commits (one real clash in
+CompanyChecker.tsx: accessibility's two error texts beside leftovers' signedInHeaders,
+both kept) and brief 19 (`claude/brief-19-cloud-queue-oyr8zh`). Brief 19 and leftovers had
+both rewritten `readSheet` for the same two bugs; kept leftovers' reader and ported brief
+19's <br>, screen-only-sibling and only-a-wrapper-with-a-table rules into it
+(`cd2…` "One sheet reader from two"). A hand merge also dropped a comma from
+tsconfig.logic.json, caught by parsing it and fixed. Accessibility's hidden skip link kept
+a 64x32 box over the header (its padding beat sr-only's): padding on focus only now.
+
+Results against `next start`, one at a time: all seven brief 19 suites, test-leftovers
+71/71, save-as, csv-safety, free-totals, statement, print green; the six earlier
+not-greens: api-routes 126, audit-guards 90, inbox-ingest 31 now green (leftovers'
+later commits), delight and big-text were stale tests, address-stubbed times out at the
+same check on main (its own `next dev`). Final 29: 27 green; receipts-list-3302 73/74 is
+the known pre-existing red. tsc, eslint, build clean. **After merging, the Worker needs
+`npx wrangler deploy` again** (leftovers keeps the Message-ID). 20 questions for Atanas
+in `notes/leftovers.md` (a).
+
 ## 2026-10-21 — Round 5 PAUSED half-tested on `integrate/cloud-round-5` (Atanas needed the Mac)
 
 Combined so far: `wip/printed-document` (report only), `wip/leftovers` up to `af850f4`,
