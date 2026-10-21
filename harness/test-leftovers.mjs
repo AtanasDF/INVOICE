@@ -40,7 +40,7 @@ const check1 = src("app/api/company-check/route.ts");
 check("company-check: strangers and accounts count against separate totals", /isSignedIn\(/.test(check1) && /"signed-in" : "anon"/.test(check1) && !/"check:global"|"check-report:global"/.test(check1));
 check("company-check: the comment no longer calls /check-company public like the Free page", !/Public, like the Free invoice page/.test(raw("app/api/company-check/route.ts")));
 const checker = src("components/check-company/CompanyChecker.tsx");
-check("/check-company sends the sign-in with both of its requests", (checker.match(/authHeaders\(\)/g) ?? []).length >= 2);
+check("/check-company sends the sign-in with both of its requests", (checker.match(/signedInHeaders\(\)/g) ?? []).length >= 2 && /authHeaders\(\)\.catch/.test(checker));
 
 // The invoice page and its store
 const storage = src("lib/storage.ts");

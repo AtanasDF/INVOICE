@@ -18,6 +18,10 @@ const OFF = "Couldn't reach the register just now. Try again in a minute, or loo
 
 type Answer = { configured?: boolean; items?: CompanyHit[]; report?: CompanyReport; busy?: boolean; unavailable?: boolean; found?: boolean };
 
+// The sign-in only decides which hourly total a search counts against, so a
+// session that can't be read sends none rather than stopping the check.
+const signedInHeaders = () => authHeaders().catch((): Record<string, string> => ({}));
+
 export default function CompanyChecker() {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [query, setQuery] = useState("");
@@ -28,7 +32,7 @@ export default function CompanyChecker() {
   const top = useRef<HTMLDivElement>(null);
 
   const ask = useCallback(async (params: string): Promise<Answer | null> => {
-    const res = await fetch(`/api/company-check${params}`, { headers: await authHeaders() }).catch(() => null);
+    const res = await fetch(`/api/company-check${params}`, { headers: await signedInHeaders() }).catch(() => null);
     if (!res) return null;
     const body = (await res.json().catch(() => null)) as Answer | null;
     if (body && body.configured === false) setConfigured(false);
@@ -82,7 +86,7 @@ export default function CompanyChecker() {
   useEffect(() => {
     let live = true;
     const number = new URLSearchParams(window.location.search).get("number");
-    authHeaders()
+    signedInHeaders()
       .then((headers) => fetch(`/api/company-check${number ? `?number=${encodeURIComponent(number)}` : ""}`, { headers }))
       .then((r) => r.json())
       .then((body: Answer) => {
