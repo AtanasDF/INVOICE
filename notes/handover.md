@@ -128,7 +128,14 @@ and does not come out of the weekly plan, so it is a second tank. Atanas: *"Make
 we use it all so we don't waste it."* Hand him a brief; he should not have to think of
 the work.
 
-## The one bug that outranks everything else
+## The one bug that outranks everything else -- NARROWED, merged 2026-10-22 (`66f36fe`)
+
+Batch auto-capture now waits for the page print's own stillness, so every shot has a
+reading. hand.mjpeg: 3 in 8 duplicates before; 0 in 24 on a quiet Mac, 1 in 6 with the
+Mac busy, after. Not gone. Atanas is trying batches on the iPhone; his result is the
+real number. The history below is how it was found.
+
+## (history) The one bug that outranked everything else
 
 **The batch scanner can photograph the same receipt twice.** A hand reaching across
 the page is enough — `harness/hand.mjpeg`, one document, ends with two scans roughly
