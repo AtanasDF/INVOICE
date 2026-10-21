@@ -26,10 +26,27 @@ red on main and are fixed; both were stale tests, not the app.
 Checks: tsc, eslint, build clean (placeholder public Supabase values). Logic: test-leftovers
 71, test-api-routes 126, test-audit-guards 90, test-days-between 50, test-csv-safety 12,
 test-convert-logic 47, test-free-totals 13, test-inbox-worker 41. Browser (container
-Chromium against `next start`, one at a time): RESULTS. Note for the next cloud session: the harness
-needs `npm install` in `harness/` before any browser suite runs, or every one dies on
-`puppeteer-core` with no result line.
-
+Chromium against `next start`, one at a time), all green: save-as 21, statement 22 (new:
+saves the statement as text and CSV and reads them -- that caught a real gap in the rewrite,
+fixed), free-draft 19, free-quote 13, share 3, quotes 35, print 11, page-print 33,
+paper-sheet 10, convert 25, copy-document 19, just-the-file 19, receipts-list 55,
+offline-rules 13, quote-requests 82, public-request 30, payments 17, company 22,
+inbox-ingest 31 (four new resend checks), sign-out 12, account-switch 24, form-draft 67,
+draft-autosave 18, ios-files-share 63, ios-forms-layout 52, ios-layout 15, dark-mode 48,
+public-links 31, lost-pages 4, uploads 15, stored-photos 8, feel 10, fit-320 27,
+no-sideways 4, big-text 22, answer-clash 7, merge-contacts 11, vat-snapshot 4, cis 14,
+deposits 17, quote-vat-snapshot 10, review-fixes 22, clear 22, lines 7, two-tabs 13 (it
+caught a wrong sentence from the new draft guard, fixed), double-press 11, crons 10.
+Not green here, and why: test-mileage needs the real postcodes.io (no network in the
+container); test-tiles needs camera clips; test-check-company and test-address-stubbed
+restart their own `next dev`, and here `npx` doesn't pass SIGTERM on, so the old server
+keeps the port -- check-company's second half talks to the keyless one, and
+address-stubbed's browser half times out (its new 503 check passed). All four for the Mac.
+test-receipts-list and test-clear were failing after midnight BST on their own UTC dates;
+fixed to the London day (a dozen other suites still build dates the same way -- listed in
+notes/leftovers.md). Two traps for the next cloud session: `npm install` in `harness/`
+first (puppeteer-core), `python3 gen-uploads.py` and `gen-multi.py` before the upload
+suites, and kill any orphaned `next dev` between suites that start their own. 
 ## 2026-10-20 — Round 4a live, then the camera fixes live for the iPhone test
 
 Atanas: merge 4a (`15eb531`), then "merge the camera fixes so I can try them on the
