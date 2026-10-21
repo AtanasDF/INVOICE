@@ -74,7 +74,10 @@ export function readSheet(sheet: HTMLElement): SheetDoc {
     document.body.appendChild(clone);
     // Read from the clone, so what is hidden inside a table stays hidden.
     const tables: SheetBlock[] = [];
-    for (const t of [...clone.querySelectorAll("table")] as HTMLTableElement[]) {
+    // Read one level down, a table can be the child itself, which
+    // querySelectorAll never returns.
+    const found = clone instanceof HTMLTableElement ? [clone] : ([...clone.querySelectorAll("table")] as HTMLTableElement[]);
+    for (const t of found) {
       tables.push({ kind: "table", table: readTable(t) });
       // The Free page prints every total in the footer, a label and a figure
       // a row: read as "Total due: £480.00", the way IssuedInvoice prints them.
@@ -83,7 +86,7 @@ export function readSheet(sheet: HTMLElement): SheetDoc {
       t.remove();
     }
     let lines = pairFigures(
-      text(clone)
+      (clone instanceof HTMLTableElement ? "" : text(clone))
         .split("\n")
         .map((l) => l.trim())
         .filter(Boolean)

@@ -1,5 +1,6 @@
 // A customer's statement: every issued invoice, what came off it, what's
 // owed and how old it is.
+import fs from "node:fs";
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, newId, day } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
@@ -94,6 +95,30 @@ try {
   check("who it's from and for, and how to pay", t.includes("Harness Plastering Ltd") && t.includes("Acme Kitchens Ltd") && t.includes("Sort 12-34-56"), t.slice(0, 200));
   check("share, PDF, print and copy are all offered", t.includes("Share (WhatsApp") && t.includes("Download PDF") && t.includes("Print") && t.includes("Copy the figures"));
   check("fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  // Save as text and spreadsheet, read off the sheet. The statement's words
+  // all came before its table, "INV-101" ran into "5 days late", and "Total
+  // owing" and its figure were two lines the spreadsheet couldn't pair.
+  const DL = new URL("downloads-statement/", import.meta.url).pathname;
+  fs.rmSync(DL, { recursive: true, force: true });
+  fs.mkdirSync(DL, { recursive: true });
+  await (await page.createCDPSession()).send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
+  const saveAs = async (label, ending) => {
+    await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Save as"); if (b && b.getAttribute("aria-expanded") !== "true") b.click(); });
+    await sleep(300);
+    await page.evaluate((l) => [...document.querySelectorAll("[id] button")].find((x) => x.textContent.trim().startsWith(l))?.click(), label);
+    for (let i = 0; i < 100; i++) {
+      const f = fs.readdirSync(DL).find((n) => n.endsWith(ending) && !n.endsWith(".crdownload"));
+      if (f && fs.statSync(DL + f).size > 0) { await sleep(250); return fs.readFileSync(DL + f, "utf8"); }
+      await sleep(200);
+    }
+    return "";
+  };
+  const txt = await saveAs("Plain text", ".txt");
+  check("statement as text: the late days sit beside the number, not run into it", /INV-101 5 days late/.test(txt) && !/INV-1015 days/.test(txt), txt.slice(0, 600));
+  check("...and the table comes before the total owing, as printed", txt.indexOf("INV-100") > -1 && txt.indexOf("INV-100") < txt.indexOf("Total owing"), txt.slice(0, 600));
+  check("...and the title once", txt.split("\n").filter((l) => /^Statement of account$/i.test(l.trim())).length === 1, txt.slice(0, 200));
+  const csv = await saveAs("Spreadsheet", ".csv");
+  check("statement as a spreadsheet: Total owing and its figure are one row of two cells", /^Total owing,£3,280\.00$|^Total owing,"£3,280\.00"$/m.test(csv), csv.slice(-500));
   // A customer with nothing owing.
   db.tables.invoice_payments.push({ id: newId(), user_id: "x", invoice_id: A.id, date: day(-1), amount: 1000, method: "bank", note: "" });
   db.tables.invoice_payments.push({ id: newId(), user_id: "x", invoice_id: B.id, date: day(-1), amount: 1080, method: "bank", note: "" });
