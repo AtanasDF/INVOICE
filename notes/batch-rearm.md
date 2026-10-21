@@ -298,3 +298,23 @@ and that is a session's work, not a tail end of one.
 
 `harness/trace-batch-capture.mjs` is committed, with the instrumentation it needs
 written in its header. Four guesses cost more than that one trace did.
+
+## The fix, measured (2026-10-22)
+
+Done as the section above says: in a batch, auto-capture now also waits for
+`stillTicksRef >= PRINT_STILL_TICKS` -- the page print's own stillness -- so every page
+that is shot has had its reading taken. A page too plain to print still fires (its
+reading was tried and came back null), and single shots are unchanged.
+
+`test-batch-stuck`, hand.mjpeg, against `next start`:
+
+| | duplicates |
+|---|---|
+| as shipped | 3 in 8 |
+| fix, Mac quiet (4 runs of 6) | **0 in 24** |
+| fix, Mac busy (test-autozoom running alongside) | 1 in 6 |
+
+So about 1 in 30 overall, and only under load: the race is much narrower, not gone.
+The trace tool would say which line armed that one. Camera suites on the fix: 23 of 26
+green; test-far and test-far-v2 (34/35, "used the full-resolution still") and test-lens
+(3/4, "lens zoom steps up by itself") fail identically on a main build.

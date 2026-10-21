@@ -1638,7 +1638,14 @@ export default function DocumentCapture({
             const sharpEnough = sharpness >= SHARPNESS_FLOOR && sharpness >= SHARPNESS_RATIO * peakSharpRef.current;
             const ready = (stableFor >= STABLE_MS && sharpEnough) || stableFor >= STABLE_TIMEOUT_MS;
             lockedRef.current = sharpEnough || stableFor >= STABLE_MS;
-            if (ready && agrees && !torchPending && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
+            // In a batch, wait for the page print's own stillness (3 ticks within
+            // 3px, not this gate's 9.6px), so every page shot has a reading to
+            // tell the same receipt from the next one. Firing at still=1 left
+            // taken.print null, the same-page check inert, and the receipt
+            // photographed twice (notes/batch-rearm.md). A page too plain to
+            // print still fires: its reading was tried and came back empty.
+            const printSettled = !multiRef.current || stillTicksRef.current >= PRINT_STILL_TICKS;
+            if (ready && agrees && printSettled && !torchPending && autoRef.current && armedRef.current && !reviewingRef.current && !capturedRef.current && statusRef.current === "live") {
               capturedRef.current = true;
               captureRef.current();
             }
