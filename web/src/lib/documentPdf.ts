@@ -1,5 +1,6 @@
 import { PDFDocument } from "pdf-lib";
 import { SITE_NAME } from "@/lib/siteName";
+import { firstChars } from "@/lib/firstChars";
 
 // "Copy a document" (Atanas, 2026-09-22: "another scanner button which is
 // going to scan files, no matter what files ... then they will be able to
@@ -62,8 +63,10 @@ export async function pageCount(pages: DocPage[]): Promise<number> {
   return n;
 }
 
-/** A file name from what was typed: letters, digits, spaces and dashes, ending .pdf. */
+/** A file name from what was typed: letters (with their marks), digits, spaces and dashes, ending .pdf. */
 export function pdfName(typed: string, fallback: string): string {
-  const base = (typed.trim() || fallback).replace(/\.pdf$/i, "").replace(/[^\p{L}\p{N} _-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  // \p{M} too: Hindi, Thai, Bengali and Arabic write vowels as marks on a
+  // letter, and without it "हिन्दी बिल" came out as "ह न द ब ल".
+  const base = firstChars((typed.trim() || fallback).replace(/\.pdf$/i, "").replace(/[^\p{L}\p{M}\p{N} _-]+/gu, " ").replace(/\s+/g, " ").trim(), 80).trim();
   return `${base || "Document"}.pdf`;
 }

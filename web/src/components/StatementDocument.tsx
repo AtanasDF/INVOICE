@@ -21,7 +21,7 @@ export default function StatementDocument({ statement, client, profile, asAt }: 
           <h1 className="text-xl font-bold">Statement of account</h1>
           <p className="mt-1 text-sm text-neutral-600">As at {shortDate(asAt)}</p>
         </div>
-        <div className="text-right text-sm">
+        <div className="min-w-0 wrap-anywhere text-right text-sm">
           <p className="font-semibold">{profile?.businessName || "Your business"}</p>
           {profile?.address?.split("\n").map((l, i) => (
             <p key={i} className="text-neutral-600">{l}</p>
@@ -32,7 +32,7 @@ export default function StatementDocument({ statement, client, profile, asAt }: 
 
       <div className="mt-6 text-sm">
         <p className="text-xs uppercase tracking-wide text-neutral-500">For</p>
-        <p className="font-semibold">{client.name}</p>
+        <p className="wrap-anywhere font-semibold">{client.name}</p>
         {client.address?.split("\n").map((l, i) => (
           <p key={i} className="text-neutral-600">{l}</p>
         ))}

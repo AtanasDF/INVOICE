@@ -325,3 +325,32 @@ one: Excel would treat `+44 20 7946 0000` as a formula. The comment should chang
 
 Every one of these changes behaviour, so none was made. `test-save-as` and
 `test-statement` are the suites to run on the Mac against `next start` for any of them.
+
+# Fixed, 2026-10-20 (cloud brief 19)
+
+Each open item of the second pass read in the code first; all were real. On branch
+`claude/brief-19-cloud-queue-oyr8zh` (the brief named `wip/printed-fixes`; the session was
+started on the former and pushed there). **Not merged.**
+
+| Item | Fix | Suite |
+|---|---|---|
+| Statement `INV-00112 days late` | `cellText` (`sheetFile.ts`) reads a cell with a space wherever a block starts inside it, by computed `display`; not `innerText`, which would have upper-cased every heading | `test-statement-cells` (9) |
+| Single-root sheets out of order | `printedBlocks` looks inside a lone wrapper that holds a table, so the statement and the Free page read block by block; a table that becomes a block itself is read as one. Class read with `getAttribute`, so an SVG child no longer throws | `test-sheet-order` (13) |
+| Free page Labour / Materials headings dropped | a `tbody` row with no `td` is read from its `th` | `test-cis-headings` (8) |
+| Long unbroken names | `wrap-anywhere` on the Free page's three header names, the quote's business block (`min-w-0` too) and client, the statement's business block and client. One line each | `test-long-names-wrap` (12) |
+| Excel changing 0042 / 01234567 / 12-03-56 | `sheetCell` (`csv.ts`) writes a value of only digits, dashes and slashes that Excel would change (leading zero, 16+ digits, date-like) as `="0042"`; everything else still goes through `csvCell` and its formula guard. `csvCell` itself is unchanged, so the data exports are too | `test-csv-identifiers` (31), `test-csv-safety` (+3), `test-save-as` (+1) |
+| Long notes cut through a line in the PDF | `breakPoints` adds the bottom of every line of text outside a table, and drops any point a line beside it runs across | `test-pdf-line-breaks` (10) |
+| `pdfName` stripping combining marks | `\p{M}` kept; `pdfName` and `tidyFileName` cut at 80 graphemes (`firstChars`, its own file because the server's PDF code and the browser's saving code both need it and neither may import the other: the build caught `documentPdf` pulling a React hook into `/api/photos/age`) | `test-file-name-marks` (15) |
+| `csv.ts` comment | now says what the code does: `+44 20 ...` gets the apostrophe | `test-csv-safety` |
+
+Each new suite proved both ways: against the old `web/src` every one fails or dies, and
+the two new `test-save-as` checks fail on an old build (22/24) and pass on the new (24/24).
+The seven new suites drive Chromium with no app (`sheet-dom.mjs`, `sheet-fixtures.mjs`:
+the sheets' shapes copied by hand, so a sheet that changes shape needs its fixture
+changed too); `CHROME` points them at a browser other than the Mac's Chrome.
+
+Still open, outside this brief: the Free page's `£-50.00` (`formatMoney`), `IssuedInvoice`'s
+client email and address not wrapping, label and value on separate CSV rows for the Free
+page's dt/dd (the value is now kept as text either way), the `": "` split, plain-text
+alignment for wide scripts, `pdfFilenameFor` against `tidyFileName`, WebP/HEIC in
+`pagesToPdf`, and the 150-line PDF on the iPhone.

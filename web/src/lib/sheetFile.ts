@@ -6,7 +6,7 @@
 // it, so every format says exactly what the customer would see and no
 // screen needs its own copy of the totals.
 
-import { CSV_BOM, csvCell } from "@/lib/csv";
+import { CSV_BOM, sheetCell } from "@/lib/csv";
 
 export type SheetTable = { head: string[]; rows: string[][] };
 export type SheetBlock = { kind: "text"; lines: string[] } | { kind: "table"; table: SheetTable };
@@ -190,5 +190,5 @@ export function sheetCsv(doc: SheetDoc): string {
     }
     rows.push([]);
   }
-  return CSV_BOM + rows.map((r) => r.map(csvCell).join(",")).join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  return CSV_BOM + rows.map((r) => r.map(sheetCell).join(",")).join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

@@ -218,7 +218,7 @@ function Classic({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
   return (
     <>
       <header className="text-center">
-        <p className="text-3xl font-bold tracking-tight wrap-anywhere">{d.issuer.name || "Your business name"}</p>
+        <p className="wrap-anywhere text-3xl font-bold tracking-tight">{d.issuer.name || "Your business name"}</p>
         {d.issuer.address && <p className="mt-2 whitespace-pre-line text-neutral-600">{d.issuer.address}</p>}
         {contact && <p className="mt-1 text-neutral-600">{contact}</p>}
         {d.vatRegistered && d.issuer.vatNumber && <p className="mt-1 text-neutral-600">VAT no. {d.issuer.vatNumber}</p>}
@@ -268,7 +268,7 @@ function Modern({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
     <>
       <header className="flex items-start justify-between gap-10">
         <div className="min-w-0">
-          <p className="text-2xl font-bold tracking-tight wrap-anywhere">{d.issuer.name || "Your business name"}</p>
+          <p className="wrap-anywhere text-2xl font-bold tracking-tight">{d.issuer.name || "Your business name"}</p>
           {d.issuer.address && <p className="mt-2 whitespace-pre-line text-neutral-600">{d.issuer.address}</p>}
           {contact && <p className="mt-1 text-neutral-600">{contact}</p>}
           {d.vatRegistered && d.issuer.vatNumber && <p className="mt-1 text-neutral-600">VAT no. {d.issuer.vatNumber}</p>}
@@ -319,7 +319,7 @@ function Compact({ d, t }: { d: FreeInvoiceDraft; t: DraftTotals }) {
   return (
     <div className="text-xs">
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <p className="text-lg font-bold tracking-tight wrap-anywhere">{i.name || "Your business name"}</p>
+        <p className="wrap-anywhere text-lg font-bold tracking-tight">{i.name || "Your business name"}</p>
         {business && <p className="text-neutral-600">{business}</p>}
       </header>
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-y border-neutral-900 py-1.5">

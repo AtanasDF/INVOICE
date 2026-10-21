@@ -7,12 +7,37 @@ export const PAGE_MARGIN = 53;
 
 const BREAK_POINTS = "tr, section, header, footer, table, h1, p, dl > div";
 
+// Each line of text on the sheet, [top, bottom] in CSS pixels from its top,
+// and whether it is in a table, whose rows are already the places to break.
+function textLines(sheet: HTMLElement, top: number): { top: number; bottom: number; inTable: boolean }[] {
+  const lines: { top: number; bottom: number; inTable: boolean }[] = [];
+  const walker = document.createTreeWalker(sheet, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (!n.textContent?.trim()) continue;
+    const inTable = !!n.parentElement?.closest("table");
+    range.selectNodeContents(n);
+    for (const r of range.getClientRects()) if (r.height > 0) lines.push({ top: r.top - top, bottom: r.bottom - top, inTable });
+  }
+  return lines;
+}
+
+// Under a line is a place to end a page only if no other line, in a column
+// beside it, runs across that height.
+export function clearOfLines(points: number[], lines: [number, number][]): number[] {
+  return points.filter((y) => !lines.some(([t, b]) => t < y - 1 && b > y + 1));
+}
+
 // Where a page may end: under a table row, a section or a line of text,
-// never through one. CSS pixels from the top of the sheet.
-function breakPoints(sheet: HTMLElement): number[] {
+// never through one. CSS pixels from the top of the sheet. The bottom of
+// every line counts, not only of whole blocks: long notes or terms are one
+// element with no break inside, and were cut through the middle of a line.
+export function breakPoints(sheet: HTMLElement): number[] {
   const top = sheet.getBoundingClientRect().top;
-  const points = [...sheet.querySelectorAll(BREAK_POINTS)].map((el) => Math.round(el.getBoundingClientRect().bottom - top));
-  return [...new Set(points)].sort((a, b) => a - b);
+  const lines = textLines(sheet, top);
+  const points = [...sheet.querySelectorAll(BREAK_POINTS)].map((el) => el.getBoundingClientRect().bottom - top).concat(lines.filter((l) => !l.inTable).map((l) => l.bottom));
+  const clear = clearOfLines(points, lines.map((l): [number, number] => [l.top, l.bottom]));
+  return [...new Set(clear.map(Math.round))].sort((a, b) => a - b);
 }
 
 // Each A4 page's slice of the sheet, [start, end) in CSS pixels. Page one

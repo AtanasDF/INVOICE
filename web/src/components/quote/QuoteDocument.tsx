@@ -19,7 +19,7 @@ export default function QuoteDocument({ quote, client, profile, logo }: { quote:
   return (
     <>
       <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0">
+        <div className="min-w-0 wrap-anywhere">
           {logo?.startsWith("data:image/") && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt="" className="mb-2 max-h-16 max-w-[12rem] object-contain object-left" />
@@ -37,7 +37,7 @@ export default function QuoteDocument({ quote, client, profile, logo }: { quote:
 
       <div className="mt-6">
         <p className="text-sm font-medium text-neutral-500">For</p>
-        <p className="font-medium wrap-anywhere">{client?.name || "—"}</p>
+        <p className="wrap-anywhere font-medium">{client?.name || "—"}</p>
         {client?.isCompany && client.contactPerson && <p className="text-sm text-neutral-600">Attn: {client.contactPerson}</p>}
         {client?.address && <p className="whitespace-pre-line text-sm text-neutral-600">{client.address}</p>}
         {client?.email && <p className="text-sm text-neutral-600">{client.email}</p>}

@@ -1,5 +1,6 @@
 import { isStandalone } from "@/lib/install";
 import { isIOS } from "@/lib/platform";
+import { firstChars } from "@/lib/firstChars";
 
 // Saving a file to the device: one place, so every format behaves the same.
 export function saveBlob(filename: string, blob: Blob) {
@@ -58,7 +59,7 @@ export function saveText(filename: string, body: string, type: string) {
 
 /** \ / : * ? " < > | are not allowed in a file name on Windows or a Mac. */
 export function tidyFileName(name: string, fallback: string): string {
-  const clean = name.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  const clean = firstChars(name.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim(), 80).trim();
   return clean || fallback;
 }
 
