@@ -102,7 +102,7 @@ for (const r of ["scan", "contact-scan", "invoice-template"]) {
 {
   const src = code("inbox/ingest");
   const h = handler(src);
-  const loop = h.search(/for \(let n = 0; n < Math\.max\(1, usableAttachments\.length\); n\+\+\)/);
+  const loop = h.search(/for \(let n = 0; n < Math\.max\(1, toRead\.length\); n\+\+\)/);
   check("inbox/ingest: the mailbox's hourly cap is counted once per document read", loop > 0 && h.indexOf("allowShared(`inbox:user:", loop) > loop, `loop at ${loop}`);
   check("inbox/ingest: ...and so is the overall one", loop > 0 && h.indexOf('allowShared("inbox:global"', loop) > loop);
   check("inbox/ingest: ...before the first document is read", loop > 0 && loop < h.search(/extractDocuments\(/));
