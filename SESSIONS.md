@@ -25,6 +25,16 @@ and what is left open. Dates are session dates (Europe/London).
   large text (they ran 35px off the side at 32px root). `test-contact-import` 38/38 (the sheet
   lookup proved by breaking it), `test-bring-contacts` 20/20, `test-big-text` 24/24 with the guide
   added, weight/merge/no-sideways/tap-targets/getting-started/dashboard green.
+- **On `feature/website`, not merged:** the public website inside the app
+  (`notes/website-plan.md`): `/features`, `/pricing`, `/drivers` (where the flyer QR should
+  point), `/faq`, a stranger header (What it does · Free · Drivers · Sign in), sitemap. Pictures
+  are the app itself, `harness/shots-site.mjs` -> `web/public/site/*.webp` (~50 KB each).
+  `test-website` 30/30 reads the scan allowance and mileage rates from the code that enforces
+  them. `test-every-screen-explained` exempts the website pages and the phone guide (the guide
+  had made it red on main since it merged). First-page, route-guards, no-sideways, titles,
+  vocabulary, govuk-words, help-chat, accessibility, colour, privacy-terms, locked-doors,
+  tap-targets, came-from all green. No contact email on any page: every address at the
+  domain goes to the receipt importer.
 - Note: `npx eslint .` from web/ also lints `web/.claude/worktrees/*`, another session's copy;
   lint `src` instead.
 

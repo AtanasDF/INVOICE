@@ -170,10 +170,13 @@ function Header() {
             </button>
           </nav>
         ) : (
-          // A stranger's way around is the free page itself (the brand goes
-          // back to it), so the header holds one thing.
-          <nav className="flex items-center gap-x-4 text-sm font-medium text-neutral-600">
-            <Link href="/login">Sign in</Link>
+          // A stranger's way round the website (notes/website-plan.md). The
+          // brand goes back to the front door.
+          <nav aria-label="Website" className="flex items-center gap-x-3 text-sm font-medium text-neutral-600 sm:gap-x-5">
+            <Link href="/features" className="whitespace-nowrap">What it does</Link>
+            <Link href="/pricing">Free</Link>
+            <Link href="/drivers" className="whitespace-nowrap">Drivers</Link>
+            <Link href="/login" className="whitespace-nowrap text-neutral-900">Sign in</Link>
           </nav>
         )}
       </div>
@@ -232,6 +235,12 @@ function Gate({ children }: { children: React.ReactNode }) {
     // sign-in they may not be able to get through.
     pathname === "/accessibility" ||
     pathname === "/how-to-invoice" ||
+    // The website: what a stranger off a flyer or a search reads before
+    // deciding to make an account.
+    pathname === "/features" ||
+    pathname === "/pricing" ||
+    pathname === "/drivers" ||
+    pathname === "/faq" ||
     // Somebody off a flyer may want the icon before they have an account.
     pathname === "/help/home-screen" ||
     // Shown by the service worker when there is no signal, which is exactly
