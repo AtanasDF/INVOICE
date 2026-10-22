@@ -99,7 +99,7 @@ try {
   const home = await bodyText(page);
   check(
     "signed in, the root is the dashboard, built round the scanner",
-    /Dashboard/.test(home) && home.includes("Scan a receipt or bill") && home.includes("Create an invoice") && home.includes("Copy a document") && !home.includes("Make an account"),
+    /Dashboard/.test(home) && home.includes("Scan a receipt or bill") && home.includes("Send an invoice") && home.includes("Send a quote") && !home.includes("Make an account"),
     home.slice(0, 400)
   );
 } catch (e) {

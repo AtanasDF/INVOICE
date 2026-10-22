@@ -175,7 +175,10 @@ export default function SetupFromInvoice({ contacts, onSetUp }: { contacts: Clie
         </div>
       )}
 
-      {done && <p role="status" className="text-sm text-neutral-800">{done}</p>}
+      {/* Always there, so the words are a change to a live region a screen
+          reader is already watching: one that arrives with its text is often
+          not read. */}
+      <p role="status" className="text-sm text-neutral-800 empty:hidden">{done ?? ""}</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     </div>
   );
