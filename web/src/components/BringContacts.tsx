@@ -64,10 +64,21 @@ export default function BringContacts({ contacts, ownName, onAdded }: { contacts
           const got = fromRows(parseCsv(await readAs(file, "text")));
           if (!got.length) said.push(`${file.name}: no column of names was found in it.`);
           found.push(...got);
+        } else if (way === "xlsx") {
+          // Loaded only when a spreadsheet is picked: Home is where this box
+          // lives, and Home should not carry an unzipper for everybody.
+          const { NOT_EXCEL, readXlsx } = await import("@/lib/xlsx");
+          try {
+            const got = fromRows(readXlsx(new Uint8Array(await file.arrayBuffer())));
+            if (!got.length) said.push(`${file.name}: no column of names was found on its first sheet.`);
+            found.push(...got);
+          } catch {
+            said.push(`${file.name}: ${NOT_EXCEL}`);
+          }
         } else if (way === "vcard") {
           found.push(...fromVcf(await readAs(file, "text")));
         } else if (way === "excel") {
-          said.push(`${file.name}: save it as CSV first (in Excel or Numbers: File, then Save As or Export, then CSV), and choose that.`);
+          said.push(`${file.name}: save it as CSV first (in Numbers or Excel: File, then Export To or Save As, then CSV), and choose that.`);
         } else if (way === "scan") {
           if (readSoFar >= MOST_PHOTOS || !session) continue;
           readSoFar++;
@@ -136,7 +147,7 @@ export default function BringContacts({ contacts, ownName, onAdded }: { contacts
         <>
           <p className="text-sm font-medium">Bring your customers and suppliers in</p>
           <p className="text-sm text-neutral-600">
-            A spreadsheet from your old app, contacts shared from your phone, or photos and PDFs of old invoices and bills. You see the list before anything is added.
+            A spreadsheet (Excel or CSV) from your old app, contacts shared from your phone, or photos and PDFs of old invoices and bills. You see the list before anything is added.
           </p>
           <label aria-disabled={state !== "idle"} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition active:scale-95 motion-reduce:transition-none">
             {state === "reading" ? progress || "Reading…" : "Choose files"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/siteName";
 import { useIsIOS } from "@/lib/platform";
@@ -17,8 +17,15 @@ const PHONE = "relative mx-auto h-72 w-44 overflow-hidden rounded-[2rem] border-
 // What to tap, in the theme's own highlight, pulsing unless motion is turned down.
 const TAP = "ring-4 ring-accent ring-offset-2 ring-offset-white motion-safe:animate-pulse";
 
+const rootPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+const never = () => () => {};
+
+// Drawn at the size it was designed at, whatever the text size: with large
+// text on, a drawing that grew with it ran off the side of the phone, and a
+// bigger picture of a button helps nobody read the words under it.
 function Phone({ children }: { children: ReactNode }) {
-  return <div aria-hidden="true" className={PHONE}>{children}</div>;
+  const px = useSyncExternalStore(never, rootPx, () => 16);
+  return <div aria-hidden="true" className={PHONE} style={px > 16 ? { zoom: 16 / px } : undefined}>{children}</div>;
 }
 
 function Page() {

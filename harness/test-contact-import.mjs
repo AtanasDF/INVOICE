@@ -4,6 +4,8 @@
 // added twice, and that the account's own name is never offered back to it.
 import { parseCsv } from "./gen/lib/convert.js";
 import { fileWay, fromRows, fromScanned, fromVcf, settle, toClient } from "./gen/lib/contactImport.js";
+import { NOT_EXCEL, readXlsx } from "./gen/lib/xlsx.js";
+import { makeXlsx } from "./xlsx-fixture.mjs";
 
 const results = [];
 const check = (n, ok, d) => { results.push(ok); console.log(ok ? "PASS" : "FAIL", n, ok ? "" : (d ?? "")); };
@@ -46,6 +48,25 @@ check("semicolons, and a Type column that says Supplier", qb[0]?.name === "Bob's
 check("a sheet with no Type is customers", rows("Name,Email\nJo,jo@x.example\n")[0]?.kind === "client");
 check("a one-column list with no heading is a list of names", rows("Alpha Ltd\nBeta Ltd\n").map((c) => c.name).join("|") === "Alpha Ltd|Beta Ltd");
 check("a sheet with no column of names gives nothing, not a guess", rows("Amount,Date\n12,2026-01-01\n").length === 0);
+
+// ---- Excel, read as it is ---------------------------------------------------
+const sheet = [
+  ["Customer", "Email", "Phone", null, "Postcode"],
+  ["Skido Logistics & Sons Ltd", "accounts@skido.example", 1228000000, null, "CA6 4SJ"],
+  ["Ölzer <Penrith>", null, null, null, "CA11 7AA"],
+];
+const xs = readXlsx(makeXlsx(sheet));
+check("Excel: the workbook's own first sheet, not whichever file is sheet1", xs[0]?.[0] === "Customer", JSON.stringify(xs[0]));
+check("Excel: shared strings, rich text joined, & and < > kept", xs[1]?.[0] === "Skido Logistics & Sons Ltd" && xs[2]?.[0] === "Ölzer <Penrith>", JSON.stringify(xs.map((r) => r[0])));
+check("Excel: an empty column keeps the ones after it in place", xs[1]?.[4] === "CA6 4SJ" && xs[2]?.[4] === "CA11 7AA", JSON.stringify(xs));
+check("Excel: a number cell reads as its digits", xs[1]?.[2] === "1228000000");
+const xi = readXlsx(makeXlsx(sheet, { inline: true }));
+check("Excel: inline strings, as other apps write them", JSON.stringify(xi) === JSON.stringify(xs), JSON.stringify(xi));
+const xc = fromRows(xs);
+check("Excel: into contacts like any sheet", xc.length === 2 && xc[0].name === "Skido Logistics & Sons Ltd" && xc[0].email === "accounts@skido.example" && xc[0].address === "CA6 4SJ", JSON.stringify(xc[0]));
+let refused = "";
+try { readXlsx(new TextEncoder().encode("PK not really a zip")); } catch (e) { refused = e.message; }
+check("Excel: a broken file says to save as CSV, in our words", refused === NOT_EXCEL, refused);
 
 // ---- Phone contacts (vCard) -------------------------------------------------
 const vcf = fromVcf(`BEGIN:VCARD\r
@@ -96,7 +117,9 @@ check("file kinds", [
   fileWay({ name: "contacts.csv" }) === "rows",
   fileWay({ name: "Ivan.vcf" }) === "vcard",
   fileWay({ name: "x", type: "text/x-vcard" }) === "vcard",
-  fileWay({ name: "Customers.xlsx" }) === "excel",
+  fileWay({ name: "Customers.xlsx" }) === "xlsx",
+  fileWay({ name: "Old.xls" }) === "excel",
+  fileWay({ name: "List.numbers" }) === "excel",
   fileWay({ name: "IMG_0001.HEIC" }) === "scan",
   fileWay({ name: "bill.pdf", type: "application/pdf" }) === "scan",
   fileWay({ name: "song.mp3", type: "audio/mpeg" }) === "other",

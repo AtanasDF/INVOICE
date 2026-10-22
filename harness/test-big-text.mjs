@@ -47,6 +47,7 @@ const PAGES = [
   ["/vat", "VAT"],
   ["/settings", "Settings"],
   ["/jobs", "Jobs"],
+  ["/help/home-screen", "Put it on your phone"],
 ];
 
 // 32px root: twice the default, which is where iOS's ordinary (non-

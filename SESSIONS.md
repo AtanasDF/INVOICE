@@ -18,6 +18,13 @@ and what is left open. Dates are session dates (Europe/London).
   nothing saved before Add. `src/lib/contactImport.ts`; `test-contact-import` 31/31,
   `test-bring-contacts` 14/14; getting-started, dashboard, empty-account, first-week,
   setup-from-invoice, colour and accessibility suites green against `next start`.
+- **On `feature/contacts-everywhere`, not merged:** "Bring in a list" on the Customers page (open
+  by itself when the list is empty, `?import=1` opens it), and Excel .xlsx read directly
+  (`src/lib/xlsx.ts`, fflate, now a direct dependency, loaded only when a spreadsheet is picked;
+  .xls/.numbers/.ods still told to export CSV). The phone guide's drawings keep their size under
+  large text (they ran 35px off the side at 32px root). `test-contact-import` 38/38 (the sheet
+  lookup proved by breaking it), `test-bring-contacts` 20/20, `test-big-text` 24/24 with the guide
+  added, weight/merge/no-sideways/tap-targets/getting-started/dashboard green.
 - Note: `npx eslint .` from web/ also lints `web/.claude/worktrees/*`, another session's copy;
   lint `src` instead.
 

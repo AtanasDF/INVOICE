@@ -7,6 +7,7 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
+import BringContacts from "@/components/BringContacts";
 import { useSearchParams } from "next/navigation";
 import { Client, ClientKind, CreditNote, Invoice, VatCheck, businessProfileStore, clientsStore, creditNotesStore, invoicesStore, vatChecksStore } from "@/lib/storage";
 import { downloadCsv } from "@/lib/exportCsv";
@@ -100,6 +101,9 @@ export default function ClientsPage() {
   const [vatRegistered, setVatRegistered] = useState(false);
   const [profileFailed, setProfileFailed] = useState(false);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  // Bringing a list in: asked for in the address, or offered unasked to an
+  // account with nobody in it yet.
+  const [bringing, setBringing] = useState(() => searchParams.get("import") === "1");
   const [merging, setMerging] = useState<string | null>(null);
   // A ref, not the `disabled` state: React applies `disabled` on the render
   // AFTER the first press, and both handlers close over the same state, so two
@@ -276,6 +280,14 @@ export default function ClientsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setBringing((b) => !b)}
+            aria-expanded={bringing || (!loading && !error && clients.length === 0)}
+            className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700"
+          >
+            Bring in a list
+          </button>
           {visibleClients.length > 0 && (
             <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Download for a spreadsheet
@@ -284,6 +296,10 @@ export default function ClientsPage() {
           <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab === "client" ? "customer" : "supplier"}`} addHref={`/clients/new?kind=${tab}`} />
         </div>
       </div>
+
+      {(bringing || (!loading && !error && clients.length === 0)) && (
+        <BringContacts contacts={clients} ownName={businessName} onAdded={(added) => { setBringing(true); setClients((c) => [...c, ...added]); }} />
+      )}
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex w-fit max-w-full flex-wrap rounded-lg border text-sm">

@@ -226,14 +226,16 @@ export function toClient(c: ImportedContact): Omit<Client, "id" | "archived"> {
   };
 }
 
-export type FileWay = "rows" | "vcard" | "scan" | "excel" | "other";
+export type FileWay = "rows" | "vcard" | "xlsx" | "scan" | "excel" | "other";
 
 export function fileWay(file: { name: string; type?: string }): FileWay {
   const name = file.name.toLowerCase();
   const type = file.type ?? "";
   if (/\.vcf$/.test(name) || /vcard/.test(type)) return "vcard";
   if (/\.(csv|tsv|txt)$/.test(name) || type === "text/csv" || type === "text/tab-separated-values") return "rows";
-  if (/\.(xlsx|xls|numbers|ods)$/.test(name)) return "excel";
+  if (/\.xlsx$/.test(name) || type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return "xlsx";
+  // Old Excel, Apple Numbers and LibreOffice: formats of their own, exported as CSV first.
+  if (/\.(xls|numbers|ods)$/.test(name)) return "excel";
   if (type.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif)$/.test(name) || type === "application/pdf" || name.endsWith(".pdf")) return "scan";
   return "other";
 }
