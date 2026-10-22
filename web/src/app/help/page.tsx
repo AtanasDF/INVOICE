@@ -22,6 +22,10 @@ export default function Help() {
       <p className="mt-1 text-neutral-600">Pick the thing you want to do. Each one is a few steps, at your pace.</p>
 
       <div className="mt-5 space-y-3">
+        <Link href="/help/home-screen" className="block w-full rounded-xl border bg-white p-5 text-left text-neutral-900 shadow-sm">
+          <span className="block font-medium">Put it on your phone</span>
+          <span className="mt-1 block text-sm text-neutral-600">Its own icon on your home screen, iPhone or Android, a picture for every tap.</span>
+        </Link>
         {HELP_JOURNEYS.map((j) =>
           open === j.id ? (
             <div key={j.id}>

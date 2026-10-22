@@ -232,6 +232,8 @@ function Gate({ children }: { children: React.ReactNode }) {
     // sign-in they may not be able to get through.
     pathname === "/accessibility" ||
     pathname === "/how-to-invoice" ||
+    // Somebody off a flyer may want the icon before they have an account.
+    pathname === "/help/home-screen" ||
     // Shown by the service worker when there is no signal, which is exactly
     // when the sign-in check cannot be made.
     pathname === "/offline" ||

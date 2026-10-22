@@ -1,3 +1,4 @@
+import Link from "next/link";
 import SignInCard from "@/components/SignInCard";
 
 // The front door for someone with no account (Atanas, 2026-09-22: "nothing
@@ -106,6 +107,9 @@ export default function Welcome() {
             </li>
           ))}
         </ul>
+        <p className="text-base text-neutral-700 md:col-start-1 md:row-start-4">
+          <Link href="/help/home-screen" className="font-medium underline">Put it on your phone</Link>, with its own icon, like any other app.
+        </p>
       </div>
     </div>
   );

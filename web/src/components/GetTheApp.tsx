@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SITE_NAME } from "@/lib/siteName";
 import { askToInstall, useInstallWay } from "@/lib/install";
 
@@ -67,6 +68,10 @@ export default function GetTheApp({ className = "" }: { className?: string }) {
           ]}
         />
       )}
+
+      <Link href="/help/home-screen" className="block w-full rounded-lg border px-4 py-3 text-center text-base font-medium text-neutral-800">
+        Show me step by step, with pictures
+      </Link>
 
       {way === "ios" ? (
         <p className="text-sm text-neutral-600">
