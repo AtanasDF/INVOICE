@@ -53,6 +53,10 @@ export default function Privacy() {
       <ul className="list-disc space-y-1 pl-5">
         <li className={LI}><strong>Supabase</strong> stores your records and your files, and handles signing in.</li>
         <li className={LI}><strong>Vercel</strong> runs the website itself.</li>
+        {process.env.NEXT_PUBLIC_GOOGLE_SIGNIN === "on" && (
+          <li className={LI}><strong>Google</strong>, only if you choose to sign in with Google: it tells us your email address and
+            name. We never see your Google password or anything else in your Google account.</li>
+        )}
         <li className={LI}><strong>Resend</strong> sends the emails — confirming your address, any invoice or document you choose to email,
           and the payment reminders to your customers if you leave them switched on.</li>
         <li className={LI}>

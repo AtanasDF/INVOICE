@@ -9,6 +9,7 @@ import { claimInvite, forgetInvite, invitesOn, readInvite } from "@/lib/invites"
 import Turnstile, { turnstileOn } from "@/components/Turnstile";
 import { peopleCheckProblem } from "@/lib/peopleCheck";
 import { useIosHomeScreenApp } from "@/lib/install";
+import GoogleSignIn, { googleOn } from "@/components/GoogleSignIn";
 
 // One box for signing in and one for making an account, with the choice
 // between them in plain sight (Atanas, 2026-09-22: "it should be simple
@@ -361,6 +362,15 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
           {newAccount ? "It's free. We'll send one email to check it's you." : "Welcome back."}
         </p>
       </div>
+
+      {/* Not in the iPhone home-screen app: Google opens in Safari, which keeps
+          its own sign-in, so the app would still be waiting when it came back. */}
+      {googleOn() && !homeScreenApp && (
+        <>
+          <GoogleSignIn onError={setError} />
+          <p className="flex items-center gap-3 text-sm text-neutral-500 before:h-px before:flex-1 before:bg-neutral-200 after:h-px after:flex-1 after:bg-neutral-200">or with your email</p>
+        </>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
