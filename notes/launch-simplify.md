@@ -91,3 +91,17 @@ just say free.
 - The iPhone test slipping. It is the only real-device test the app has.
 - Anything bigger than the payment-link box for payments.
 - New features. The list above is the launch; everything else goes on the list for after.
+
+## Progress
+
+**22 Oct, merged and live (`7bbda31`):** menu down to six plus More; Home with Send an
+invoice and Send a quote under Scan; Quotes a tab of Invoices, Needs review a tab of Receipts
+with its count; "Set up in one go from an invoice you've already sent" in the setup card;
+Your payment link in Settings and the Pay now button on invoices (migration-046, run and
+verified); Home rises into place; a new account's Home trimmed from 3.9 to 2.6 screens.
+Dropped from the plan: the three first-visit questions -- VAT already hides itself when the
+account is not VAT registered and CIS appears only when switched on, so they would have added
+a screen without hiding much.
+
+Still to do, in order: the competitor walk-through (Atanas signs in), the front door words,
+the iPhone test, the domain move and legal details, the flyers.

@@ -128,6 +128,14 @@ and does not come out of the weekly plan, so it is a second tank. Atanas: *"Make
 we use it all so we don't waste it."* Hand him a brief; he should not have to think of
 the work.
 
+## Launching around 5 November (2026-10-22)
+
+The plan is `notes/launch-simplify.md`, with a Progress section at its foot. The first batch
+of it is live: six menu items plus More, the setup-from-an-invoice card, the Pay now link
+(migration-046) and a trimmed Home. Next is Atanas: signing in to two or three competitors
+for a walk-through, and the iPhone test. `harness/shots-launch.mjs` makes iPhone-sized
+pictures of the screens for him to look at before anything ships.
+
 ## The one bug that outranks everything else -- NARROWED, merged 2026-10-22 (`66f36fe`)
 
 Batch auto-capture now waits for the page print's own stillness, so every shot has a
