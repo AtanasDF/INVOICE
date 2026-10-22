@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { safePaymentLink } from "@/lib/paymentLink";
 import Tip from "@/components/Tip";
 import { useRouter } from "next/navigation";
 import {
@@ -73,6 +74,7 @@ type FormValues = {
   invoiceNextNumber: string;
   vatRegistered: boolean;
   bankDetails: string;
+  paymentLink: string;
   reminderTexts: Record<ReminderKind, string>;
   latePaymentInterest: boolean;
   logoUrl: string | null;
@@ -129,6 +131,7 @@ export default function SettingsPage() {
   const [loadedNextNumber, setLoadedNextNumber] = useState(1);
   const [vatRegistered, setVatRegistered] = useState(false);
   const [bankDetails, setBankDetails] = useState("");
+  const [paymentLink, setPaymentLink] = useState("");
   const [reminderTexts, setReminderTexts] = useState<Record<ReminderKind, string>>({ before: "", due: "", after: "", late: "", final: "" });
   const [latePaymentInterest, setLatePaymentInterest] = useState(false);
   // The stored logo ("storage:<path>") and what it looks like; uploaded as
@@ -175,6 +178,7 @@ export default function SettingsPage() {
         invoiceNextNumber: String(p.invoiceNextNumber),
         vatRegistered: p.vatRegistered,
         bankDetails: p.bankDetails,
+        paymentLink: p.paymentLink,
         reminderTexts: texts,
         latePaymentInterest: p.reminderLatePaymentInterest,
         logoUrl: p.logoUrl ?? null,
@@ -193,6 +197,7 @@ export default function SettingsPage() {
       setLoadedNextNumber(p.invoiceNextNumber);
       setVatRegistered(loaded.vatRegistered);
       setBankDetails(loaded.bankDetails);
+      setPaymentLink(loaded.paymentLink);
       setReminderTexts(texts);
       setLatePaymentInterest(loaded.latePaymentInterest);
       setLogoUrl(loaded.logoUrl);
@@ -221,6 +226,7 @@ export default function SettingsPage() {
     invoiceNextNumber,
     vatRegistered,
     bankDetails,
+    paymentLink,
     reminderTexts,
     latePaymentInterest,
     logoUrl,
@@ -395,6 +401,7 @@ export default function SettingsPage() {
         invoiceNextNumber: nextNumber,
         vatRegistered,
         bankDetails,
+        paymentLink: safePaymentLink(paymentLink) ?? "",
         reminderTextBefore: reminderTexts.before.trim() || null,
         reminderTextDue: reminderTexts.due.trim() || null,
         reminderTextAfter: reminderTexts.after.trim() || null,
@@ -730,6 +737,25 @@ export default function SettingsPage() {
             onChange={(e) => setBankDetails(e.target.value)}
             rows={3}
           />
+          <div>
+            <label htmlFor="payment-link" className="text-xs text-neutral-500">Your payment link (optional)</label>
+            <input
+              id="payment-link"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder="https://pay.sumup.com/... or paypal.me/..."
+              value={paymentLink}
+              onChange={(e) => setPaymentLink(e.target.value)}
+              aria-describedby="payment-link-help"
+            />
+            <p id="payment-link-help" className="mt-1 text-xs text-neutral-500">
+              {paymentLink.trim() && !safePaymentLink(paymentLink)
+                ? "That doesn't look like a web address starting https://, so it won't be shown."
+                : "Paste a link from SumUp, Stripe, PayPal, Monzo or Starling and your invoices get a Pay now button. The money goes straight to you."}
+            </p>
+          </div>
         </div>
         )}
 

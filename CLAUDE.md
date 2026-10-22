@@ -142,7 +142,12 @@ session log what was added so he knows what to clear.
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **`SCAN_LIMITS=on` was
    set in Vercel on 2026-09-23, so all of this is LIVE** — see the environment section.
-   **Applied and verified up to 045 (2026-10-20, through the Supabase connection).** 043:
+   **Applied and verified up to 046 (2026-10-22)**: `business_profile.payment_link text`,
+   nullable, no default, for the Pay now button (`src/lib/paymentLink.ts`, https only, enforced
+   in the app). Backup 018 = `business_profile_backup_20261022`, verified both ways (0/0, 2 rows,
+   23 columns each side, RLS on, no anon/authenticated grants); after 046, 24 columns, nothing
+   moved; exercised as the Hidefield owner and rolled back: own row saved, no other row
+   reachable, 0 links left. **Applied and verified up to 045 (2026-10-20, through the Supabase connection).** 043:
    `authenticated` and `anon` can no longer execute `generate_recurring_invoice`;
    `service_role` still can. 044: `business_profile_plan_guard`, enabled. Exercised as the
    Hidefield owner and rolled back: an ordinary profile save still writes, plan -> paid is

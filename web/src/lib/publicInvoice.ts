@@ -97,6 +97,7 @@ export async function loadPublicInvoice(token: string, client?: SupabaseClient):
       vatNumber: bp?.vat_number ?? "",
       vatRegistered: bp?.vat_registered ?? false,
       bankDetails: bp?.bank_details ?? "",
+      paymentLink: bp?.payment_link ?? "",
     } as BusinessProfile,
     creditNotes: (notes ?? []).map((c, i) => ({ id: String(i), invoiceId: "", date: c.date, amount: Number(c.amount), reason: c.reason ?? "" })),
     payments: (pays ?? []).map((p, i) => ({ id: String(i), invoiceId: "", date: p.date, amount: Number(p.amount), method: null, note: "" })),

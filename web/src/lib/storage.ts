@@ -923,6 +923,10 @@ export type BusinessProfile = {
   // Free text, but its own field rather than folded into invoice notes --
   // shown on the printed invoice as a dedicated "How to pay" block.
   bankDetails: string;
+  // A payment page they already have (SumUp, Stripe, PayPal...), shown as a
+  // Pay now button beside the bank details (migration-046). Read `?? ""` so
+  // the app works against a database without the column.
+  paymentLink: string;
   // Editable wording for the three fixed payment-reminder slots (3 days
   // before due / on due date / 7 days after). Null means "use the app's
   // built-in default text" -- these only hold an override.
@@ -954,6 +958,7 @@ type BusinessProfileRow = {
   invoice_next_number: number | null;
   vat_registered: boolean | null;
   bank_details: string | null;
+  payment_link?: string | null;
   reminder_text_before: string | null;
   reminder_text_due: string | null;
   reminder_text_after: string | null;
@@ -981,6 +986,7 @@ function businessProfileFromRow(r: BusinessProfileRow): BusinessProfile {
     invoiceNextNumber: r.invoice_next_number ?? 1,
     vatRegistered: r.vat_registered ?? false,
     bankDetails: r.bank_details ?? "",
+    paymentLink: r.payment_link ?? "",
     reminderTextBefore: r.reminder_text_before,
     reminderTextDue: r.reminder_text_due,
     reminderTextAfter: r.reminder_text_after,
@@ -1010,6 +1016,7 @@ const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
   invoiceNextNumber: 1,
   vatRegistered: false,
   bankDetails: "",
+  paymentLink: "",
   reminderTextBefore: null,
   reminderTextDue: null,
   reminderTextAfter: null,
@@ -1061,9 +1068,10 @@ export const businessProfileStore = {
       registered_name: input.registeredName || null,
       company_number: input.companyNumber || null,
       account_kind: input.accountKind,
+      payment_link: input.paymentLink || null,
     };
     const { error } = await supabase.from("business_profile").upsert({ ...row, ...added });
-    // Until migration-029 has been run those three columns don't exist and
+    // Until migration-029 (and 046, for payment_link) has been run those columns don't exist and
     // PostgREST refuses the whole write (PGRST204); everything else about
     // the profile still has to save.
     if (error?.code === "PGRST204") {

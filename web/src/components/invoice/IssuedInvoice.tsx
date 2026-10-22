@@ -1,6 +1,7 @@
 "use client";
 
 import { longDate } from "@/components/invoice/InvoiceDocument";
+import { payLabel, safePaymentLink } from "@/lib/paymentLink";
 import { money } from "@/lib/money";
 import { latePaymentLine, showsLatePaymentTerms } from "@/lib/latePayment";
 import { invoiceBalance, invoiceVat } from "@/lib/invoiceBalance";
@@ -35,6 +36,9 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
   const billedShare = totals.total > 0 ? Math.max(0, 1 - creditNoteTotal / totals.total) : 0;
   const cisShown = cisAfterCredit(totals, creditNoteTotal);
   const labourShown = Math.max(0, labourNet(invoice.items)) * billedShare;
+  // Only while something is still owed: a paid invoice with a Pay now button
+  // invites paying twice.
+  const payLink = amountDue > 0 ? safePaymentLink(profile?.paymentLink) : null;
   return (
     <>
       {/* flex-wrap and min-w-0: at a large text size the two blocks together
@@ -173,10 +177,27 @@ export default function IssuedInvoice({ invoice, client, profile, creditNotes, p
         <div className="mt-6 whitespace-pre-line border-t pt-4 text-sm text-neutral-600">{invoice.notes}</div>
       )}
 
-      {profile?.bankDetails && (
+      {(profile?.bankDetails || payLink) && (
         <div className="mt-4 rounded-lg border bg-neutral-50 p-4 text-sm">
           <p className="font-semibold">How to pay</p>
-          <p className="mt-1 whitespace-pre-line text-neutral-600">{profile.bankDetails}</p>
+          {payLink && (
+            <>
+              {/* A button on screen; on paper and in the PDF, the address itself,
+                  since nobody can tap a printed button. */}
+              {!forPdf && (
+                <a
+                  href={payLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 font-medium text-white no-underline print:hidden"
+                >
+                  {payLabel(payLink)}
+                </a>
+              )}
+              <p className={`${forPdf ? "mt-1" : "hidden print:block"} wrap-anywhere text-neutral-600`}>Pay online: {payLink}</p>
+            </>
+          )}
+          {profile?.bankDetails && <p className={`${payLink ? "mt-3" : "mt-1"} whitespace-pre-line text-neutral-600`}>{payLink ? "Or by bank transfer:\n" : ""}{profile.bankDetails}</p>}
         </div>
       )}
 
