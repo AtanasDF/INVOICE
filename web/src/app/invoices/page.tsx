@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PageTabs, { MONEY_IN_TABS } from "@/components/PageTabs";
 import { amountOrNull, money } from "@/lib/money";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -252,6 +253,7 @@ function InvoicesPage() {
 
   return (
     <div className="space-y-8">
+      <PageTabs label="Money in" tabs={MONEY_IN_TABS} current="/invoices" />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>

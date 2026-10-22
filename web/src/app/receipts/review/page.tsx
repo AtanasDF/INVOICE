@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PageTabs from "@/components/PageTabs";
 import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import FieldFlag from "@/components/scan/FieldFlag";
@@ -148,9 +149,16 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="space-y-8">
+      <PageTabs
+        label="Receipts"
+        tabs={[
+          { href: "/receipts", text: "Receipts & bills" },
+          { href: "/receipts/review", text: "Needs review" },
+        ]}
+        current="/receipts/review"
+      />
       <div>
-        <Link href="/receipts" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Receipts &amp; bills</Link>
-        <h1 className="mt-1 text-2xl font-bold">Needs review</h1>
+        <h1 className="text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">
           Receipts that came in by email — check what was read off them before they count toward your records.
         </p>
