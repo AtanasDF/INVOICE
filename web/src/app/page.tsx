@@ -530,6 +530,11 @@ function Dashboard() {
             profile={profile}
             customers={contacts.filter((c) => c.kind === "client" && !c.archived).length}
             documents={allReceipts.length + allInvoices.length}
+            contacts={contacts}
+            onSetUp={(p, added) => {
+              setProfile(p);
+              if (added) setContacts((c) => [...c, added]);
+            }}
           />
         )}
         <UploadPanel

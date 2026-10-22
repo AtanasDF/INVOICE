@@ -3,23 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { gettingStarted } from "@/lib/gettingStarted";
-import type { BusinessProfile } from "@/lib/storage";
+import type { BusinessProfile, Client } from "@/lib/storage";
+import SetupFromInvoice from "@/components/SetupFromInvoice";
 
 const HIDDEN = "getting-started-hidden";
 
 // A list that ticks itself off, shown only while something is missing and
 // put away for good by anyone who would rather get on with it. Nothing here
 // blocks anything: the app works without it, it just works worse.
-export default function GettingStarted({ profile, customers, documents }: {
+export default function GettingStarted({ profile, customers, documents, contacts, onSetUp }: {
   profile: Pick<BusinessProfile, "businessName" | "address" | "bankDetails" | "invoiceNextNumber">;
   customers: number;
   documents: number;
+  contacts: Client[];
+  onSetUp: (profile: BusinessProfile, added: Client | null) => void;
 }) {
   const [hidden, setHidden] = useState(() => {
     try { return localStorage.getItem(HIDDEN) === "1"; } catch { return false; }
   });
   const { steps, done, total, complete } = gettingStarted(profile, { customers, documents });
   if (hidden || complete) return null;
+  // The four that one sent invoice can answer.
+  const fromInvoice = steps.some((s) => ["name", "address", "numbering", "bank"].includes(s.id) && !s.done);
 
   return (
     <section aria-labelledby="getting-started" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
@@ -49,6 +54,8 @@ export default function GettingStarted({ profile, customers, documents }: {
       >
         <div className="h-full rounded-full bg-neutral-900" style={{ width: `${Math.round((done / total) * 100)}%` }} />
       </div>
+
+      {fromInvoice && <SetupFromInvoice contacts={contacts} onSetUp={onSetUp} />}
 
       <ul className="space-y-1">
         {steps.map((s) => (
