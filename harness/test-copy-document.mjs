@@ -72,7 +72,7 @@ try {
   // lose.
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   const frontDoor = await page
-    .waitForFunction(() => /Invoices, receipts and what you.{0,6}re owed/.test(document.body.innerText), { timeout: 15000 })
+    .waitForFunction(() => /Get paid faster, and keep every receipt sorted/.test(document.body.innerText), { timeout: 15000 })
     .then(() => true)
     .catch(() => false);
   check("...and the front door says what the app is for", frontDoor, (await bodyText(page)).slice(0, 160));

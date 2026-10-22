@@ -45,6 +45,40 @@ dearer per person than the depots, and to a crowd with no common problem — wor
   for the phone it is being read on (see "Get the app" in `notes/launch-plan.md`).
 - One sentence on what it is. Not features.
 
+## The flyer, drafted (2026-10-22)
+
+A5, one side, for the depots first. Every line is true today; nothing promises card
+payments the app does not take. Big type, a lot of white, the QR code the largest thing
+after the headline.
+
+> **Get paid faster.**
+> **Keep every receipt sorted.**
+>
+> Invoices that chase themselves -- polite reminders go out for you,
+> and you see the moment your customer opens it.
+>
+> Photograph a fuel or parking receipt and it reads itself.
+> Know what to put by for your tax return.
+>
+> **Free. On your phone. Takes a minute.**
+>
+> [ QR code ]   Point your camera here
+>
+> invoiceover.com
+
+**The QR code points at** `invoiceover.com/?from=<depot>`, one per depot
+(`carlisle-dhl`, `carlisle-amazon`, ...), so the sign-ups say which depot worked. It must
+not be printed until the domain has moved and been tested (the Turnstile widget needs
+`invoiceover.com` added first, or sign-in breaks).
+
+**A shorter one for a business card or a sticker on a van:**
+
+> **Invoices that chase themselves.** Free. invoiceover.com [QR]
+
+Words left out on purpose: "easy", "instantly", "AI", "scan", "upload" -- the same list the
+front door keeps out (`harness/test-first-page.mjs`), because they read as advertising and
+"scan" means something else at a depot.
+
 ## The message: get paid faster (Atanas, 2026-10-21)
 
 *"We need to offer it with the like: get paid faster, due to the quotation and payment

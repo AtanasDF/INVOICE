@@ -45,6 +45,17 @@ const snap = async (page, name, full = false, top = true) => {
   console.log("saved", name);
 };
 
+// The front door, as a stranger off a flyer sees it.
+{
+  const { browser, page } = await launchSignedIn(fresh(), { base: BASE, width: 390, profile: "profile-shots-stranger" });
+  try {
+    await light(page);
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+    await page.waitForFunction(() => document.body.innerText.includes("Get paid faster"), { timeout: 20000 }).catch(() => {});
+    await snap(page, "0-front-door", true);
+  } finally { await browser.close(); }
+}
+
 // A brand new account: Home, with setting up from an invoice.
 {
   const { browser, page } = await launchSignedIn(fresh(), { base: BASE, width: 390, profile: "profile-shots-fresh" });

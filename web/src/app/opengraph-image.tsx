@@ -27,7 +27,7 @@ export default async function Image() {
       >
         <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: -0.5 }}>{SITE_NAME}</div>
         <div style={{ fontSize: 76, fontWeight: 700, lineHeight: 1.1, marginTop: 28, maxWidth: 900 }}>
-          Invoices, receipts and what you&apos;re owed, in one place.
+          Get paid faster, and keep every receipt sorted.
         </div>
         <div style={{ fontSize: 34, color: "#525252", marginTop: 28 }}>
           Photograph a bill and it reads itself. Free, on your phone.

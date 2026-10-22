@@ -23,14 +23,14 @@ try {
   await sleep(900);
   const text = await bodyText(page);
   check("a stranger stays on the front door", page.url() === `${BASE}/`, page.url());
-  check("the headline says what it is for", text.includes("Invoices, receipts and what you're owed, in one place."), text.slice(0, 200));
+  check("the headline says what it is for", text.includes("Get paid faster, and keep every receipt sorted."), text.slice(0, 200));
   check("...and that an account is free and quick", text.includes("Make an account and it's all yours. Free, and it takes a minute."), text.slice(0, 300));
   // Three lines, not six (Atanas, 2026-09-23: "the login page, less
   // explanation... some nice pictures, some invoices"). The picture carries
   // what the sentences used to.
   check(
     "three short lines say what it does",
-    ["Photograph a bill", "Make an invoice", "See what you're owed"].every((l) => text.includes(l)),
+    ["Photograph a receipt", "Send invoices that chase themselves", "Know what you're owed"].every((l) => text.includes(l)),
     text.slice(0, 600)
   );
   check("no more than three, so it stays a door and not a brochure", (await page.evaluate(() => document.querySelectorAll("main ul li").length)) === 3);

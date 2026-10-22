@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   // it is rather than advertise the software it was made in.
   title: { default: `${SITE_NAME} — invoices and receipts for the self-employed`, template: `%s \u00b7 ${SITE_NAME}` },
   description:
-    "Free invoicing and expenses for the self-employed. Make an invoice, photograph a receipt and see what you're owed — on your phone.",
+    "Get paid faster: free invoices that chase themselves, with polite reminders and a link you see opened. Photograph your receipts too — on your phone.",
   applicationName: SITE_NAME,
   keywords: ["invoice", "invoicing", "self-employed", "sole trader", "receipts", "expenses", "Self Assessment", "UK"],
   alternates: { canonical: "/" },
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     locale: "en_GB",
     url: "/",
     title: `${SITE_NAME} — invoices and receipts for the self-employed`,
-    description: "Make an invoice, photograph a receipt, see what you're owed. Free, on your phone.",
+    description: "Get paid faster, and keep every receipt sorted. Free, on your phone.",
   },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true },

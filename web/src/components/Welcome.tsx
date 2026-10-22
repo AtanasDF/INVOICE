@@ -9,10 +9,16 @@ import SignInCard from "@/components/SignInCard";
 // before the reading, because a flyer sends people here to make an account,
 // not to be sold to. The six lines of explaining became three, and the picture
 // does the rest of the work.
+//
+// The headline is the promise since 2026-10-22 (notes/launch-simplify.md):
+// the apps that win lead with getting paid, not with a list of features, and
+// "Invoices, receipts and what you're owed" was a list. Each line below is
+// something already built and live -- the reminders, the opened link -- so
+// none of it needs a footnote.
 const DOES = [
-  ["Photograph a bill", "and it reads itself."],
-  ["Make an invoice", "in a minute, and send it."],
-  ["See what you're owed", "and what to put by for tax."],
+  ["Photograph a receipt", "and it reads itself."],
+  ["Send invoices that chase themselves", "with polite reminders, and see when they're opened."],
+  ["Know what you're owed", "and what to put by for tax."],
 ];
 
 // Drawn rather than photographed, and in the theme's own colours, so it
@@ -81,7 +87,7 @@ export default function Welcome() {
           screen it sits beside all of it. */}
       <div className="grid gap-8 md:grid-cols-2 md:items-start md:gap-12">
         <div className="md:col-start-1 md:row-start-1">
-          <h1 className="text-[2rem] font-bold leading-tight sm:text-4xl">Invoices, receipts and what you&apos;re owed, in one place.</h1>
+          <h1 className="text-[2rem] font-bold leading-tight sm:text-4xl">Get paid faster, and keep every receipt sorted.</h1>
           <p className="mt-3 text-lg text-neutral-700">Make an account and it&apos;s all yours. Free, and it takes a minute.</p>
         </div>
 
