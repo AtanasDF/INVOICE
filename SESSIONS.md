@@ -4,6 +4,23 @@ One entry per Claude Code session, newest first. Read the top entries before sta
 append yours before the final push. Keep each entry to what changed, what was decided,
 and what is left open. Dates are session dates (Europe/London).
 
+
+## 2026-10-22 (evening): phone guide, Google button, bring your contacts in
+
+- **Live on main:** `/help/home-screen`, a drawn picture for every tap of adding the app to an
+  iPhone or Android home screen, public, linked from Get the app (Home, Settings), How it works
+  and a line under the front door's three. **Continue with Google** is built and OFF
+  (`NEXT_PUBLIC_GOOGLE_SIGNIN`); Atanas's steps to switch it on are in `notes/google-sign-in.md`.
+  Google's mark is `public/google-g.svg` so no component writes a colour in.
+- **On `feature/bring-contacts`, not merged:** "Bring your customers and suppliers in" on the
+  setup card: CSV exports (Xero, FreeAgent, QuickBooks, Google, hand-made), .vcf from a phone,
+  photos/PDFs through `/api/contact-scan` on Gemini. One tick list, customer or supplier per row,
+  nothing saved before Add. `src/lib/contactImport.ts`; `test-contact-import` 31/31,
+  `test-bring-contacts` 14/14; getting-started, dashboard, empty-account, first-week,
+  setup-from-invoice, colour and accessibility suites green against `next start`.
+- Note: `npx eslint .` from web/ also lints `web/.claude/worktrees/*`, another session's copy;
+  lint `src` instead.
+
 ## 2026-10-21 — Round 5 complete on `integrate/cloud-round-5`, NOT merged
 
 Resumed after the overnight pause. Added leftovers' last two commits (one real clash in
