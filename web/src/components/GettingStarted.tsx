@@ -5,22 +5,26 @@ import Link from "next/link";
 import { gettingStarted } from "@/lib/gettingStarted";
 import type { BusinessProfile, Client } from "@/lib/storage";
 import SetupFromInvoice from "@/components/SetupFromInvoice";
+import BringContacts from "@/components/BringContacts";
 
 const HIDDEN = "getting-started-hidden";
 
 // A list that ticks itself off, shown only while something is missing and
 // put away for good by anyone who would rather get on with it. Nothing here
 // blocks anything: the app works without it, it just works worse.
-export default function GettingStarted({ profile, customers, documents, contacts, onSetUp }: {
+export default function GettingStarted({ profile, customers, documents, contacts, onSetUp, onContacts }: {
   profile: Pick<BusinessProfile, "businessName" | "address" | "bankDetails" | "invoiceNextNumber">;
   customers: number;
   documents: number;
   contacts: Client[];
   onSetUp: (profile: BusinessProfile, added: Client | null) => void;
+  onContacts: (added: Client[]) => void;
 }) {
   const [hidden, setHidden] = useState(() => {
     try { return localStorage.getItem(HIDDEN) === "1"; } catch { return false; }
   });
+  // Kept on screen after an import, so its "Added 12" is read before it goes.
+  const [imported, setImported] = useState(false);
   const { steps, done, total, complete } = gettingStarted(profile, { customers, documents });
   if (hidden || complete) return null;
   // The four that one sent invoice can answer.
@@ -56,6 +60,10 @@ export default function GettingStarted({ profile, customers, documents, contacts
       </div>
 
       {fromInvoice && <SetupFromInvoice contacts={contacts} onSetUp={onSetUp} />}
+      {/* Until they have a handful: past that they are clearly typing their own in. */}
+      {(imported || contacts.filter((c) => !c.archived).length < 5) && (
+        <BringContacts contacts={contacts} ownName={profile.businessName} onAdded={(added) => { setImported(true); onContacts(added); }} />
+      )}
 
       <ul className="space-y-1">
         {steps.map((s) => (

@@ -535,6 +535,7 @@ function Dashboard() {
               setProfile(p);
               if (added) setContacts((c) => [...c, added]);
             }}
+            onContacts={(added) => setContacts((c) => [...c, ...added])}
           />
         )}
         <UploadPanel

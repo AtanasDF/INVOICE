@@ -70,6 +70,7 @@
     "../web/src/lib/bills.ts",
     "../web/src/lib/quoteChase.ts",
     "../web/src/lib/setupFromInvoice.ts",
+    "../web/src/lib/contactImport.ts",
     "../web/src/lib/paymentLink.ts",
     "../web/src/lib/quoteCompare.ts",
     "../web/src/lib/accountSwitch.ts",
