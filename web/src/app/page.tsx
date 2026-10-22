@@ -23,7 +23,7 @@ import UploadPanel from "@/components/UploadPanel";
 import FileStrip from "@/components/FileStrip";
 import GettingStarted from "@/components/GettingStarted";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
-import { CopyIcon, DocumentIcon, FolderIcon, RepeatIcon, SearchIcon, TagIcon } from "@/components/icons";
+import { DocumentIcon, FolderIcon, RepeatIcon, TagIcon } from "@/components/icons";
 import { readScannerMode, useIsIOS } from "@/lib/platform";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
 import { stashScanCapture } from "@/lib/scanHandoff";
@@ -493,37 +493,26 @@ function Dashboard() {
           </Link>
         )}
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-          <Link href="/free-invoice?start=photo" className={TILE}>
+        {/* Two things after scanning, not four (2026-10-22, "simple and
+            attractive"): getting paid is the other half of the promise. Copy a
+            document went under More. Check a company stays, as a line under
+            the quote, because the moment to check who you are dealing with is
+            before you price the job (Atanas, 2026-09-23). */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <Link href="/invoices/new" className={TILE}>
             <DocumentIcon className="h-6 w-6" />
-            <span>Create an invoice</span>
+            <span>Send an invoice</span>
           </Link>
           <Link href="/quotes/new" className={TILE}>
             <TagIcon className="h-6 w-6" />
-            <span>Write a quote</span>
-          </Link>
-          {/* Next to the quote on purpose (Atanas, 2026-09-23: "so people can
-              check companies before they send the quotation"). The moment to
-              find out who you are dealing with is before you price the job,
-              not after they have your prices. It was down in "Other tools",
-              which is nowhere near that moment. */}
-          <Link href="/check-company" className={TILE}>
-            <SearchIcon className="h-6 w-6" />
-            <span>Check a company</span>
-          </Link>
-          <Link href="/copy" className={TILE}>
-            <CopyIcon className="h-6 w-6" />
-            <span>Copy a document</span>
+            <span>Send a quote</span>
           </Link>
         </div>
-        {/* Beside the tile it explains, which is where the brief put it
-            ("a line beside Create an invoice offers to write one by hand
-            instead"). It had drifted below the upload panel and the file
-            library: on a phone you tapped Create an invoice, got a camera,
-            and never saw that there was another way. */}
         <p className="text-sm text-neutral-600">
-          &ldquo;Create an invoice&rdquo; photographs an old one and fills the next in for you, or{" "}
-          <Link href="/invoices/new" className="font-medium text-neutral-800 underline">write one by hand</Link>.
+          Or{" "}
+          <Link href="/free-invoice?start=photo" className="font-medium text-neutral-800 underline">photograph an old invoice</Link>{" "}
+          and the next one is filled in for you.{" "}
+          <Link href="/check-company" className="font-medium text-neutral-800 underline">Check a company</Link> before you quote.
         </p>
         {/* What the app still needs before an invoice is right: shown only
             while something is missing, and put away for good by anyone who

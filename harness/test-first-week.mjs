@@ -129,14 +129,19 @@ try {
     })
   );
   check("...and the Menu button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Menu"))?.className.includes("font-semibold")));
-  // Wide enough for the groups themselves: the one holding this page is marked.
+  // Wide enough for the row itself: six main links and More, the page you are
+  // on marked where it sits.
   await page.setViewport({ width: 900, height: 900 });
   await sleep(300);
   const groups = await page.evaluate(() => [...document.querySelectorAll("header summary")].map((b) => ({ label: b.textContent.trim(), here: b.className.includes("font-semibold") })));
-  check("on a wide screen the three groups sit in the header, Money out marked for Mileage", JSON.stringify(groups) === JSON.stringify([{ label: "Money in", here: false }, { label: "Money out", here: true }, { label: "Tools", here: false }, { label: "Menu", here: true }]), JSON.stringify(groups));
-  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Money in"))?.click());
+  const row = await page.evaluate(() => [...document.querySelectorAll("header nav a")].filter((a) => a.offsetParent).map((a) => ({ label: a.textContent.trim(), here: a.getAttribute("aria-current") === "page" })));
+  check("on a wide screen the main links sit in the header, Mileage marked, the rest under More",
+    JSON.stringify(row.map((r) => r.label)) === JSON.stringify(["Home", "Scan", "Invoices", "Receipts", "Customers", "Mileage", "Settings"]) &&
+      row.find((r) => r.label === "Mileage")?.here === true && JSON.stringify(groups) === JSON.stringify([{ label: "More", here: false }, { label: "Menu", here: true }]),
+    JSON.stringify({ row, groups }));
+  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("More"))?.click());
   await sleep(200);
-  check("a group opens its pages", await page.evaluate(() => ["/invoices", "/quotes", "/clients", "/recurring/invoices"].every((h) => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === h))));
+  check("More opens the rest", await page.evaluate(() => ["/quotes", "/receipts/review", "/recurring/invoices", "/vat", "/help"].every((h) => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === h))));
   await page.setViewport({ width: 375, height: 812 });
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(500);

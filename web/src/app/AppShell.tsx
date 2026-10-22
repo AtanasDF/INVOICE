@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { GROUPS, NAV_HREFS, type Group } from "@/lib/navGroups";
+import { GROUPS, MAIN_LABEL, NAV_HREFS, type Group } from "@/lib/navGroups";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
@@ -94,18 +94,23 @@ function GroupMenu({ group }: { group: Group }) {
   );
 }
 
+const MAIN = GROUPS.find((g) => g.label === MAIN_LABEL)!;
+const REST = GROUPS.filter((g) => g !== MAIN);
+
 function PhoneMenu() {
   const current = useCurrentHref();
   return (
     <Menu label="Menu" here={!!current && current !== "/"} width="w-[min(18rem,calc(100vw-2rem))]">
-      <NavLink href="/" className="block px-4 py-2.5">
-        Home
-      </NavLink>
-      {GROUPS.map((g) => (
+      {[["/", "Home"] as [string, string], ...MAIN.links].map(([href, label]) => (
+        <NavLink key={href} href={href} className="block px-4 py-3 text-base">
+          {label}
+        </NavLink>
+      ))}
+      {REST.map((g) => (
         <div key={g.label} className="border-t pb-1">
           <p className="px-4 pb-1 pt-2 text-xs text-neutral-500">{g.label}</p>
           {g.links.map(([href, label]) => (
-            <NavLink key={href} href={href} className="block px-4 py-2.5">
+            <NavLink key={href} href={href} className="block px-4 py-2">
               {label}
             </NavLink>
           ))}
@@ -142,14 +147,19 @@ function Header() {
             the way out of the app with it. */}
         {user ? (
           <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
-            <div className="hidden items-center gap-x-4 sm:flex">
+            <div className="hidden items-center gap-x-4 md:flex">
               <NavLink href="/">Home</NavLink>
-              {GROUPS.map((g) => (
+              {MAIN.links.map(([href, label]) => (
+                <NavLink key={href} href={href}>
+                  {label}
+                </NavLink>
+              ))}
+              {REST.map((g) => (
                 <GroupMenu key={g.label} group={g} />
               ))}
               <NavLink href="/settings">Settings</NavLink>
             </div>
-            <div className="sm:hidden">
+            <div className="md:hidden">
               <PhoneMenu />
             </div>
             <button

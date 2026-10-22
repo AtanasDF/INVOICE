@@ -1,5 +1,5 @@
-// The app's own map of itself: the header's three groups, and every page in
-// one of them.
+// The app's own map of itself: the header's main links and More, and every
+// page in one of them.
 //
 // This lives here rather than in AppShell because two other things need to
 // read it -- the help chat, which must never name a page that does not exist,
@@ -13,37 +13,40 @@ export type Group = { label: string; links: [string, string][] };
 // tools, the free ones among them. Every page has a place here, so there
 // is no "More pages" drawer any more, and a phone shows one Menu button
 // instead of nine links wrapping to three rows.
+// Six things up front, everything else one tap away under More (Atanas,
+// 2026-10-22: "simple and attractive... the easiest way"). People leave
+// these apps because "simple functions take over 10 taps and are buried in
+// sub menus" (notes/competitor-research.md); nineteen items in three menus
+// was that. Nothing here was removed: every page is still in one group.
+export const MAIN_LABEL = "Main";
+export const MORE_LABEL = "More";
+
 export const GROUPS: Group[] = [
   {
-    label: "Money in",
-    links: [
-      ["/invoices", "Invoices"],
-      ["/quotes", "Quotes"],
-      ["/money", "Money"],
-      ["/jobs", "Jobs"],
-      ["/clients", "Customers & suppliers"],
-      ["/recurring/invoices", "Recurring invoices"],
-    ],
-  },
-  {
-    label: "Money out",
-    links: [
-      ["/receipts", "Receipts & bills"],
-      ["/receipts/review", "Needs review"],
-      ["/expenses", "Expenses"],
-      ["/mileage", "Mileage"],
-      ["/recurring", "Recurring expenses"],
-    ],
-  },
-  {
-    label: "Tools",
+    label: MAIN_LABEL,
     links: [
       ["/scan", "Scan"],
+      ["/invoices", "Invoices"],
+      ["/receipts", "Receipts"],
+      ["/clients", "Customers"],
+      ["/mileage", "Mileage"],
+    ],
+  },
+  {
+    label: MORE_LABEL,
+    links: [
+      ["/quotes", "Quotes"],
+      ["/receipts/review", "Needs review"],
+      ["/expenses", "Expenses and tax"],
+      ["/money", "Money"],
+      ["/recurring/invoices", "Recurring invoices"],
+      ["/recurring", "Recurring expenses"],
+      ["/jobs", "Jobs"],
+      ["/files", "Files"],
       ["/copy", "Copy a document"],
       ["/convert", "Change a file"],
       ["/check-company", "Check a company"],
       ["/vat", "VAT"],
-      ["/files", "Files"],
       // Before Feedback on purpose: most questions should be answered by a
       // walkthrough rather than by asking somebody.
       ["/help", "How it works"],
@@ -51,4 +54,5 @@ export const GROUPS: Group[] = [
     ],
   },
 ];
+
 export const NAV_HREFS = ["/", "/settings", ...GROUPS.flatMap((g) => g.links.map(([href]) => href))];

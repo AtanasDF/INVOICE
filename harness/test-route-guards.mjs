@@ -163,6 +163,6 @@ try {
     /Nothing of yours has gone anywhere/.test(body) && /Back to the start/.test(body), body.slice(0, 200));
   // It renders outside the layout, so it carries no header, no navigation and
   // nothing that needs a session -- it cannot know whether there is one.
-  check("...without offering pages that need an account", !/Sign out|Money in|Money out/.test(body), body.slice(0, 200));
+  check("...without offering pages that need an account", !/Sign out|Customers|Needs review/.test(body), body.slice(0, 200));
 } catch (e) { console.log("ERROR", e.message); }
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));
