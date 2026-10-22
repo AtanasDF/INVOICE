@@ -63,7 +63,9 @@ try {
     return { scan: at("Scan a receipt"), setup: at("Setting up"), upload: at("Upload a document"), library: (() => { const e = document.querySelector('[aria-label="Your file library"]'); return e ? Math.round(e.getBoundingClientRect().top + window.scrollY) : at("Your file library"); })(), screens: +(at("Setting up") / window.innerHeight).toFixed(1) };
   });
   check("setting up comes before the upload panel and the file library",
-    where.setup !== null && where.upload !== null && where.setup < where.upload && where.setup < where.library, JSON.stringify(where));
+    // The library is not on a brand new account at all since 2026-10-22: it
+    // arrives with the first document, so an empty one is not in the way.
+    where.setup !== null && where.upload !== null && where.setup < where.upload && (where.library === null || where.setup < where.library), JSON.stringify(where));
   check("...and still after the big scan", where.scan !== null && where.scan < where.setup, JSON.stringify(where));
   check("...so a new account meets it within a screen of arriving", where.screens <= 1.2, JSON.stringify(where));
 

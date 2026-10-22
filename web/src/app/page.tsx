@@ -555,20 +555,19 @@ function Dashboard() {
 
         {/* Straight under the upload tile, as he asked: upload a document,
             then see the documents you have. */}
-        <FileStrip receipts={allReceipts} invoices={allInvoices} />
-
-        {!hasAnything && (
-          <p className="rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-700">
-            Just starting? Scan a few invoices you have already sent and the numbering carries on from yours. A handful
-            is plenty &mdash; you do not need to go back through the year.
-          </p>
-        )}
+        {/* A brand new account sees only what it can act on (2026-10-22): an
+            empty library, empty panels and a row of tabs over nothing made Home
+            nearly four screens of "nothing yet". They arrive with the first
+            receipt or invoice. "Just starting?" went too: setting up from an
+            invoice already sent says it, and does it. */}
+        {hasAnything && <FileStrip receipts={allReceipts} invoices={allInvoices} />}
 
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <Link href="/receipts/new" className="font-medium text-neutral-700 underline">Add a receipt by hand</Link>
-          <Link href="/quotes/new" className="inline-block py-1 font-medium text-neutral-700 underline">Make a quote</Link>
         </div>
       </section>
+
+      {hasAnything && (<>
 
       {/* Three panels, one page. */}
       <div role="tablist" aria-label="What to look at" className="flex gap-1 rounded-xl border bg-white p-1 shadow-sm">
@@ -586,16 +585,6 @@ function Dashboard() {
           </button>
         ))}
       </div>
-
-      {!hasAnything && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-          <h2 className="font-semibold">Nothing here yet</h2>
-          <p className="mt-1 text-neutral-600">
-            Scan a receipt or write an invoice and this page fills in: what you&apos;re owed, what&apos;s overdue, and what
-            you&apos;ve spent this month.
-          </p>
-        </div>
-      )}
 
       {/* One track, three panels: sliding between them with a finger is how a
           phone moves, and only this strip moves -- the header, the scanner and
@@ -850,11 +839,13 @@ function Dashboard() {
           </>) },
         ]}
       />
+      </>)}
 
       {/* Shows itself only to someone who has not installed it yet. */}
       <GetTheApp />
 
       {/* Lower and smaller, as he asked: useful, but not what the page is for. */}
+      {hasAnything && (
       <section aria-label="Other tools" className="border-t pt-5">
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Link href="/files" className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline">
@@ -868,6 +859,7 @@ function Dashboard() {
           </Link>
         </div>
       </section>
+      )}
     </div>
   );
 }

@@ -66,7 +66,8 @@ try {
 
   // The empty states themselves: each list has to say what to do next.
   const says = (path, ...words) => words.some((w) => (seen[path] ?? "").toLowerCase().includes(w.toLowerCase()));
-  check("the dashboard welcomes a new account", says("/", "new here", "nothing here yet", "get started", "first invoice"), seen["/"]?.slice(0, 500));
+  // Since 2026-10-22 the welcome is the Setting up card, not an empty panel.
+  check("the dashboard welcomes a new account", says("/", "new here", "setting up", "set up in one go", "first invoice"), seen["/"]?.slice(0, 500));
   // Rung 1 of the help ladder Atanas described: "everything should be explained
   // -- first when they log in ... then when they click on help". Rungs 2 to 5
   // were built and this one was a paragraph about the camera, so a first-time
@@ -95,7 +96,7 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(900);
   const later = await bodyText(page);
-  check("the welcome outlives the tip", later.includes("Nothing here yet") && !later.includes("New here?") && !later.includes("£0.00"), later.slice(0, 400));
+  check("the welcome outlives the tip", later.includes("Setting up") && !later.includes("New here?") && !later.includes("£0.00"), later.slice(0, 400));
   check("empty invoices says what to do", says("/invoices", "no invoices", "first invoice", "nothing here"), seen["/invoices"]?.slice(0, 400));
   check("empty quotes says what to do", says("/quotes", "no quotes", "first quote", "nothing here"), seen["/quotes"]?.slice(0, 400));
   check("...with a next step", says("/quotes", "Make one to price a job before you start."), seen["/quotes"]?.slice(0, 400));
