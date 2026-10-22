@@ -50,8 +50,8 @@ import { FILE_RING } from "@/lib/fileRing";
 // under it for the other three ways paper gets into the app. Everything else
 // on the page comes after that, because everything else is looking rather
 // than doing.
-const TILE = "flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md";
-const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800";
+const TILE = "flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md active:scale-[0.97]";
+const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]";
 // min-w-0 for the same reason as the upload tile: "Invoices sent" is
 // wider than a third of a phone once the text is turned up.
 const TAB = "min-w-0 flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-medium";
@@ -479,14 +479,14 @@ function Dashboard() {
           be the file input itself, or it takes two taps to open the camera. */}
       <section aria-label="Scan something" className="space-y-3">
         {isIOS && readScannerMode() === "native" ? (
-          <label aria-disabled={scanHandoffBusy} className={`${BIG_SCAN} cursor-pointer ${FILE_RING}`}>
+          <label aria-disabled={scanHandoffBusy} className={`${BIG_SCAN} cursor-pointer ${FILE_RING} rise-in`}>
             <ScanIcon />
             <span>{scanHandoffBusy ? "Preparing…" : "Scan a receipt or bill"}</span>
             <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
             <input type="file" accept="image/*" capture="environment" onChange={onIOSScanCapture} disabled={scanHandoffBusy} className="sr-only" />
           </label>
         ) : (
-          <Link href="/scan" className={BIG_SCAN}>
+          <Link href="/scan" className={`${BIG_SCAN} rise-in`}>
             <ScanIcon />
             <span>Scan a receipt or bill</span>
             <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
@@ -498,7 +498,7 @@ function Dashboard() {
             document went under More. Check a company stays, as a line under
             the quote, because the moment to check who you are dealing with is
             before you price the job (Atanas, 2026-09-23). */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="rise-in grid grid-cols-2 gap-2 sm:gap-3" style={{ animationDelay: "70ms" }}>
           <Link href="/invoices/new" className={TILE}>
             <DocumentIcon className="h-6 w-6" />
             <span>Send an invoice</span>
@@ -508,7 +508,7 @@ function Dashboard() {
             <span>Send a quote</span>
           </Link>
         </div>
-        <p className="text-sm text-neutral-600">
+        <p className="rise-in text-sm text-neutral-600" style={{ animationDelay: "140ms" }}>
           Or{" "}
           <Link href="/free-invoice?start=photo" className="font-medium text-neutral-800 underline">photograph an old invoice</Link>{" "}
           and the next one is filled in for you.{" "}

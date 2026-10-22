@@ -50,24 +50,24 @@ try {
   // before everything else you can do here.
   const order = await page.evaluate(() =>
     [...document.querySelectorAll("main a, main label")].map((e) => e.textContent.trim().split("\n")[0]).filter(Boolean));
-  check("the big scan comes before everything else you can do", order[0]?.includes("Scan a receipt or bill") && order.indexOf("Create an invoice") === 1, JSON.stringify(order.slice(0, 5)));
+  check("the big scan comes before everything else you can do", order[0]?.includes("Scan a receipt or bill") && order.indexOf("Send an invoice") === 1, JSON.stringify(order.slice(0, 5)));
 
   const bigVsSmall = await page.evaluate(() => {
     const big = [...document.querySelectorAll("main a, main label")].find((e) => e.textContent.includes("Scan a receipt or bill"));
-    const small = [...document.querySelectorAll("main a, main button")].find((e) => e.textContent.trim().startsWith("Create an invoice"));
+    const small = [...document.querySelectorAll("main a, main button")].find((e) => e.textContent.trim().startsWith("Send an invoice"));
     return { big: big?.getBoundingClientRect().height ?? 0, small: small?.getBoundingClientRect().height ?? 0 };
   });
-  check("the big one is visibly bigger than the three under it", bigVsSmall.big > bigVsSmall.small * 1.3, JSON.stringify(bigVsSmall));
+  check("the big one is visibly bigger than the two under it", bigVsSmall.big > bigVsSmall.small * 1.3, JSON.stringify(bigVsSmall));
 
   // Upload is a <label> wrapping a file input, not a button, so one tap opens
   // the picker -- the selector has to allow for that.
-  // Four tiles now, since Check a company came up beside Write a quote
-  // (2026-09-24), and uploading grew from a tile into its own panel with three
-  // doors in it -- so it is checked as a panel, below.
+  // Two now (2026-10-22, notes/launch-simplify.md): getting paid is the other
+  // half of the promise. Copy a document went under More; Check a company is
+  // a line beneath, since checking who you deal with comes before the quote.
   const tiles = await page.evaluate(() =>
     [...document.querySelectorAll("main a, main button, main label")].map((e) => e.textContent.trim())
-      .filter((t) => ["Create an invoice", "Write a quote", "Check a company", "Copy a document"].includes(t)));
-  check("four tiles underneath: invoice, quote, check a company, copy", tiles.length === 4, JSON.stringify(tiles));
+      .filter((t) => ["Send an invoice", "Send a quote"].includes(t)));
+  check("two underneath: send an invoice, send a quote", JSON.stringify(tiles) === JSON.stringify(["Send an invoice", "Send a quote"]), JSON.stringify(tiles));
   const upload = await page.evaluate(() => {
     const el = document.querySelector('[aria-label="Upload a document"]');
     return el ? [...el.querySelectorAll("button")].map((b) => b.textContent.trim()) : null;
@@ -75,7 +75,7 @@ try {
   check("...and uploading is its own panel with three doors", Array.isArray(upload) && upload.length === 3, JSON.stringify(upload));
 
   const text = await bodyText(page);
-  check("writing one by hand is offered beside them", /write one by hand/i.test(text), text.slice(0, 400));
+  check("copying an old invoice from a photo, and checking a company, are offered beside them", /photograph an old invoice/i.test(text) && /Check a company before you quote/.test(text), text.slice(0, 400));
   check("the page says what it is for in one line", text.includes("Photograph the paper, and the rest fills itself in."), text.slice(0, 200));
 
   // --- the people you work with ---
@@ -216,22 +216,19 @@ try {
     [...document.querySelectorAll('[role="tabpanel"]')].filter((p) => p.hasAttribute("inert")).length);
   check("the two panels you are not looking at are inert and hidden", hidden === 2, String(hidden));
 
-  // "Create an invoice" photographs an old one -- that is the scanner-first
-  // dashboard and it is deliberate. What matters is that the other way is
-  // offered where somebody about to tap it can see it. The line had drifted
-  // below the upload panel and the file library, a screenful away, so on a
-  // phone you tapped the tile, got a camera, and never learned there was a
-  // choice.
+  // Send an invoice writes one; photographing an old one is the line right
+  // under it, where somebody about to tap the button can see the choice. It
+  // once drifted a screenful away, and on a phone nobody learned it existed.
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(1500);
   const offer = await page.evaluate(() => {
-    const tile = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Create an invoice");
-    const byHand = [...document.querySelectorAll("a")].find((a) => a.getAttribute("href") === "/invoices/new");
-    if (!tile || !byHand) return { tile: !!tile, byHand: !!byHand };
-    return { tile: true, byHand: true, gap: Math.round(byHand.getBoundingClientRect().top - tile.getBoundingClientRect().bottom) };
+    const tile = [...document.querySelectorAll("a")].find((a) => a.textContent.trim() === "Send an invoice");
+    const photo = [...document.querySelectorAll("a")].find((a) => a.getAttribute("href") === "/free-invoice?start=photo");
+    if (!tile || !photo) return { tile: !!tile, photo: !!photo };
+    return { tile: tile.getAttribute("href"), photo: true, gap: Math.round(photo.getBoundingClientRect().top - tile.getBoundingClientRect().bottom) };
   });
-  check("writing an invoice by hand is offered beside the tile that opens the camera",
-    offer.tile && offer.byHand && offer.gap >= 0 && offer.gap < 260, JSON.stringify(offer));
+  check("photographing an old invoice is offered right under Send an invoice",
+    offer.tile === "/invoices/new" && offer.photo && offer.gap >= 0 && offer.gap < 260, JSON.stringify(offer));
 
   // ---- who pays for the page-finder ------------------------------------
   //

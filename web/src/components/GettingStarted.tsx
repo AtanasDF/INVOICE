@@ -27,7 +27,7 @@ export default function GettingStarted({ profile, customers, documents, contacts
   const fromInvoice = steps.some((s) => ["name", "address", "numbering", "bank"].includes(s.id) && !s.done);
 
   return (
-    <section aria-labelledby="getting-started" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <section aria-labelledby="getting-started" className="rise-in space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm" style={{ animationDelay: "210ms" }}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 id="getting-started" className="font-semibold">Setting up</h2>

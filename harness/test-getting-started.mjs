@@ -60,7 +60,7 @@ try {
       const e = [...document.querySelectorAll("h1,h2,h3,span,a,p")].filter((x) => x.children.length === 0 && (x.textContent || "").trim().includes(t))[0];
       return e ? Math.round(e.getBoundingClientRect().top + window.scrollY) : null;
     };
-    return { scan: at("Scan a receipt"), setup: at("Setting up"), upload: at("Upload a document"), library: at("Your file library"), screens: +(at("Setting up") / window.innerHeight).toFixed(1) };
+    return { scan: at("Scan a receipt"), setup: at("Setting up"), upload: at("Upload a document"), library: (() => { const e = document.querySelector('[aria-label="Your file library"]'); return e ? Math.round(e.getBoundingClientRect().top + window.scrollY) : at("Your file library"); })(), screens: +(at("Setting up") / window.innerHeight).toFixed(1) };
   });
   check("setting up comes before the upload panel and the file library",
     where.setup !== null && where.upload !== null && where.setup < where.upload && where.setup < where.library, JSON.stringify(where));

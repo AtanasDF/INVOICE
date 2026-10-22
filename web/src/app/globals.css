@@ -443,6 +443,7 @@ body {
   animation-fill-mode: both;
 }
 @media (prefers-reduced-motion: reduce) {
+  .rise-in,
   .paid-pop,
   .paid-tick {
     animation: none;
@@ -533,6 +534,18 @@ label.rounded-xl:active {
    the camera, + Add and the photo viewer (notes/ios-safari.md #5). */
 main > * {
   animation: page-in 180ms ease-out backwards;
+}
+
+/* Home only: its blocks rise a few pixels into place, one after another
+   (2026-10-22, "fancy, rolling, easy"). Six pixels and a third of a second,
+   so it reads as arriving rather than moving, and backwards for the same
+   stacking reason as page-in. Everywhere else stays fade-only. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.rise-in {
+  animation: rise-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

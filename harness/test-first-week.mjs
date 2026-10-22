@@ -134,7 +134,7 @@ try {
   await page.setViewport({ width: 900, height: 900 });
   await sleep(300);
   const groups = await page.evaluate(() => [...document.querySelectorAll("header summary")].map((b) => ({ label: b.textContent.trim(), here: b.className.includes("font-semibold") })));
-  const row = await page.evaluate(() => [...document.querySelectorAll("header nav a")].filter((a) => a.offsetParent).map((a) => ({ label: a.textContent.trim(), here: a.getAttribute("aria-current") === "page" })));
+  const row = await page.evaluate(() => [...document.querySelectorAll("header nav a")].filter((a) => a.offsetParent && !a.closest("details:not([open])")).map((a) => ({ label: a.textContent.trim(), here: a.getAttribute("aria-current") === "page" })));
   check("on a wide screen the main links sit in the header, Mileage marked, the rest under More",
     JSON.stringify(row.map((r) => r.label)) === JSON.stringify(["Home", "Scan", "Invoices", "Receipts", "Customers", "Mileage", "Settings"]) &&
       row.find((r) => r.label === "Mileage")?.here === true && JSON.stringify(groups) === JSON.stringify([{ label: "More", here: false }, { label: "Menu", here: true }]),
