@@ -36,8 +36,11 @@ const fresh = () => {
   return db;
 };
 
-const snap = async (page, name, full = false) => {
+const light = (page) => page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+const snap = async (page, name, full = false, top = true) => {
   await sleep(900);
+  if (top) await page.evaluate(() => window.scrollTo(0, 0));
+  await sleep(200);
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: full });
   console.log("saved", name);
 };
@@ -46,6 +49,7 @@ const snap = async (page, name, full = false) => {
 {
   const { browser, page } = await launchSignedIn(fresh(), { base: BASE, width: 390, profile: "profile-shots-fresh" });
   try {
+    await light(page);
     await signIn(page, BASE);
     await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
     await page.waitForFunction(() => document.body.innerText.includes("Setting up"), { timeout: 20000 });
@@ -58,12 +62,16 @@ const snap = async (page, name, full = false) => {
   const { db, I1 } = seeded();
   const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-shots-used" });
   try {
+    await light(page);
     await signIn(page, BASE);
     await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
     await sleep(1200);
-    await snap(page, "2-home");
+    await snap(page, "2-home", true);
+    await page.evaluate(() => window.scrollTo(0, 0));
     await page.evaluate(() => [...document.querySelectorAll("header summary")].find((s) => s.textContent.trim().startsWith("Menu"))?.click());
-    await snap(page, "3-menu");
+    await page.setViewport({ width: 390, height: 1100 });
+    await snap(page, "3-menu", false, false);
+    await page.setViewport({ width: 390, height: 844 });
     await page.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" });
     await snap(page, "4-invoices-with-quotes-tab");
     await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
@@ -71,9 +79,9 @@ const snap = async (page, name, full = false) => {
     await page.goto(`${BASE}/invoices/${I1}`, { waitUntil: "networkidle0" });
     await page.waitForFunction(() => document.body.innerText.includes("How to pay"), { timeout: 20000 }).catch(() => {});
     await page.evaluate(() => [...document.querySelectorAll("p")].find((p) => p.textContent.trim() === "How to pay")?.scrollIntoView({ block: "center" }));
-    await snap(page, "6-invoice-pay-now");
+    await snap(page, "6-invoice-pay-now", false, false);
     await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
     await page.evaluate(() => document.getElementById("payment-link")?.scrollIntoView({ block: "center" }));
-    await snap(page, "7-settings-payment-link");
+    await snap(page, "7-settings-payment-link", false, false);
   } finally { await browser.close(); }
 }
