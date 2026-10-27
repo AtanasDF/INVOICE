@@ -5,6 +5,24 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-10-27: the new Mac (user atanasfragov) checked, nothing changed in the app
+
+- Fresh clone at `~/INVOICE`. Every 22/10 branch (website, contacts-everywhere,
+  bring-contacts, google-sign-in, front-door, launch-simplify, cloud-round-5) is already in
+  `main`; the "not merged" lines in the entries below are stale. Only three 18/10 audit
+  branches hold commits main lacks, notes only, their one fix (`f9d7fae`) already in.
+- Node 24.22 / npm 11. `npm ci` in web/ and harness/: npm 11 holds back four install
+  scripts (@google/genai no-op, core-js banner, protobufjs, unrs-resolver); nothing needed them.
+- tsc, `eslint src`, `npm run build` clean. 20 suites against `next start -p 3100`, one at a
+  time, all green: tax-rules 41, money-invariants 22, utc-today 18, csv-safety 15,
+  contact-import 38, leftovers 71, api-routes 126, first-page 18, website 30,
+  bring-contacts 20, dashboard 30, route-guards 57, sign-up 20, free-draft 19, save-as 24,
+  statement 22, payments 17, receipts-list 55, quotes 35, payment-link 16.
+- Trap when preparing `gen/` by hand: running `tsc -p tsconfig.logic.json` again AFTER the
+  `@/lib` rewrite writes the unrewritten files back, and the logic suites die on
+  `Cannot find package '@/lib'`. Rewrite last.
+
+
 ## 2026-10-22 (evening): phone guide, Google button, bring your contacts in
 
 - **Live on main:** `/help/home-screen`, a drawn picture for every tap of adding the app to an
