@@ -5,6 +5,27 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-10-28: the iPhone camera threw every batch shot away
+
+- **What he saw** (his screen recording, 08:20): the outline found the invoice fine, then
+  at each shot the screen went black, "Starting camera…", and "The camera restarted before
+  that photo was taken". Nothing reached the pile, so nothing was read (0 scans in the DB).
+- **Cause:** on the iPhone the full-resolution still (`ImageCapture.takePhoto`) mutes or
+  ends the video track while it is taken. The track's interruption check (ended/mute
+  listeners) took that for a lost camera and reopened it mid-shot, and `shoot()` drops a
+  shot whose stream changed. The frame watchdog already stood down during a shot
+  (`watchdogMayFire`); the listeners did not.
+- **Fix:** the check is held back while a shot is in flight and run after it; a still that
+  interrupted the track sets `camera-still-breaks` in localStorage, and that device uses
+  the video frame from then on. `test-still-interrupts` (stand-in takePhoto that ends the
+  track): 0/3 on the old build (15 attempts, 0 shots, the message shown), 3/3 on the fix.
+- Tried and reverted: a time limit on the batch print-stillness wait (66f36fe). A swaying
+  hand-held clip (`gen-batch-handheld.py`, `test-batch-handheld`) passed on the old build, so
+  the guess was unproven; the suite stays as a guard.
+- **Open, not fixed:** a white invoice on an off-white worktop is never found
+  (`gen-pale.py`, `test-pale`: light oak passes, white worktop fails on main). Every older
+  clip is a white page on a dark table. The suite is red on purpose until that's fixed.
+
 ## 2026-10-27: the new Mac (user atanasfragov) checked, nothing changed in the app
 
 - Fresh clone at `~/INVOICE`. Every 22/10 branch (website, contacts-everywhere,

@@ -619,6 +619,24 @@ function release(...canvases: (HTMLCanvasElement | null | undefined)[]) {
   for (const c of canvases) if (c) c.width = c.height = 0;
 }
 
+// Per device, like the scanner mode: a camera whose still interrupts its own
+// video does it every time.
+const STILL_BREAKS_KEY = "camera-still-breaks";
+function stillBreaksCamera(): boolean {
+  try {
+    return localStorage.getItem(STILL_BREAKS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function rememberStillBreaksCamera() {
+  try {
+    localStorage.setItem(STILL_BREAKS_KEY, "1");
+  } catch {
+    // private mode: asked again next time the camera opens
+  }
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
 }
@@ -870,6 +888,13 @@ export default function DocumentCapture({
   const interruptedRef = useRef(false);
   // A shot is being taken, so a frozen preview is the still, not a dead camera.
   const capturingRef = useRef(false);
+  // The track's own interruption check, held back while a shot is in flight
+  // and run once it is done. On an iPhone the full-resolution still mutes or
+  // ends the video track while it is taken; reopening the camera there and
+  // then threw every shot away ("The camera restarted before that photo was
+  // taken"), on every page (Atanas's screen recording, 2026-10-28).
+  const afterCaptureRef = useRef<(() => void) | null>(null);
+  const stillTriedRef = useRef(false);
   // OpenCV is loaded the moment the live-camera path mounts. "failed"
   // carries the real error text: it is the diagnostic the user will
   // screenshot, so it is never rewritten into something friendlier.
@@ -1233,7 +1258,7 @@ export default function DocumentCapture({
         if (cancelled) return;
         photoRef.current = null;
         const ImageCaptureGlobal = (window as unknown as { ImageCapture?: ImageCaptureCtor }).ImageCapture;
-        if (ImageCaptureGlobal && track) {
+        if (ImageCaptureGlobal && track && !stillBreaksCamera()) {
           try {
             const photo = { track, capture: new ImageCaptureGlobal(track), caps: null as PhotoCaps | null };
             photoRef.current = photo;
@@ -1278,6 +1303,10 @@ export default function DocumentCapture({
         let graceTimer: ReturnType<typeof setTimeout> | null = null;
         const check = () => {
           if (cancelled || !track) return;
+          if (capturingRef.current) {
+            afterCaptureRef.current = check;
+            return;
+          }
           const now = performance.now();
           const action = interruptionAction({
             ended: track.readyState === "ended",
@@ -1827,6 +1856,7 @@ export default function DocumentCapture({
       const within = (want: number, r?: PhotoRange) => (r && r.max > 0 ? Math.max(r.min, Math.min(r.max, want)) : undefined);
       const imageWidth = within(PHOTO_ASK.imageWidth, caps?.imageWidth);
       const imageHeight = within(PHOTO_ASK.imageHeight, caps?.imageHeight);
+      stillTriedRef.current = true;
       const blob = await withTimeout(photo.capture.takePhoto(imageWidth && imageHeight ? { imageWidth, imageHeight } : undefined), PHOTO_TIMEOUT_MS);
       bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" });
     } catch {
@@ -1981,11 +2011,23 @@ export default function DocumentCapture({
   }
 
   async function capture() {
+    stillTriedRef.current = false;
+    afterCaptureRef.current = null;
     capturingRef.current = true;
     try {
       await shoot();
     } finally {
       capturingRef.current = false;
+      const again = afterCaptureRef.current as (() => void) | null;
+      afterCaptureRef.current = null;
+      // The track was interrupted while the still was taken: this camera
+      // can't take one without stopping, so from now on it uses the video
+      // frame, which is what every shot here ended up as anyway.
+      if (again && stillTriedRef.current) {
+        photoRef.current = null;
+        rememberStillBreaksCamera();
+      }
+      again?.();
     }
   }
 
