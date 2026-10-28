@@ -18,7 +18,7 @@ try {
   await page.evaluateOnNewDocument(() => { window.__badges = []; navigator.setAppBadge = async (n) => { window.__badges.push(n); }; navigator.clearAppBadge = async () => { window.__badges.push(0); }; });
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  await waitText(page, "Dashboard");
+  await waitText(page, "Scan a receipt or bill");
   await sleep(800);
   const badges = await page.evaluate(() => window.__badges);
   check("home-screen badge counts overdue invoices and bills due soon", badges[badges.length - 1] === 3, JSON.stringify(badges));

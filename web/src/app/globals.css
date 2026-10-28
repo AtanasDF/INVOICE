@@ -352,6 +352,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Tailwind v4 draws a plain `border` in currentColor, and this app never said
+   otherwise: every card outline was the text colour, black in light and a
+   bright white ring in dark (Atanas, 2026-10-28: "it looks bad"). A divider
+   wants a quiet line. A box you type into still needs an edge you can find --
+   3:1 against the page, WCAG 1.4.11 -- so form controls keep a darker one.
+   In a layer so a `border-x-500` class still wins. */
+@layer base {
+  *, ::before, ::after {
+    border-color: var(--n-200);
+  }
+  input, select, textarea {
+    border-color: var(--n-500);
+  }
+}
+
 .print-only-document {
   display: none;
 }

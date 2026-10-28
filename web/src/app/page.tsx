@@ -34,6 +34,7 @@ import { dueSoon, isBill } from "@/lib/bills";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import { FILE_RING } from "@/lib/fileRing";
+import { EmailAddressBox, MailIcon, useEmailItIn } from "@/components/EmailItIn";
 
 // The dashboard is a scanner (Atanas, 2026-09-23: "the scanner is going to
 // play the role of the first page"), and since 2026-10-28 it is two screens,
@@ -42,9 +43,12 @@ import { FILE_RING } from "@/lib/fileRing";
 // is the last few things saved. Everything that was looking rather than doing
 // went to the page built for it: the lists and the late-payment breakdown to
 // Money, the library to Files, the people to Customers.
-const TILE = "flex min-h-16 items-center justify-center gap-2 rounded-xl border bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md active:scale-[0.97]";
+// Filled, not outlined (2026-10-28, "it looks bad"): in dark mode every
+// outline was a bright white ring, and a page of rings reads as a form.
+const TILE = "flex min-h-20 w-full flex-col [&>svg]:size-5 items-center justify-center gap-1.5 rounded-xl bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md active:scale-[0.97]";
+const PANEL = "rounded-2xl bg-white px-4 py-2 text-neutral-900 shadow-sm";
 const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]";
-const FIGURE = "rounded-xl bg-neutral-100 p-3 text-neutral-900";
+const FIGURE = "rounded-xl bg-white p-3 text-neutral-900 shadow-sm";
 
 function ScanIcon() {
   return (
@@ -80,6 +84,7 @@ function Dashboard() {
   const [needsReviewCount, setNeedsReviewCount] = useState(0);
   const [tax, setTax] = useState<TaxEstimate | null>(null);
   const [recentDocs, setRecentDocs] = useState<Recent[]>([]);
+  const email = useEmailItIn(profile?.inboxToken ?? null);
 
   // On iOS with the native camera chosen, the dashboard's Scan tap is
   // the one real user gesture available -- spending it on navigation to
@@ -228,17 +233,17 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Home</h1>
         <p className="mt-1 text-neutral-600">Photograph the paper, and the rest fills itself in.</p>
       </div>
 
       {todo.length > 0 && (
-        <section aria-labelledby="todo" className="rounded-xl border bg-white px-4 py-2 text-neutral-900 shadow-sm">
+        <section aria-labelledby="todo" className={PANEL}>
           <h2 id="todo" className="pt-1 text-sm font-semibold">To do</h2>
           <ul>
             {todo.map((t) => (
               <li key={t.href}>
-                <Link href={t.href} className="flex items-center justify-between gap-3 border-b py-3 text-sm last:border-b-0">
+                <Link href={t.href} className="flex items-center justify-between gap-3 border-b border-neutral-200 py-3 text-sm last:border-b-0">
                   <span className={`min-w-0 wrap-anywhere ${t.late ? "text-red-700" : ""}`}>{t.text}</span>
                   <span aria-hidden="true" className="text-neutral-600">&rsaquo;</span>
                 </Link>
@@ -267,13 +272,18 @@ function Dashboard() {
           </Link>
         )}
 
-        <div className="rise-in grid grid-cols-2 gap-2 sm:gap-3" style={{ animationDelay: "70ms" }}>
-          <UploadFilesButton href="/scan" label="Upload" buttonClassName={`${TILE} w-full`} className="w-full" />
+        <div className="rise-in grid grid-cols-3 gap-2 sm:gap-3" style={{ animationDelay: "70ms" }}>
+          <UploadFilesButton href="/scan" label="Upload" buttonClassName={TILE} className="w-full" />
           <Link href="/invoices/new" className={TILE}>
             <DocumentIcon className="h-5 w-5" />
             <span>New invoice</span>
           </Link>
+          <button type="button" aria-expanded={email.open} onClick={() => void email.toggle()} className={TILE}>
+            <MailIcon />
+            <span>Email it in</span>
+          </button>
         </div>
+        {email.open && <EmailAddressBox address={email.address} making={email.making} />}
         {/* Right under New invoice, where somebody about to write one sees the
             choice. It once drifted a screenful away and nobody learned it
             existed. */}
@@ -302,7 +312,7 @@ function Dashboard() {
             </Link>
           </div>
 
-          <section aria-labelledby="recent" className="rounded-xl border bg-white px-4 py-2 text-neutral-900 shadow-sm">
+          <section aria-labelledby="recent" className={PANEL}>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <h2 id="recent" className="text-sm font-semibold">Recent</h2>
               <Link href="/files" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">See everything in Files</Link>
@@ -310,7 +320,7 @@ function Dashboard() {
             <ul>
               {recentDocs.map((d) => (
                 <li key={d.id}>
-                  <Link href={d.href} className="flex items-center justify-between gap-3 border-b py-2.5 text-sm last:border-b-0">
+                  <Link href={d.href} className="flex items-center justify-between gap-3 border-b border-neutral-200 py-2.5 text-sm last:border-b-0">
                     <span className="min-w-0 wrap-anywhere">
                       {d.who}
                       <span className="block text-xs text-neutral-500">{shortDate(d.date)} · {d.note}</span>

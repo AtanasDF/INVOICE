@@ -106,6 +106,7 @@ check("ScanLimitNotice's Read it now has its own ref", /carried\.current\) retur
 // read(), not code(): this file has pick("image/*"), which the comment
 // stripper takes for the start of a block comment.
 check("the email-in address is made once at a time, and a failure ends the spinner", /makingNow\.current\) \{/.test(read("components/UploadPanel.tsx")) && /finally \{\s*makingNow\.current = false;\s*setMaking\(false\)/.test(read("components/UploadPanel.tsx")));
+check("...and the same on Home's Email it in", /makingNow\.current\) return;/.test(read("components/EmailItIn.tsx")) && /finally \{\s*makingNow\.current = false;\s*setMaking\(false\)/.test(read("components/EmailItIn.tsx")));
 
 // ── 2. A failed load is not an empty list ──────────────────────────────
 check("reminders: a failed read is an error, not an empty map", !/catch\([^)]*\)\s*=>\s*\{?\s*if \(live\) setSent\(new Map\(\)\)/.test(code("components/invoice/InvoiceReminders.tsx")) && /loadFailed\(/.test(code("components/invoice/InvoiceReminders.tsx")));

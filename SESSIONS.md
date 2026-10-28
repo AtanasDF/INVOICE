@@ -43,7 +43,14 @@ Atanas approved the drawing ("Build the menu and Home as drawn").
   Invoices tab), payments and vat-snapshot (Home's figure). keyboard-only no longer
   counts tabindex=-1 targets, worst-phone skips the sr-only skip link: both were red
   before this change too.
-- Not yet seen on his iPhone.
+- First look on his phone: "I don't see my send files via email" and "it looks bad".
+  **Email it in** is back on Home as a third button beside Upload and New invoice
+  (`components/EmailItIn.tsx`, the old panel's address logic, made on first tap).
+  **Why it looked bad**: Tailwind v4 draws a plain `border` in currentColor and the app
+  never set one, so every outline was the text colour, a white ring on every card in dark
+  mode. `globals.css` now sets `--n-200` for borders and `--n-500` on inputs, selects and
+  textareas (they still need a 3:1 edge). Home's boxes are filled cards with a soft shadow,
+  no outline, and the heading says Home, as the menu does.
 
 ## 2026-10-28 (later): launch review, then week 1 of the plan
 
