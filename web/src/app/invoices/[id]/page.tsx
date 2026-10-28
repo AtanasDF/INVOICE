@@ -663,8 +663,8 @@ export default function InvoiceViewPage() {
             <Link href="/invoices" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Invoices</Link>
             <h1 className="mt-1 text-2xl font-bold">Draft invoice</h1>
             <p className="mt-1 text-neutral-600">
-              Nothing&apos;s been sent yet — everything here, including the client and line items, is still
-              editable. Marking it sent locks the financial content and starts the due-date clock.
+              Not sent yet, so you can still change anything. Once you mark it sent, the amounts can&apos;t be
+              changed.
             </p>
           </div>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass("draft", false)}`}>Draft</span>
@@ -785,9 +785,9 @@ export default function InvoiceViewPage() {
             <div>
               <h2 className="font-semibold">Mark as sent</h2>
               <p className="mt-1 text-sm text-neutral-600">
-                This assigns invoice number <span className="font-medium text-neutral-900">{sendPreviewNumber}</span>,
-                locks the invoice in, and starts the due-date clock. There&apos;s no way to type a different number
-                here — it&apos;s assigned automatically to keep the sequence gap-free.
+                It becomes invoice number <span className="font-medium text-neutral-900">{sendPreviewNumber}</span> and
+                can&apos;t be changed after that. Invoice numbers follow on from each other with no gaps, so the
+                number can&apos;t be picked by hand.
               </p>
             </div>
             {sendError && <p role="alert" className="text-sm text-red-600">{sendError}</p>}

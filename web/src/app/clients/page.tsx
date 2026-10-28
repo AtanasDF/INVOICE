@@ -280,20 +280,23 @@ export default function ClientsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
-          <button
-            type="button"
-            onClick={() => setBringing((b) => !b)}
-            aria-expanded={bringing || (!loading && !error && clients.length === 0)}
-            className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700"
-          >
-            Bring in a list
-          </button>
+          {/* With nobody in the list the Bring in card is already open below. */}
+          {clients.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setBringing((b) => !b)}
+              aria-expanded={bringing}
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700"
+            >
+              Bring in a list
+            </button>
+          )}
           {visibleClients.length > 0 && (
             <button onClick={exportClients} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
               Download for a spreadsheet
             </button>
           )}
-          <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab === "client" ? "customer" : "supplier"}`} addHref={`/clients/new?kind=${tab}`} />
+          <ScanOrAdd scanHref={`/clients/new?kind=${tab}&scan=1`} scanLabel={`Scan a ${tab === "client" ? "customer" : "supplier"}`} addHref={`/clients/new?kind=${tab}`} upload={false} />
         </div>
       </div>
 

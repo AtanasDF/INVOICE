@@ -108,7 +108,7 @@ export default function Welcome() {
           ))}
         </ul>
         <p className="text-base text-neutral-700 md:col-start-1 md:row-start-4">
-          <Link href="/help/home-screen" className="font-medium underline">Put it on your phone</Link>, with its own icon, like any other app.
+          <Link href="/help/home-screen" className="inline-block py-1 font-medium underline">Put it on your phone</Link>, with its own icon, like any other app.
         </p>
       </div>
     </div>

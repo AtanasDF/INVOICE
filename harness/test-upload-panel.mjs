@@ -17,9 +17,9 @@ Object.assign(db.tables, { receipts: [], recurring_expenses: [], invoice_payment
 db.tables.business_profile.push({ user_id: UID, business_name: "Nasko Plastering", vat_registered: false, invoice_prefix: "INV-", invoice_next_number: 1, inbox_token: TOKEN });
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-upload-panel" });
-const panel = () => page.evaluate(() => document.querySelector('[aria-label="Upload a document"]')?.innerText ?? "");
+const panel = () => page.evaluate(() => document.querySelector('[aria-label="Upload photos or PDFs"]')?.innerText ?? "");
 const buttons = () => page.evaluate(() =>
-  [...(document.querySelector('[aria-label="Upload a document"]')?.querySelectorAll("button") ?? [])].map((b) => b.textContent.trim()));
+  [...(document.querySelector('[aria-label="Upload photos or PDFs"]')?.querySelectorAll("button") ?? [])].map((b) => b.textContent.trim()));
 
 try {
   await signIn(page, BASE);
@@ -33,7 +33,7 @@ try {
   check("...then Email it in", /Email it in/.test(b[2] ?? ""), JSON.stringify(b));
 
   const t = await panel();
-  check("it still says what it is", /Upload a document/.test(t), t.slice(0, 120));
+  check("it still says what it is", /Upload photos or PDFs/.test(t), t.slice(0, 120));
   check("dragging and pasting are mentioned once, quietly", /drag files here/.test(t) && /paste a screenshot/.test(t), t.slice(0, 300));
 
   // --- the address that was buried in Settings ---
@@ -59,7 +59,7 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(1200);
   const dropWorked = await page.evaluate(async () => {
-    const el = document.querySelector('[aria-label="Upload a document"]');
+    const el = document.querySelector('[aria-label="Upload photos or PDFs"]');
     const dt = new DataTransfer();
     const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
     dt.items.add(new File([png], "dropped.png", { type: "image/png" }));
@@ -73,7 +73,7 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(1200);
   await page.evaluate(() => {
-    const el = document.querySelector('[aria-label="Upload a document"]');
+    const el = document.querySelector('[aria-label="Upload photos or PDFs"]');
     const dt = new DataTransfer();
     dt.items.add(new File(["x"], "notes.txt", { type: "text/plain" }));
     el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));

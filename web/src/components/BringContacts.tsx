@@ -147,7 +147,7 @@ export default function BringContacts({ contacts, ownName, onAdded }: { contacts
         <>
           <p className="text-sm font-medium">Bring your customers and suppliers in</p>
           <p className="text-sm text-neutral-600">
-            A spreadsheet (Excel or CSV) from your old app, contacts shared from your phone, or photos and PDFs of old invoices and bills. You see the list before anything is added.
+            A spreadsheet from your old app, contacts shared from your phone, or photos and PDFs of old invoices and bills. You see the list before anything is added.
           </p>
           <label aria-disabled={state !== "idle"} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition active:scale-95 motion-reduce:transition-none">
             {state === "reading" ? progress || "Reading…" : "Choose files"}

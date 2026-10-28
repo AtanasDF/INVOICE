@@ -118,7 +118,7 @@ const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center g
 
   return (
     <section
-      aria-label="Upload a document"
+      aria-label="Upload photos or PDFs"
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); void take(Array.from(e.dataTransfer.files)); }}
@@ -126,7 +126,7 @@ const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center g
     >
       <div className="flex items-center gap-2">
         <UploadIcon className="h-5 w-5" />
-        <h2 className="font-semibold">Upload a document</h2>
+        <h2 className="font-semibold">Upload photos or PDFs</h2>
       </div>
 
       <div className="flex gap-2">

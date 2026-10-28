@@ -160,7 +160,7 @@ export default function ReviewQueuePage() {
       <div>
         <h1 className="text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">
-          Receipts that came in by email — check what was read off them before they count toward your records.
+          Receipts that came in by email. Check each one, then save it.
         </p>
       </div>
       <Tip id="review-how">How it works: check what was read off each one. Once you save it, it counts towards your totals.</Tip>
@@ -188,24 +188,26 @@ export default function ReviewQueuePage() {
             const isInvoice = r.documentType === "invoice";
             return (
               <div key={r.id} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-                <div className="flex items-start gap-4">
+                {/* One column on a phone: beside an 80px picture the dates read
+                    "23/07/20" and the supplier was cut to a word. */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                   {r.imageDataUrl ? (
                     isPdf ? (
-                      <div className="flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500">
+                      <div className="flex h-20 w-full flex-shrink-0 flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500 sm:w-20">
                         <DocumentIcon className="h-6 w-6" />
                         PDF
                       </div>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={r.imageDataUrl} alt="" className="h-20 w-20 flex-shrink-0 rounded-lg border object-cover" />
+                      <img src={r.imageDataUrl} alt="" className="h-48 w-full flex-shrink-0 rounded-lg border object-contain sm:h-20 sm:w-20 sm:object-cover" />
                     )
                   ) : (
-                    <div className="flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center rounded-lg border bg-neutral-50 text-xs text-neutral-500 text-center">
+                    <div className="flex h-12 w-full flex-shrink-0 flex-col items-center justify-center rounded-lg border bg-neutral-50 text-xs text-neutral-500 text-center sm:h-20 sm:w-20">
                       No attachment
                     </div>
                   )}
 
-                  <div className="flex-1 space-y-3">
+                  <div className="min-w-0 flex-1 space-y-3">
                     {badge && (
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
                     )}

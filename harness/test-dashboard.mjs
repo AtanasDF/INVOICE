@@ -69,7 +69,7 @@ try {
       .filter((t) => ["Send an invoice", "Send a quote"].includes(t)));
   check("two underneath: send an invoice, send a quote", JSON.stringify(tiles) === JSON.stringify(["Send an invoice", "Send a quote"]), JSON.stringify(tiles));
   const upload = await page.evaluate(() => {
-    const el = document.querySelector('[aria-label="Upload a document"]');
+    const el = document.querySelector('[aria-label="Upload photos or PDFs"]');
     return el ? [...el.querySelectorAll("button")].map((b) => b.textContent.trim()) : null;
   });
   check("...and uploading is its own panel with three doors", Array.isArray(upload) && upload.length === 3, JSON.stringify(upload));

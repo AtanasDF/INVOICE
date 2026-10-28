@@ -5,6 +5,27 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-10-28 (later): launch review, then week 1 of the plan
+
+- `notes/launch-review-2026-10-28.md`: the app walked on his account at 390pt, what is
+  broken / confusing / ugly, and a three-week plan. Week 1 done here:
+- **Feedback pill** gone on phones (`max-sm:hidden`); it sat over Remove, amounts, the
+  Settings Save bar. Footer link renamed "Feedback", shown signed in only (a customer on
+  `/i/` has no account to send it from). The phone padding kept for the pill went too.
+- **One name for upload**: "Upload photos or PDFs" / "Upload a photo or PDF" everywhere
+  (was four names). Customers: one way in from files (the Bring in card; `ScanOrAdd
+  upload={false}`), and "Bring in a list" only once there are contacts.
+- **New invoice**: labels above every box; on a phone each line's Description / Qty /
+  Unit price / VAT heading sits in a wrapper with its own box (a shared heading row put
+  "Unit price" right before the Qty box, and test-first-week typed the price into Qty).
+- **Needs review** stacks on a phone: picture on top, full-width form, full dates.
+- **Plain English**: draft / mark-as-sent lines, the New invoice scan line, Needs review
+  subtitle, Expenses period ("October 2026", `monthLabel` in lib/dates), "CSV" out of the
+  Bring in card. Also fixed two that were already red: "Put it on your phone" under 24px on
+  the front door, and test-one-handed counting the 1x1 skip link as a button.
+- 47 suites run one at a time against `next start`, all green at the end.
+- Left for week 2: menu, dashboard length, Settings split, the "How it works" boxes.
+
 ## 2026-10-28: the iPhone camera threw every batch shot away
 
 - **What he saw** (his screen recording, 08:20): the outline found the invoice fine, then

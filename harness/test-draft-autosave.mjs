@@ -27,8 +27,8 @@ const press = (label) => page.evaluate((l) => [...document.querySelectorAll("but
 const offered = async () => (await bodyText(page)).includes("It was kept on this device");
 const VENDOR = 'input[placeholder="Shop or supplier"]';
 const TOTAL = 'input[placeholder^="Total paid"]';
-const NOTES = 'textarea[placeholder="Notes (optional)"]';
-const LINE = 'input[placeholder^="Description (e.g. Monthly work"]';
+const NOTES = 'textarea[aria-label="Notes"]';
+const LINE = 'input[aria-label="Description"]';
 try {
   await signIn(page, BASE);
 

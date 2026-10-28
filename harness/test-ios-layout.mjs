@@ -69,30 +69,20 @@ try {
   check("#2 a receipt line takes 2.50 as typed", (await page.evaluate((el) => el.value, price)) === "2.50", await page.evaluate((el) => el.value, price));
   check("#2 ...with the number keyboard", (await page.evaluate((el) => el.inputMode, price)) === "decimal");
 
-  // --- #23: a fixed bar steps aside while typing ---
+  // --- #23 and #5: no floating Feedback pill on a phone at all (2026-10-28) ---
+  // It sat over the bottom-right of every screen; on a phone Feedback is in
+  // the menu and the footer instead.
   const pillShown = () => page.evaluate(() => {
     const a = [...document.querySelectorAll("a")].find((x) => x.textContent.trim() === "Feedback" && getComputedStyle(x).position === "fixed");
-    return a ? getComputedStyle(a).display !== "none" : null;
+    return a ? getComputedStyle(a).display !== "none" : false;
   });
-  await price.focus();
-  await sleep(100);
-  check("#23 the Feedback pill hides while a box has the keyboard", (await pillShown()) === false);
-  await page.evaluate(() => document.activeElement.blur());
-  await sleep(100);
-  check("#23 ...and comes back after", (await pillShown()) === true);
+  check("#23 no Feedback pill floats over a phone screen", (await pillShown()) === false);
+  check("#23 ...Feedback is in the footer instead", await page.evaluate(() => [...document.querySelectorAll("footer a")].some((x) => x.textContent.trim() === "Feedback" && x.getAttribute("href") === "/feedback")));
 
-  // --- #5 and #23: + Add (on the invoices list) over the pill, and the page held still behind it ---
+  // --- #23: + Add (on the invoices list) holds the page still behind it ---
   await settle(page, "/invoices");
   await clickText(page, "+ Add");
   await sleep(400);
-  const overPill = await page.evaluate(() => {
-    const pill = [...document.querySelectorAll("a")].find((x) => x.textContent.trim() === "Feedback" && getComputedStyle(x).position === "fixed");
-    if (!pill) return "no pill";
-    const r = pill.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return pill.contains(hit) ? "the pill" : hit?.closest(".fixed.inset-0") ? "the sheet" : hit?.tagName;
-  });
-  check("#5 with + Add open, a tap where the pill is lands on the sheet, not on Feedback", overPill === "the sheet", overPill);
   check("#23 ...and the page behind it does not scroll", (await page.evaluate(() => getComputedStyle(document.documentElement).overflowY)) === "hidden");
   await clickText(page, "Cancel").catch(() => page.keyboard.press("Escape"));
 

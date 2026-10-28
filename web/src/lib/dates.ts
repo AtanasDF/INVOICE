@@ -11,3 +11,7 @@ export const dayOf = (iso: string) => (iso.length > 10 ? ukDate(iso) || iso.slic
 
 export const shortDate = (iso: string) =>
   new Date(`${dayOf(iso)}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+// "October 2026" for a "2026-10".
+export const monthLabel = (ym: string) =>
+  new Date(`${ym}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });

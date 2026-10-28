@@ -68,7 +68,7 @@ export default function UploadFilesButton({
     <div className={className}>
       <label aria-disabled={busy || disabled} className={`cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-50 ${FILE_RING} ${buttonClassName}`}>
         <UploadIcon className="h-4 w-4" />
-        {busy ? "Reading files…" : label ?? (multiple ? "Upload from files" : "Upload a file")}
+        {busy ? "Reading files…" : label ?? (multiple ? "Upload photos or PDFs" : "Upload a photo or PDF")}
         <input type="file" accept={camera ? "image/*" : "image/*,application/pdf"} {...(camera ? { capture: "environment" as const } : {})} multiple={!camera && multiple} className="sr-only" onChange={onChange} disabled={busy || disabled} />
       </label>
       {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}

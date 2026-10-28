@@ -30,11 +30,11 @@ try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   // One of the three buttons under the big scan since the rebuild.
-  check("dashboard: a way in from files", (await bodyText(page)).includes("Upload a document"));
+  check("dashboard: a way in from files", (await bodyText(page)).includes("Upload photos or PDFs"));
 
   await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
   const input = await page.$('input[type="file"][multiple]');
-  check("receipts: Upload from files takes several files", !!input && (await bodyText(page)).includes("Upload from files"));
+  check("receipts: Upload photos or PDFs takes several files", !!input && (await bodyText(page)).includes("Upload photos or PDFs"));
   await input.uploadFile(DIR + "doc1.pdf", DIR + "doc2.pdf", DIR + "doc3.pdf");
   await page.waitForFunction(() => location.pathname === "/scan", { timeout: 15000 });
   await page.waitForFunction(() => [...document.querySelectorAll("input")].some((i) => i.value.includes("Acme Tools")), { timeout: 20000 });
@@ -60,11 +60,14 @@ try {
   check("all three saved, each linked", saved.length === 3 && saved[0] === acme?.id && saved[1] === acme?.id && saved[2] === RAW, JSON.stringify(saved));
   check("still only the one supplier added", db.tables.clients.length === 2);
 
+  // Customers has one way in from files since 2026-10-28, the Bring in card
+  // (test-bring-contacts); filling one new contact from a photo is on the
+  // new customer form itself.
   await page.goto(`${BASE}/clients`, { waitUntil: "networkidle0" });
+  check("clients: no second upload button beside + Add", !(await page.$('input[type="file"]:not([multiple])')));
+  await page.goto(`${BASE}/clients/new?kind=client`, { waitUntil: "networkidle0" });
   const one = await page.$('input[type="file"]:not([multiple])');
-  check("clients: single-file upload under the camera button", !!one);
   await one.uploadFile(DIR + "card.png");
-  await page.waitForFunction(() => location.pathname === "/clients/new", { timeout: 15000 });
   await page.waitForFunction(() => [...document.querySelectorAll("input")].some((i) => i.value === "Big Co Ltd"), { timeout: 15000 });
   check("new client filled from the uploaded file, camera not opened", calls.contact === 1 && !(await page.$("video")));
 

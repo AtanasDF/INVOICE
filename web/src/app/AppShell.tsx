@@ -270,23 +270,26 @@ function FeedbackButton() {
   const { user } = useAuth();
   const pathname = usePathname();
   if (!user || pathname === "/feedback" || pathname.startsWith("/i/") || pathname.startsWith("/q/") || pathname.startsWith("/r/")) return null;
-  // The Free invoice page is the one screen with its own bottom bar on a
-  // phone (sm:hidden), and the pill sat on top of it at the same z-10, later
-  // in the DOM -- so a tap on "More", whose centre was inside the pill,
-  // opened Feedback instead. That hid Print, Next invoice and Save to your
-  // account behind a button that couldn't be pressed. The pill steps aside
-  // exactly where the bar is; it is on every other page, for a signed-in
-  // user, at every width.
-  const overBottomBar = pathname === "/free-invoice";
+  // Not on a phone. There it sat over whatever was at the bottom right of
+  // the screen -- a receipt's Remove, the amounts on the dashboard, the
+  // Settings Save bar, the Free page's own bottom bar (Atanas's walk-through,
+  // 2026-10-28). On a phone Feedback is in the menu and in the footer.
   return (
     <Link
       href="/feedback"
-      className={`hide-while-typing fixed z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 print:hidden${overBottomBar ? " max-sm:hidden" : ""}`}
+      className="hide-while-typing fixed z-10 rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-neutral-800 max-sm:hidden print:hidden"
       style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))", right: "calc(1.25rem + env(safe-area-inset-right))" }}
     >
       Feedback
     </Link>
   );
+}
+
+// Signed in only, like the page it opens: a customer reading an invoice at
+// /i/ has no account to send feedback from.
+function FeedbackLink() {
+  const { user } = useAuth();
+  return user ? <Link href="/feedback" className="underline">Feedback</Link> : null;
 }
 
 // /help is behind the sign-in, so for a stranger on the front door the link
@@ -334,8 +337,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <Header />
       <FocusOnNavigate target={main} />
-      {/* Room at the foot on a phone, so the Feedback pill never sits on a last card's buttons. */}
-      <main id="main" ref={main} tabIndex={-1} className="safe-x mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none max-sm:pb-24 print:max-w-none print:px-0 print:py-0">
+      <main id="main" ref={main} tabIndex={-1} className="safe-x mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none print:max-w-none print:px-0 print:py-0">
         <Gate>{children}</Gate>
       </main>
       {/* Small, quiet, and on every page: an advertiser, an app store and a
@@ -351,7 +353,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/terms" className="underline">Terms</Link>
           <Link href="/accessibility" className="underline">Accessibility</Link>
           <Link href="/security" className="underline">Security</Link>
-          <Link href="/feedback" className="underline">Tell us something</Link>
+          <FeedbackLink />
         </div>
       </footer>
       <FeedbackButton />

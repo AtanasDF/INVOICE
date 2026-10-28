@@ -9,6 +9,15 @@ import { CreditNote, Invoice, Receipt, businessProfileStore, creditNotesStore, i
 import { incomeOf } from "@/lib/periodIncome";
 import { loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
+import { monthLabel, shortDate } from "@/lib/dates";
+
+// The period as people say it: "October 2026", "26 Oct 2026 to 1 Nov 2026".
+function PeriodText({ label }: { label: string }) {
+  const day = (iso: string) => (iso ? shortDate(iso) : "…");
+  if (/^\d{4}-\d{2}$/.test(label)) return <>{monthLabel(label)}</>;
+  const range = label.split(" to ");
+  return <>{range.length === 2 ? `${day(range[0])} to ${day(range[1])}` : label}</>;
+}
 import { spendByCategory, weekOf } from "@/lib/expensePeriod";
 import Tip from "@/components/Tip";
 
@@ -125,7 +134,7 @@ export default function ExpensesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-bold">Expenses</h1>
-          <p className="mt-1 text-neutral-600">{periodLabel}</p>
+          <p className="mt-1 text-neutral-600"><PeriodText label={periodLabel} /></p>
           <span className="flex flex-wrap gap-3 text-sm font-medium text-neutral-700">
             <Link href="/mileage" className="underline">Mileage</Link>
             <Link href="/vat" className="underline">VAT</Link>
@@ -194,7 +203,7 @@ export default function ExpensesPage() {
       </div>
 
       <div className="hidden print:block">
-        <h1 className="text-2xl font-bold">Expense summary — {periodLabel}</h1>
+        <h1 className="text-2xl font-bold">Expense summary — <PeriodText label={periodLabel} /></h1>
         <p className="text-sm text-neutral-500">{viewMode === "combined" ? "Combined with invoices" : "Expenses only"}</p>
       </div>
 

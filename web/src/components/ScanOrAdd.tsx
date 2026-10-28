@@ -6,7 +6,9 @@ import UploadFilesButton from "@/components/UploadFilesButton";
 // work starts was the thing to be rid of. Upload from files stays out in
 // the open beside it (Atanas: "underneath the camera button all over you
 // should have a button to upload from files straight away").
-export default function ScanOrAdd({ scanHref, scanLabel, addHref }: { scanHref: string; scanLabel: string; addHref: string }) {
+// `upload={false}` where the page already has its own way in from files
+// (Customers: the Bring in card takes photos, PDFs and spreadsheets).
+export default function ScanOrAdd({ scanHref, scanLabel, addHref, upload = true }: { scanHref: string; scanLabel: string; addHref: string; upload?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <AddAnything
@@ -15,7 +17,7 @@ export default function ScanOrAdd({ scanHref, scanLabel, addHref }: { scanHref: 
           { href: addHref, label: "Fill it in by hand" },
         ]}
       />
-      <UploadFilesButton href={scanHref.startsWith("/scan") ? "/scan" : scanHref} multiple={scanHref.startsWith("/scan")} />
+      {upload && <UploadFilesButton href={scanHref.startsWith("/scan") ? "/scan" : scanHref} multiple={scanHref.startsWith("/scan")} />}
     </div>
   );
 }

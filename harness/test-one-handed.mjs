@@ -40,7 +40,8 @@ try {
     await sleep(900);
     const measured = await page.evaluate(() =>
       [...document.querySelectorAll("button, a[href], summary")]
-        .filter((el) => el.offsetParent !== null)
+        // The skip link is 1x1 until a keyboard lands on it; it is never tapped.
+        .filter((el) => el.offsetParent !== null && !el.classList.contains("sr-only"))
         .map((el) => {
           const r = el.getBoundingClientRect();
           const cs = getComputedStyle(el);

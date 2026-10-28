@@ -780,8 +780,7 @@ export default function NewInvoicePage() {
         </div>
       ) : (
         <p className="text-xs text-neutral-500 -mt-4">
-          Scanning fills in the date, line items, and notes from a source document (a timesheet, delivery note,
-          etc.) — the customer is always your own choice below, never guessed.
+          Scan a timesheet or delivery note and the date, lines and notes are filled in. You pick the customer.
         </p>
       )}
       {scanError && <p role="alert" className="text-sm text-red-600">{scanError}</p>}
@@ -859,7 +858,8 @@ export default function NewInvoicePage() {
           usage={clientUsage}
           text={customerText}
           onText={setCustomerText}
-          placeholder="Customer — type a name, or tap the arrow"
+          label="Customer"
+          placeholder="Type a name, or tap the arrow"
           emptyOption="Select a customer or company"
         />
 
@@ -904,14 +904,19 @@ export default function NewInvoicePage() {
             />
           </div>
         </div>
-        <input aria-label="Payment terms"
-          className="w-full rounded-lg border px-3 py-2"
-          value={paymentTerms}
-          onChange={(e) => {
-            applyTerms(e.target.value);
-          }}
-          placeholder="Payment terms (e.g. 30 days)"
-        />
+        <div>
+          <label className="text-xs text-neutral-500" htmlFor="invoice-terms">Payment terms</label>
+          <input
+            id="invoice-terms"
+            aria-label="Payment terms"
+            className="w-full rounded-lg border px-3 py-2"
+            value={paymentTerms}
+            onChange={(e) => {
+              applyTerms(e.target.value);
+            }}
+            placeholder="e.g. 30 days"
+          />
+        </div>
 
         <CisToggle rate={cisRate} onChange={setCisRate} />
 
@@ -969,36 +974,50 @@ export default function NewInvoicePage() {
           </div>
           {items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 border-b pb-3 sm:border-0 sm:pb-0">
-              <input aria-label="Description"
-                className={`col-span-12 ${profile?.vatRegistered ? "sm:col-span-4" : "sm:col-span-6"} rounded-lg border px-3 py-2`}
-                placeholder="Description (e.g. Monthly work, 12-30 June)"
-                value={it.description}
-                onChange={(e) => updateItem(idx, { description: e.target.value })}
-                onBlur={() => onDescriptionBlur(idx)}
-              />
-              <NumberInput
-                className={`col-span-4 rounded-lg border px-3 py-2 text-right sm:col-span-2`}
-                placeholder="Qty"
-                aria-label="Quantity"
-                value={it.quantity}
-                onChange={(quantity) => updateItem(idx, { quantity })}
-              />
-              <NumberInput
-                className={`${profile?.vatRegistered ? "col-span-4" : "col-span-8"} rounded-lg border px-3 py-2 text-right sm:col-span-3`}
-                placeholder="Unit price"
-                aria-label="Unit price"
-                value={it.unitPrice}
-                onChange={(unitPrice) => updateItem(idx, { unitPrice })}
-              />
+              {/* On a phone the column headings above are hidden, so each line
+                  carries its own; the boxes keep their aria-labels. */}
+              <div className={`col-span-12 ${profile?.vatRegistered ? "sm:col-span-4" : "sm:col-span-6"}`}>
+                <span aria-hidden="true" className="text-xs text-neutral-500 sm:hidden">Description</span>
+                <input aria-label="Description"
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="e.g. Monthly work, 12-30 June"
+                  value={it.description}
+                  onChange={(e) => updateItem(idx, { description: e.target.value })}
+                  onBlur={() => onDescriptionBlur(idx)}
+                />
+              </div>
+              <div className={`${profile?.vatRegistered ? "col-span-3" : "col-span-4"} sm:col-span-2`}>
+                <span aria-hidden="true" className="text-xs text-neutral-500 sm:hidden">Qty</span>
+                <NumberInput
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  placeholder="Qty"
+                  aria-label="Quantity"
+                  value={it.quantity}
+                  onChange={(quantity) => updateItem(idx, { quantity })}
+                />
+              </div>
+              <div className={`${profile?.vatRegistered ? "col-span-4" : "col-span-8"} sm:col-span-3`}>
+                <span aria-hidden="true" className="text-xs text-neutral-500 sm:hidden">Unit price</span>
+                <NumberInput
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  placeholder="Unit price"
+                  aria-label="Unit price"
+                  value={it.unitPrice}
+                  onChange={(unitPrice) => updateItem(idx, { unitPrice })}
+                />
+              </div>
               {profile?.vatRegistered && (
-                <select
-                  aria-label="VAT rate"
-                  className="col-span-4 rounded-lg border px-1 py-2 text-xs sm:col-span-2"
-                  value={it.vatRate}
-                  onChange={(e) => updateItem(idx, { vatRate: e.target.value as VatRateKind })}
-                >
-                  {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
-                </select>
+                <div className="col-span-5 sm:col-span-2">
+                  <span aria-hidden="true" className="text-xs text-neutral-500 sm:hidden">VAT</span>
+                  <select
+                    aria-label="VAT rate"
+                    className="w-full rounded-lg border px-1 py-2 text-xs"
+                    value={it.vatRate}
+                    onChange={(e) => updateItem(idx, { vatRate: e.target.value as VatRateKind })}
+                  >
+                    {VAT_RATE_KINDS.map((k) => <option key={k} value={k}>{VAT_RATE_LABELS[k]}</option>)}
+                  </select>
+                </div>
               )}
               <button onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`} className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-sm text-neutral-600 underline">✕</button>
               {cisRate !== null && <LineKind item={it} onChange={(kind) => updateItem(idx, { kind })} />}
@@ -1007,13 +1026,21 @@ export default function NewInvoicePage() {
           <button onClick={addLine} className="text-sm font-medium text-neutral-700 underline">+ Add line</button>
         </div>
 
-        <textarea aria-label="Notes" className="w-full rounded-lg border px-3 py-2" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-        <input aria-label="Tags"
-          className="w-full rounded-lg border px-3 py-2"
-          placeholder="Tags, comma separated (optional, e.g. Site A, Q3 job)"
-          value={tagsInput}
-          onChange={(e) => setTagsInput(e.target.value)}
-        />
+        <div>
+          <label className="text-xs text-neutral-500" htmlFor="invoice-notes">Notes (optional)</label>
+          <textarea id="invoice-notes" aria-label="Notes" className="w-full rounded-lg border px-3 py-2" placeholder="e.g. Thank you for your business" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-neutral-500" htmlFor="invoice-tags">Tags (optional, separate with commas)</label>
+          <input
+            id="invoice-tags"
+            aria-label="Tags"
+            className="w-full rounded-lg border px-3 py-2"
+            placeholder="e.g. Site A, Q3 job"
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+          />
+        </div>
 
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
@@ -1045,7 +1072,7 @@ export default function NewInvoicePage() {
             />
           </div>
           <p className="text-right text-xs text-neutral-500">
-            Saves as a draft — fully editable until you mark it sent, which is what assigns its invoice number, locks the rest in, and starts the due-date clock.
+            Saved as a draft, so you can change anything. It gets its invoice number when you mark it sent; after that it can&apos;t be changed.
           </p>
         </div>
       </div>
