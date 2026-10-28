@@ -21,6 +21,18 @@ import { shortDate } from "@/lib/dates";
 import { todayISO } from "@/lib/today";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 import Tip from "@/components/Tip";
+import TaxSoFar from "@/components/TaxSoFar";
+import { estimateTax } from "@/lib/taxEstimate";
+
+// How late what is owed to you is, in the four bands an accountant would ask
+// about. It was a card of its own on Home until 2026-10-28.
+const LATENESS = [
+  { label: "Not yet due", test: (d: number) => d <= 0 },
+  { label: "1 to 30 days late", test: (d: number) => d >= 1 && d <= 30 },
+  { label: "31 to 60 days late", test: (d: number) => d >= 31 && d <= 60 },
+  { label: "61 to 90 days late", test: (d: number) => d >= 61 && d <= 90 },
+  { label: "Over 90 days late", test: (d: number) => d >= 91 },
+];
 
 const WHEN: Record<Owed["when"], { label: string; className: string }> = {
   late: { label: "Late", className: "bg-red-100 text-red-800" },
@@ -71,6 +83,70 @@ export default function MoneyPage() {
     [invoices, creditNotes, payments, receipts, nameOf, vatRegistered, today]
   );
 
+  const tax = useMemo(() => estimateTax({ invoices, creditNotes, receipts, vatRegistered, today }), [invoices, creditNotes, receipts, vatRegistered, today]);
+  const lateness = useMemo(
+    () => LATENESS.map((b) => ({ label: b.label, total: m.owedToYou.filter((o) => b.test(o.daysLate)).reduce((t, o) => t + o.amount, 0) })),
+    [m]
+  );
+
+  // Home's figures link to #you-owe and #tax, which do not exist until the
+  // records have loaded -- by which time the browser has given up looking.
+  useEffect(() => {
+    if (!loading && window.location.hash) document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
+  }, [loading]);
+
+  // Marking several at once (Atanas, 2026-09-24: "it should let you mark a
+  // few of them... pay this company only, pay that company only"). Money
+  // usually arrives in a lump: one customer settles three invoices with a
+  // single transfer. Each is a payment of whatever is still owed on it -- the
+  // same thing "Mark as paid" does on the invoice itself. Nothing is marked
+  // until the button is pressed, and a failure says which one and leaves the
+  // rest. Moved here from Home on 2026-10-28.
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [settling, setSettling] = useState(false);
+  const settlingRef = useRef(false);
+
+  async function markPickedPaid() {
+    if (settlingRef.current) return;
+    settlingRef.current = true;
+    setSettling(true);
+    setError(null);
+    setDone(null);
+    const chosen = m.owedToYou.filter((o) => picked.has(o.id));
+    const failed: string[] = [];
+    // A payment that landed is money in the books even if the status change
+    // after it failed. Left picked, with its old balance, the next press
+    // recorded the whole amount a second time.
+    const unstatused: string[] = [];
+    const paid = new Set<string>();
+    for (const o of chosen) {
+      try {
+        const p = await paymentsStore.add({ invoiceId: o.id, date: today, amount: o.amount, method: null, note: "Marked as paid" });
+        setPayments((prev) => [...prev, p]);
+      } catch {
+        failed.push(`#${o.what}`);
+        continue;
+      }
+      paid.add(o.id);
+      await invoicesStore
+        .update(o.id, { status: "paid" })
+        .then(() => setInvoices((prev) => prev.map((i) => (i.id === o.id ? { ...i, status: "paid" as const } : i))))
+        .catch(() => unstatused.push(`#${o.what}`));
+    }
+    settlingRef.current = false;
+    setSettling(false);
+    const unsettled = unstatused.length ? ` The payment for ${unstatused.join(", ")} is recorded but it still says unpaid: open it and press Mark as paid.` : "";
+    if (failed.length || unstatused.length) {
+      setError(failed.length ? `Couldn't record ${failed.join(", ")}. The others went through.${unsettled}` : unsettled.trim());
+      setPicked((prev) => new Set([...prev].filter((id) => !paid.has(id))));
+    } else {
+      setDone(`${chosen.length} marked paid.`);
+      setPicking(false);
+      setPicked(new Set());
+    }
+  }
+
   async function markBillPaid(row: Owed) {
     if (paying.current) return;
     paying.current = true;
@@ -104,7 +180,22 @@ export default function MoneyPage() {
       </span>
       <span className="flex flex-wrap items-center justify-end gap-x-3">
         <span className="font-medium">{money(row.amount)}</span>
-        {side === "in" ? (
+        {side === "in" && picking ? (
+          <input
+            type="checkbox"
+            aria-label={`Paid: #${row.what} ${row.who}`}
+            className="size-5"
+            checked={picked.has(row.id)}
+            onChange={(e) =>
+              setPicked((prev) => {
+                const next = new Set(prev);
+                if (e.target.checked) next.add(row.id);
+                else next.delete(row.id);
+                return next;
+              })
+            }
+          />
+        ) : side === "in" ? (
           <Link href={`/invoices/${row.id}`} className="inline-block py-1 text-sm font-medium text-neutral-700 underline">Chase</Link>
         ) : (
           <button onClick={() => markBillPaid(row)} className="inline-block py-1 text-sm font-medium text-neutral-700 underline">Mark paid</button>
@@ -148,11 +239,62 @@ export default function MoneyPage() {
           </div>
 
           <section aria-labelledby="owed-to-you" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
-            <h2 id="owed-to-you" className="font-semibold">Owed to you</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="owed-to-you" className="font-semibold">Owed to you</h2>
+              {m.owedToYou.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => { setPicking((v) => !v); setPicked(new Set()); }}
+                  className="inline-block py-1 text-sm font-medium text-neutral-700 underline"
+                >
+                  {picking ? "Done" : "Mark several paid"}
+                </button>
+              )}
+            </div>
+            {picking && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" onClick={() => setPicked(new Set(m.owedToYou.map((o) => o.id)))} className="rounded-lg border px-2 py-1 text-xs font-medium text-neutral-700">
+                  All of them
+                </button>
+                {[...new Set(m.owedToYou.map((o) => o.who).filter(Boolean))].slice(0, 4).map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setPicked(new Set(m.owedToYou.filter((o) => o.who === name).map((o) => o.id)))}
+                    className="rounded-lg border px-2 py-1 text-xs font-medium text-neutral-700"
+                  >
+                    All from {name}
+                  </button>
+                ))}
+              </div>
+            )}
             {m.owedToYou.length === 0 && !error ? (
               <p className="mt-2 text-sm text-neutral-500">Nothing outstanding. Every invoice you have sent is settled.</p>
             ) : (
               <ul className="mt-2">{m.owedToYou.map((row) => <Row key={row.id} row={row} side="in" />)}</ul>
+            )}
+            {picking && picked.size > 0 && (
+              <button
+                type="button"
+                disabled={settling}
+                onClick={markPickedPaid}
+                className="mt-3 w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {settling
+                  ? "Recording…"
+                  : `Mark ${picked.size} paid · ${money(m.owedToYou.filter((o) => picked.has(o.id)).reduce((t, o) => t + o.amount, 0))}`}
+              </button>
+            )}
+            {m.lateIn > 0 && (
+              <div className="mt-4 space-y-1.5 border-t pt-3">
+                <h3 className="text-sm font-medium">How late it is</h3>
+                {lateness.map((b) => (
+                  <div key={b.label} className="flex items-center justify-between text-sm">
+                    <span className="text-neutral-600">{b.label}</span>
+                    <span className="font-medium">{money(b.total)}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 
@@ -163,6 +305,10 @@ export default function MoneyPage() {
             ) : (
               <ul className="mt-2">{m.youOwe.map((row) => <Row key={row.id} row={row} side="out" />)}</ul>
             )}
+          </section>
+
+          <section id="tax" aria-label="Tax so far">
+            <TaxSoFar estimate={tax} />
           </section>
         </>
       )}

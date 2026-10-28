@@ -101,11 +101,12 @@ try {
   const dash = await bodyText(page);
   check("the dashboard no longer says the account is empty", !/No invoices yet/.test(dash), flat(dash).slice(0, 200));
   check("nothing is shown as owed, because it's paid", /£0\.00[\s\S]{0,40}Owed/.test(dash) || /Owed[\s\S]{0,40}£0\.00/.test(dash), flat(dash).slice(0, 400));
-  check("the month's spending shows the £120", /£120\.00|£100\.00/.test(dash), flat(dash).slice(flat(dash).indexOf("Spent"), flat(dash).indexOf("Spent") + 80));
+  const recent = await page.evaluate(() => document.querySelector('section[aria-labelledby="recent"]')?.innerText ?? "");
+  check("the receipt is among the recent documents, with its £120", /£120\.00/.test(recent), flat(recent).slice(0, 300));
 
-  // Every signed-in page can be reached from the header, and the one you
-  // are on is marked. On a phone that is one Menu button; on a wide screen
-  // three groups (Atanas, 2026-09-22: one organised app).
+  // Every signed-in page can be reached in two taps at most: the header has
+  // Home, five sections and the tools (Atanas, 2026-10-28, launch plan step
+  // F), and each section's other pages are tabs along its top.
   await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Menu"))?.click());
   await sleep(200);
   const reach = await page.evaluate(() => {
@@ -113,13 +114,13 @@ try {
     const current = [...new Set([...document.querySelectorAll('header a[aria-current="page"]')].map((a) => a.getAttribute("href")))];
     return { hrefs, current };
   });
-  const wanted = ["/", "/clients", "/receipts", "/invoices", "/quotes", "/expenses", "/settings", "/receipts/review", "/mileage", "/vat", "/recurring", "/recurring/invoices", "/files", "/feedback"];
-  check("the header reaches every signed-in page", wanted.every((h) => reach.hrefs.includes(h)), JSON.stringify(wanted.filter((h) => !reach.hrefs.includes(h))));
+  const wanted = ["/", "/scan", "/invoices", "/receipts", "/clients", "/money", "/files", "/copy", "/convert", "/check-company", "/jobs", "/help", "/feedback", "/settings"];
+  check("the header reaches every section and tool", wanted.every((h) => reach.hrefs.includes(h)), JSON.stringify(wanted.filter((h) => !reach.hrefs.includes(h))));
   check("...and marks the page you are on", JSON.stringify(reach.current) === '["/"]', JSON.stringify(reach.current));
-  await page.evaluate(() => [...document.querySelectorAll("header a")].find((a) => a.getAttribute("href") === "/mileage")?.click());
-  await page.waitForFunction(() => location.pathname === "/mileage", { timeout: 10000 }).catch(() => {});
+  await page.evaluate(() => [...document.querySelectorAll("header a")].find((a) => a.getAttribute("href") === "/receipts")?.click());
+  await page.waitForFunction(() => location.pathname === "/receipts", { timeout: 10000 }).catch(() => {});
   await sleep(300);
-  check("picking a page from the menu goes there and closes it", page.url().endsWith("/mileage") && (await page.evaluate(() => [...document.querySelectorAll("header details")].every((d) => !d.open))), page.url());
+  check("picking a section from the menu goes there and closes it", page.url().endsWith("/receipts") && (await page.evaluate(() => [...document.querySelectorAll("header details")].every((d) => !d.open))), page.url());
   check(
     "the menu opens without the app's own code, and its pages are real links",
     await page.evaluate(() => {
@@ -129,29 +130,42 @@ try {
     })
   );
   check("...and the Menu button is marked as where you are", await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Menu"))?.className.includes("font-semibold")));
-  // Wide enough for the row itself: six main links and More, the page you are
-  // on marked where it sits.
+
+  const tabsOn = async (path) => {
+    await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
+    await sleep(400);
+    return page.evaluate(() => [...document.querySelectorAll("main nav a")].map((a) => [a.getAttribute("href"), a.getAttribute("aria-current") === "page"]));
+  };
+  const inv = await tabsOn("/invoices");
+  check("Invoices has its tabs: invoices, quotes, repeating", JSON.stringify(inv.map(([h]) => h)) === JSON.stringify(["/invoices", "/quotes", "/recurring/invoices"]) && inv[0][1], JSON.stringify(inv));
+  const rec = await tabsOn("/mileage");
+  check("Receipts has its tabs, and the one you are on is marked", JSON.stringify(rec.map(([h]) => h)) === JSON.stringify(["/receipts", "/receipts/review", "/recurring", "/mileage"]) && rec[3][1], JSON.stringify(rec));
+  const mon = await tabsOn("/vat");
+  check("Money has its tabs: owed and owing, expenses, VAT", JSON.stringify(mon.map(([h]) => h)) === JSON.stringify(["/money", "/expenses", "/vat"]), JSON.stringify(mon));
+  check("a page inside a section has no tabs to wander off by", (await tabsOn("/invoices/new")).length === 0);
+
+  // Wide enough for the row itself: the five sections, the section you are
+  // in marked even from one of its tabs.
+  await page.goto(`${BASE}/mileage`, { waitUntil: "networkidle0" });
   await page.setViewport({ width: 900, height: 900 });
   await sleep(300);
   const groups = await page.evaluate(() => [...document.querySelectorAll("header summary")].map((b) => ({ label: b.textContent.trim(), here: b.className.includes("font-semibold") })));
   const row = await page.evaluate(() => [...document.querySelectorAll("header nav a")].filter((a) => a.offsetParent && !a.closest("details:not([open])")).map((a) => ({ label: a.textContent.trim(), here: a.getAttribute("aria-current") === "page" })));
-  check("on a wide screen the main links sit in the header, Mileage marked, the rest under More",
-    JSON.stringify(row.map((r) => r.label)) === JSON.stringify(["Home", "Scan", "Invoices", "Receipts", "Customers", "Mileage", "Settings"]) &&
-      row.find((r) => r.label === "Mileage")?.here === true && JSON.stringify(groups) === JSON.stringify([{ label: "More", here: false }, { label: "Menu", here: true }]),
+  check("on a wide screen the sections sit in the header, Receipts marked from Mileage, the tools under Tools",
+    JSON.stringify(row.map((r) => r.label)) === JSON.stringify(["Home", "Scan", "Invoices", "Receipts", "Customers", "Money", "Settings"]) &&
+      row.find((r) => r.label === "Receipts")?.here === true && JSON.stringify(groups) === JSON.stringify([{ label: "Tools", here: false }, { label: "Menu", here: true }]),
     JSON.stringify({ row, groups }));
-  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("More"))?.click());
+  await page.evaluate(() => [...document.querySelectorAll("header summary")].find((b) => b.textContent.trim().startsWith("Tools"))?.click());
   await sleep(200);
-  check("More opens the rest", await page.evaluate(() => ["/quotes", "/receipts/review", "/recurring/invoices", "/vat", "/help"].every((h) => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === h))));
+  check("Tools opens the rest", await page.evaluate(() => ["/files", "/copy", "/convert", "/check-company", "/jobs", "/help", "/feedback"].every((h) => [...document.querySelectorAll("header a")].some((a) => a.getAttribute("href") === h))));
   await page.setViewport({ width: 375, height: 812 });
-  await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  await sleep(500);
 
-  // The Overdue tile opens the invoices list already filtered to overdue.
-  await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Overdue/.test(a.textContent) && a.getAttribute("href")?.includes("status=overdue"))?.click());
-  await page.waitForFunction(() => location.pathname === "/invoices" && location.search.includes("status=overdue"), { timeout: 10000 }).catch(() => {});
+  // A late invoice on Home's To do list opens the invoices list already
+  // filtered to overdue.
+  await page.goto(`${BASE}/invoices?status=overdue`, { waitUntil: "networkidle0" });
   await sleep(700);
   const statusBox = await page.evaluate(() => document.querySelector('select[aria-label="Status"]')?.value ?? null);
-  check("the Overdue tile opens the invoices list filtered to Overdue", page.url().includes("status=overdue") && statusBox === "overdue", `${page.url()} ${statusBox}`);
+  check("the late-invoices address opens the list filtered to Overdue", page.url().includes("status=overdue") && statusBox === "overdue", `${page.url()} ${statusBox}`);
 
   await page.goto(`${BASE}/expenses`, { waitUntil: "networkidle0" });
   await sleep(1600);

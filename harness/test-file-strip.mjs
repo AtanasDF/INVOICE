@@ -36,17 +36,22 @@ const roll = (col, label) => page.evaluate(({ col, label }) => {
 
 try {
   await signIn(page, BASE);
+  // On Files since 2026-10-28: Home is for doing, and looking back through
+  // the year is what the Files page is for.
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await sleep(1600);
+  check("Home no longer carries the library", !(await strip()), (await strip()).slice(0, 100));
+  await page.goto(`${BASE}/files`, { waitUntil: "networkidle0" });
   await sleep(1600);
 
   const t = await strip();
-  check("the library is on the dashboard, with a title that opens the whole thing", /Your file library/.test(t), t.slice(0, 200));
+  check("the library strip is on Files, titled by what it does", /By date/.test(t), t.slice(0, 200));
   check("...and one switch, Photos and Files, not two rectangles", /Photos/.test(t) && /Files/.test(t), t.slice(0, 200));
   check("...and a roller with year, month and day", /Year/.test(t) && /Month/.test(t) && /Day/.test(t), t.slice(0, 300));
   check("...and a way to pick a period of your own", /Pick a period/.test(t), t.slice(0, 300));
 
-  const titleHref = await page.evaluate(() => document.querySelector('[aria-label="Your file library"] a')?.getAttribute("href"));
-  check("the title opens the whole library", titleHref === "/files", String(titleHref));
+  const selfLink = await page.evaluate(() => !!document.querySelector('[aria-label="Your file library"] a[href="/files"]'));
+  check("...and no link back to the page it is already on", !selfLink);
 
   // --- Photos shows only what has a picture ---
   let c = await cards();
@@ -94,7 +99,7 @@ try {
   await roll("Month", "Jan");
   await sleep(400);
   const empty = await strip();
-  check("a month with nothing says so, and offers the way on", /Nothing that month|No pictures that month/.test(empty) && /open the whole library/.test(empty), empty.slice(-300));
+  check("a month with nothing says so, and offers the way on", /Nothing that month|No pictures that month/.test(empty) && /Roll to another date/.test(empty), empty.slice(-300));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);

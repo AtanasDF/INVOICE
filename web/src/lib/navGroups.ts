@@ -1,5 +1,5 @@
-// The app's own map of itself: the header's main links and More, and every
-// page in one of them.
+// The app's own map of itself: the five sections in the header, the tabs
+// inside each, and the tools under a line -- every page in one of them.
 //
 // This lives here rather than in AppShell because two other things need to
 // read it -- the help chat, which must never name a page that does not exist,
@@ -7,52 +7,87 @@
 // component cannot be imported by either.
 
 export type Group = { label: string; links: [string, string][] };
+export type Section = { href: string; label: string; tabs: [string, string][] };
 
-// The whole app in three groups (Atanas, 2026-09-22: "make it as one whole
-// app not two different apps"): money coming in, money going out, and the
-// tools, the free ones among them. Every page has a place here, so there
-// is no "More pages" drawer any more, and a phone shows one Menu button
-// instead of nine links wrapping to three rows.
-// Six things up front, everything else one tap away under More (Atanas,
-// 2026-10-22: "simple and attractive... the easiest way"). People leave
-// these apps because "simple functions take over 10 taps and are buried in
-// sub menus" (notes/competitor-research.md); nineteen items in three menus
-// was that. Nothing here was removed: every page is still in one group.
-export const MAIN_LABEL = "Main";
-export const MORE_LABEL = "More";
-
-export const GROUPS: Group[] = [
+// Five sections and Home (Atanas, 2026-10-28, launch plan step F). Twenty-one
+// links was a list nobody read past the sixth, and three of them -- Money,
+// Expenses and VAT -- were one question asked three ways. Every page still
+// has a place: the ones that used to be links of their own are tabs at the
+// top of the section they belong to.
+export const SECTIONS: Section[] = [
+  { href: "/scan", label: "Scan", tabs: [] },
   {
-    label: MAIN_LABEL,
-    links: [
-      ["/scan", "Scan"],
+    href: "/invoices",
+    label: "Invoices",
+    tabs: [
       ["/invoices", "Invoices"],
-      ["/receipts", "Receipts"],
-      ["/clients", "Customers"],
-      ["/mileage", "Mileage"],
+      ["/quotes", "Quotes"],
+      ["/recurring/invoices", "Repeating"],
     ],
   },
   {
-    label: MORE_LABEL,
-    links: [
-      ["/quotes", "Quotes"],
+    href: "/receipts",
+    label: "Receipts",
+    tabs: [
+      ["/receipts", "Receipts"],
       ["/receipts/review", "Needs review"],
+      ["/recurring", "Repeating"],
+      ["/mileage", "Mileage"],
+    ],
+  },
+  { href: "/clients", label: "Customers", tabs: [] },
+  {
+    href: "/money",
+    label: "Money",
+    tabs: [
+      ["/money", "Owed and owing"],
       ["/expenses", "Expenses and tax"],
-      ["/money", "Money"],
-      ["/recurring/invoices", "Recurring invoices"],
-      ["/recurring", "Recurring expenses"],
-      ["/jobs", "Jobs"],
-      ["/files", "Files"],
-      ["/copy", "Copy a document"],
-      ["/convert", "Change a file"],
-      ["/check-company", "Check a company"],
       ["/vat", "VAT"],
-      // Before Feedback on purpose: most questions should be answered by a
-      // walkthrough rather than by asking somebody.
-      ["/help", "How it works"],
-      ["/feedback", "Feedback"],
     ],
   },
 ];
 
+export const TOOLS_LABEL = "Tools";
+export const TOOLS: [string, string][] = [
+  ["/files", "Files"],
+  ["/copy", "Copy a document"],
+  ["/convert", "Change a file"],
+  ["/check-company", "Check a company"],
+  ["/jobs", "Jobs"],
+];
+// Before Feedback on purpose: most questions should be answered by a
+// walkthrough rather than by asking somebody.
+export const AFTER_TOOLS: [string, string][] = [
+  ["/help", "How it works"],
+  ["/feedback", "Feedback"],
+];
+
+// The full name of every page, for the help chat, which has to call a page
+// what the person would recognise even out of its tab row ("Repeating" alone
+// says nothing).
+export const GROUPS: Group[] = [
+  {
+    label: "Sections",
+    links: [
+      ["/scan", "Scan"],
+      ["/invoices", "Invoices"],
+      ["/quotes", "Quotes (a tab under Invoices)"],
+      ["/recurring/invoices", "Repeating invoices (a tab under Invoices)"],
+      ["/receipts", "Receipts"],
+      ["/receipts/review", "Needs review (a tab under Receipts)"],
+      ["/recurring", "Repeating expenses (a tab under Receipts)"],
+      ["/mileage", "Mileage (a tab under Receipts)"],
+      ["/clients", "Customers"],
+      ["/money", "Money"],
+      ["/expenses", "Expenses and tax (a tab under Money)"],
+      ["/vat", "VAT (a tab under Money)"],
+    ],
+  },
+  { label: TOOLS_LABEL, links: [...TOOLS, ...AFTER_TOOLS] },
+];
+
 export const NAV_HREFS = ["/", "/settings", ...GROUPS.flatMap((g) => g.links.map(([href]) => href))];
+
+// The section a page sits in: its own address, or one of its tabs.
+export const sectionOf = (href: string | null) =>
+  href ? SECTIONS.find((s) => s.href === href || s.tabs.some(([t]) => t === href)) ?? null : null;

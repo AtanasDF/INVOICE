@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { GROUPS, MAIN_LABEL, NAV_HREFS, type Group } from "@/lib/navGroups";
+import { AFTER_TOOLS, NAV_HREFS, SECTIONS, TOOLS, TOOLS_LABEL, sectionOf, type Section } from "@/lib/navGroups";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { safeNext } from "@/lib/safeNext";
 import { signOut } from "@/lib/signOut";
@@ -12,6 +12,7 @@ import PaidCelebration from "@/components/PaidCelebration";
 import { SITE_NAME } from "@/lib/siteName";
 import { rememberSource } from "@/lib/source";
 import { rememberInvite } from "@/lib/invites";
+import { receiptsStore } from "@/lib/storage";
 
 const HREFS = NAV_HREFS;
 
@@ -81,11 +82,56 @@ function Menu({ label, here, width, children }: { label: string; here: boolean; 
   );
 }
 
-function GroupMenu({ group }: { group: Group }) {
+// A section is marked as where you are from any of its tabs, so Quotes lights
+// up Invoices.
+function SectionLink({ section, className = "", children }: { section: Section; className?: string; children?: React.ReactNode }) {
+  const here = sectionOf(useCurrentHref()) === section;
+  return (
+    <Link href={section.href} aria-current={here ? "page" : undefined} className={`${className} ${here ? "font-semibold text-neutral-900" : ""}`.trim()}>
+      {children ?? section.label}
+    </Link>
+  );
+}
+
+// The number of emailed receipts waiting to be checked, beside Receipts in
+// the menu, so nobody has to open a page to learn there is something to do.
+// Read again on every page change, since checking one is a page change.
+// The menu and the tabs both show it: one read per page, not one each.
+let lastReview: { key: string; count: Promise<number> } | null = null;
+function reviewCount(key: string): Promise<number> {
+  if (lastReview?.key !== key) lastReview = { key, count: receiptsStore.needsReviewCount() };
+  return lastReview.count;
+}
+function useNeedsReview(): number {
+  const { user } = useAuth();
+  const path = usePathname();
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    let gone = false;
+    reviewCount(`${user.id}:${path}`).then((n) => !gone && setCount(n), () => {});
+    return () => {
+      gone = true;
+    };
+  }, [user, path]);
+  return user ? count : 0;
+}
+
+function ReviewBadge({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+      {count}
+      <span className="sr-only"> to check</span>
+    </span>
+  );
+}
+
+function ToolsMenu() {
   const current = useCurrentHref();
   return (
-    <Menu label={group.label} here={group.links.some(([href]) => href === current)} width="w-56">
-      {group.links.map(([href, label]) => (
+    <Menu label={TOOLS_LABEL} here={[...TOOLS, ...AFTER_TOOLS].some(([href]) => href === current)} width="w-56">
+      {[...TOOLS, ...AFTER_TOOLS].map(([href, label]) => (
         <NavLink key={href} href={href} className="block px-4 py-2.5">
           {label}
         </NavLink>
@@ -94,34 +140,66 @@ function GroupMenu({ group }: { group: Group }) {
   );
 }
 
-const MAIN = GROUPS.find((g) => g.label === MAIN_LABEL)!;
-const REST = GROUPS.filter((g) => g !== MAIN);
-
 function PhoneMenu() {
   const current = useCurrentHref();
+  const review = useNeedsReview();
   return (
     <Menu label="Menu" here={!!current && current !== "/"} width="w-[min(18rem,calc(100vw-2rem))]">
-      {[["/", "Home"] as [string, string], ...MAIN.links].map(([href, label]) => (
-        <NavLink key={href} href={href} className="block px-4 py-3 text-base">
-          {label}
-        </NavLink>
+      <NavLink href="/" className="block px-4 py-3 text-base">
+        Home
+      </NavLink>
+      {SECTIONS.map((s) => (
+        <SectionLink key={s.href} section={s} className="block px-4 py-2.5 text-base">
+          <span className="flex items-center">
+            {s.label}
+            {s.href === "/receipts" && <ReviewBadge count={review} />}
+          </span>
+          {s.tabs.length > 0 && <span className="block text-xs font-normal text-neutral-500">{s.tabs.map(([, l]) => l).join(" · ")}</span>}
+        </SectionLink>
       ))}
-      {REST.map((g) => (
-        <div key={g.label} className="border-t pb-1">
-          <p className="px-4 pb-1 pt-2 text-xs text-neutral-500">{g.label}</p>
-          {g.links.map(([href, label]) => (
-            <NavLink key={href} href={href} className="block px-4 py-2">
-              {label}
-            </NavLink>
-          ))}
-        </div>
-      ))}
-      <div className="border-t pt-1">
-        <NavLink href="/settings" className="block px-4 py-2.5">
-          Settings
-        </NavLink>
+      <div className="border-t pb-1">
+        <p className="px-4 pb-1 pt-2 text-xs text-neutral-500">{TOOLS_LABEL}</p>
+        {TOOLS.map(([href, label]) => (
+          <NavLink key={href} href={href} className="block px-4 py-2">
+            {label}
+          </NavLink>
+        ))}
+      </div>
+      <div className="border-t py-1">
+        {[...AFTER_TOOLS, ["/settings", "Settings"] as [string, string]].map(([href, label]) => (
+          <NavLink key={href} href={href} className="block px-4 py-2">
+            {label}
+          </NavLink>
+        ))}
       </div>
     </Menu>
+  );
+}
+
+// The tabs of the section you are in, above the page itself. Only on a tab's
+// own address: a new invoice or one receipt is a step inside the section, not
+// a place to switch away from.
+function SectionTabs() {
+  const path = usePathname();
+  const section = SECTIONS.find((s) => s.tabs.some(([t]) => t === path));
+  const review = useNeedsReview();
+  if (!section) return null;
+  return (
+    <nav aria-label={section.label} className="-mx-4 mb-5 overflow-x-auto px-4 print:hidden">
+      <div className="flex w-max gap-1 rounded-xl bg-neutral-100 p-1 text-sm font-medium">
+        {section.tabs.map(([href, label]) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={path === href ? "page" : undefined}
+            className={`flex items-center whitespace-nowrap rounded-lg px-3 py-2 ${path === href ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+          >
+            {label}
+            {href === "/receipts/review" && <ReviewBadge count={review} />}
+          </Link>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -149,14 +227,10 @@ function Header() {
           <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
             <div className="hidden items-center gap-x-4 md:flex">
               <NavLink href="/">Home</NavLink>
-              {MAIN.links.map(([href, label]) => (
-                <NavLink key={href} href={href}>
-                  {label}
-                </NavLink>
+              {SECTIONS.map((sec) => (
+                <SectionLink key={sec.href} section={sec} />
               ))}
-              {REST.map((g) => (
-                <GroupMenu key={g.label} group={g} />
-              ))}
+              <ToolsMenu />
               <NavLink href="/settings">Settings</NavLink>
             </div>
             <div className="md:hidden">
@@ -338,7 +412,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Header />
       <FocusOnNavigate target={main} />
       <main id="main" ref={main} tabIndex={-1} className="safe-x mx-auto w-full max-w-4xl flex-1 px-4 py-6 outline-none print:max-w-none print:px-0 print:py-0">
-        <Gate>{children}</Gate>
+        <Gate>
+          <SectionTabs />
+          {children}
+        </Gate>
       </main>
       {/* Small, quiet, and on every page: an advertiser, an app store and a
           cautious tradesman all want to find these before handing over an

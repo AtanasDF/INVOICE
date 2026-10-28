@@ -13,15 +13,6 @@ import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 import { receiptGbp } from "@/lib/receiptAmounts";
 
-function RecurringTabs() {
-  return (
-    <div className="flex rounded-lg border text-sm w-fit">
-      <button className="px-4 py-1.5 bg-neutral-900 text-white">Expenses</button>
-      <Link href="/recurring/invoices" className="px-4 py-1.5 text-neutral-600">Invoices</Link>
-    </div>
-  );
-}
-
 export default function RecurringExpensesPage() {
   const [items, setItems] = useState<RecurringExpense[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -200,14 +191,13 @@ export default function RecurringExpensesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Recurring</h1>
+        <h1 className="text-2xl font-bold">Repeating expenses</h1>
         <Tip id="recurring-how">How it works: when one is due, it asks you here and on your dashboard to log it as an expense. Nothing is added until you do, and you can change or stop it any time.</Tip>
         <p className="mt-1 text-neutral-600">
           Things like monthly insurance or subscriptions — a reminder so they don&apos;t get forgotten.
         </p>
       </div>
 
-      <RecurringTabs />
 
       <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
         <input aria-label="Description"

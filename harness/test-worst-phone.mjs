@@ -72,6 +72,9 @@ try {
       for (const b of document.querySelectorAll("button, a[href]")) {
         const r = b.getBoundingClientRect();
         if (r.width === 0 || r.height === 0) continue;
+        // The skip link is a 1px clipped box until a keyboard lands on it;
+        // nothing is meant to be pressed there by touch.
+        if (b.classList.contains("sr-only")) continue;
         const details = b.closest("details");
         if (details && !details.open) continue;
         if (r.bottom < 0 || r.top > window.innerHeight) continue;

@@ -87,9 +87,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
   return (
     <section aria-label="Your file library" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href="/files" className="text-lg font-bold underline-offset-2 hover:underline">
-          Your file library <span aria-hidden="true">&rarr;</span>
-        </Link>
+        <h2 className="font-semibold">By date</h2>
         <span className="text-xs text-neutral-500">{shown.length} of {all.length}</span>
       </div>
 
@@ -168,8 +166,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
       ) : (
         <p className="rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-600">
           {mode === "photos" ? "No pictures" : "Nothing"} {range ? "in that period" : when.day !== null ? "on that day" : when.month !== null ? "that month" : "that year"}.
-          {" "}Roll to another date, or{" "}
-          <Link href="/files" className="font-medium underline">open the whole library</Link>.
+          {" "}Roll to another date.
         </p>
       )}
     </section>

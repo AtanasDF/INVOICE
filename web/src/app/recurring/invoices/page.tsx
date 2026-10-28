@@ -23,15 +23,6 @@ import { loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
 
-function RecurringTabs() {
-  return (
-    <div className="flex rounded-lg border text-sm w-fit">
-      <Link href="/recurring" className="px-4 py-1.5 text-neutral-600">Expenses</Link>
-      <button className="px-4 py-1.5 bg-neutral-900 text-white">Invoices</button>
-    </div>
-  );
-}
-
 const BLANK_ITEM: InvoiceItem = { description: "", quantity: 1, unitPrice: 0, vatRate: "standard" };
 
 export default function RecurringInvoicesPage() {
@@ -212,13 +203,12 @@ export default function RecurringInvoicesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Recurring</h1>
+        <h1 className="text-2xl font-bold">Repeating invoices</h1>
         <p className="mt-1 text-neutral-600">
           Work that repeats on a schedule. A draft invoice is made for you each month, for you to check and send.
         </p>
       </div>
 
-      <RecurringTabs />
       <Tip id="recurring-invoices-how">How it works: set the customer and the lines once. Each month a DRAFT invoice is made for you to check and send &mdash; nothing goes out on its own.</Tip>
 
       <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">

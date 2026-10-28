@@ -5,6 +5,46 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-10-28 (evening): week 2, the menu and Home
+
+Atanas approved the drawing ("Build the menu and Home as drawn").
+- **Menu, `src/lib/navGroups.ts`**: Home plus five sections, Scan / Invoices / Receipts /
+  Customers / Money (`SECTIONS`), then Tools (Files, Copy a document, Change a file, Check a
+  company, Jobs), How it works, Feedback, Settings. Was 21 links. `GROUPS` stays for the
+  help chat, with full names ("Quotes (a tab under Invoices)"). The section lights up
+  from any of its tabs (`sectionOf`).
+- **Tabs** (`SectionTabs` in AppShell), shown only on a tab's own address, never on
+  /invoices/new: Invoices · Quotes · Repeating; Receipts · Needs review · Repeating ·
+  Mileage; Owed and owing · Expenses and tax · VAT. The recurring pages' own
+  Expenses/Invoices toggle went, and their headings say "Repeating expenses/invoices".
+- **Needs review count** beside Receipts in the menu and on its tab, from
+  `receiptsStore.needsReviewCount()` (ids only), read once per page change.
+- **Home, two screens**: To do (receipts to check, late invoices if Settings asks for
+  them, bills due within 3 days, repeating expenses due), each a link and no Dismiss
+  buttons; the big Scan; Upload and New invoice; the old-invoice photo line kept under
+  them on purpose; three figures (owed, you owe, tax so far); the last five documents
+  with "See everything in Files". Measured in test-dashboard: no more than 2 x 844px.
+- **Moved off Home**: Mark several paid, the "how late" breakdown and the tax card to
+  **Money** (Money also scrolls to #you-owe / #tax once loaded, since the anchors only
+  exist then); the file strip to the top of **Files** (now titled "By date", no self-link).
+  The people list, the three panels, the upload panel and the welcome tip are gone from
+  Home. GetTheApp was already on Settings.
+- The older two-tab strips (`PageTabs`: Invoices/Quotes, Receipts/Needs review) went
+  from their four pages, since the section tabs repeat them; the component is removed.
+- The Setting up card is about 970px on a phone. A new account (nothing saved yet) still
+  meets it straight after the scan; once there are documents it sits below Recent, so
+  the To do list, figures and recent documents stay the first two screens.
+- The tax card's rows wrap now: on Money at 320px and twice the text they ran off.
+- `UploadPanel`, `SwipePanels` and `dashboard/People` are now used by no page. Left in
+  place (rule 1 caution, and two source-reading suites still read UploadPanel); flagged.
+  `test-upload-panel` retired because it tested the panel on Home.
+- Suites moved to where things went: dashboard (rewritten), pay-several and what-surfaces
+  (Money), file-strip (Files), first-week (menu, tabs), settings-save (Quotes via the
+  Invoices tab), payments and vat-snapshot (Home's figure). keyboard-only no longer
+  counts tabindex=-1 targets, worst-phone skips the sr-only skip link: both were red
+  before this change too.
+- Not yet seen on his iPhone.
+
 ## 2026-10-28 (later): launch review, then week 1 of the plan
 
 - `notes/launch-review-2026-10-28.md`: the app walked on his account at 390pt, what is

@@ -186,9 +186,10 @@ for (const [rel, href] of [
   check(`#20 ${rel} has a way back that is not the browser's`, new RegExp(`<Link href=[{"][^>]*${href.replace("/", "\\/")}[^>]*>(?:<span aria-hidden="true">)?←(?:</span>)? `).test(code(rel)),
     "the home-screen app has no back button, and the Menu was the only way out");
 }
-// Needs review is a tab of Receipts since 2026-10-22: the tab is its way back.
+// Needs review is a tab of Receipts: the tab is its way back. Since
+// 2026-10-28 the tabs come from the section map, drawn by AppShell.
 check("#20 app/receipts/review/page.tsx has a way back that is not the browser's (its Receipts tab)",
-  /<PageTabs[\s\S]*?href: "\/receipts", text: "Receipts & bills"/.test(code("app/receipts/review/page.tsx")), "no Receipts tab on Needs review");
+  /href: "\/receipts",[\s\S]*?\["\/receipts", "Receipts"\],\s*\["\/receipts\/review", "Needs review"\]/.test(code("lib/navGroups.ts")) && /<SectionTabs \/>/.test(code("app/AppShell.tsx")), "no Receipts tab on Needs review");
 // The arrow is aria-hidden, so a screen reader says "Invoices", not "left arrow Invoices".
 const issuedLinks = (invoicePage.match(/><span aria-hidden="true">←<\/span> Invoices<\/Link>/g) ?? []).length;
 check("#20 ...on the issued invoice as well as the draft", issuedLinks === 2, `found ${issuedLinks}`);

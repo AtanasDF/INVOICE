@@ -131,7 +131,7 @@ try {
   await shot(page, "settings-save-bar");
   // On a phone the header's pages are behind one Menu button; the guard
   // holds a tap on any link, in the menu as anywhere else.
-  await menuLink("Quotes");
+  await menuLink("Invoices");
   await sleep(400);
   check("a tap on a link is held, with the choices", page.url().includes("/settings") && /Save and go/.test(await barText()) && /Leave without saving/.test(await barText()), `${page.url()} ${await barText()}`);
   await click("Stay");
@@ -150,11 +150,11 @@ try {
 
   await setField("#invoice-prefix", "XX-");
   await sleep(150);
-  await menuLink("Quotes");
+  await menuLink("Invoices");
   await sleep(300);
   await click("Leave without saving");
-  await page.waitForFunction(() => location.pathname === "/quotes", { timeout: 10000 }).catch(() => {});
-  check("Leave without saving goes where the tap was going", page.url().endsWith("/quotes"), page.url());
+  await page.waitForFunction(() => location.pathname === "/invoices", { timeout: 10000 }).catch(() => {});
+  check("Leave without saving goes where the tap was going", page.url().endsWith("/invoices"), page.url());
   check("...and saved nothing", lastProfile().invoice_prefix === "HP-", lastProfile().invoice_prefix);
 
   await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });

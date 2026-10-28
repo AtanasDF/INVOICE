@@ -29,8 +29,8 @@ const form = () => page.evaluate(() => ({ supplier: [...document.querySelectorAl
 try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  // One of the three buttons under the big scan since the rebuild.
-  check("dashboard: a way in from files", (await bodyText(page)).includes("Upload photos or PDFs"));
+  // One of the two buttons beside the big scan since 2026-10-28.
+  check("dashboard: a way in from files", !!(await page.evaluate(() => [...document.querySelectorAll('section[aria-label="Scan something"] label, section[aria-label="Scan something"] button')].some((e) => e.textContent.trim() === "Upload"))));
 
   await page.goto(`${BASE}/receipts`, { waitUntil: "networkidle0" });
   const input = await page.$('input[type="file"][multiple]');

@@ -43,26 +43,26 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
             )}
           </div>
           <dl className="mt-4 space-y-1 text-sm">
-            <div className="flex justify-between gap-4">
+            <div className="flex flex-wrap justify-between gap-x-4">
               <dt className="text-neutral-600">Invoiced{e.vatOwed !== null ? " excl. VAT" : ""} ({e.invoicesCounted})</dt>
               <dd>{exact(e.income)}</dd>
             </div>
-            <div className="flex justify-between gap-4">
+            <div className="flex flex-wrap justify-between gap-x-4">
               <dt className="text-neutral-600">Costs ({e.receiptsCounted})</dt>
               <dd>−{exact(e.expenses)}</dd>
             </div>
-            <div className="flex justify-between gap-4 border-t pt-1 font-medium">
+            <div className="flex flex-wrap justify-between gap-x-4 border-t pt-1 font-medium">
               <dt>Profit</dt>
               <dd>{exact(e.profit)}</dd>
             </div>
             {e.cisDeducted > 0 && (
-              <div className="flex justify-between gap-4 pt-2">
+              <div className="flex flex-wrap justify-between gap-x-4 pt-2">
                 <dt className="text-neutral-600">CIS kept back by contractors (tax already paid)</dt>
                 <dd>{exact(e.cisDeducted)}</dd>
               </div>
             )}
             {e.vatOwed !== null && (
-              <div className="flex justify-between gap-4 pt-2">
+              <div className="flex flex-wrap justify-between gap-x-4 pt-2">
                 <dt className="text-neutral-600">VAT to pay HMRC so far</dt>
                 <dd>{exact(e.vatOwed)}</dd>
               </div>

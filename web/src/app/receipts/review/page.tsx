@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import PageTabs from "@/components/PageTabs";
 import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import FieldFlag from "@/components/scan/FieldFlag";
@@ -149,14 +148,6 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="space-y-8">
-      <PageTabs
-        label="Receipts"
-        tabs={[
-          { href: "/receipts", text: "Receipts & bills" },
-          { href: "/receipts/review", text: "Needs review" },
-        ]}
-        current="/receipts/review"
-      />
       <div>
         <h1 className="text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">

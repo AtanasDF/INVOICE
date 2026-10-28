@@ -3,7 +3,8 @@
 //
 // Money arrives in a lump: one customer settles three invoices with a single
 // transfer. Ticking them one at a time on three separate pages is the wrong
-// shape for that, and it is the shape the app had.
+// shape for that, and it is the shape the app had. On Money since
+// 2026-10-28, when Home went down to two screens.
 import { makeDb, launchSignedIn, signIn, sleep, bodyText, UID, day } from "./mockdb.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const results = [];
@@ -21,20 +22,18 @@ db.tables.invoices.push(inv("i1", "INV-001", "c1", 400), inv("i2", "INV-002", "c
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-pay-several" });
 const panel = () => page.evaluate(() => {
-  const h = [...document.querySelectorAll("h2")].find((x) => x.textContent.trim() === "Awaiting payment");
-  return h ? h.closest("div.rounded-xl").innerText : "";
+  const h = [...document.querySelectorAll("h2")].find((x) => x.textContent.trim() === "Owed to you");
+  return h ? h.closest("section").innerText : "";
 });
 const click = (t) => page.evaluate((x) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim().startsWith(x))?.click(), t);
 
 try {
   await signIn(page, BASE);
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/money`, { waitUntil: "domcontentloaded" });
   await sleep(2000);
-  await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].find((t) => t.textContent.includes("Invoices & customers"))?.click());
-  await sleep(600);
 
   let t = await panel();
-  check("all three are awaiting payment", /INV-001/.test(t) && /INV-002/.test(t) && /INV-003/.test(t), t.slice(0, 300));
+  check("all three are owed to you", /INV-001/.test(t) && /INV-002/.test(t) && /INV-003/.test(t), t.slice(0, 300));
   check("...and marking several is offered", /Mark several paid/.test(t), t.slice(0, 200));
 
   await click("Mark several paid");

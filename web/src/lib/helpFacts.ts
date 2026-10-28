@@ -20,10 +20,10 @@ import { GROUPS } from "@/lib/navGroups";
 // The words are the app's own: the page's name as the header shows it, and
 // what it is for in the vocabulary the screens use.
 export const HELP_FACTS: { route: string; what: string }[] = [
-  { route: "/", what: "The dashboard. What is owed to you, what you owe, and the tools: scan a receipt or bill, create an invoice, write a quote, check a company, copy a document." },
+  { route: "/", what: "Home. A To do list of what needs you today (receipts to check, late invoices, bills to pay soon, repeating expenses to log), the big Scan button with Upload and New invoice under it, three figures (owed to you, you owe, tax so far) and your last five documents. The menu has five sections -- Scan, Invoices, Receipts, Customers, Money -- each with tabs along the top, and Tools under a line." },
   { route: "/invoices", what: "Every sales invoice you have raised, with what is still owed on each: drafts, sent, part paid and paid. Open one to record a payment against it. A draft gets its number when it is marked sent. A new invoice being typed is kept on this device and offered back if the page is closed before it is saved. Once an invoice has been sent, its number, date, lines and customer are locked because that is what was actually issued -- a wrong amount is corrected by adding a credit note on that invoice, not by editing it." },
   { route: "/quotes", what: "Priced offers to a customer. Send one and they get a link to accept or decline; accepted, \"Turn into invoice\" copies the lines across. A deposit is set on the quote itself while it is still a draft, either as a percentage or as an amount; it goes out as its own invoice first and comes off the final one. There is also a From suppliers tab, for asking several suppliers to price the same list." },
-  { route: "/money", what: "Everything owed to you and everything you owe, late first. A bill can be marked paid from here; Chase opens the invoice." },
+  { route: "/money", what: "Everything owed to you and everything you owe, late first. A bill can be marked paid from here; Chase opens the invoice. Mark several paid ticks several invoices settled by one payment. Below: how late what you are owed is, and the tax so far this year." },
   { route: "/jobs", what: "Work grouped by job: put the same tag on an invoice and on the receipts for one piece of work and they gather here together. Things can be tagged after the fact." },
   { route: "/clients", what: "Customers and suppliers, on two tabs. Where a contact's address, VAT number and payment terms are kept, where payment reminders are switched on or off for a customer, and where two records for one business are merged." },
   { route: "/recurring/invoices", what: "Invoices for work billed every month. On the day, a draft invoice is made for you to check and send; nothing goes to the customer on its own." },
@@ -37,7 +37,7 @@ export const HELP_FACTS: { route: string; what: string }[] = [
   { route: "/convert", what: "Change a file into another kind on your own device: pictures to PDF, a PDF to pictures or to its words, a spreadsheet to other formats. Nothing is uploaded." },
   { route: "/check-company", what: "Look a UK company up on the Companies House register: whether it is trading, who runs it, what is overdue, and whether anything is owed against it." },
   { route: "/vat", what: "A VAT quarter worked out on either basis, with boxes 1, 4, 5, 6 and 7. It files nothing anywhere." },
-  { route: "/files", what: "Every photograph and PDF of a receipt or bill you have saved, as tiles, newest first." },
+  { route: "/files", what: "Every photograph and PDF of a receipt or bill you have saved, as tiles, newest first. At the top, a strip to roll through by date, invoices included." },
   { route: "/help", what: "How it works: the walkthroughs, step by step." },
   { route: "/feedback", what: "Write to Atanas, who made the app. It reaches him by email and he replies to the address you signed up with." },
   { route: "/settings", what: "Your business name and address, your bank details, your VAT setting, and what goes on every invoice you send. The address for emailing receipts in is here too, under Email import. The VAT switch changes new invoices only and never one already sent." },

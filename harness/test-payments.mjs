@@ -170,13 +170,10 @@ try {
   check("removing the only payment puts it back to sent", db.tables.invoices.find((i) => i.id === I5).status === "sent", db.tables.invoices.find((i) => i.id === I5).status);
 
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  // Owed to you, Overdue and Spent this month live in the Invoices & customers
-  // panel, and money out is the panel you land on now -- so ask for it.
-  await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].find((x) => x.textContent.includes("Invoices & customers"))?.click());
-  await sleep(700);
-  await waitText(page, "Awaiting payment");
-  const dash = await onScreen(page);
-  check("dashboard counts only the £700 still owed", dash.includes("£700.00") && !dash.includes("£1,200.00") && !dash.includes("£1,200.00"), dash.slice(0, 600));
+  await waitText(page, "Owed to you");
+  const dash = await page.evaluate(() => document.querySelector('main .grid-cols-3 a[href="/money"]')?.innerText ?? "");
+  // £700 left on INV-1 after the £500, and INV-2's £120 untouched.
+  check("dashboard counts only what is still owed, £700 + £120", dash.includes("£820.00"), dash.slice(0, 600));
 } catch (e) {
   console.log("ERROR", e.message);
   await shot(page, "payments-error");

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import PageTabs, { MONEY_IN_TABS } from "@/components/PageTabs";
 import { useEffect, useState } from "react";
 import { BusinessProfile, Client, Quote, businessProfileStore, clientsStore, quotesStore } from "@/lib/storage";
 import { money, quoteTotal } from "@/components/quote/QuoteDocument";
@@ -42,7 +41,6 @@ export default function QuotesPage() {
 
   return (
     <div className="space-y-8">
-      <PageTabs label="Money in" tabs={MONEY_IN_TABS} current="/quotes" />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Quotes</h1>

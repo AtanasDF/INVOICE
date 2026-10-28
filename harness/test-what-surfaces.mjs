@@ -51,53 +51,41 @@ try {
   await signIn(page, BASE);
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(2000);
-  // Money out is the panel you land on now, so the invoice side has to be
-  // asked for. Both are checked below; they are just no longer on screen at
-  // the same moment.
-  const showPanel = async (label) => {
-    await page.evaluate((l) => [...document.querySelectorAll('[role="tab"]')].find((x) => x.textContent.includes(l))?.click(), label);
-    await sleep(600);
-  };
-  const bills = await onScreen(page);
-  await showPanel("Invoices & customers");
-  const t = await onScreen(page);
-
-  check("the overdue invoice is on the dashboard", t.includes("INV-OVERDUE"), flat(t).slice(0, 400));
-  check("the one not yet late is there too, as money owed", t.includes("INV-SOON"), flat(t).slice(0, 400));
-  check("a paid invoice doesn't clutter it", !t.includes("INV-PAID"), flat(t).slice(0, 400));
-  check("what's owed is the two unpaid ones, not the paid one", /£1,800\.00|£1800\.00/.test(t), flat(t).slice(flat(t).indexOf("Owed") - 60, flat(t).indexOf("Owed") + 60));
-
-  check("a bill due in two days is shown before it's late", t.includes("Jewson"), flat(t).slice(0, 500));
-  check("a bill already late is shown", t.includes("Wolseley"), flat(t).slice(0, 500));
-  // The card lists everything he owes, which is what a list of bills is for;
-  // the amber banner, the push notification and the badge on the app icon
-  // count only what's due within three days. A bill three weeks off belongs
-  // on the list without being nagged about.
-  check("a bill three weeks off is still on the list", t.includes("Screwfix"), flat(t).slice(0, 500));
-  check("but it isn't counted as needing paying soon", /2 bills need paying soon/.test(t), flat(t).slice(flat(t).indexOf("need paying") - 40, flat(t).indexOf("need paying") + 40));
-  check("the late bill says it's late", /Overdue by \d+ day/.test(bills), flat(bills).slice(flat(bills).indexOf("Wolseley"), flat(bills).indexOf("Wolseley") + 120));
-
-  check("the receipt waiting to be checked is counted", /review/i.test(t), flat(t).slice(0, 500));
-  check("nothing on the dashboard is broken", !/NaN|undefined|Application error/.test(t), flat(t).slice(0, 300));
+  // Home says what needs doing; the lists themselves are on Money since
+  // 2026-10-28, when Home went down to two screens.
+  const home = await onScreen(page);
+  const owed = await page.evaluate(() => document.querySelector('main .grid-cols-3 a[href="/money"]')?.innerText ?? "");
+  check("Home says the late invoice needs chasing", /1 invoice late/.test(home), flat(home).slice(0, 400));
+  check("what's owed is the two unpaid ones, not the paid one", /£1,800\.00/.test(owed), flat(owed));
+  // The banner, the push notification and the badge on the app icon count
+  // only what's due within three days. A bill three weeks off belongs on the
+  // list without being nagged about.
+  check("two bills are due soon, not the one three weeks off", /2 bills to pay soon/.test(home), flat(home).slice(0, 400));
+  check("the receipt waiting to be checked is counted", /1 receipt to check/.test(home), flat(home).slice(0, 400));
+  check("nothing on the dashboard is broken", !/NaN|undefined|Application error/.test(home), flat(home).slice(0, 300));
   check("it all fits a phone", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
+  await page.goto(`${BASE}/money`, { waitUntil: "networkidle0" });
+  await sleep(1500);
+  const section = (id) => page.evaluate((x) => document.getElementById(x)?.closest("section")?.innerText ?? "", id);
+  const inn = await section("owed-to-you");
+  check("the overdue invoice is on Money", inn.includes("INV-OVERDUE"), flat(inn).slice(0, 400));
+  check("the one not yet late is there too, as money owed", inn.includes("INV-SOON"), flat(inn).slice(0, 400));
+  check("a paid invoice doesn't clutter it", !inn.includes("INV-PAID"), flat(inn).slice(0, 400));
+  const out = await section("you-owe");
+  check("a bill due in two days is shown before it's late", out.includes("Jewson"), flat(out).slice(0, 500));
+  check("a bill already late is shown", out.includes("Wolseley"), flat(out).slice(0, 500));
+  check("a bill three weeks off is still on the list", out.includes("Screwfix"), flat(out).slice(0, 500));
+  check("the late bill says it's late", /Wolseley\s*\d+ days? late/.test(out), flat(out).slice(0, 300));
+
   // Once the late bill is paid it should drop off without a reload.
-  // Scoped to the bills card: since the dashboard was rebuilt, a supplier's
-  // name also appears in "Who you work with", so the whole page's text would
-  // say the bill is still there when it has gone.
-  const inBills = () =>
-    page.evaluate(() => {
-      const card = document.querySelector("#bills-to-pay");
-      return card ? card.textContent : "";
-    });
-  const before = (await inBills()).includes("Wolseley");
   await page.evaluate(() => {
-    const b = [...document.querySelectorAll("#bills-to-pay button")].find((x) => /Mark as paid/i.test(x.textContent));
-    if (b) b.click();
+    const row = [...document.getElementById("you-owe").closest("section").querySelectorAll("li")].find((li) => li.textContent.includes("Wolseley"));
+    [...(row?.querySelectorAll("button") ?? [])].find((x) => /Mark paid/i.test(x.textContent))?.click();
   });
   await sleep(1600);
-  const afterBills = await inBills();
-  check("marking a bill paid takes it off the list there and then", before && !afterBills.includes("Wolseley"), flat(afterBills).slice(0, 300));
+  const afterBills = await section("you-owe");
+  check("marking a bill paid takes it off the list there and then", out.includes("Wolseley") && !afterBills.includes("Wolseley"), flat(afterBills).slice(0, 300));
   check("and it is recorded as paid, not deleted", db.tables.receipts.filter((r) => r.vendor === "Wolseley").length === 1 && db.tables.receipts.find((r) => r.vendor === "Wolseley").paid === true, JSON.stringify(db.tables.receipts.map((r) => [r.vendor, r.paid])));
 } catch (e) { console.log("ERROR", e.message); }
 finally { await browser.close(); console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length })); }

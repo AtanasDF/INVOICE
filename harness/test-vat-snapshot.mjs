@@ -26,8 +26,8 @@ try {
   const row = (n) => t.split("\n").find((l) => l.includes("2026-08-01") && t.indexOf(l) > t.indexOf(n)) ?? "";
   check("list: old £1000, new £1200", t.includes("£1,000.00") && t.includes("£1,200.00"), t.slice(t.indexOf("INV-OLD") - 50, t.indexOf("INV-OLD") + 200));
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  await page.waitForFunction(() => document.body.innerText.includes("Awaiting payment"), { timeout: 30000 });
-  t = await bodyText(page);
+  await page.waitForFunction(() => document.body.innerText.includes("Owed to you"), { timeout: 30000 });
+  t = await page.evaluate(() => document.querySelector('main .grid-cols-3 a[href="/money"]')?.innerText ?? "");
   check("dashboard owed = £1,000 + £1,200", t.includes("£2,200.00") || t.includes("£2,200.00"), t.match(/£[\d,]+\.\d\d/g)?.slice(0, 6));
 } catch (e) {
   console.log("ERROR", e.message);

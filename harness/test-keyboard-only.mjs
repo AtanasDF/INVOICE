@@ -89,6 +89,9 @@ try {
     const invisible = await page.evaluate(() => {
       const out = [];
       for (const el of [...document.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]")].slice(0, 40)) {
+        // tabindex=-1 is a place focus is sent (main, after the skip link),
+        // not one Tab lands on.
+        if (el.tabIndex < 0) continue;
         el.focus();
         if (document.activeElement !== el) continue;
         const s = getComputedStyle(el);

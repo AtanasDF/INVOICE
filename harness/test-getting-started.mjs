@@ -62,10 +62,12 @@ try {
     };
     return { scan: at("Scan a receipt"), setup: at("Setting up"), upload: at("Upload photos or PDFs"), library: (() => { const e = document.querySelector('[aria-label="Your file library"]'); return e ? Math.round(e.getBoundingClientRect().top + window.scrollY) : at("Your file library"); })(), screens: +(at("Setting up") / window.innerHeight).toFixed(1) };
   });
-  check("setting up comes before the upload panel and the file library",
-    // The library is not on a brand new account at all since 2026-10-22: it
-    // arrives with the first document, so an empty one is not in the way.
-    where.setup !== null && where.upload !== null && where.setup < where.upload && (where.library === null || where.setup < where.library), JSON.stringify(where));
+  // Since 2026-10-28 there is no upload panel or library on Home at all:
+  // Upload is one of the two buttons beside the scan, and the library is on
+  // Files. What matters is that nothing else stands between the scan and
+  // setting up.
+  check("setting up comes straight after the scan and its two buttons, with no library in the way",
+    where.setup !== null && where.library === null, JSON.stringify(where));
   check("...and still after the big scan", where.scan !== null && where.scan < where.setup, JSON.stringify(where));
   check("...so a new account meets it within a screen of arriving", where.screens <= 1.2, JSON.stringify(where));
 

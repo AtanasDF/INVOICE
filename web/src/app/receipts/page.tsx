@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import PageTabs from "@/components/PageTabs";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileStore, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
@@ -457,14 +456,6 @@ function ReceiptsPage() {
 
   return (
     <div className="space-y-8">
-      <PageTabs
-        label="Receipts"
-        tabs={[
-          { href: "/receipts", text: "Receipts & bills" },
-          { href: "/receipts/review", text: "Needs review", count: receipts.filter((r) => r.needsReview).length },
-        ]}
-        current="/receipts"
-      />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Receipts &amp; bills</h1>

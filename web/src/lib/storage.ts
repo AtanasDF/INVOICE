@@ -495,6 +495,14 @@ async function withImagesResolved(receipts: Receipt[]): Promise<Receipt[]> {
 }
 
 export const receiptsStore = {
+  // Ids only: the menu shows the number on every page, and loading every
+  // receipt with its signed photo links to count them would be the heaviest
+  // read in the app for one digit.
+  async needsReviewCount(): Promise<number> {
+    const { data, error } = await supabase.from("receipts").select("id").eq("needs_review", true);
+    if (error) throw error;
+    return (data ?? []).length;
+  },
   async all(): Promise<Receipt[]> {
     const { data, error } = await supabase.from("receipts").select("*").order("date", { ascending: false });
     if (error) throw error;

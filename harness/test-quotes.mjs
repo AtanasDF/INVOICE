@@ -37,7 +37,8 @@ try {
   await page.goto(BASE + "/quotes", { waitUntil: "networkidle0" });
   await waitText(page, "No quotes yet.");
   check("empty list says no quotes", true);
-  check("nav has Quotes", await page.evaluate(() => [...document.querySelectorAll("header a")].some((a) => a.textContent === "Quotes")));
+  // A tab under Invoices since 2026-10-28, marked as the one you are on.
+  check("Quotes is a tab of Invoices", await page.evaluate(() => [...document.querySelectorAll('main nav[aria-label="Invoices"] a')].some((a) => a.textContent.trim() === "Quotes" && a.getAttribute("aria-current") === "page")));
 
   await clickText(page, "+ Add");
   await sleep(300);

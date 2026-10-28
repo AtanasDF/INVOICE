@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Client, Receipt, ReceiptPage, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
+import { Client, Invoice, Receipt, ReceiptPage, clientsStore, invoicesStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
+import FileStrip from "@/components/FileStrip";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
@@ -17,6 +18,7 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 export default function FilesPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [pageCounts, setPageCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +40,11 @@ export default function FilesPage() {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    Promise.all([receiptsStore.all(), clientsStore.all(), receiptPagesStore.counts()])
-      .then(([r, c, counts]) => {
+    Promise.all([receiptsStore.all(), clientsStore.all(), receiptPagesStore.counts(), invoicesStore.all()])
+      .then(([r, c, counts, inv]) => {
         setReceipts(r);
         setClients(c);
+        setInvoices(inv);
         setPageCounts(counts);
       })
       .catch((err) => setError(loadFailed(err, "your documents")))
@@ -189,6 +192,11 @@ export default function FilesPage() {
         <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place.</p>
       </div>
       <Tip id="files-how">How it works: every photo and file you have saved is here, newest first. Tap one to see it or save it to your device.</Tip>
+      {/* The strip that was on Home until 2026-10-28 (launch plan step G):
+          a date roller and the documents sliding sideways, invoices
+          included, and the records whose photo was emailed away. Home is for
+          doing; looking back through the year belongs here. */}
+      {!loading && !error && (receipts.length > 0 || invoices.length > 0) && <FileStrip receipts={receipts} invoices={invoices} />}
       {emailed > 0 && (
         <p className="rounded-xl border bg-white p-4 text-sm text-neutral-600 shadow-sm">
           {emailed === 1 ? "One older photo has" : `${emailed} older photos have`} been emailed to you and cleared from here to keep the app free.
