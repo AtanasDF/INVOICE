@@ -101,7 +101,9 @@ check("the Gate still names its public pages one by one", exact.length >= 6, JSO
 check("...and the customer links are the only prefixes", JSON.stringify(prefixes.sort()) === JSON.stringify(["/i/", "/q/", "/r/"]), JSON.stringify(prefixes));
 // Not an assertion about which pages -- an assertion that somebody decided.
 // Changing the list is fine; changing it without reading this file is not.
-check("the public list is still short enough to have been thought about", exact.length <= 10, `${exact.length}: ${exact.join(", ")}`);
+// 12 since 2026-10-22: the website (/features, /pricing, /drivers, /faq) and
+// /help/home-screen, each with its reason beside it in the Gate.
+check("the public list is still short enough to have been thought about", exact.length <= 12, `${exact.length}: ${exact.join(", ")}`);
 
 // ---------------------------------------------------------------------------
 // The one that reaches people who have not arrived yet

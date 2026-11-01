@@ -79,6 +79,8 @@ const CLIP_RUNNERS = new Set([
   "test-bent", "test-conditions", "test-far", "test-far-recheck", "test-far-recheck-3100",
   "test-far-v2", "test-lens", "test-pinch", "test-torch", "test-torch-nocv",
   "test-address", "test-batch-swap", "test-batch-swap-3100",
+  // 2026-10-28, all three play clips: gen-batch-handheld.py, gen-pale.py, a stand-in takePhoto.
+  "test-batch-handheld", "test-pale", "test-still-interrupts",
 ]);
 // Older copies kept against a port of their own, superseded by a suite that IS
 // run. Named individually rather than matched by a pattern, so a NEW one cannot

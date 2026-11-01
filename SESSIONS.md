@@ -20,6 +20,25 @@ Atanas asleep; "keep working till you can".
   (`gen-pale.py` needs PIL; `camera2.mjs` wants `/Applications/Google Chrome.app`). Both
   are installs on his machine, so they wait for his OK. The white-worktop fix waits with
   them: a camera change nobody can measure should not be written blind.
+- **No-browser run of `run-all.sh` on main** (`JOBS=1`, `next start -p 3100`, placeholder
+  build): 73 green; 157 not, of which 146 are only "Browser was not found". The other 11:
+  - **Real, on main, fixed here (harness only):** `test-suites-report` (run-all.sh still
+    named `test-upload-panel`, retired on 28/10; `test-batch-handheld`, `test-pale` and
+    `test-still-interrupts` were in no list: now named as clip suites, though no runner
+    script runs them, so they are by hand only) and `test-promises` (the public list
+    went to 12 with the website on 22/10, each page with its reason in the Gate; cap
+    raised to 12 with that said). Both green after.
+  - **Real, on main, left for the visual-pass branch:** `test-every-screen-explained`
+    fails on "." (Home), because week 2 took Home's welcome tip away. Its How-it-works job
+    edits that suite anyway.
+  - **This Mac, not the app:** `test-inbox-worker` (no `npm ci` in `worker/`),
+    `test-logo` and `test-public-logo` (`uploads/card.png` comes from `gen-uploads.py`,
+    which needs Pillow), `test-tiles` (clips), `test-vat-lookup`, `test-locked-doors`,
+    `test-help-chat-live` ("fetch failed", their stand-ins; not looked into),
+    `test-quote-requests` (wants a dev server of its own).
+- **Cloud round started** (Atanas: build in the cloud, merge and test here): `wip/price-list`
+  then `wip/business-categories`; `wip/settings-split` then `wip/domain-ready`;
+  `wip/visual-pass` then `wip/how-it-works`. `notes/launch-list.md` written.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 
