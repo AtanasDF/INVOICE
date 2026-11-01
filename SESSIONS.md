@@ -7,8 +7,8 @@ and what is left open. Dates are session dates (Europe/London).
 
 ## 2026-11-01 (cloud, later): item 6, the "How it works" boxes (`wip/how-it-works`, NOT merged)
 
-**BLOCKED: this session could not push**, the same 403 as the entry below. This branch
-is cut from `wip/visual-pass` and holds both pieces of work.
+Pushed once GitHub access was allowed (see the entry below). This branch is cut from
+`wip/visual-pass` and holds both pieces of work.
 
 Asked for by the Mac session: launch review item 6. Each box sat on top of a subtitle
 that said nearly the same thing and pushed the page down a third of a screen.
