@@ -18,8 +18,8 @@ const newClient = src("app/clients/new/page.tsx");
 check("Clear form clears the end-user declaration (it turns the reverse charge off)", /setEndUserDeclared\(false\)/.test(fn(newClient, "function clearForm")));
 check("a ticked declaration counts as something to clear", /const filled = [^;]*endUserDeclared/.test(newClient));
 
-const settings = src("app/settings/page.tsx");
-check("Settings never writes back the import address it loaded", /inboxToken:\s*current\.inboxToken/.test(settings) && !/^\s*inboxToken,\s*$/m.test(settings));
+const settings = src("components/settings/ProfileForm.tsx");
+check("Settings never writes back the import address it loaded", /inboxToken:\s*stored\.inboxToken/.test(settings) && !/^\s*inboxToken,\s*$/m.test(settings));
 
 const shell = src("app/AppShell.tsx");
 check("a stranger is not offered a link to /help, which sends them to /login", !/<Link href="\/help"[^>]*>How it works<\/Link>\s*\n\s*<Link href="\/how-to-invoice"/.test(shell) && /user \? <Link href="\/help"/.test(shell));

@@ -69,7 +69,7 @@ export function EmailAddressBox({ address, making }: { address: string | null; m
       ) : (
         <p className="text-neutral-700">
           We could not make your address just now.{" "}
-          <Link href="/settings" className="font-medium underline">Try from Settings</Link>, and anything you forward to it lands in Needs review.
+          <Link href="/settings/expenses" className="font-medium underline">Try from Settings</Link>, and anything you forward to it lands in Needs review.
         </p>
       )}
     </div>

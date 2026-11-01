@@ -140,15 +140,18 @@ check("a closed header menu does not take focus on Escape", /if \(e\.key !== "Es
   const missing = [];
   for (const [rel, src] of files) {
     for (const m of src.matchAll(/aria-describedby=\{[^}]*?\? "([\w-]+)" : undefined\}/g)) {
-      if (!new RegExp(`id="${m[1]}"`).test(src)) missing.push(`${rel}:${lineOf(src, m.index)} ${m[1]}`);
+      // Settings' pages share one Save bar, which holds the error box.
+      const own = rel.startsWith(`app${path.sep}settings${path.sep}`) ? src + code("components/settings/ProfileForm.tsx") : src;
+      if (!new RegExp(`id="${m[1]}"`).test(own)) missing.push(`${rel}:${lineOf(src, m.index)} ${m[1]}`);
     }
   }
   check("every literal aria-describedby points at an id in the same file", missing.length === 0, missing.join(", "));
   const quote = code("components/quote/QuoteForm.tsx");
   check("the quote form's errors are tied to their boxes, not to a <div> round the customer picker", !/<div aria-invalid/.test(quote) && /error === NO_NUMBER \? "quote-error"/.test(quote));
-  for (const [rel, id] of [["app/invoices/[id]/page.tsx", "pay-error"], ["app/invoices/[id]/page.tsx", "cn-error"], ["app/reset-password/page.tsx", "reset-error"], ["components/SignInCard.tsx", "forgot-error"], ["app/scan/page.tsx", "scan-save-error"], ["app/settings/page.tsx", "settings-error"], ["app/feedback/page.tsx", "feedback-error"], ["components/check-company/CompanyChecker.tsx", "company-error"]]) {
+  for (const [rel, id] of [["app/invoices/[id]/page.tsx", "pay-error"], ["app/invoices/[id]/page.tsx", "cn-error"], ["app/reset-password/page.tsx", "reset-error"], ["components/SignInCard.tsx", "forgot-error"], ["app/scan/page.tsx", "scan-save-error"], ["app/feedback/page.tsx", "feedback-error"], ["components/check-company/CompanyChecker.tsx", "company-error"]]) {
     check(`${rel}: an error box with id ${id} that a field points at`, new RegExp(`id="${id}" role="alert"`).test(code(rel)) && new RegExp(`"${id}" : undefined`).test(code(rel)));
   }
+  check("settings: the shared Save bar's error box is the one the category box points at", /id="settings-error" role="alert"/.test(code("components/settings/ProfileForm.tsx")) && /"settings-error" : undefined/.test(code("app/settings/expenses/page.tsx")));
   check("the VAT number box is marked wrong when its check digits fail", /aria-invalid=\{bad \|\| undefined\}/.test(code("components/VatNumberInput.tsx")));
   check("an empty feedback message is refused out loud, not ignored", /if \(!message\.trim\(\)\) return setError\(NO_MESSAGE\)/.test(code("app/feedback/page.tsx")));
 }

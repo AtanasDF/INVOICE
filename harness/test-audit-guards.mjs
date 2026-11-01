@@ -64,7 +64,7 @@ const sign = code("components/SignInCard.tsx");
 check("SignInCard never hands an auth error to saveFailed", !/saveFailed\(/.test(sign));
 check("a link's error_description is never shown as written", !/reason\.replace\(/.test(sign) && !/setError\(\s*reason\b/.test(sign));
 check("reset-password says GoTrue's errors in plain words", /authFailed\(/.test(code("app/reset-password/page.tsx")) && !/saveFailed\(/.test(code("app/reset-password/page.tsx")));
-check("Settings' sign-in email says GoTrue's errors in plain words", /resetPasswordForEmail[\s\S]{0,200}authFailed\(/.test(code("app/settings/page.tsx")));
+check("Settings' sign-in email says GoTrue's errors in plain words", /resetPasswordForEmail[\s\S]{0,200}authFailed\(/.test(code("app/settings/account/page.tsx")));
 check("PriceFinder no longer runs a fetch error through errorText", !/errorText\(/.test(code("components/PriceFinder.tsx")));
 check("emailing an invoice says PDF_FAILED when the PDF can't be made", /currentPdf\(\)[\s\S]{0,200}PDF_FAILED/.test(code("components/SendInvoicePanel.tsx")));
 check("emailing a file says PDF_FAILED when the PDF can't be made", /await file\(\)[\s\S]{0,200}PDF_FAILED/.test(code("components/EmailFileForm.tsx")));
@@ -93,8 +93,8 @@ const ONCE = [
   ["components/SignInCard.tsx", "async function confirmWithCode("],
   ["components/SignInCard.tsx", "async function resend("],
   ["components/SignInCard.tsx", "async function onSubmit("],
-  ["app/settings/page.tsx", "async function emailSignInLink("],
-  ["app/settings/page.tsx", "async function regenerateInboxToken("],
+  ["app/settings/account/page.tsx", "async function emailSignInLink("],
+  ["app/settings/expenses/page.tsx", "async function regenerateInboxToken("],
 ];
 for (const [file, start] of ONCE) {
   const src = code(file);
@@ -124,7 +124,7 @@ check("/scan: a failed lists load has its own note", /listsFailed &&/.test(code(
 
 // ── 4. A removal asks, and names what goes ─────────────────────────────
 check("Archive asks, by name", /if \(next && !window\.confirm\(`Archive \$\{c\.name\}/.test(code("app/clients/page.tsx")));
-check("Reset to defaults names the categories that go", /lost\.join\(", "\)/.test(code("app/settings/page.tsx")) && /onClick=\{resetCategories\}/.test(code("app/settings/page.tsx")));
+check("Reset to defaults names the categories that go", /lost\.join\(", "\)/.test(code("app/settings/expenses/page.tsx")) && /onClick=\{resetCategories\}/.test(code("app/settings/expenses/page.tsx")));
 check("Forget my saved signature asks", /function forgetSaved\(\) \{\s*if \(!window\.confirm\(/.test(code("components/free-invoice/DraftEditor.tsx")));
 check("Clear form says the Free page draft goes too", /also=\{imported \?/.test(code("app/invoices/new/page.tsx")) && /\$\{also \?/.test(code("components/ClearFormButton.tsx")));
 check("removing a repeating expense says which", /repeating expense "\$\{description\}"/.test(code("app/recurring/page.tsx")));
@@ -192,6 +192,6 @@ check("files: missing pages say so with a retry, never 'Loading page…' for goo
 check("files: a document whose pages didn't load is never saved short", /loadedPages\.length < previewTotalPages - 1\) throw/.test(files));
 check("files: the email form hears a failed file as a failure", !/makeFile\(\)[\s\S]{0,40}\} catch \{[\s\S]{0,120}return null;/.test(files) && !/catch \{\s*setFileError\([^)]*\);\s*return null;/.test(files));
 check("logo: a failed read isn't kept for the session", /cache\.delete\(ref\)/.test(code("lib/logo.ts")));
-check("settings: a saved logo that didn't show isn't 'No logo yet'", /\) : logoUrl \? \(/.test(code("app/settings/page.tsx")));
+check("settings: a saved logo that didn't show isn't 'No logo yet'", /\) : logoUrl \? \(/.test(code("app/settings/business/page.tsx")));
 
 console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));

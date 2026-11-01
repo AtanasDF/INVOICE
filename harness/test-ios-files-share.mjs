@@ -197,7 +197,7 @@ check("long sheets are drawn under Safari's canvas limit", /pixelRatio: sheetPix
 
 // #7: push instructions in a Safari tab.
 {
-  const s = read("app/settings/page.tsx");
+  const s = read("app/settings/account/page.tsx");
   const card = s.slice(s.indexOf("<h2 className=\"font-semibold\">Notifications</h2>"));
   check("Settings asks 'iPhone, not from the Home Screen' before 'no push'", card.indexOf("isIosNotStandalone()") > -1 && card.indexOf("isIosNotStandalone()") < card.indexOf("!pushSupported()"));
   const push = read("lib/push.ts");
@@ -246,7 +246,7 @@ for (const p of ["components/VatNumberInput.tsx", "components/CompanyNumberInput
   const s = read(p);
   check(`${p}: capitals, no autocorrect`, /autoCapitalize="characters"/.test(s) && /autoCorrect="off"/.test(s) && /spellCheck=\{false\}/.test(s));
 }
-check("the invoice prefix box: capitals, no autocorrect", /id="invoice-prefix" autoCapitalize="characters" autoCorrect="off" spellCheck=\{false\}/.test(read("app/settings/page.tsx")));
+check("the invoice prefix box: capitals, no autocorrect", /id="invoice-prefix" autoCapitalize="characters" autoCorrect="off" spellCheck=\{false\}/.test(read("app/settings/invoices/page.tsx")));
 check("the Min total filter reads '1,200' as twelve hundred", /amountOrNull\(filterMinTotal\)/.test(read("app/invoices/page.tsx")) && !/parseFloat\(filterMinTotal\)/.test(read("app/invoices/page.tsx")));
 check("a month box gets the iPhone date-box fix", /input\[type="date"\],\s*input\[type="month"\]\s*\{/.test(read("app/globals.css")));
 
