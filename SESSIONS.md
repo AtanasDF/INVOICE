@@ -32,11 +32,19 @@ branch works read-only: learned prices only, and the page says changes can't be 
   `helpFacts.ts`, `savedPrices.ts` (`key` exported as `priceKey`), `QuoteForm.tsx`,
   `invoices/new/page.tsx` (the chip block replaced by the picker), `jobs/page.tsx` (one
   line in the tip). No change to `globals.css` or `AppShell`.
+- **Not pushed by this session**: every write to GitHub was refused (git push 403, and
+  the API's "Resource not accessible by integration"). The commits are in the cloud
+  container on `wip/price-list` and in `wip-price-list.bundle` beside the repo.
 - **Suites**: new `test-price-list` (53, pure logic) and `test-prices-page` (24, browser,
   includes the before-047 read-only case via a 42703 stand-in), both in run-all.sh.
   `test-first-week` updated for the fourth Invoices tab. Run here in the cloud against
   `next start` with the pre-installed Chromium (mockdb's Chrome path swapped locally for
-  the run, not committed). Results are in the list below.
+  the run, not committed). Green here: test-price-list 53/53, test-prices-page 24/24,
+  test-saved-prices 15, test-first-week 29, test-jobs 22, test-help-chat 61, test-quotes 35,
+  test-free-quote 13, test-lines 7, test-form-draft 67, test-draft-autosave 18,
+  test-dark-mode 48, test-no-sideways 4, test-fit-320 27, test-labels 38.
+  test-quotes-ux stops at 33 checks on "Waiting on the customer" -- **identically on a
+  build of main**, so not this branch; worth a look on the Mac.
 - tsc, eslint, build clean (build with the placeholder Supabase env on the command line).
   Logic suites green; three reds are not this branch: test-help-chat's two server checks
   (needs the server), test-suites-report (test-upload-panel retired, three clip suites
