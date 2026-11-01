@@ -64,7 +64,7 @@ export default function SaveThese({ receipts, clients, from, to, supplier }: {
   }
 
   return (
-    <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-semibold">Save these to your device</h2>

@@ -1,8 +1,13 @@
 // A TOOL, not a suite: iPhone-sized pictures of the launch screens
 // (notes/launch-simplify.md) for Atanas to look at before they ship, against a
-// made-up account in the mock database. OUT is where they go.
+// made-up account in the mock database. OUT is where they go; SCHEME=dark
+// takes the same pictures in dark mode (the app follows the phone).
 //
 //   BASE=http://localhost:3100 OUT=/some/folder node shots-launch.mjs
+//   BASE=http://localhost:3100 OUT=/some/folder SCHEME=dark node shots-launch.mjs
+//
+// Before and after: build and start main, take a set into one folder, then
+// the branch into another, and lay the two folders side by side.
 import { makeDb, launchSignedIn, signIn, sleep, newId, todayISO, day } from "./mockdb.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3100";
@@ -36,12 +41,13 @@ const fresh = () => {
   return db;
 };
 
-const light = (page) => page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+const SCHEME = process.env.SCHEME === "dark" ? "dark" : "light";
+const light = (page) => page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: SCHEME }]);
 const snap = async (page, name, full = false, top = true) => {
   await sleep(900);
   if (top) await page.evaluate(() => window.scrollTo(0, 0));
   await sleep(200);
-  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: full });
+  await page.screenshot({ path: `${OUT}/${name}${SCHEME === "dark" ? "-dark" : ""}.png`, fullPage: full });
   console.log("saved", name);
 };
 
@@ -91,6 +97,23 @@ const snap = async (page, name, full = false, top = true) => {
     await page.waitForFunction(() => document.body.innerText.includes("How to pay"), { timeout: 20000 }).catch(() => {});
     await page.evaluate(() => [...document.querySelectorAll("p")].find((p) => p.textContent.trim() === "How to pay")?.scrollIntoView({ block: "center" }));
     await snap(page, "6-invoice-pay-now", false, false);
+    // The screens the visual pass (launch plan step I) changed, a whole page each.
+    for (const [path, name] of [
+      ["/invoices", "8-invoices-list"],
+      [`/invoices/${I1}`, "9-invoice-page"],
+      ["/quotes", "10-quotes"],
+      ["/receipts", "11-receipts"],
+      ["/receipts/review", "12-needs-review"],
+      ["/clients", "13-customers"],
+      ["/money", "14-money"],
+      ["/expenses", "15-expenses"],
+      ["/vat", "16-vat"],
+      ["/files", "17-files"],
+      ["/scan", "18-scan"],
+    ]) {
+      await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
+      await snap(page, name, true);
+    }
     await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
     await page.evaluate(() => document.getElementById("payment-link")?.scrollIntoView({ block: "center" }));
     await snap(page, "7-settings-payment-link", false, false);

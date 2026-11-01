@@ -149,12 +149,12 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
       </div>
 
       {row.source === "online" && (
-        <p className="rounded-lg border border-neutral-300 bg-neutral-50 p-3 text-sm text-neutral-700">
+        <p className="rounded-lg bg-neutral-100 p-3 text-sm text-neutral-700">
           {supplierName} sent these prices online. Saving replaces them with yours; theirs are kept with the request.
         </p>
       )}
 
-      <section className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <section className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">Their quote</h2>
         <p className="mt-1 text-sm text-neutral-600">A PDF or photo of the quote they sent you. It&apos;s kept with their prices.</p>
         {row.documentPath && !file && (
@@ -176,7 +176,7 @@ export default function AnswerEntry({ request, row, supplierName, onCancel, onSa
         <p role="status" className="sr-only">{note ?? ""}</p>
       </section>
 
-      <section className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <section className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <h2 className="mb-3 font-semibold">Prices</h2>
         <PriceForm
           items={items}

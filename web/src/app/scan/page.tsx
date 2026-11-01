@@ -1189,7 +1189,7 @@ export default function ScanPage() {
 
   if (walk && summary && walk.docs.every((d) => d.done)) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">All saved</h1>
           <p className="mt-1 text-neutral-600">
@@ -1268,7 +1268,7 @@ export default function ScanPage() {
       onCarryOn={retry}
     />
   ) : scanError && (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+    <div className="rounded-lg bg-red-50 p-3">
       <p role="alert" className="text-sm text-red-600">{scanError}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {(pages.length > 0 || pendingUploads) && (
@@ -1316,9 +1316,9 @@ export default function ScanPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        {summaryText && <p className="mb-3 rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-700">{summaryText}</p>}
+        {summaryText && <p className="mb-3 rounded-lg bg-neutral-100 p-3 text-sm text-neutral-700">{summaryText}</p>}
         {walk && walk.docs.length > 1 && (
           <p className="mb-1 text-xs font-medium text-neutral-500">
             Document {position + 1} of {walk.docs.length}
@@ -1336,7 +1336,7 @@ export default function ScanPage() {
             never feels like a meter running. */}
         <ScansLeft />
         {kept.length > 0 && !walk && (
-          <div role="status" className="mb-3 rounded-xl border bg-neutral-50 p-4 text-neutral-900">
+          <div role="status" className="mb-3 rounded-xl bg-neutral-100 p-4 text-neutral-900">
             <p className="text-base font-medium">
               {kept.length === 1 ? "A document you scanned wasn't saved." : `${kept.length} documents you scanned weren't saved.`}
             </p>
@@ -1361,7 +1361,7 @@ export default function ScanPage() {
           </div>
         )}
         {cameraBlocked && (
-          <div role="status" className="mb-3 rounded-xl border bg-neutral-50 p-4 text-neutral-900">
+          <div role="status" className="mb-3 rounded-xl bg-neutral-100 p-4 text-neutral-900">
             <p className="text-base font-medium">The camera didn&apos;t open.</p>
             <p className="mt-1 text-base text-neutral-700">
               It&apos;s blocked for this site in your browser&apos;s settings. You can still upload a photo or
@@ -1463,7 +1463,7 @@ export default function ScanPage() {
         </div>
       </div>
 
-      <fieldset disabled={scanning || bulk !== null} className="min-w-0 space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <fieldset disabled={scanning || bulk !== null} className="min-w-0 space-y-4 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         {errorBanner}
         {listsFailed && !scanError && (
           <p role="alert" className="text-sm text-red-600">

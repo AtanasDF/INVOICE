@@ -67,11 +67,11 @@ try {
   // A supplier with an invoice gets the reminders switch on the Suppliers tab.
   await page.goto(`${BASE}/clients?tab=supplier`, { waitUntil: "networkidle0" });
   await sleep(600);
-  const cards = await page.evaluate(() => [...document.querySelectorAll(".rounded-xl.border")].map((c) => c.innerText));
+  const cards = await page.evaluate(() => [...document.querySelectorAll("main .rounded-xl")].map((c) => c.innerText));
   const merchCard = cards.find((t) => t.includes("Builders Merchant Ltd")) ?? "";
   check("invoiced supplier shows Payment history", merchCard.includes("Payment history"), merchCard);
   check("supplier without invoices doesn't", !(cards.find((t) => t.includes("Timber Yard Ltd")) ?? "").includes("Payment history"));
-  await page.evaluate(() => { const card = [...document.querySelectorAll(".rounded-xl.border")].find((c) => c.innerText.includes("Builders Merchant Ltd")); [...card.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit").click(); });
+  await page.evaluate(() => { const card = [...document.querySelectorAll("main .rounded-xl")].find((c) => c.innerText.includes("Builders Merchant Ltd")); [...card.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit").click(); });
   await sleep(300);
   const box = await page.evaluate(() => [...document.querySelectorAll("label")].some((l) => l.textContent.includes("Send automatic payment reminders")));
   check("invoiced supplier: reminders switch in Edit", box);

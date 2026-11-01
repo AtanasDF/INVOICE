@@ -147,7 +147,7 @@ export default function ReviewQueuePage() {
   if (loading) return <p className="text-sm text-neutral-500">Loading…</p>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">
@@ -169,7 +169,7 @@ export default function ReviewQueuePage() {
       {receipts.length === 0 && !error ? (
         <p className="text-sm text-neutral-500">Nothing waiting on review.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {receipts.map((r) => {
             const draft = drafts[r.id];
             if (!draft) return null;
@@ -178,22 +178,22 @@ export default function ReviewQueuePage() {
             const badge = TYPE_BADGE[r.documentType];
             const isInvoice = r.documentType === "invoice";
             return (
-              <div key={r.id} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+              <div key={r.id} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
                 {/* One column on a phone: beside an 80px picture the dates read
                     "23/07/20" and the supplier was cut to a word. */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                   {r.imageDataUrl ? (
                     isPdf ? (
-                      <div className="flex h-20 w-full flex-shrink-0 flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500 sm:w-20">
+                      <div className="flex h-20 w-full flex-shrink-0 flex-col items-center justify-center gap-1 rounded-lg bg-neutral-100 text-xs text-neutral-500 sm:w-20">
                         <DocumentIcon className="h-6 w-6" />
                         PDF
                       </div>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={r.imageDataUrl} alt="" className="h-48 w-full flex-shrink-0 rounded-lg border object-contain sm:h-20 sm:w-20 sm:object-cover" />
+                      <img src={r.imageDataUrl} alt="" className="h-48 w-full flex-shrink-0 rounded-lg bg-neutral-100 object-contain sm:h-20 sm:w-20 sm:object-cover" />
                     )
                   ) : (
-                    <div className="flex h-12 w-full flex-shrink-0 flex-col items-center justify-center rounded-lg border bg-neutral-50 text-xs text-neutral-500 text-center sm:h-20 sm:w-20">
+                    <div className="flex h-12 w-full flex-shrink-0 flex-col items-center justify-center rounded-lg bg-neutral-100 text-xs text-neutral-500 text-center sm:h-20 sm:w-20">
                       No attachment
                     </div>
                   )}

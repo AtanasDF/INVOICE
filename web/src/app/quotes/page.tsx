@@ -40,7 +40,7 @@ export default function QuotesPage() {
   const quiet = quotes.filter((q) => isQuietQuote(q, today));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Quotes</h1>
@@ -59,7 +59,7 @@ export default function QuotesPage() {
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {quiet.length > 0 && (
-        <section className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <section className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
           <div>
             <h2 className="font-semibold">Waiting on an answer</h2>
             <p className="text-sm text-neutral-600">Sent a while ago and still open. A nudge often decides it.</p>
@@ -68,7 +68,7 @@ export default function QuotesPage() {
             const client = clients.find((c) => c.id === q.clientId) ?? null;
             const total = money(quoteTotal(q, vatOf(q)));
             return (
-              <div key={q.id} className="rounded-lg border p-3">
+              <div key={q.id} className="rounded-lg bg-neutral-100 p-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <Link href={`/quotes/${q.id}`} className="font-medium">
                     {q.number} · {clientName(q.clientId)}
@@ -98,13 +98,13 @@ export default function QuotesPage() {
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {quotes.length === 0 && !error && <p className="text-sm text-neutral-500">No quotes yet. Make one to price a job before you start.</p>}
           {quotes.map((q) => {
             const deposit = depositGross(q, vatOf(q));
             const open = q.status === "draft" || q.status === "sent";
             return (
-              <Link key={q.id} href={`/quotes/${q.id}`} className="flex items-start justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <Link key={q.id} href={`/quotes/${q.id}`} className="flex items-start justify-between gap-3 rounded-xl bg-white px-4 py-3 text-neutral-900 shadow-sm">
                 <div className="min-w-0">
                   <p className="truncate font-medium">
                     {q.number} · {clientName(q.clientId)}
@@ -115,7 +115,7 @@ export default function QuotesPage() {
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="font-semibold">{money(quoteTotal(q, vatOf(q)))}</p>
+                  <p className="font-semibold tabular-nums">{money(quoteTotal(q, vatOf(q)))}</p>
                   {deposit ? <p className="text-xs text-neutral-500">{money(deposit)} deposit</p> : null}
                   {open && q.validUntil && <p className="text-xs text-neutral-500">until {shortDate(q.validUntil)}</p>}
                 </div>

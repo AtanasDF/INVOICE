@@ -201,7 +201,7 @@ export default function RecurringInvoicesPage() {
   const totals = computeInvoiceTotals(lineItems, profile?.vatRegistered ?? false);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Repeating invoices</h1>
         <p className="mt-1 text-neutral-600">
@@ -211,7 +211,7 @@ export default function RecurringInvoicesPage() {
 
       <Tip id="recurring-invoices-how">How it works: set the customer and the lines once. Each month a DRAFT invoice is made for you to check and send &mdash; nothing goes out on its own.</Tip>
 
-      <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={addRecurring} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <select aria-label="Customer" className="w-full rounded-lg border px-3 py-2" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Select a customer or company</option>
           {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -313,7 +313,7 @@ export default function RecurringInvoicesPage() {
             const due = item.nextDueDate <= today;
             const total = computeInvoiceTotals(item.items, profile?.vatRegistered ?? false).total;
             return (
-              <div key={item.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <div key={item.id} className="flex items-center justify-between rounded-xl bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
                   <div className={`font-medium ${!item.active ? "text-neutral-600 line-through" : ""}`}>
                     {clientName(item.clientId)}

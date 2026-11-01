@@ -148,32 +148,32 @@ export default function ExpensesPage() {
               it is told to.
               The row already wrapped; the control inside it did not, so at
               a large text size Week/Month/Year/Custom ran off together. */}
-          <div className="flex flex-wrap rounded-lg border text-sm">
+          <div className="flex flex-wrap gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium">
             <button
               onClick={() => setPeriodMode("week")}
               aria-pressed={periodMode === "week"}
-              className={`px-3 py-1.5 ${periodMode === "week" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+              className={`rounded-md px-3 py-1.5 ${periodMode === "week" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Week
             </button>
             <button
               onClick={() => setPeriodMode("month")}
               aria-pressed={periodMode === "month"}
-              className={`px-3 py-1.5 ${periodMode === "month" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+              className={`rounded-md px-3 py-1.5 ${periodMode === "month" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Month
             </button>
             <button
               onClick={() => setPeriodMode("year")}
               aria-pressed={periodMode === "year"}
-              className={`px-3 py-1.5 ${periodMode === "year" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+              className={`rounded-md px-3 py-1.5 ${periodMode === "year" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Year
             </button>
             <button
               onClick={() => setPeriodMode("custom")}
               aria-pressed={periodMode === "custom"}
-              className={`px-3 py-1.5 ${periodMode === "custom" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+              className={`rounded-md px-3 py-1.5 ${periodMode === "custom" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               Custom
             </button>
@@ -207,33 +207,33 @@ export default function ExpensesPage() {
         <p className="text-sm text-neutral-500">{viewMode === "combined" ? "Combined with invoices" : "Expenses only"}</p>
       </div>
 
-      <div className="flex rounded-lg border text-sm w-fit print:hidden">
+      <div className="flex w-fit gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium print:hidden">
         <button
           onClick={() => setViewMode("expenses")}
           aria-pressed={viewMode === "expenses"}
-          className={`px-3 py-1.5 ${viewMode === "expenses" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+          className={`rounded-md px-3 py-1.5 ${viewMode === "expenses" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
         >
           Expenses only
         </button>
         <button
           onClick={() => setViewMode("combined")}
           aria-pressed={viewMode === "combined"}
-          className={`px-3 py-1.5 ${viewMode === "combined" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+          className={`rounded-md px-3 py-1.5 ${viewMode === "combined" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
         >
           Combined with invoices
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-xl font-bold sm:text-2xl">{money(totals.total)}</div>
           <div className="text-sm text-neutral-600">Total excl. VAT</div>
         </div>
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-xl font-bold sm:text-2xl">{money(totals.vat)}</div>
           <div className="text-sm text-neutral-600">VAT on those costs</div>
         </div>
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
           <div className="text-xl font-bold sm:text-2xl">{money(expensesInclVat)}</div>
           <div className="text-sm text-neutral-600">Total incl. VAT</div>
         </div>
@@ -241,15 +241,15 @@ export default function ExpensesPage() {
 
       {viewMode === "combined" && (
         <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+          <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className="text-xl font-bold sm:text-2xl">{money(income)}</div>
             <div className="text-sm text-neutral-600">Invoiced (income)</div>
           </div>
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+          <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className="text-xl font-bold sm:text-2xl">{money(cost)}</div>
             <div className="text-sm text-neutral-600">{vatRegistered ? "Spent (excl. reclaimable VAT)" : "Spent (incl. VAT)"}</div>
           </div>
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+          <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
             <div className={`text-2xl font-bold ${income - cost < 0 ? "text-red-600" : ""}`}>
               {money(income - cost)}
             </div>
@@ -258,7 +258,7 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:border-0 print:shadow-none print:px-0">
         <h2 className="font-semibold">By category</h2>
         {byCategory.length === 0 && <p className="mt-2 text-sm text-neutral-500">No costs recorded for this {periodMode}.</p>}
         {chartData.length > 0 && (

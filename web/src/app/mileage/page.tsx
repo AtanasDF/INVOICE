@@ -194,7 +194,7 @@ export default function MileagePage() {
       </div>
       <Tip id="mileage-how">How it works: add a trip and it is saved as an expense at HMRC&apos;s rate. No receipt needed.</Tip>
 
-      <form onSubmit={save} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={save} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-neutral-500" htmlFor="m-date">Date</label>
@@ -276,7 +276,7 @@ export default function MileagePage() {
         </button>
       </form>
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This tax year ({taxYearLabel(year)})</h2>
         {receipts === null ? (
           loadError ? <p role="alert" className="mt-1 text-sm text-red-600">{loadError}</p> : <p className="mt-1 text-sm text-neutral-500">Loading…</p>

@@ -268,7 +268,13 @@ session log what was added so he knows what to clear.
 Terse, comment-free code; a comment only explains *why*. No abstractions or error
 handling for cases that cannot happen. Commit messages explain the reasoning or the bug,
 not the diff. Match the existing conventions: page header `h1.text-2xl.font-bold` +
-`p.mt-1.text-neutral-600`; cards `rounded-xl border bg-white p-5 text-neutral-900 shadow-sm`;
+`p.mt-1.text-neutral-600`; cards `rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm`, **no
+outline** since the 2026-11-01 visual pass (a filled card with a soft shadow, as Home has
+been since 28/10; outlines stay on inputs, secondary buttons and floating menus), list rows
+`px-4 py-3` with `space-y-2` between them and the amount on the right, a box inside a card
+`rounded-lg bg-neutral-100 p-3` rather than a second outline, one segmented control (a
+`bg-neutral-100 p-1` track, the chosen one `bg-neutral-900 text-white`, which stays legible
+in dark where a white pill on neutral-100 vanished), and `space-y-6` between a page's blocks;
 primary button `rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white`;
 labels `text-xs text-neutral-500` above the control; badges `rounded-full px-2 py-0.5
 text-xs font-medium` with a bg-X-100/text-X-800 pair. New UI uses the neutral scale, which is **no longer grey by choice**: since

@@ -141,7 +141,7 @@ export default function PriceForm({ items, draft, onChange, disabled, lineExtra,
               role="radio"
               aria-checked={draft.vatIncluded === inc}
               onClick={() => onChange({ ...draft, vatIncluded: inc })}
-              className={`rounded-md px-2 py-2 text-sm font-medium ${draft.vatIncluded === inc ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+              className={`rounded-md px-2 py-2 text-sm font-medium ${draft.vatIncluded === inc ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               {inc ? "Prices include VAT" : "Prices exclude VAT"}
             </button>

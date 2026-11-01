@@ -13,7 +13,7 @@ export default function DateConfirm({ iso, alternative, printed, onSwap, onConfi
   onConfirm: () => void;
 }) {
   return (
-    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+    <div className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
       <p>
         Read as <span className="font-medium">{longDate(iso)}</span>
         {printed ? ` — the document shows ${printed}` : ""}. If it meant {longDate(alternative)}, swap.

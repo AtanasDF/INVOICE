@@ -41,7 +41,7 @@ export default function Compare({ items, offers, comparison, picks, own, today, 
   const totals = new Map(offers.map((o) => [o.id, supplierTotal(o, items)]));
 
   return (
-    <section className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm" aria-labelledby="compare-heading">
+    <section className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm" aria-labelledby="compare-heading">
       <h2 id="compare-heading" className="font-semibold">Compare</h2>
       {!offers.length ? (
         <p className="mt-1 text-sm text-neutral-600">No prices yet. They&apos;ll show here side by side as suppliers answer.</p>

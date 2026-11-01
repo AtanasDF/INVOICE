@@ -164,7 +164,7 @@ export default function MoneyPage() {
   }
 
   const Row = ({ row, side }: { row: Owed; side: "in" | "out" }) => (
-    <li className="flex flex-wrap items-center justify-between gap-2 border-b py-3 last:border-b-0">
+    <li className="flex flex-wrap items-center justify-between gap-2 border-b py-2.5 last:border-b-0">
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium wrap-anywhere">{row.who || "No name"}</span>
@@ -179,7 +179,7 @@ export default function MoneyPage() {
         </span>
       </span>
       <span className="flex flex-wrap items-center justify-end gap-x-3">
-        <span className="font-medium">{money(row.amount)}</span>
+        <span className="font-semibold tabular-nums">{money(row.amount)}</span>
         {side === "in" && picking ? (
           <input
             type="checkbox"
@@ -214,7 +214,7 @@ export default function MoneyPage() {
 
       {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      <p role="status" className={done ? "rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700" : "sr-only"}>{done ?? ""}</p>
+      <p role="status" className={done ? "rounded-lg bg-neutral-100 p-3 text-sm text-neutral-700" : "sr-only"}>{done ?? ""}</p>
 
       {/* Nothing is shown when the read failed. "Owed to you £0.00" on a
           page that could not load is a figure that is not true, which is
@@ -230,15 +230,15 @@ export default function MoneyPage() {
               { label: "You owe", value: m.totalOut, late: m.lateOut },
               { label: "Difference", value: m.net, late: 0 },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-                <p className="text-xs text-neutral-500 wrap-anywhere">{s.label}</p>
-                <p className="mt-1 text-base font-semibold wrap-anywhere">{money(s.value)}</p>
+              <div key={s.label} className="rounded-xl bg-white p-3 text-neutral-900 shadow-sm">
+                <p className="text-xs text-neutral-600 wrap-anywhere">{s.label}</p>
+                <p className="mt-0.5 font-bold tabular-nums wrap-anywhere sm:text-xl">{money(s.value)}</p>
                 {s.late > 0 && <p className="text-xs text-red-700 wrap-anywhere">{money(s.late)} late</p>}
               </div>
             ))}
           </div>
 
-          <section aria-labelledby="owed-to-you" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <section aria-labelledby="owed-to-you" className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="owed-to-you" className="font-semibold">Owed to you</h2>
               {m.owedToYou.length > 1 && (
@@ -298,7 +298,7 @@ export default function MoneyPage() {
             )}
           </section>
 
-          <section aria-labelledby="you-owe" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <section aria-labelledby="you-owe" className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
             <h2 id="you-owe" className="font-semibold">You owe</h2>
             {m.youOwe.length === 0 && !error ? (
               <p className="mt-2 text-sm text-neutral-500">No bills to pay. A supplier invoice you scan appears here until it is paid.</p>

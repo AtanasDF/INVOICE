@@ -46,7 +46,7 @@ import { EmailAddressBox, MailIcon, useEmailItIn } from "@/components/EmailItIn"
 // Filled, not outlined (2026-10-28, "it looks bad"): in dark mode every
 // outline was a bright white ring, and a page of rings reads as a form.
 const TILE = "flex min-h-20 w-full flex-col [&>svg]:size-5 items-center justify-center gap-1.5 rounded-xl bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md active:scale-[0.97]";
-const PANEL = "rounded-2xl bg-white px-4 py-2 text-neutral-900 shadow-sm";
+const PANEL = "rounded-xl bg-white px-4 py-2 text-neutral-900 shadow-sm";
 const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]";
 const FIGURE = "rounded-xl bg-white p-3 text-neutral-900 shadow-sm";
 

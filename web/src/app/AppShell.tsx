@@ -185,14 +185,14 @@ function SectionTabs() {
   const review = useNeedsReview();
   if (!section) return null;
   return (
-    <nav aria-label={section.label} className="-mx-4 mb-5 overflow-x-auto px-4 print:hidden">
-      <div className="flex w-max gap-1 rounded-xl bg-neutral-100 p-1 text-sm font-medium">
+    <nav aria-label={section.label} className="-mx-4 mb-4 overflow-x-auto px-4 print:hidden">
+      <div className="flex w-max gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium">
         {section.tabs.map(([href, label]) => (
           <Link
             key={href}
             href={href}
             aria-current={path === href ? "page" : undefined}
-            className={`flex items-center whitespace-nowrap rounded-lg px-3 py-2 ${path === href ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+            className={`flex items-center whitespace-nowrap rounded-md px-3 py-1.5 ${path === href ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             {label}
             {href === "/receipts/review" && <ReviewBadge count={review} />}

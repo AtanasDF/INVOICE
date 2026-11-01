@@ -324,7 +324,7 @@ export default function NewReceiptPage() {
         />
       )}
 
-      <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={addReceipt} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div
           onClick={() => fileRef.current?.click()}
           onDragOver={(e) => {
@@ -460,7 +460,7 @@ export default function NewReceiptPage() {
         )}
 
         {lineItems.length > 0 && (
-          <div className="space-y-2 rounded-lg border p-3">
+          <div className="space-y-2 rounded-lg bg-neutral-100 p-3">
             <p className="text-xs font-medium text-neutral-500">
               Items — give each its own category to split this receipt across categories (e.g. Groceries + Household).
             </p>

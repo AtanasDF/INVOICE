@@ -83,7 +83,7 @@ export default function StatementPage() {
 
       {statement && client && (
         <>
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+          <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-sm text-neutral-600">Owing as at {shortDate(asAt)}</span>
               <span className="text-2xl font-bold">{money(statement.outstanding)}</span>
@@ -105,7 +105,7 @@ export default function StatementPage() {
             </ShareButtons>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border bg-white p-5 shadow-sm print:border-0 print:p-0 print:shadow-none">
+          <div className="overflow-x-auto rounded-xl bg-white p-4 sm:p-5 shadow-sm print:border-0 print:p-0 print:shadow-none">
             <div className="min-w-[36rem]">{sheet}</div>
           </div>
         </>

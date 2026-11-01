@@ -29,7 +29,7 @@ export default function OrderLists({ plan, request, from, emailOf }: { plan: Pla
   }
 
   return (
-    <section className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm" aria-labelledby="orders-heading">
+    <section className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm" aria-labelledby="orders-heading">
       <h2 id="orders-heading" className="font-semibold">Orders</h2>
       {!plan.orders.length ? (
         <p className="mt-1 text-sm text-neutral-600">Nothing picked yet. Tap prices in Compare to choose where each line comes from.</p>
@@ -44,7 +44,7 @@ export default function OrderLists({ plan, request, from, emailOf }: { plan: Pla
               const text = orderText(order, ctx);
               const email = emailOf(order.offer.id);
               return (
-                <div key={order.offer.id} className="rounded-lg border p-3" data-testid="order">
+                <div key={order.offer.id} className="rounded-lg bg-neutral-100 p-3" data-testid="order">
                   <div className="flex items-start justify-between gap-3">
                     <p className="min-w-0 truncate font-medium">{order.offer.name}</p>
                     <p className="shrink-0 font-semibold">{formatPence(order.ex)} <span className="text-xs font-normal text-neutral-500">ex VAT</span></p>

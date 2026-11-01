@@ -77,7 +77,7 @@ export default function VatPage() {
         </p>
       )}
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div className="flex flex-wrap gap-2">
           {[
             { label: "Last quarter", range: previousQuarter(todayIso()) },
@@ -118,7 +118,7 @@ export default function VatPage() {
               role="radio"
               aria-checked={basis === b.id}
               onClick={() => setBasis(b.id)}
-              className={`rounded-md py-1.5 text-sm font-medium ${basis === b.id ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+              className={`rounded-md py-1.5 text-sm font-medium ${basis === b.id ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               {b.label}
             </button>
@@ -132,7 +132,7 @@ export default function VatPage() {
       </div>
 
       {f && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">{quarterLabel(from, to)}</h2>
             <button type="button" onClick={copy} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
