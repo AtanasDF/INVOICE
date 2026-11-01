@@ -42,11 +42,9 @@ that said nearly the same thing and pushed the page down a third of a screen.
 
 ## 2026-11-01 (cloud): week 3 step I, one visual pass (`wip/visual-pass`, NOT merged)
 
-**BLOCKED: this session could not push.** Every write to GitHub was refused with 403
-("Claude doesn't have GitHub access to AtanasDF/INVOICE for your organization"), on
-`git push` and on the GitHub API alike, for any branch; reading worked. Atanas: reconnect
-GitHub at https://claude.ai/connect-github and give the Claude GitHub App write access to
-the repo. If this branch reached GitHub some other way, that was fixed later.
+**Push was blocked, then fixed.** For most of the session every write to GitHub was
+refused with 403 ("Claude doesn't have GitHub access to AtanasDF/INVOICE for your
+organization"). Atanas allowed access later the same day, and both branches were pushed then.
 
 Atanas: "make it pretty... make it easy to work, everything more compact, clear,
 similar to other apps out there." Cut from `main` at `e294b2b`. No schema, no
