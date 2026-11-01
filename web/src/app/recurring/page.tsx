@@ -5,7 +5,8 @@ import Tip from "@/components/Tip";
 import { money } from "@/lib/money";
 import { useEffect, useState, useRef } from "react";
 import { Client, RecurringExpense, businessProfileStore, clientsStore, receiptsStore, recurringExpensesStore } from "@/lib/storage";
-import { CATEGORIES, Category, effectiveCategories, withCurrent } from "@/lib/categories";
+import { CATEGORIES, Category, effectiveCategories } from "@/lib/categories";
+import CategoryOptions from "@/components/CategoryOptions";
 import { addMonths, nextDueFromDay } from "@/lib/recurrence";
 import ClearFormButton from "@/components/ClearFormButton";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -212,7 +213,7 @@ export default function RecurringExpensesPage() {
         </select>
         <div className="grid grid-cols-3 gap-3">
           <select aria-label="Category" className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            {withCurrent(categories, category).map((c) => <option key={c} value={c}>{c}</option>)}
+            <CategoryOptions list={categories} current={category} />
           </select>
           <input aria-label="Total (£, incl. VAT)" className="rounded-lg border px-3 py-2" placeholder="Total (£, incl. VAT)" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} inputMode="decimal" />
           <input aria-label="Of which VAT (£, optional)" className="rounded-lg border px-3 py-2" placeholder="Of which VAT (£, optional)" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} inputMode="decimal" />

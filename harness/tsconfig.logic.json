@@ -50,6 +50,7 @@
     "../web/src/lib/moneyScreen.ts",
     "../web/src/lib/savedPrices.ts",
     "../web/src/lib/priceList.ts",
+    "../web/src/lib/categories.ts",
     "../web/src/lib/weeklySummary.ts",
     "../web/src/lib/jobs.ts",
     "../web/src/lib/latePayment.ts",

@@ -4,7 +4,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import ScanOrAdd from "@/components/ScanOrAdd";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Client, DOCUMENT_DETAIL_LABELS, DocumentType, Receipt, businessProfileStore, clientsStore, receiptPagesStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, effectiveCategories, withCurrent, withUsed } from "@/lib/categories";
+import { CATEGORIES, effectiveCategories, withUsed } from "@/lib/categories";
+import CategoryOptions from "@/components/CategoryOptions";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
@@ -647,7 +648,7 @@ function ReceiptsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <input aria-label="Date" type="date" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
                   <select aria-label="Category" className="rounded-lg border px-3 py-2 text-sm" value={editDraft.category} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
-                    {withCurrent(categories, editDraft.category).map((c) => <option key={c} value={c}>{c}</option>)}
+                    <CategoryOptions list={categories} current={editDraft.category} />
                   </select>
                 </div>
                 <input aria-label="Shop or supplier"

@@ -6,7 +6,8 @@ import JustTheFile from "@/components/scan/JustTheFile";
 import { amount, amountOrNull, money as gbp } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, DocumentDetails, DocumentType, Receipt, ReceiptInput, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
+import { CATEGORIES, effectiveCategories, mostUsedCategory } from "@/lib/categories";
+import CategoryOptions from "@/components/CategoryOptions";
 import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
 import type { ScanDocumentType, ScanResult } from "@/lib/scanExtraction";
 import type { ReadNote, ScanEngine } from "@/lib/extractors";
@@ -1626,7 +1627,7 @@ export default function ScanPage() {
                   onChange={(e) => patch({ category: e.target.value, categoryUsual: false })}
                 >
                   <option value="">Category…</option>
-                  {withCurrent(categories, form.category).map((c) => <option key={c} value={c}>{c}</option>)}
+                  <CategoryOptions list={categories} current={form.category} />
                 </select>
               </div>
             </div>

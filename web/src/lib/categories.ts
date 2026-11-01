@@ -1,11 +1,14 @@
 import type { AccountKind } from "@/lib/storage";
 
-// The built-in defaults, used until someone customizes their category list
-// in Settings. Order matters only for the dropdown UI -- existing receipts
-// reference these strings directly, so entries are only ever appended or
-// reworded in place here, never removed or renamed (that would orphan
-// saved data).
-export const CATEGORIES = [
+// The list every account started with until 2026-11-01: personal and
+// business on one screen, so a B&Q receipt in a business app was guessed
+// "Household" (launch review, item 13). Kept only to recognise it: a list
+// saved back unchanged from this is the old default, not a choice, and is
+// read as the default for the account's kind (`effectiveCategories`). The
+// receipts filed under these keep their category as it is: every drop-down
+// offers the stored one (`withCurrent`) and the filter offers every one in
+// use (`withUsed`), so nothing is orphaned by leaving a list.
+export const OLD_DEFAULT = [
   "Fuel",
   "Transport & Taxis",
   "Travel",
@@ -47,6 +50,14 @@ const SOLE_TRADER = [
   "Training",
   "Other",
 ];
+
+// The built-in default when the account has not said what it is, and what
+// the scanner and the email import guess from when nobody sends a list:
+// business headings only, since this is a business app. Personal spending
+// is still there to pick, under its own Personal group (`personalExtras`),
+// but never guessed.
+export const CATEGORIES: readonly string[] = SOLE_TRADER;
+
 export const CATEGORY_SETS: Record<AccountKind, readonly string[]> = {
   personal: [
     "Groceries",
@@ -81,7 +92,30 @@ export function defaultCategoriesFor(kind: AccountKind | null | undefined): stri
 
 /** The active category list: the account's customized list if they have one, otherwise the defaults for its kind. */
 export function effectiveCategories(customCategories: string[] | null | undefined, kind: AccountKind | null = null): string[] {
-  return customCategories && customCategories.length > 0 ? customCategories : defaultCategoriesFor(kind);
+  return customCategories && customCategories.length > 0 && !sameList(customCategories, OLD_DEFAULT) ? customCategories : defaultCategoriesFor(kind);
+}
+
+const sameList = (list: readonly string[], other: readonly string[]) => list.length === other.length && list.every((c, i) => c === other[i]);
+
+export const PERSONAL_LABEL = "Personal (not a business cost)";
+
+/** The personal categories a business list doesn't already have, for a
+ *  drop-down's Personal group. None for a personal account, whose own list
+ *  already is that, nor when the list holds Groceries or Household itself
+ *  (someone who made a list of their own with them in has chosen where). */
+export function personalExtras(list: string[]): string[] {
+  const have = new Set(list.map((c) => c.trim().toLowerCase()));
+  if (sameList(list, CATEGORY_SETS.personal) || have.has("groceries") || have.has("household")) return [];
+  return CATEGORY_SETS.personal.filter((c) => c !== "Other" && !have.has(c.toLowerCase()));
+}
+
+/** A drop-down's two parts: the account's list (plus what this record already
+ *  has), then the Personal group. A stored personal category sits in the
+ *  Personal group, selected, rather than heading the business list. */
+export function categoryChoices(list: string[], current: string | null | undefined): { main: string[]; personal: string[] } {
+  const personal = personalExtras(list);
+  const main = personal.includes(current ?? "") ? list : withCurrent(list, current);
+  return { main, personal };
 }
 
 // True when the list is one of the starting lists, untouched: the old
@@ -90,7 +124,7 @@ export function effectiveCategories(customCategories: string[] | null | undefine
 // edited is theirs and is only ever added to.
 export function isDefaultSet(list: string[]): boolean {
   const same = (a: readonly string[]) => a.length === list.length && a.every((c, i) => c === list[i]);
-  return same(CATEGORIES) || Object.values(CATEGORY_SETS).some(same);
+  return same(OLD_DEFAULT) || same(CATEGORIES) || Object.values(CATEGORY_SETS).some(same);
 }
 
 /** What the kind's list has that this one doesn't. */
