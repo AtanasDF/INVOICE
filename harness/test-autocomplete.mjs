@@ -56,7 +56,7 @@ try {
   await signIn(page, BASE);
 
   // --- Settings: the user's own details, so they should fill themselves in ---
-  await page.goto(`${BASE}/settings`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "domcontentloaded" });
   await sleep(2200);
   t = await tokens();
   const mine = Object.fromEntries(t.filter((x) => x.ac).map((x) => [x.label, x.ac]));

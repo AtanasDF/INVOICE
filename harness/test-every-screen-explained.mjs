@@ -37,6 +37,8 @@ const NO_TIP = {
   "quotes/new": "a form with labels on every box, reached from the quotes list which explains it",
   "quotes/requests/new": "a form, reached from the requests list, which carries the explanation",
   "quotes/requests/[id]": "reached from the list, which explains the whole thing first",
+  "settings": "four links, each with a line saying what is inside it; the pages behind them carry the tips",
+  "settings/account": "every card on it says what its one button does, and nothing on it waits for a Save",
   "check-company": "its tip lives in CompanyChecker, the component that IS the page",
 };
 

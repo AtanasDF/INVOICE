@@ -79,7 +79,7 @@ try {
   await signIn(page, BASE);
 
   // --- an ordinary browser, before it has offered anything ---
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(900);
   let text = await bodyText(page);
   check("the card is there and says what it gets you", text.includes("Put Invoiceover on your phone") && /own icon and opens full screen/.test(text), text.slice(0, 300));
@@ -95,7 +95,7 @@ try {
   check("...and the button goes once it has been used", !(await hasInstallButton()));
 
   // --- the offer fails, so we fall back to telling them ---
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(900);
   await fireOffer(true);
   await sleep(300);
@@ -106,7 +106,7 @@ try {
 
   // --- an iPhone, which never offers and needs Apple's own wording ---
   await stage({ ios: true });
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(900);
   text = await bodyText(page);
   check("an iPhone is told about the share button and Add to Home Screen", /share button/.test(text) && /Add to Home Screen/.test(text), text.slice(0, 700));
@@ -117,7 +117,7 @@ try {
 
   // --- someone who already has the icon ---
   await stage({ ios: true, standalone: true });
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(900);
   text = await bodyText(page);
   check("someone already running it standalone is not nagged", !text.includes("Put Invoiceover on your phone"), text.slice(0, 300));

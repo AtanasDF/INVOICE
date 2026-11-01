@@ -59,7 +59,7 @@ try {
   check("a refused issue doesn't advance the counter", db.tables.business_profile[0].invoice_next_number === 1, String(db.tables.business_profile[0].invoice_next_number));
 
   // 4. Settings warns when the next number is below what has been used.
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/invoices`, { waitUntil: "networkidle0" });
   await sleep(1200);
   const s = await bodyText(page);
   check("settings warns that the next number is already used", /went backwards|highest existing/i.test(s), s.slice(s.indexOf("Invoice numbering"), s.indexOf("Invoice numbering") + 500));

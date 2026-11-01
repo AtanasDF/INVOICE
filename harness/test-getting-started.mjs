@@ -84,7 +84,7 @@ try {
     const s = [...document.querySelectorAll("section")].find((x) => /Setting up/.test(x.textContent));
     return s ? [...s.querySelectorAll("ul a")].map((a) => a.getAttribute("href")) : [];
   });
-  check("every unfinished step is a link to where it is done", links.length === 6 && links.includes("/settings") && links.includes("/clients/new"), JSON.stringify(links));
+  check("every unfinished step is a link to where it is done", links.length === 6 && links.includes("/settings/business") && links.includes("/settings/invoices") && links.includes("/clients/new"), JSON.stringify(links));
 
   // It can be put away, and stays away.
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Put this away")?.click());

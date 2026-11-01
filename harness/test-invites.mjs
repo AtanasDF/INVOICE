@@ -55,7 +55,7 @@ try {
 
   // --- switched off, which is how it ships ---
   await signIn(page, BASE);
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(1400);
   const t = await bodyText(page);
   check("with the switch off nothing on Settings mentions inviting anyone", !/Tell a mate|invite/i.test(t), t.slice(0, 400));

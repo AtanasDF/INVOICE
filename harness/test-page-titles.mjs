@@ -24,7 +24,8 @@ db.tables.business_profile.push({ user_id: UID, business_name: "Nasko Plastering
 
 const PATHS = ["/", "/scan", "/copy", "/convert", "/invoices", "/invoices/new", "/quotes", "/quotes/new",
   "/quotes/requests", "/clients", "/clients/new", "/receipts", "/receipts/new", "/receipts/review",
-  "/expenses", "/mileage", "/vat", "/money", "/files", "/recurring", "/recurring/invoices", "/settings", "/feedback"];
+  "/expenses", "/mileage", "/vat", "/money", "/files", "/recurring", "/recurring/invoices", "/settings", "/settings/business",
+  "/settings/invoices", "/settings/expenses", "/settings/account", "/feedback"];
 
 const { browser, page } = await launchSignedIn(db, { base: BASE, width: 390, profile: "profile-page-titles" });
 

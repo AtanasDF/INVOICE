@@ -28,7 +28,7 @@ export const HELP_FACTS: { route: string; what: string }[] = [
   { route: "/clients", what: "Customers and suppliers, on two tabs. Where a contact's address, VAT number and payment terms are kept, where payment reminders are switched on or off for a customer, and where two records for one business are merged." },
   { route: "/recurring/invoices", what: "Invoices for work billed every month. On the day, a draft invoice is made for you to check and send; nothing goes to the customer on its own." },
   { route: "/receipts", what: "Every receipt and bill you have saved, and the ones still to pay. A receipt being typed in by hand is kept on this device and offered back if the page is closed before it is saved." },
-  { route: "/receipts/review", what: "Receipts and bills emailed in to your own import address, read but not yet checked. What was read off each one is confirmed here before it counts towards any total. The address is in Settings, under Email import; an email sent to a mistyped address is returned to the sender." },
+  { route: "/receipts/review", what: "Receipts and bills emailed in to your own import address, read but not yet checked. What was read off each one is confirmed here before it counts towards any total. The address is in Settings, under Receipts and expenses, Email import; an email sent to a mistyped address is returned to the sender." },
   { route: "/expenses", what: "Everything you have spent, added up by category and by month." },
   { route: "/mileage", what: "Trips in your own vehicle, at HMRC's rates, worked out from the miles or from two postcodes." },
   { route: "/recurring", what: "Reminders for costs that come round every month, like insurance or a subscription. When one is due it asks you to log it as an expense; nothing is added until you do." },
@@ -40,7 +40,11 @@ export const HELP_FACTS: { route: string; what: string }[] = [
   { route: "/files", what: "Every photograph and PDF of a receipt or bill you have saved, as tiles, newest first. At the top, a strip to roll through by date, invoices included." },
   { route: "/help", what: "How it works: the walkthroughs, step by step." },
   { route: "/feedback", what: "Write to Atanas, who made the app. It reaches him by email and he replies to the address you signed up with." },
-  { route: "/settings", what: "Your business name and address, your bank details, your VAT setting, and what goes on every invoice you send. The address for emailing receipts in is here too, under Email import. The VAT switch changes new invoices only and never one already sent." },
+  { route: "/settings", what: "Settings, in four short pages: Business, Invoices and payments, Receipts and expenses, and Account. Each has its own Save." },
+  { route: "/settings/business", what: "Your business name, registered company name and number, address, logo, and whether you charge VAT, with your VAT number. What you are using the app for is here too. The VAT switch changes new invoices only and never one already sent." },
+  { route: "/settings/invoices", what: "Where your invoice numbers start, your bank details, a payment link for a Pay now button, the wording of the five payment reminders, the late-payment interest line, and whether Home reminds you about overdue invoices." },
+  { route: "/settings/expenses", what: "Your expense categories (reorder, rename, add or remove), and Email import: your own address to forward receipts to, which land in Needs review." },
+  { route: "/settings/account", what: "The email you sign in with, a sign-in link by email, Sign out, colours and dark mode, putting the app on your phone, push notifications, downloading all your data, and how to close the account." },
 ];
 
 // The header's own name for a page, so the chat calls it what the screen
@@ -48,6 +52,10 @@ export const HELP_FACTS: { route: string; what: string }[] = [
 const NAMES: Record<string, string> = Object.fromEntries([
   ["/", "Home"],
   ["/settings", "Settings"],
+  ["/settings/business", "Settings, Business"],
+  ["/settings/invoices", "Settings, Invoices and payments"],
+  ["/settings/expenses", "Settings, Receipts and expenses"],
+  ["/settings/account", "Settings, Account"],
   ...GROUPS.flatMap((g) => g.links.map(([href, label]) => [href, label] as const)),
 ]);
 

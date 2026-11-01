@@ -98,9 +98,9 @@ try {
   // ---- Settings, saved from two places --------------------------------------
   // The invoice counter is the dangerous one: a stale tab writing back an
   // old number is how issuing jams on a duplicate for ever.
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/invoices`, { waitUntil: "networkidle0" });
   await sleep(1600);
-  await other.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await other.goto(`${BASE}/settings/invoices`, { waitUntil: "networkidle0" });
   await sleep(1600);
   // One tab moves the counter on.
   db.tables.business_profile[0].invoice_next_number = 57;

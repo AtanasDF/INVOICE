@@ -148,7 +148,7 @@ try {
   db.fail = {};
 
   db.fail = { "POST business_profile": 20 };
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "networkidle0" });
   await sleep(1800);
   await clickText(page, "Save").catch(() => {});
   await sleep(2200);

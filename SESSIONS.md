@@ -143,6 +143,78 @@ left alone (the other two cloud sessions own them).
   Scan as whole pages at 390pt, and `SCHEME=dark` takes the same set in dark. Before
   and after = run it against a `next start` of main into one OUT folder, then of this
   branch into another.
+## 2026-11-01 (cloud): Settings split into short pages (launch step H), `wip/settings-split`
+
+(The push was blocked by GitHub access for a while; Atanas allowed it and the branch went up on 2026-11-01.)
+
+Not merged, not on main. No schema change.
+- **What moved where.** `/settings` is now a landing page: four links, a line each,
+  ending inside one 844px screen. Behind it:
+  - `/settings/business` (title "About you" for personal use): what the app is for, business
+    name, registered name and company number, address, logo, VAT switch and number. Carries
+    the old `settings-how` tip.
+  - `/settings/invoices`: invoice numbering (with the "went backwards" warning, so it is the
+    one page that reads the invoices), bank details, Pay now link, the five reminder texts,
+    late-payment interest, the dashboard overdue nudge. Personal use gets one line pointing
+    to Business instead, as those cards were hidden from it before too; the landing page
+    leaves it out for personal use.
+  - `/settings/expenses` ("Receipts and expenses"): categories and Email import. **A fourth
+    page, not in the brief's three**: categories and the import address are about money
+    out, they would have been odd under Invoices and payments, and for personal use they are
+    almost all there is. No CIS or quote defaults existed in Settings to move.
+  - `/settings/account`: email and sign-in link, Sign out, plan, invite, theme and dark
+    mode, get the app, notifications, where data lives, download all, closing. **No Save
+    bar**: every control there acts when pressed, as before.
+- **How saving works now** (`src/components/settings/ProfileForm.tsx`, `useProfileForm` +
+  `SaveBar`). The profile is still one row saved whole through `businessProfileStore.save`,
+  so the PGRST204 retry is untouched. Each page writes its own fields and today's stored
+  value of every other field, read just before the save; writing back a page's copy of a
+  field it never showed would undo a change made on another Settings page. The invoice
+  counter and import-address rules are the same as before. Same leave guard, Save and go /
+  Leave without saving / Stay, `loadFailed`/`saveFailed`, `settings-error` id.
+- **Two deliberate differences.** (1) A kind change on Business swaps an untouched,
+  already-saved category list for the new kind's at Save (the old page did it on the click,
+  with the list on screen); a list never saved follows the kind by itself, an edited one is
+  kept. (2) The "needs a database update" note now names what each page actually lost: the
+  registered details on Business, the payment link on Invoices (046 is in `added` too, the
+  old wording never said so). It is not shown on Receipts and expenses, where nothing can be
+  lost that way.
+- **Old links.** No `/settings#anchor` exists anywhere in `web/src`, `harness/`, `worker/`
+  or the email templates, so nothing needed a hash redirect; `/settings` itself still works
+  and is the landing page. Repointed: Getting started (name, address -> business; numbering,
+  bank -> invoices), "Try from Settings" in `EmailItIn` and `UploadPanel` -> expenses (one
+  href each; the visual-pass session may touch those files). `helpFacts.ts` describes the
+  four pages and names them for the chat; `test-help-chat` 61/61.
+- **Harness.** Source readers repointed and green: accessibility-source 38, audit-guards 91,
+  audit-misc 15, ios-files-share 63, ios-forms-layout 52, leftovers 71, tips. The
+  every-screen suite lists the landing page and Account as tip-free with reasons; Invoices
+  and Expenses gained a tip each. Logic suites: all green except the ones red on `main` too
+  (address-fields, camera-tip, inbox-worker, tiles, promises, every-screen's "." for Home),
+  checked in a `main` worktree.
+- **Browser suites, run here** (Chromium from `/opt/pw-browsers` behind a shim at the Mac
+  Chrome path, against `next start` on 3100, one at a time). `test-settings-save` rewritten
+  for four pages, 56/56, including a new check that a Business save keeps a prefix and bank
+  details saved elsewhere since the page opened. Green after repointing: get-the-app 14,
+  invites 9, numbering 11, privacy-terms 23, quiet-failures 15, scans-left 18, settings-add 38,
+  stored-photos 8, theme 19, two-tabs 13, write-fails 26, half-saved 20. Also green: announced 12, autocomplete 11,
+  company 22, empty-account 146, getting-started 16, logo 13 (its "save another change"
+  step now edits the business name, since bank details are on another page), page-titles 5
+  (now covering the four pages). **Red here, not from this change:** big-account dies
+  waiting for "owed" on Home and no-accidents after its invoice step, both before Settings;
+  terms-of-use (1 check) and tips need a camera this Chromium does not fake.
+
+- **The Mac must run before merging**, against `next start`: test-settings-save,
+  test-settings-add, test-announced, test-autocomplete, test-company, test-logo,
+  test-numbering, test-two-tabs, test-quiet-failures, test-half-saved, test-write-fails,
+  test-no-accidents, test-stored-photos, test-get-the-app, test-theme, test-invites,
+  test-scans-left, test-terms-of-use, test-getting-started, test-empty-account,
+  test-big-account, test-page-titles, test-privacy-terms, and the sweeps that open `/settings`
+  (dark-mode, readable, neutral, big-text, keyboard-only, keyboards, labels, one-handed,
+  tap-targets, no-sideways, worst-phone, fit-sweep, vocabulary, plain-words, first-week,
+  first-page). The sweeps only see the landing page now; the four pages are covered by the
+  suites above, not by the sweeps.
+- And on his iPhone: each page at 390pt, the Save bar over the keyboard, Back from a page
+  with unsaved changes.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 

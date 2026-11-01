@@ -33,7 +33,7 @@ const prefers = (value) => page.emulateMediaFeatures([{ name: "prefers-color-sch
 try {
   await prefers("light");
   await signIn(page, BASE);
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(900);
 
   const text = await bodyText(page);
@@ -77,7 +77,7 @@ try {
   // Back to the picker: the front door has no radios on it, and the checks
   // below need one to press.
   await signIn(page, BASE);
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(900);
 
   // Dark is a different kind of change: it turns the page over rather than
@@ -141,7 +141,7 @@ try {
 
   // But a colour chosen on purpose outranks the phone.
   await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.includes("Sand"))?.click()).catch(() => {});
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(700);
   await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent.includes("Sand"))?.click());
   await sleep(400);

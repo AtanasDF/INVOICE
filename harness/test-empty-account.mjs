@@ -36,6 +36,7 @@ const ROUTES = [
   ["/recurring/invoices", "Recurring invoices"],
   ["/files", "Files"],
   ["/settings", "Settings"],
+  ["/settings/business", "Settings, Business"],
   ["/scan", "Scan"],
   ["/check-company", "Check a company"],
   ["/feedback", "Feedback"],
@@ -112,7 +113,7 @@ try {
   check("quote requests empty state", says("/quotes/requests", "no requests", "nothing", "ask"), seen["/quotes/requests"]?.slice(0, 400));
 
   // Settings on a new account: the business details are the first thing to fill in.
-  check("settings offers the business details", says("/settings", "business name") && says("/settings", "address"), seen["/settings"]?.slice(0, 600));
+  check("settings offers the business details", says("/settings/business", "business name") && says("/settings/business", "address"), seen["/settings/business"]?.slice(0, 600));
 
   // A new invoice with no customers saved must still let one be typed in.
   await page.goto(`${BASE}/invoices/new`, { waitUntil: "networkidle0" });
@@ -142,7 +143,7 @@ try {
     ["/money", "invoices", "Nothing outstanding"],
     ["/recurring", "recurring_expenses", "No recurring expenses set up yet"],
     ["/recurring/invoices", "recurring_invoices", "No recurring invoices set up yet"],
-    ["/settings", "business_profile", "Business name"],
+    ["/settings/business", "business_profile", "Business name"],
     ["/feedback", "feedback", null],
   ];
   for (const [path, table, quiet] of FAILS) {

@@ -48,7 +48,7 @@ try {
   check("...the app still knows a photo exists, rather than showing none", failedThumbs.some((s) => s.startsWith("storage:")), JSON.stringify(failedThumbs).slice(0, 220));
 
   // The export must refuse rather than write a file with the photo missing.
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
   await sleep(1800);
   const clicked = await page.evaluate(() => {
     const b = [...document.querySelectorAll("button")].find((x) => /Download all my data/i.test(x.textContent ?? ""));

@@ -164,7 +164,7 @@ check("#6 a sign-in without a page load clears them too",
   JSON.stringify([globalThis.localStorage.keys(), globalThis.sessionStorage.keys()]));
 
 const guard = code("lib/leaveGuard.ts");
-const settings = code("app/settings/page.tsx");
+const settings = code("components/settings/ProfileForm.tsx");
 check("#6 Settings' link and Back guard lives in leaveGuard.ts, once", /export function useNavigationGuard/.test(guard) && /useNavigationGuard\(dirty, setLeaving\)/.test(settings) && !/pushState/.test(settings),
   "two copies of the history trick drift apart");
 for (const [rel, what] of [
