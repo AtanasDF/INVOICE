@@ -7,9 +7,9 @@ and what is left open. Dates are session dates (Europe/London).
 
 ## 2026-11-01 (cloud, second job): business categories — `wip/business-categories`, NOT merged
 
-**BLOCKED: NOT PUSHED.** This cloud session was refused every write to GitHub (git push
-403; the API says "Resource not accessible by integration"), for this branch and for
-`wip/price-list` alike. Both sit committed in the cloud container only. No schema change.
+No schema change. Cut from `main`, separate from `wip/price-list` (pushed the same
+session); the two touch different files apart from SESSIONS.md, run-all.sh and
+tsconfig.logic.json, where each adds one line.
 
 Launch review item 13: "Household" on a B&Q receipt, because the default list mixed
 personal and business on one level.
