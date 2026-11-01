@@ -17,6 +17,7 @@ import {
 } from "@/lib/addressLookup";
 import { addressKey, allow, allowShared } from "@/lib/rateLimit";
 import { SITE_NAME } from "@/lib/siteName";
+import { SITE_URL } from "@/lib/siteUrl";
 import { signedInUser } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
@@ -43,7 +44,7 @@ const PAF_CHARGED_DAY = 400;
 const PAF_FREE_TOTAL = 300;
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; result: AddressSearchResult }>();
-const UA = { "User-Agent": `${SITE_NAME} (https://invoiceover.com)` };
+const UA = { "User-Agent": `${SITE_NAME} (${SITE_URL})` };
 // The live services, unless the harness points these at its stand-ins
 // (test-address-stubbed), as COMPANIES_HOUSE_API_BASE does for the register.
 const POSTCODES = process.env.POSTCODES_API_BASE ?? "https://api.postcodes.io";

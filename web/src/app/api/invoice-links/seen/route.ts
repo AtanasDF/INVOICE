@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { addressKey, allow } from "@/lib/rateLimit";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
       const { data: client } = inv?.client_id
         ? await admin.from("clients").select("name").eq("id", inv.client_id).eq("user_id", view.user_id).maybeSingle()
         : { data: null };
-      webpush.setVapidDetails("https://invoice-omega-rust.vercel.app", vapidPublic, vapidPrivate);
+      webpush.setVapidDetails(SITE_URL, vapidPublic, vapidPrivate);
       const message = JSON.stringify({
         title: "Invoice opened",
         // The owner's own tap on the link from WhatsApp, in a Safari tab while signed
