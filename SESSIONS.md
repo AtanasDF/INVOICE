@@ -43,6 +43,27 @@ Atanas asleep; "keep working till you can".
   idle with no branch pushed. Each was nudged to push and to write any blocker at the top
   of its SESSIONS.md entry. If nothing has come by morning, open them at claude.ai/code
   and read why: a cloud session's answer is visible only in its own transcript.
+- **Why: GitHub access.** Every cloud push was refused with 403 ("Claude doesn't have
+  GitHub access to AtanasDF/INVOICE") until Atanas allowed it in each session (01/11, about
+  12:20). All six branches landed by 12:35. This Mac got its own sign-in the same morning:
+  a fine-grained token, INVOICE only, Contents read and write, kept in the keychain.
+- **All six checked here** (`check-branch.sh` in the session scratchpad: a worktree,
+  `node_modules` copied with `cp -cR` because Turbopack refuses a symlink out of the
+  project, then tsc, eslint, the placeholder build and named logic suites). All clean:
+  price-list (test-price-list 53), business-categories (23, tax-rules 41,
+  money-invariants 22), settings-split, domain-ready (test-one-address 4, api-routes 126),
+  how-it-works, which carries visual-pass (every-screen-explained 20/20, leftovers 71).
+- **`integrate/launch`** (pushed; only `main` deploys): main + how-it-works +
+  settings-split + price-list + business-categories + domain-ready. Conflicts were only in
+  SESSIONS.md (merged as a union) and the suite lists in `run-all.sh` /
+  `tsconfig.logic.json` (both sides kept; `test-upload-panel` stays out). tsc, eslint and
+  build clean on the merge. **It cannot reach main before migration-047** (price list,
+  rule 4) and Atanas seeing the screens.
+- **Next round, given to the same three cloud sessions** (they have Chromium; this Mac
+  does not): `wip/launch-fixes` (every browser suite the six entries name, run on
+  integrate/launch, merge breakages fixed, iPhone shots in `notes/screens-2026-11-01/`),
+  `wip/settings-look` (the visual pass on Settings, SignInCard, /help/home-screen and
+  PriceFinder), `wip/white-worktop` (`test-pale`, with before/after camera suites).
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 
