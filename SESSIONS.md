@@ -64,6 +64,9 @@ Atanas asleep; "keep working till you can".
   integrate/launch, merge breakages fixed, iPhone shots in `notes/screens-2026-11-01/`),
   `wip/settings-look` (the visual pass on Settings, SignInCard, /help/home-screen and
   PriceFinder), `wip/white-worktop` (`test-pale`, with before/after camera suites).
+- **No-browser run on `integrate/launch`** (`JOBS=1`, `next start -p 3101`): 81 green (73 on
+  main this morning), and every suite that is not green is one that needs Chrome. Nothing
+  that runs without a browser is red on the merge.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 
