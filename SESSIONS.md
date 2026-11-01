@@ -39,6 +39,10 @@ Atanas asleep; "keep working till you can".
 - **Cloud round started** (Atanas: build in the cloud, merge and test here): `wip/price-list`
   then `wip/business-categories`; `wip/settings-split` then `wip/domain-ready`;
   `wip/visual-pass` then `wip/how-it-works`. `notes/launch-list.md` written.
+- **Second check (about 80 minutes in): nothing on GitHub.** All three cloud sessions show
+  idle with no branch pushed. Each was nudged to push and to write any blocker at the top
+  of its SESSIONS.md entry. If nothing has come by morning, open them at claude.ai/code
+  and read why: a cloud session's answer is visible only in its own transcript.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 
