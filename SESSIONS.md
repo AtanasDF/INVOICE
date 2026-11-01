@@ -31,7 +31,7 @@ Atanas asleep; "keep working till you can".
   - **Real, on main, left for the visual-pass branch:** `test-every-screen-explained`
     fails on "." (Home), because week 2 took Home's welcome tip away. Its How-it-works job
     edits that suite anyway.
-  - **This Mac, not the app:** `test-inbox-worker` (no `npm ci` in `worker/`),
+  - **This Mac, not the app:** `test-inbox-worker` (no `npm ci` in `worker/`; done, 41/41),
     `test-logo` and `test-public-logo` (`uploads/card.png` comes from `gen-uploads.py`,
     which needs Pillow), `test-tiles` (clips), `test-vat-lookup`, `test-locked-doors`,
     `test-help-chat-live` ("fetch failed", their stand-ins; not looked into),
