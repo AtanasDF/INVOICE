@@ -1,7 +1,21 @@
-# Where things stand — 2026-10-19, early hours
+# Where things stand — 2026-11-01
 
-**Read this first.** Everything below the next heading is older and still true unless
-this section contradicts it.
+**Read this first.** Everything below is older and still true unless this section
+contradicts it.
+
+- **Nothing is waiting to merge.** Every branch the sections below call "waiting to
+  merge" (brief 19, draft-autosave, quote-sent-at, the component audit and the rest) is in
+  `main`. Only the three 18/10 audit branches hold commits main lacks, and those are notes
+  whose content main already carries in a later form; their one fix (`f9d7fae`) is in.
+- `main` is `e294b2b` (28/10, week 2 of `notes/launch-review-2026-10-28.md`). Week 3 and
+  Settings split (H) are next, H only on his say.
+- **A third Mac, user `fragov`**, clone at `~/code/invoicer` (01/11). It has **no
+  `web/.env.local`**, so `npm run build` dies on `Invalid URL` in `supabaseClient.ts`. For
+  the harness that is fine: build with `NEXT_PUBLIC_SUPABASE_URL=https://wecfwjxzyzzrcwbwnwpo.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=harness-placeholder` on the command line, because
+  `mockdb.mjs` intercepts that host in Chrome. Never write those into a file Vercel reads.
+- The ticks in `notes/cloud-queue.md` lag: brief 4 is done (`test-more-money-invariants`,
+  `babfeb8`), 1 and 5 were done as the 18/10 audit branches.
 
 Everything is **committed and pushed**. `main` is `13f8c74` and deploys to Vercel on
 push, so what is in GitHub is what is live.

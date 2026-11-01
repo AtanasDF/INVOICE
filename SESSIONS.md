@@ -5,6 +5,15 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (night): a third Mac, and the white worktop
+
+Atanas asleep; "keep working till you can".
+- New Mac (user `fragov`): fresh clone at `~/code/invoicer`, `npm ci` in web/ clean, tsc
+  and eslint clean. No `web/.env.local` here, so the build needs the two public names on
+  the command line (handover top). Built that way, clean.
+- Nothing waiting to merge: handover's top block rewritten to say so.
+- `harness/feedback-inbox.mjs` not run: it needs the service key, which this Mac lacks.
+
 ## 2026-10-28 (evening): week 2, the menu and Home
 
 Atanas approved the drawing ("Build the menu and Home as drawn").
