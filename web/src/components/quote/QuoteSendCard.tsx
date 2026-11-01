@@ -57,7 +57,7 @@ export default function QuoteSendCard({
   });
 
   return (
-    <section id="send-quote" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+    <section id="send-quote" className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
       <h2 className="font-semibold">Send</h2>
       <p className="mt-1 text-sm text-neutral-600">
         {fields.total} · {fields.number}
@@ -73,7 +73,7 @@ export default function QuoteSendCard({
             aria-selected={way === w.id}
             aria-controls={`${id}-panel-${panelOf(w.id)}`}
             onClick={() => setWay(w.id)}
-            className={`rounded-md px-1 py-2 text-sm font-medium ${way === w.id ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+            className={`rounded-md px-1 py-2 text-sm font-medium ${way === w.id ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             {w.label}
           </button>

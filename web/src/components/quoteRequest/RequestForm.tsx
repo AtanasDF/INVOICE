@@ -59,7 +59,7 @@ export default function RequestForm({ initial, suppliers, saveLabel, onSave, onC
   }
 
   return (
-    <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="space-y-4 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       <div>
         <label className="text-xs text-neutral-500" htmlFor="qr-title">What it&apos;s for</label>
         <input id="qr-title" className={INPUT} placeholder="e.g. Kitchen extension, 12 High St" value={v.title} onChange={(e) => set({ title: e.target.value })} maxLength={200} />

@@ -455,7 +455,7 @@ function ReceiptsPage() {
   const hasActiveFilters = filterFrom || filterTo || filterCategory || filterClientId || filterStarredOnly || filterTag || filterType || filterBill;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Receipts &amp; bills</h1>
@@ -481,7 +481,7 @@ function ReceiptsPage() {
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {linkable.length > 0 && (
-        <div className="rounded-xl border bg-neutral-50 p-4 text-sm text-neutral-800">
+        <div className="rounded-xl bg-neutral-100 p-4 text-sm text-neutral-800">
           <div className="flex items-start justify-between gap-3">
             <span>
               {linkable.length} {linkable.length === 1 ? "document matches" : "documents match"} your suppliers
@@ -526,7 +526,7 @@ function ReceiptsPage() {
         </div>
       )}
 
-      <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
+      <details className="rounded-xl bg-white px-4 py-3 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
         <div className="mt-3 grid grid-cols-2 items-end gap-3 sm:grid-cols-3">
           <select aria-label="Payment status" className="rounded-lg border px-3 py-2 text-sm" value={filterBill} onChange={(e) => setFilterBill(e.target.value as BillFilter)}>
@@ -577,7 +577,7 @@ function ReceiptsPage() {
       </details>
 
       {openMissing && (
-        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           That receipt isn&apos;t here any more. It may have been merged into another one. Everything you do have is below.
         </p>
       )}
@@ -606,7 +606,7 @@ function ReceiptsPage() {
             const supplierName = clients.find((c) => c.id === r.clientId)?.name;
             const detailsOpen = openDetails.has(r.id) || r.id === highlight;
             return editingId === r.id && editDraft ? (
-              <div key={r.id} id={`receipt-${r.id}`} className="space-y-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <div key={r.id} id={`receipt-${r.id}`} className="space-y-3 rounded-xl bg-white p-4 text-neutral-900 shadow-sm">
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${type.className}`}>{type.label}</span>
                 <select
                   aria-label="Supplier"
@@ -722,7 +722,7 @@ function ReceiptsPage() {
                 </div>
               </div>
             ) : (
-            <div key={r.id} id={`receipt-${r.id}`} className={`rounded-xl border bg-white p-3 text-neutral-900 shadow-sm${highlight === r.id ? " ring-2 ring-neutral-900" : ""}`}>
+            <div key={r.id} id={`receipt-${r.id}`} className={`rounded-xl bg-white p-3 text-neutral-900 shadow-sm${highlight === r.id ? " ring-2 ring-neutral-900" : ""}`}>
               <div className="flex gap-3">
                 {r.imageDataUrl ? (
                   isPdfDataUrl(r.imageDataUrl) ? (

@@ -23,7 +23,7 @@ function Thumb({ page, index, broken, disabled, onBroken, onRetake, onRetaken }:
 }) {
   if (broken) {
     return (
-      <div className="flex h-20 w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-red-300 bg-red-50 text-xs text-red-700">
+      <div className="flex h-20 w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg bg-red-50 text-xs text-red-700">
         <span>Page {index + 1}</span>
         <CaptureButton onOpen={onRetake} onCapture={onRetaken} disabled={disabled} className="font-medium underline disabled:opacity-50">
           Retake
@@ -34,7 +34,7 @@ function Thumb({ page, index, broken, disabled, onBroken, onRetake, onRetaken }:
   return (
     <div className="relative h-20 w-16 shrink-0">
       {page.mediaType === "application/pdf" ? (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border bg-neutral-50 text-xs text-neutral-500">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg bg-neutral-100 text-xs text-neutral-500">
           <DocumentIcon className="h-5 w-5" />
           PDF
         </div>

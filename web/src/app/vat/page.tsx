@@ -8,7 +8,6 @@ import { VatBasis, previousQuarter, quarterLabel, quarterOf, vatFigures } from "
 import { shortDate } from "@/lib/quoteStatus";
 import { loadFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
-import Tip from "@/components/Tip";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
 
@@ -65,9 +64,8 @@ export default function VatPage() {
       <div>
         <Link href="/expenses" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Expenses</Link>
         <h1 className="mt-1 text-2xl font-bold">VAT</h1>
-        <p className="mt-1 text-neutral-600">The figures for a quarter, worked out from your invoices and receipts. Check them, then copy them into HMRC&apos;s form.</p>
+        <p className="mt-1 text-neutral-600">The figures for a quarter, worked out from your invoices and receipts. Check them, then copy them into HMRC&apos;s form. Nothing is sent from here.</p>
       </div>
-      <Tip id="vat-how">How it works: these figures come from your own invoices and receipts. Copy them into your VAT return. Nothing is sent from here.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {!data && !error && <p className="text-sm text-neutral-500">Loading…</p>}
@@ -77,7 +75,7 @@ export default function VatPage() {
         </p>
       )}
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div className="flex flex-wrap gap-2">
           {[
             { label: "Last quarter", range: previousQuarter(todayIso()) },
@@ -118,7 +116,7 @@ export default function VatPage() {
               role="radio"
               aria-checked={basis === b.id}
               onClick={() => setBasis(b.id)}
-              className={`rounded-md py-1.5 text-sm font-medium ${basis === b.id ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+              className={`rounded-md py-1.5 text-sm font-medium ${basis === b.id ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
             >
               {b.label}
             </button>
@@ -132,7 +130,7 @@ export default function VatPage() {
       </div>
 
       {f && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">{quarterLabel(from, to)}</h2>
             <button type="button" onClick={copy} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">

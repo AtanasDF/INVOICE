@@ -251,7 +251,7 @@ function InvoicesPage() {
   const hasActiveFilters = filterFrom || filterTo || filterClientId || filterMinTotal || filterSearch || filterStatus || filterTag;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>
@@ -278,7 +278,7 @@ function InvoicesPage() {
           is not a habit, and a "Same again" under somebody's only invoice is
           noise. */}
       {worthOffering(repeatable) && (
-        <section aria-labelledby="same-again" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <section aria-labelledby="same-again" className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
           <h2 id="same-again" className="font-semibold">Same again</h2>
           <p className="mt-1 text-sm text-neutral-600">Last month&apos;s invoice to them, dated today. Check it before you send it.</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -300,7 +300,7 @@ function InvoicesPage() {
         </section>
       )}
 
-      <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
+      <details className="rounded-xl bg-white px-4 py-3 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
         <div className="mt-3 grid grid-cols-2 items-end gap-3 sm:grid-cols-6">
           <input aria-label="Search invoice #"
@@ -348,7 +348,7 @@ function InvoicesPage() {
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filteredInvoices.length === 0 && !error && (
             <p className="text-sm text-neutral-500">
               {hasActiveFilters ? (
@@ -367,55 +367,59 @@ function InvoicesPage() {
               // with the text turned up the details and the actions together
               // are wider than the card, and wrapping only the inner row
               // still left Remove off the side.
-              <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 wrap-anywhere font-medium">
-                    {displayInvoiceNumber(inv)} · {clientName(inv.clientId)}
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
-                      {invoiceStatusLabel(inv.status, overdue)}
+              <div key={inv.id} className="rounded-xl bg-white px-4 py-3 text-neutral-900 shadow-sm">
+                {/* The amount on the right of the name, as every invoicing app
+                    lays out a list: a column of figures you can run your eye
+                    down, and the who and when to the left of it. */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 wrap-anywhere font-medium">{displayInvoiceNumber(inv)} · {clientName(inv.clientId)}</div>
+                  <div className="shrink-0 text-right font-semibold tabular-nums">{money(netTotal(inv))}</div>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(inv.status, overdue)}`}>
+                    {invoiceStatusLabel(inv.status, overdue)}
+                  </span>
+                  {notes.length > 0 && (
+                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800">
+                      Credit note
                     </span>
-                    {notes.length > 0 && (
-                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800">
-                        Credit note
-                      </span>
-                    )}
-                    {(inv.status === "sent" || inv.status === "partial") && (
-                      <button onClick={() => quickMarkPaid(inv)} disabled={marking.includes(inv.id)} className="text-xs font-medium text-neutral-700 underline disabled:opacity-50">
-                        Mark as paid
-                      </button>
-                    )}
-                  </div>
-                  <div className="wrap-anywhere text-sm text-neutral-500">
-                    {shortDate(inv.date)} · {money(netTotal(inv))}
+                  )}
+                  <span className="min-w-0 wrap-anywhere text-sm text-neutral-500">
+                    {shortDate(inv.date)}
                     {notes.length > 0 && (
                       <>
-                        {" "}<span className="line-through">{money(total(inv))}</span> after {money(creditOffDue(charge(inv), creditedAmount))} credited
+                        {" "}· <span className="line-through">{money(total(inv))}</span> after {money(creditOffDue(charge(inv), creditedAmount))} credited
                       </>
                     )}
                     {paidSoFar(inv) > 0 && inv.status !== "paid" && ` · ${money(paidSoFar(inv))} paid, ${money(balance(inv))} still owed`}
                     {inv.dueDate && ` · due ${shortDate(inv.dueDate)}`}
-                  </div>
-                  {notes.map((c) => (
-                    <div key={c.id} className="pl-4 text-xs text-neutral-500">
-                      Credit note {shortDate(c.date)} · {money(-c.amount)}{c.reason && ` · ${c.reason}`}
-                    </div>
-                  ))}
-                  {inv.tags.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {inv.tags.map((t) => (
-                        <span key={t} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{t}</span>
-                      ))}
-                    </div>
-                  )}
+                  </span>
                 </div>
-                {/* Wraps rather than shrink-0: at a large text size on a
-                    narrow phone the two actions together are wider than the
-                    card, and Remove went off the side. */}
-                <div className="flex flex-wrap justify-end gap-x-3">
-                  <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-neutral-700 underline">
+                {notes.map((c) => (
+                  <div key={c.id} className="pl-4 text-xs text-neutral-500">
+                    Credit note {shortDate(c.date)} · {money(-c.amount)}{c.reason && ` · ${c.reason}`}
+                  </div>
+                ))}
+                {inv.tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {inv.tags.map((t) => (
+                      <span key={t} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{t}</span>
+                    ))}
+                  </div>
+                )}
+                {/* Wraps: at a large text size on a narrow phone the actions
+                    together are wider than the card, and Remove went off the
+                    side. */}
+                <div className="mt-2 flex flex-wrap items-center justify-end gap-x-4 text-sm">
+                  {(inv.status === "sent" || inv.status === "partial") && (
+                    <button onClick={() => quickMarkPaid(inv)} disabled={marking.includes(inv.id)} className="inline-flex min-h-6 items-center font-medium text-neutral-700 underline disabled:opacity-50">
+                      Mark as paid
+                    </button>
+                  )}
+                  <Link href={`/invoices/${inv.id}`} className="inline-flex min-h-6 items-center font-medium text-neutral-700 underline">
                     {inv.status === "draft" ? "Continue draft" : "View / print"}
                   </Link>
-                  <button onClick={() => removeInvoice(inv)} className="text-sm text-neutral-600 underline">Remove</button>
+                  <button onClick={() => removeInvoice(inv)} className="inline-flex min-h-6 items-center text-neutral-600 underline">Remove</button>
                 </div>
               </div>
             );

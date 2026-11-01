@@ -189,7 +189,7 @@ export default function RecurringExpensesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Repeating expenses</h1>
         <Tip id="recurring-how">How it works: when one is due, it asks you here and on your dashboard to log it as an expense. Nothing is added until you do, and you can change or stop it any time.</Tip>
@@ -199,7 +199,7 @@ export default function RecurringExpensesPage() {
       </div>
 
 
-      <form onSubmit={addRecurring} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={addRecurring} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <input aria-label="Description"
           className="w-full rounded-lg border px-3 py-2"
           placeholder="Description (e.g. Van insurance)"
@@ -255,7 +255,7 @@ export default function RecurringExpensesPage() {
           {items.map((item) => {
             const due = item.nextDueDate <= today;
             return (
-              <div key={item.id} className="flex items-center justify-between rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <div key={item.id} className="flex items-center justify-between rounded-xl bg-white p-4 text-neutral-900 shadow-sm">
                 <div>
                   <div className={`font-medium ${!item.active ? "text-neutral-600 line-through" : ""}`}>
                     {item.description}

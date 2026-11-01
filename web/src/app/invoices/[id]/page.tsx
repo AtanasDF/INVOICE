@@ -672,7 +672,7 @@ export default function InvoiceViewPage() {
 
         {kept.offer && <DraftOffer what="changes to this draft invoice" savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
 
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
           <select aria-label="Customer" className="w-full rounded-lg border px-3 py-2" value={draftClientId} onChange={(e) => setDraftClientId(e.target.value)}>
             <option value="">Select a customer or company</option>
             {billableClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -781,7 +781,7 @@ export default function InvoiceViewPage() {
         </div>
 
         {sendPanelOpen && (
-          <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
             <div>
               <h2 className="font-semibold">Mark as sent</h2>
               <p className="mt-1 text-sm text-neutral-600">
@@ -863,7 +863,7 @@ export default function InvoiceViewPage() {
       {duplicateError && <p role="alert" className="text-sm text-red-600 print:hidden">{duplicateError}</p>}
 
       {editingDetails && (
-        <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
           <p className="text-sm text-neutral-600">
             Only administrative details here — the invoice number, date, client, and line items are locked now
             that it&apos;s been sent, since they&apos;re what was actually issued. Use a credit note below for
@@ -896,13 +896,13 @@ export default function InvoiceViewPage() {
         </div>
       )}
 
-      <div className="rounded-xl border bg-white p-8 text-neutral-900 shadow-sm print:border-0 print:shadow-none">
+      <div className="rounded-xl bg-white p-5 text-neutral-900 shadow-sm sm:p-8 print:border-0 print:shadow-none">
         <IssuedInvoice invoice={invoice} client={client} profile={profile} creditNotes={creditNotes} payments={payments} logo={logo} />
       </div>
 
       <InvoiceReminders invoice={invoice} client={client} amountDue={amountDue} hasPayments={payments.length > 0} />
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
         <h2 className="font-semibold">View online</h2>
         {link ? (
           <>
@@ -967,7 +967,7 @@ export default function InvoiceViewPage() {
       />
 
       {client && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
           <h2 className="mb-3 wrap-anywhere font-semibold">Text {client.name}</h2>
           <TextCustomer
             key={invoice.status}
@@ -980,7 +980,7 @@ export default function InvoiceViewPage() {
         </div>
       )}
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold">Payments</h2>
           {amountDue > 0 && (
@@ -1051,7 +1051,7 @@ export default function InvoiceViewPage() {
         {!showPayForm && payError && <p role="alert" className="mt-2 text-sm text-red-600">{payError}</p>}
       </div>
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Credit notes</h2>
           <button onClick={() => setShowCnForm((v) => !v)} className="text-sm font-medium text-neutral-700 underline">

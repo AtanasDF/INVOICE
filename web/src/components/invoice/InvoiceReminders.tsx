@@ -55,7 +55,7 @@ export default function InvoiceReminders({ invoice, client, amountDue, hasPaymen
     : undefined;
 
   return (
-    <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+    <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
       <h2 className="font-semibold">Payment reminders</h2>
       {reason ? (
         <p className="mt-1 text-sm text-neutral-600">

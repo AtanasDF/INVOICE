@@ -22,7 +22,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { errorText, loadFailed, saveFailed } from "@/lib/errorText";
 import { todayISO } from "@/lib/today";
 import { shortDate } from "@/lib/dates";
-import Tip from "@/components/Tip";
 import { useConfirmLeave } from "@/lib/leaveGuard";
 
 const INPUT = "w-full rounded-lg border px-3 py-2 text-base sm:text-sm";
@@ -189,12 +188,11 @@ export default function MileagePage() {
         <h1 className="mt-1 text-2xl font-bold">Mileage</h1>
         <p className="mt-1 text-neutral-600">
           Business miles at HMRC&apos;s rates: {RATES.car.first * 100}p a mile for the first {RATES.car.threshold.toLocaleString()} in the tax year, then{" "}
-          {RATES.car.after * 100}p. Each trip is saved as an expense.
+          {RATES.car.after * 100}p. Each trip is saved as an expense, and needs no receipt.
         </p>
       </div>
-      <Tip id="mileage-how">How it works: add a trip and it is saved as an expense at HMRC&apos;s rate. No receipt needed.</Tip>
 
-      <form onSubmit={save} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={save} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-neutral-500" htmlFor="m-date">Date</label>
@@ -276,7 +274,7 @@ export default function MileagePage() {
         </button>
       </form>
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <h2 className="font-semibold">This tax year ({taxYearLabel(year)})</h2>
         {receipts === null ? (
           loadError ? <p role="alert" className="mt-1 text-sm text-red-600">{loadError}</p> : <p className="mt-1 text-sm text-neutral-500">Loading…</p>

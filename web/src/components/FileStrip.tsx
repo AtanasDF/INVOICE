@@ -85,7 +85,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
   const SWITCH = "min-w-0 flex-1 rounded-md px-3 py-1.5 text-sm font-medium";
 
   return (
-    <section aria-label="Your file library" className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <section aria-label="Your file library" className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">By date</h2>
         <span className="text-xs text-neutral-500">{shown.length} of {all.length}</span>
@@ -102,7 +102,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
             type="button"
             aria-pressed={mode === m}
             onClick={() => setMode(m)}
-            className={`${SWITCH} ${mode === m ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+            className={`${SWITCH} ${mode === m ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             {m === "photos" ? "Photos" : "Files"}
           </button>
@@ -124,7 +124,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
 
       {pickingRange && !range && (
         <form
-          className="flex flex-wrap items-end gap-2 rounded-lg border bg-neutral-50 p-3"
+          className="flex flex-wrap items-end gap-2 rounded-lg bg-neutral-100 p-3"
           onSubmit={(e) => {
             e.preventDefault();
             const f = new FormData(e.currentTarget);
@@ -146,7 +146,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
         <ul className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
           {shown.map((d) => (
             <li key={d.id} className="w-28 shrink-0 snap-start sm:w-32">
-              <Link href={d.href} className="block rounded-lg border bg-white p-1.5 text-left">
+              <Link href={d.href} className="block rounded-lg p-1.5 text-left hover:bg-neutral-100">
                 <span className="flex h-28 items-center justify-center overflow-hidden rounded bg-neutral-100 sm:h-32">
                   {d.src ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -164,7 +164,7 @@ export default function FileStrip({ receipts, invoices }: { receipts: Receipt[];
           ))}
         </ul>
       ) : (
-        <p className="rounded-lg border bg-neutral-50 p-3 text-sm text-neutral-600">
+        <p className="rounded-lg bg-neutral-100 p-3 text-sm text-neutral-600">
           {mode === "photos" ? "No pictures" : "Nothing"} {range ? "in that period" : when.day !== null ? "on that day" : when.month !== null ? "that month" : "that year"}.
           {" "}Roll to another date.
         </p>

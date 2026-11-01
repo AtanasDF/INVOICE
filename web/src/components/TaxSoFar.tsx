@@ -14,7 +14,7 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
   // of a card that has nothing to put in it.
   if (nothing || e.tooEarly) {
     return (
-      <p className="rounded-xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
+      <p className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-600">
         <span className="font-medium text-neutral-900">Tax so far · {e.year.label}:</span>{" "}
         {nothing
           ? "nothing invoiced or spent since 6 April yet."
@@ -24,7 +24,7 @@ export default function TaxSoFar({ estimate: e }: { estimate: TaxEstimate }) {
   }
 
   return (
-    <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       <h2 className="font-semibold">Tax so far · {e.year.label}</h2>
       <>
           <div className="mt-3">

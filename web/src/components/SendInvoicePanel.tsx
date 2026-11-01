@@ -352,7 +352,7 @@ export default function SendInvoicePanel({
   const quote = docType === "quote";
   const pdf = useDocumentPdf({ sheet, pdfKey, filename: pdfFilenameFor(fields.number, docType), shareText: shareMessageFor(fields, docType, viewUrl) });
   return (
-    <section id="send-by-email" className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+    <section id="send-by-email" className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
       <h2 className="font-semibold">Send it</h2>
       <p className="mt-1 text-sm text-neutral-600">
         {fields.total}

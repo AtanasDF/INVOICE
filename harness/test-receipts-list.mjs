@@ -256,7 +256,7 @@ try {
   await page.goto(`${BASE}/invoices`, { waitUntil: "networkidle0" });
   await waitText(page, "S-1");
   await sleep(300);
-  const invTitles = () => page.evaluate(() => [...document.querySelectorAll("main div.space-y-3 > div.rounded-xl")].map((c) => c.innerText.split(" · ")[0].trim()));
+  const invTitles = () => page.evaluate(() => [...document.querySelectorAll("main div.space-y-2 > div.rounded-xl")].map((c) => c.innerText.split(" · ")[0].trim()));
   const statusSelect = await page.evaluateHandle(() => [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "to_receive")));
   check("invoices: To receive option present", !!(await statusSelect.asElement()));
   const opts = await page.evaluate(() => [...[...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "to_receive")).options].map((o) => o.textContent));

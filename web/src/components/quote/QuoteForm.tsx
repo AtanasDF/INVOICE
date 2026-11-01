@@ -102,7 +102,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   }
 
   return (
-    <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="space-y-4 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       {kept.offer && <DraftOffer what={draftScope ? "changes to this quote" : "a quote"} savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
       <CustomerPicker
         invalid={error === NO_CUSTOMER}

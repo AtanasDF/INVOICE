@@ -43,6 +43,106 @@ Atanas asleep; "keep working till you can".
   idle with no branch pushed. Each was nudged to push and to write any blocker at the top
   of its SESSIONS.md entry. If nothing has come by morning, open them at claude.ai/code
   and read why: a cloud session's answer is visible only in its own transcript.
+## 2026-11-01 (cloud, later): item 6, the "How it works" boxes (`wip/how-it-works`, NOT merged)
+
+Pushed once GitHub access was allowed (see the entry below). This branch is cut from
+`wip/visual-pass` and holds both pieces of work.
+
+Asked for by the Mac session: launch review item 6. Each box sat on top of a subtitle
+that said nearly the same thing and pushed the page down a third of a screen.
+- **Dropped on six pages, with the one new sentence moved into the subtitle**:
+  Money ("the late ones at the top. Mark a bill paid right here, or press Chase to
+  open the invoice"; the old subtitle said "latest first", which was wrong:
+  the lists are late first, as helpFacts already said), Expenses ("Every receipt and
+  bill you save adds itself up here", after the period), VAT ("Nothing is sent from
+  here"), Mileage ("and needs no receipt"), Files ("Tap one to see it or save it to
+  your device"), Needs review ("and it counts towards your totals"). The `Tip`
+  component and every other tip stay, Settings' included.
+- **test-every-screen-explained**: those six, and Home, are on a `SUBTITLE_SAYS_IT`
+  list. Each must have the `p.mt-1.text-neutral-600` subtitle straight under its `h1`,
+  at least eight words long, and no `<Tip>`. Home is there because week 2 removed its
+  welcome tip on purpose, which had left this suite red on main. **The suite exits 0
+  even when a check fails**, so judge it by its FAIL lines, not by its exit code.
+- **Dark mode, read from the classes** on every file either branch touches: no
+  `text-white` except on `bg-neutral-900`/`800`, black or `text-ink-on-dark` surfaces;
+  no `border-white` and no light `border-<colour>-100..300`. DateConfirm's swap button
+  moved from `border-amber-300` (never redefined for dark, so a bright edge) to
+  `amber-700`, which dark mode redefines, so it now matches the button's text.
+- tsc, eslint and build clean; test-every-screen-explained 20/20,
+  test-contrast-tokens, test-no-hardcoded-colour, test-accessibility-source,
+  test-source-text and test-govuk-words green. Still red, and not from this branch:
+  test-promises (the count of public pages), test-suites-report, and the server
+  checks in test-help-chat and test-route-guards.
+- **The Mac must run, as well as the visual-pass list below**: test-tips, test-help,
+  test-money-screen, test-pay-several, test-file-strip, test-vat-return, test-mileage,
+  test-review-fixes, test-first-week, test-plain-dates (Expenses' heading line now
+  carries a sentence after the period).
+
+## 2026-11-01 (cloud): week 3 step I, one visual pass (`wip/visual-pass`, NOT merged)
+
+**Push was blocked, then fixed.** For most of the session every write to GitHub was
+refused with 403 ("Claude doesn't have GitHub access to AtanasDF/INVOICE for your
+organization"). Atanas allowed access later the same day, and both branches were pushed then.
+
+Atanas: "make it pretty... make it easy to work, everything more compact, clear,
+similar to other apps out there." Cut from `main` at `e294b2b`. No schema, no
+behaviour and no wording changed. Settings, /invoices/new and price-list pages were
+left alone (the other two cloud sessions own them).
+- **Cards lose their outline** and become the Home card: `rounded-xl bg-white p-4
+  sm:p-5 shadow-sm`. Outlines stay on inputs, secondary buttons and floating menus
+  (the header menus, Save as). A box inside a card is a `bg-neutral-100` tint, not a
+  second outline. CLAUDE.md's house style says so now.
+- **One segmented control.** There were three. The white-pill-on-neutral-100 one
+  (section tabs, Quotes tabs, VAT basis, File library, send-a-quote, customer picker's
+  Company/Private) was invisible in dark mode: white is `#191b1f` on a `#17181c`
+  track. All of them are now a `bg-neutral-100 p-1` track with the chosen one
+  `bg-neutral-900 text-white`, which is what Customers/Suppliers, Expenses and
+  PaidChoice already used. Out of scope and still on the old pill: SignInCard,
+  /help/home-screen, PriceFinder, Settings.
+- **Coloured notices lose `border-amber-200` / `border-red-200` / `border-red-300`**
+  (receipts, scan, DateConfirm, PagesStrip): dark mode never redefined those, so
+  they drew a bright line round a dark box.
+- **Invoice list**: the amount on the right of the name, as the quote list and every
+  app in notes/competitor-research.md lay it out; the badge, date, credit, paid and
+  due on the line under; Mark as paid / View / Remove in a row of their own, each at
+  least 24px tall. Text and its order are unchanged ("INV-1 · Name" still first).
+- **Spacing**: `space-y-6` between a page's blocks (was 8 on ten pages), `space-y-2`
+  between list rows (invoices, quotes, customers), rows `px-4 py-3`, Money's lines
+  `py-2.5`, Money's three figures the same tile as Home's, Files' grid `gap-2` on a
+  phone, the invoice sheet `p-5` on a phone (was `p-8`, a 294px invoice).
+- **Screens touched**: Home (panel radius), shell (section tabs), Invoices list, an
+  invoice's page, Quotes list and a quote, quote requests (list, one request, answer
+  entry, compare, orders, request form), Receipts, Receipts new (one inner box),
+  Needs review, Customers, Customers new (card), statement, Money, Expenses, VAT,
+  Mileage, Repeating expenses and invoices, Files and FileStrip, Scan's own screens
+  (status boxes, form card; not the viewfinder, not BatchReview), and the shared Tip,
+  AddAnything sheet, TaxSoFar, SaveThese, ScansLeft, ScanLimitNotice, DraftOffer,
+  GettingStarted, SendInvoicePanel, InvoiceReminders, QuoteForm, QuoteSendCard,
+  CustomerPicker, PaidChoice.
+- **Checked here**: tsc, eslint, `npm run build` clean (built with the placeholder
+  Supabase variables on the command line). Every logic and source-reading suite in
+  run-all.sh that runs without Chrome or a server passes, including
+  test-contrast-tokens, test-no-hardcoded-colour, test-accessibility-source,
+  test-every-screen-explained and test-source-text. Not green and not this branch:
+  test-suites-report (red on main: run-all.sh still names the retired
+  test-upload-panel), and test-help-chat's two checks that need a server.
+- **Suites moved to the new classes**: test-receipts-list (invoice list is
+  `space-y-2`), test-quotes-fixes (`.rounded-xl.border` on Customers is now
+  `main .rounded-xl`).
+- **The Mac must run before merging**, against `next start`: test-receipts-list,
+  test-quotes-fixes, test-quotes-ux, test-quotes, test-quote-requests, test-payments,
+  test-delight, test-double-press, test-one-total, test-same-again, test-multi-docs,
+  test-review-fixes, test-dashboard, test-money-screen, test-pay-several,
+  test-file-strip, test-first-week, test-tap-targets, test-one-handed, test-feel,
+  test-big-slow, test-texts, test-tips, test-keyboard-only, test-dark-mode,
+  test-readable, test-theme, test-worst-phone, test-big-text, test-fit-320,
+  test-fit-sweep, test-no-sideways, test-long-names-wrap, test-statement,
+  test-vat-return, test-mileage, test-scan-wall, test-page-print, test-print.
+- **Pictures for Atanas**: `harness/shots-launch.mjs` now also takes Invoices, an
+  invoice, Quotes, Receipts, Needs review, Customers, Money, Expenses, VAT, Files and
+  Scan as whole pages at 390pt, and `SCHEME=dark` takes the same set in dark. Before
+  and after = run it against a `next start` of main into one OUT folder, then of this
+  branch into another.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 

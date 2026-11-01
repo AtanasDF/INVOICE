@@ -32,7 +32,7 @@ import { copyText, openWhenReady } from "@/lib/afterTap";
 
 const PRIMARY = "rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50";
 const SECONDARY = "rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50";
-const CARD = "rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
+const CARD = "rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm";
 const NO_ANSWER: Answer = { status: "waiting", prices: {}, delivery: null, vatIncluded: false, validUntil: null, note: "" };
 
 async function fetchAll(id: string) {
@@ -295,7 +295,7 @@ export default function QuoteRequestPage() {
             const key = answerKey(row);
             const t = row.status === "replied" ? supplierTotal(offerOf(row, ""), r.items) : null;
             return (
-              <div key={row.id} className="rounded-lg border p-3" data-testid="supplier-row">
+              <div key={row.id} className="rounded-lg bg-neutral-100 p-3" data-testid="supplier-row">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{nameOf(row)}</p>
