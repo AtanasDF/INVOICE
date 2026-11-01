@@ -7,7 +7,7 @@ and what is left open. Dates are session dates (Europe/London).
 
 ## 2026-11-01 (cloud): Settings split into short pages (launch step H), `wip/settings-split`
 
-**BLOCKED: every push from this cloud session is refused with 403** ("Claude doesn't have GitHub access to AtanasDF/INVOICE for your organization"; the GitHub API's create_branch gives "Resource not accessible by integration"). Fix: reconnect GitHub at claude.ai/connect-github and install the Claude GitHub App on the repo. `wip/domain-ready` is not started, because it would be stranded the same way.
+(The push was blocked by GitHub access for a while; Atanas allowed it and the branch went up on 2026-11-01.)
 
 Not merged, not on main. No schema change.
 - **What moved where.** `/settings` is now a landing page: four links, a line each,
@@ -64,9 +64,7 @@ Not merged, not on main. No schema change.
   (now covering the four pages). **Red here, not from this change:** big-account dies
   waiting for "owed" on Home and no-accidents after its invoice step, both before Settings;
   terms-of-use (1 check) and tips need a camera this Chromium does not fake.
-- **Not pushed by this session**: GitHub refused the push with 403 ("Claude doesn't have
-  GitHub access to AtanasDF/INVOICE for your organization"). The commits are on the local
-  branch only; see the end of the session's reply for what to do.
+
 - **The Mac must run before merging**, against `next start`: test-settings-save,
   test-settings-add, test-announced, test-autocomplete, test-company, test-logo,
   test-numbering, test-two-tabs, test-quiet-failures, test-half-saved, test-write-fails,
