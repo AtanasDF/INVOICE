@@ -115,7 +115,7 @@ try {
   check("individual: plain name field", (await page.$$(nameSel)).length === 0);
 
   // Settings
-  await page.goto(BASE + "/settings", { waitUntil: "networkidle0" });
+  await page.goto(BASE + "/settings/business", { waitUntil: "networkidle0" });
   await page.waitForSelector(nameSel);
   await typeInto(nameSel, "acme");
   await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length > 0, { timeout: 5000 });

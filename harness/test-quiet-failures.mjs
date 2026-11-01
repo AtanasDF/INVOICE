@@ -107,7 +107,7 @@ try {
   check("an unreadable photo says so instead of attaching nothing in silence", /Couldn't read that photo/i.test(afterPhoto), afterPhoto.replace(/\s+/g, " ").slice(0, 300));
 
   // --- the invoice counter ---------------------------------------------
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/invoices`, { waitUntil: "networkidle0" });
   await sleep(1800);
   // An invoice is marked sent on the phone while this page sits open.
   db.tables.business_profile[0].invoice_next_number = 130;

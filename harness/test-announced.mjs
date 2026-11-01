@@ -70,7 +70,7 @@ try {
   );
   check("the two date fields are told apart, rather than both being \"date, blank\"", dates.length >= 2 && dates.every((d) => d.named), JSON.stringify(dates));
 
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "networkidle0" });
   await sleep(2000);
   const untiedSettings = await untiedLabels();
   check("no label in Settings is left untied either", untiedSettings.length === 0, JSON.stringify(untiedSettings));

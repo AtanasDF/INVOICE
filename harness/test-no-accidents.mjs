@@ -102,7 +102,7 @@ try {
   await removeOn("/clients", "clients", "Remove", "Acme Kitchens Ltd");
 
   // A new import address stops the old one at once: it asks first, like every other destructive tap.
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/expenses`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => document.body.innerText.includes("Email import"), { timeout: 20000 });
   const tokenBefore = db.tables.business_profile.at(-1).inbox_token;
   asked = null; answer = false;

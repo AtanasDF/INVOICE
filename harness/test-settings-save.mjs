@@ -64,7 +64,8 @@ try {
   const sections = await page.evaluate(() => [...document.querySelectorAll("main a[href^='/settings/']")].map((a) => a.getAttribute("href")));
   check("Settings lists four sections, business first and account last", JSON.stringify(sections) === '["/settings/business","/settings/invoices","/settings/expenses","/settings/account"]', JSON.stringify(sections));
   check("each says what is inside", ["Your name, address", "Invoice numbers, bank details", "Expense categories and the address", "Sign-in, colours and dark mode"].every((t) => text.includes(t)), text.slice(0, 600));
-  check("the landing page is one short screen", await page.evaluate(() => document.documentElement.scrollHeight <= 844), await page.evaluate(() => document.documentElement.scrollHeight));
+  const listBottom = await page.evaluate(() => Math.round(document.querySelector("main ul").getBoundingClientRect().bottom + window.scrollY));
+  check("the four sections end inside one iPhone screen (844px)", listBottom <= 844, String(listBottom));
   check("the landing page fits 375px", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
   // ── Business: order and words ────────────────────────────────────

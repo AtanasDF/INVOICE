@@ -97,7 +97,7 @@ try {
   await signIn(page, BASE);
 
   // ── Account section ───────────────────────────────────────────────
-  await page.goto(BASE + "/settings", { waitUntil: "networkidle0" });
+  await page.goto(BASE + "/settings/account", { waitUntil: "networkidle0" });
   await sleep(600);
   let text = await bodyText(page);
   check("settings: the signed-in email is shown", text.includes("harness@example.com"), text.slice(0, 300));
@@ -123,6 +123,8 @@ try {
     dumped ? Object.keys(dumped).join(",") : "no file");
 
   // ── Names kept apart ──────────────────────────────────────────────
+  await page.goto(BASE + "/settings/business", { waitUntil: "networkidle0" });
+  await sleep(600);
   const names = await page.evaluate(() => {
     const combos = [...document.querySelectorAll('input[role="combobox"], input')].filter((i) => i.type === "text" || !i.type);
     return { first: combos[0]?.value ?? "", labels: [...document.querySelectorAll("label")].map((l) => l.textContent.trim()) };
@@ -303,10 +305,10 @@ try {
       },
     });
     await signIn(p4, BASE);
-    await p4.goto(BASE + "/settings", { waitUntil: "networkidle0" });
+    await p4.goto(BASE + "/settings/business", { waitUntil: "networkidle0" });
     await sleep(700);
     const oldText = await bodyText(p4);
-    check("columns absent: settings still loads as before", oldText.includes("Your business") && oldText.includes("harness@example.com") && !oldText.includes("Registered company name"), oldText.slice(0, 200));
+    check("columns absent: settings still loads as before", oldText.includes("Business name") && oldText.includes("Business address") && !oldText.includes("Registered company name"), oldText.slice(0, 200));
     check("columns absent: the address label is the one he has todayISO()", (await addressLabel(p4)).startsWith("Business address"), await addressLabel(p4));
     await setField(p4, 'input[placeholder="Account name, sort code, account number / IBAN, etc."]', "Sort 00-00-00", 0).catch(() => {});
     await p4.evaluate(() => { const t = document.querySelector("textarea"); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(t, "1 New Street"); t.dispatchEvent(new Event("input", { bubbles: true })); }).catch(() => {});
