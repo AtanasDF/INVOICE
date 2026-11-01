@@ -5,6 +5,157 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (cloud, night): the browser suites on `integrate/launch` (`wip/launch-fixes`)
+
+Asked for by the Mac session, which has no Chrome. `integrate/launch` at `c4ee303`, built
+with the placeholder Supabase variables and served by `next start` on 3100 (checked: no
+`next dev` process, no devtools in the page). `main` at `e294b2b` built and served the
+same way on 3200 for every red. 98 suites: everything the six SESSIONS.md entries name
+for the Mac, plus test-dashboard, test-first-week, test-tap-targets, test-keyboard-only
+and test-worst-phone. Run two at a time; every red was re-run on its own before it counted.
+
+**One fix, on this branch (`f05c3e0`)**: test-big-text caught the Expenses "Expenses
+only / Combined with invoices" toggle running off a 320px screen at twice the text size.
+The visual pass gave it a padded track and no `flex-wrap`. It wraps now: 24/24 on the
+rebuilt branch, and it was green on main, so it was ours.
+
+**Red on main too, so not from the merge** (each needs its own look, none touched here):
+- test-big-account 0/0: waits for the word "owed" on Home, which has said "Owed to
+  you" since week 2. A stale wait, so none of its checks ever run.
+- test-delight 8/9: the home-screen badge is 4 where the suite expects 3.
+- test-feel 9/10: looks for Home's sliding panels, which week 2 removed.
+- test-one-total 13/14: reads Home's figure after "INV-60", which is now the Recent
+  row and shows the invoice's total by design (972.62), not what is still owed
+  (535.52). The list, the invoice page and Money agree. **This is not a money bug, but
+  Atanas may want Recent to show what is owed on an unpaid invoice. His call.**
+- test-terms-of-use 35/36: wants "type it in" on /accessibility, which says "Typing a
+  receipt in". The page is identical on main.
+- test-vat-lookup 27/28: one "fetch failed", the same on main.
+- test-pale 1/2: the white worktop, red on purpose since 28/10.
+
+**Borderline, needs the Mac's eye: test-big-slow.** Receipts with 2,000 rows on a
+throttled CPU, budget 12s. Integrate: 11.6s and 12.3s alone (and 16.3s under load);
+main: 9.4s, 11.1s and 10.0s. About 1.5-2s slower. The receipts page's JS is the same size
+on both (927 KB against 927 KB), and nothing per-row changed in its code that I could find.
+Not fixed: it needs a profile, not a guess.
+
+**Environment, for the next cloud session**: the harness hard-codes the Mac's Chrome and
+fonts. Here a symlink at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+pointed at the container's Chromium, Liberation fonts stood in for Arial/Helvetica/Courier
+under `/System/Library/Fonts`, and `pip install opencv-python-headless pillow numpy` let
+the `gen-*.py` clips be made. Nothing in the repo changed for it. Three suites
+(test-links, test-quote-requests, test-vat-lookup) start their own `next dev`, and Next
+allows only one per folder, so a leftover one makes the next "never answer". Run them alone.
+
+**Pictures**: `notes/screens-2026-11-01/`, 390pt, 25 screens in light and the same in
+dark (`-dark`): front door, new account, Home, the menu, Invoices, an invoice, Quotes,
+Receipts, Needs review, Customers, Money, Expenses, VAT, Files, Scan, Settings and its
+four pages, and /prices. `shots-launch.mjs` now takes the Settings pages and /prices, and
+the payment-link picture follows the field to /settings/invoices. **For his eye**: the
+price list's cards and the Settings menu still have an outline, which the visual pass
+took off everywhere else.
+
+| suite | checks | result | red on main too |
+|---|---|---|---|
+| test-accessibility-source | 38/38 | green |  |
+| test-announced | 12/12 | green |  |
+| test-api-routes | 126/126 | green |  |
+| test-autocomplete | 11/11 | green |  |
+| test-batch-handheld | 1/1 | green |  |
+| test-big-account | 0/0 | red | yes |
+| test-big-slow | 9/10 | red | no |
+| test-big-text | 24/24 | green |  |
+| test-bills | 36/36 | green |  |
+| test-business-categories | 23/23 | green |  |
+| test-company | 22/22 | green |  |
+| test-contrast-tokens | 2/2 | green |  |
+| test-dark-mode | 48/48 | green |  |
+| test-dashboard | 23/23 | green |  |
+| test-delight | 8/9 | red | yes |
+| test-double-press | 11/11 | green |  |
+| test-draft-autosave | 18/18 | green |  |
+| test-empty-account | 146/146 | green |  |
+| test-every-screen-explained | 20/20 | green |  |
+| test-feel | 9/10 | red | yes |
+| test-file-strip | 18/18 | green |  |
+| test-first-week | 29/29 | green |  |
+| test-fit-320 | 27/27 | green |  |
+| test-fit-sweep | 27/27 | green |  |
+| test-form-draft | 67/67 | green |  |
+| test-free-quote | 13/13 | green |  |
+| test-get-the-app | 14/14 | green |  |
+| test-getting-started | 16/16 | green |  |
+| test-govuk-words | 12/12 | green |  |
+| test-half-saved | 20/20 | green |  |
+| test-help | 26/26 | green |  |
+| test-help-chat | 61/61 | green |  |
+| test-help-chat-live | 25/25 | green |  |
+| test-inbox-worker | 41/41 | green |  |
+| test-invites | 9/9 | green |  |
+| test-jobs | 22/22 | green |  |
+| test-keyboard-only | 45/45 | green |  |
+| test-labels | 38/38 | green |  |
+| test-lines | 7/7 | green |  |
+| test-links | 18/18 | green |  |
+| test-locked-doors | 10/10 | green |  |
+| test-logo | 13/13 | green |  |
+| test-long-names-wrap | 12/12 | green |  |
+| test-mileage | 5/5 | green |  |
+| test-money-screen | 25/25 | green |  |
+| test-multi-docs | 33/33 | green |  |
+| test-no-accidents | 9/9 | green |  |
+| test-no-hardcoded-colour | 5/5 | green |  |
+| test-no-sideways | 4/4 | green |  |
+| test-numbering | 11/11 | green |  |
+| test-one-address | 4/4 | green |  |
+| test-one-handed | 17/17 | green |  |
+| test-one-total | 13/14 | red | yes |
+| test-page-print | 33/33 | green |  |
+| test-page-titles | 5/5 | green |  |
+| test-pale | 1/2 | red | yes |
+| test-pay-several | 10/10 | green |  |
+| test-payments | 17/17 | green |  |
+| test-plain-dates | 11/11 | green |  |
+| test-price-list | 53/53 | green |  |
+| test-prices-page | 24/24 | green |  |
+| test-print | 11/11 | green |  |
+| test-privacy-terms | 23/23 | green |  |
+| test-promises | 7/7 | green |  |
+| test-public-logo | 27/27 | green |  |
+| test-quiet-failures | 15/15 | green |  |
+| test-quote-requests | 82/82 | green |  |
+| test-quotes | 35/35 | green |  |
+| test-quotes-fixes | 11/11 | green |  |
+| test-quotes-ux | 33/33 | green |  |
+| test-readable | 210/210 | green |  |
+| test-receipts-list | 55/55 | green |  |
+| test-review-fixes | 21/21 | green |  |
+| test-route-guards | 57/57 | green |  |
+| test-same-again | 23/23 | green |  |
+| test-saved-prices | 15/15 | green |  |
+| test-scan-wall | 21/21 | green |  |
+| test-scans-left | 18/18 | green |  |
+| test-settings-add | 38/38 | green |  |
+| test-settings-save | 56/56 | green |  |
+| test-source-text | 2/2 | green |  |
+| test-statement | 22/22 | green |  |
+| test-still-interrupts | 3/3 | green |  |
+| test-stored-photos | 8/8 | green |  |
+| test-suites-report | 8/8 | green |  |
+| test-tap-targets | 6/6 | green |  |
+| test-terms-of-use | 35/36 | red | yes |
+| test-texts | 12/12 | green |  |
+| test-theme | 19/19 | green |  |
+| test-tiles | 12/12 | green |  |
+| test-tips | 7/7 | green |  |
+| test-two-tabs | 13/13 | green |  |
+| test-uploads | 15/15 | green |  |
+| test-vat-lookup | 27/28 | red | yes |
+| test-vat-rate-scan | 7/7 | green |  |
+| test-vat-return | 14/14 | green |  |
+| test-worst-phone | 26/26 | green |  |
+| test-write-fails | 26/26 | green |  |
+
 ## 2026-11-01 (night): a third Mac, and the white worktop
 
 Atanas asleep; "keep working till you can".

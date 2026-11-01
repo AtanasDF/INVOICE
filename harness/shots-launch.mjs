@@ -110,11 +110,18 @@ const snap = async (page, name, full = false, top = true) => {
       ["/vat", "16-vat"],
       ["/files", "17-files"],
       ["/scan", "18-scan"],
+      ["/settings", "19-settings"],
+      ["/settings/business", "20-settings-business"],
+      ["/settings/invoices", "21-settings-invoices"],
+      ["/settings/expenses", "22-settings-expenses"],
+      ["/settings/account", "23-settings-account"],
+      ["/prices", "24-prices"],
     ]) {
       await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
       await snap(page, name, true);
     }
-    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+    // The payment link moved to its own Settings page when Settings was split.
+    await page.goto(`${BASE}/settings/invoices`, { waitUntil: "networkidle0" });
     await page.evaluate(() => document.getElementById("payment-link")?.scrollIntoView({ block: "center" }));
     await snap(page, "7-settings-payment-link", false, false);
   } finally { await browser.close(); }
