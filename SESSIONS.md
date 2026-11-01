@@ -5,6 +5,68 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (cloud): week 3 step I, one visual pass (`wip/visual-pass`, NOT merged)
+
+Atanas: "make it pretty... make it easy to work, everything more compact, clear,
+similar to other apps out there." Cut from `main` at `e294b2b`. No schema, no
+behaviour and no wording changed. Settings, /invoices/new and price-list pages were
+left alone (the other two cloud sessions own them).
+- **Cards lose their outline** and become the Home card: `rounded-xl bg-white p-4
+  sm:p-5 shadow-sm`. Outlines stay on inputs, secondary buttons and floating menus
+  (the header menus, Save as). A box inside a card is a `bg-neutral-100` tint, not a
+  second outline. CLAUDE.md's house style says so now.
+- **One segmented control.** There were three. The white-pill-on-neutral-100 one
+  (section tabs, Quotes tabs, VAT basis, File library, send-a-quote, customer picker's
+  Company/Private) was invisible in dark mode: white is `#191b1f` on a `#17181c`
+  track. All of them are now a `bg-neutral-100 p-1` track with the chosen one
+  `bg-neutral-900 text-white`, which is what Customers/Suppliers, Expenses and
+  PaidChoice already used. Out of scope and still on the old pill: SignInCard,
+  /help/home-screen, PriceFinder, Settings.
+- **Coloured notices lose `border-amber-200` / `border-red-200` / `border-red-300`**
+  (receipts, scan, DateConfirm, PagesStrip): dark mode never redefined those, so
+  they drew a bright line round a dark box.
+- **Invoice list**: the amount on the right of the name, as the quote list and every
+  app in notes/competitor-research.md lay it out; the badge, date, credit, paid and
+  due on the line under; Mark as paid / View / Remove in a row of their own, each at
+  least 24px tall. Text and its order are unchanged ("INV-1 · Name" still first).
+- **Spacing**: `space-y-6` between a page's blocks (was 8 on ten pages), `space-y-2`
+  between list rows (invoices, quotes, customers), rows `px-4 py-3`, Money's lines
+  `py-2.5`, Money's three figures the same tile as Home's, Files' grid `gap-2` on a
+  phone, the invoice sheet `p-5` on a phone (was `p-8`, a 294px invoice).
+- **Screens touched**: Home (panel radius), shell (section tabs), Invoices list, an
+  invoice's page, Quotes list and a quote, quote requests (list, one request, answer
+  entry, compare, orders, request form), Receipts, Receipts new (one inner box),
+  Needs review, Customers, Customers new (card), statement, Money, Expenses, VAT,
+  Mileage, Repeating expenses and invoices, Files and FileStrip, Scan's own screens
+  (status boxes, form card; not the viewfinder, not BatchReview), and the shared Tip,
+  AddAnything sheet, TaxSoFar, SaveThese, ScansLeft, ScanLimitNotice, DraftOffer,
+  GettingStarted, SendInvoicePanel, InvoiceReminders, QuoteForm, QuoteSendCard,
+  CustomerPicker, PaidChoice.
+- **Checked here**: tsc, eslint, `npm run build` clean (built with the placeholder
+  Supabase variables on the command line). Every logic and source-reading suite in
+  run-all.sh that runs without Chrome or a server passes, including
+  test-contrast-tokens, test-no-hardcoded-colour, test-accessibility-source,
+  test-every-screen-explained and test-source-text. Not green and not this branch:
+  test-suites-report (red on main: run-all.sh still names the retired
+  test-upload-panel), and test-help-chat's two checks that need a server.
+- **Suites moved to the new classes**: test-receipts-list (invoice list is
+  `space-y-2`), test-quotes-fixes (`.rounded-xl.border` on Customers is now
+  `main .rounded-xl`).
+- **The Mac must run before merging**, against `next start`: test-receipts-list,
+  test-quotes-fixes, test-quotes-ux, test-quotes, test-quote-requests, test-payments,
+  test-delight, test-double-press, test-one-total, test-same-again, test-multi-docs,
+  test-review-fixes, test-dashboard, test-money-screen, test-pay-several,
+  test-file-strip, test-first-week, test-tap-targets, test-one-handed, test-feel,
+  test-big-slow, test-texts, test-tips, test-keyboard-only, test-dark-mode,
+  test-readable, test-theme, test-worst-phone, test-big-text, test-fit-320,
+  test-fit-sweep, test-no-sideways, test-long-names-wrap, test-statement,
+  test-vat-return, test-mileage, test-scan-wall, test-page-print, test-print.
+- **Pictures for Atanas**: `harness/shots-launch.mjs` now also takes Invoices, an
+  invoice, Quotes, Receipts, Needs review, Customers, Money, Expenses, VAT, Files and
+  Scan as whole pages at 390pt, and `SCHEME=dark` takes the same set in dark. Before
+  and after = run it against a `next start` of main into one OUT folder, then of this
+  branch into another.
+
 ## 2026-10-28 (evening): week 2, the menu and Home
 
 Atanas approved the drawing ("Build the menu and Home as drawn").
