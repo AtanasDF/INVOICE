@@ -56,6 +56,7 @@ export default function JobsPage() {
       <Tip id="jobs-how">
         How it works: put the same tag on an invoice and on the receipts for that work &mdash; &ldquo;Willow Road&rdquo;, say &mdash; and
         they gather here. You can start a job after the fact: tag things whenever you like and this page catches up.
+        Your prices are on <Link href="/prices" className="underline">What I charge</Link>, under Invoices.
       </Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

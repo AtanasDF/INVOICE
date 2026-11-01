@@ -23,7 +23,7 @@ export type SavedPrice = {
 
 // Same job written two ways is the same job. Case and the spaces around it
 // are noise; anything else is a different line and stays one.
-const key = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+export const priceKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
 export function savedPrices(invoices: Invoice[], quotes: Quote[] = [], limit = 12): SavedPrice[] {
   const found = new Map<string, SavedPrice>();
@@ -37,7 +37,7 @@ export function savedPrices(invoices: Invoice[], quotes: Quote[] = [], limit = 1
     // A deduction (a deposit taken off a final invoice) is not something to
     // bill again, and neither is a blank line somebody left behind.
     if (!description.trim() || quantity < 0 || !(unitPrice > 0)) return;
-    const k = key(description);
+    const k = priceKey(description);
     const written = description.trim();
     const seen = spellings.get(k) ?? new Map<string, { count: number; last: string }>();
     const was = seen.get(written);
@@ -82,6 +82,6 @@ export function savedPrices(invoices: Invoice[], quotes: Quote[] = [], limit = 1
 // What to offer on a form: what this customer has been charged before comes
 // first, since it is the better guess, then everything else you charge for.
 export function pricesFor(all: SavedPrice[], forCustomer: SavedPrice[], limit = 12): SavedPrice[] {
-  const seen = new Set(forCustomer.map((p) => key(p.description)));
-  return [...forCustomer, ...all.filter((p) => !seen.has(key(p.description)))].slice(0, limit);
+  const seen = new Set(forCustomer.map((p) => priceKey(p.description)));
+  return [...forCustomer, ...all.filter((p) => !seen.has(priceKey(p.description)))].slice(0, limit);
 }

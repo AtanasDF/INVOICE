@@ -5,6 +5,50 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (cloud): "What I charge", the price list — `wip/price-list`, NOT merged
+
+**Cannot merge before migration-047 is run (rule 4). It has NOT been run, and nothing here
+claims it was.** Run `web/supabase/019-backup-before-migration-047.sql`, verify both ways,
+then `migration-047-price-list.sql` (adds `business_profile.price_list jsonb`, nullable, no
+default), then the checks and the rolled-back exercise in its footer. Until then the
+branch works read-only: learned prices only, and the page says changes can't be kept yet.
+
+- **`/prices`, "What I charge"**: fourth tab under Invoices; menu size unchanged. Built from
+  every sent invoice and quote with savedPrices' rules, with how often each was charged and
+  how the price was worked out (last price, or "£180.00 to £240.00, last £220.00").
+- Each item is **Fixed** or **Per hour** (hourly wording starts it per hour). Change name,
+  type, price, VAT rate; hide / show; add by hand; back to the learned price. The learned
+  figure stays beside his own ("yours is £250.00").
+- **New invoice and New quote** share `PricePicker`: fixed goes straight on; per hour asks
+  "Hours of …" and puts hours in quantity, rate in unit price. New invoice keeps the
+  customer's own prices first; his own price wins only where he set one; hidden items are
+  not offered. New quote had no suggestions before.
+- **Jobs** kept; the two pages point at each other in their tips. `helpFacts` and
+  `navGroups` GROUPS describe /prices.
+- Storage in its own store (`lib/priceListStore.ts`) so the parallel Settings split can't
+  overwrite it nor it Settings. Only his changes are stored (`editFor` keeps what differs
+  from the learned figure). Detail and decisions in `notes/price-list.md`.
+- Shared files touched, minimally: `navGroups.ts` (one tab, one GROUPS line),
+  `helpFacts.ts`, `savedPrices.ts` (`key` exported as `priceKey`), `QuoteForm.tsx`,
+  `invoices/new/page.tsx` (the chip block replaced by the picker), `jobs/page.tsx` (one
+  line in the tip). No change to `globals.css` or `AppShell`.
+- **Suites**: new `test-price-list` (53, pure logic) and `test-prices-page` (24, browser,
+  includes the before-047 read-only case via a 42703 stand-in), both in run-all.sh.
+  `test-first-week` updated for the fourth Invoices tab. Run here in the cloud against
+  `next start` with the pre-installed Chromium (mockdb's Chrome path swapped locally for
+  the run, not committed). Results are in the list below.
+- tsc, eslint, build clean (build with the placeholder Supabase env on the command line).
+  Logic suites green; three reds are not this branch: test-help-chat's two server checks
+  (needs the server), test-suites-report (test-upload-panel retired, three clip suites
+  unlisted, same on main), test-every-screen-explained (Home "." has no tip since week 2).
+
+**Browser suites the Mac must run before merging** (against `next start`, after 047):
+test-prices-page, test-saved-prices, test-first-week, test-jobs, test-quotes, test-quotes-ux,
+test-free-quote, test-lines, test-form-draft, test-draft-autosave, test-dark-mode,
+test-no-sideways, test-fit-320, test-labels, test-help-chat, test-keyboard-only,
+test-big-text, test-page-titles. And one real save on the test account after 047, then
+reload on a second device.
+
 ## 2026-10-28 (evening): week 2, the menu and Home
 
 Atanas approved the drawing ("Build the menu and Home as drawn").
