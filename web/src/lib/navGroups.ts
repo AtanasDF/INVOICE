@@ -23,6 +23,7 @@ export const SECTIONS: Section[] = [
       ["/invoices", "Invoices"],
       ["/quotes", "Quotes"],
       ["/recurring/invoices", "Repeating"],
+      ["/prices", "What I charge"],
     ],
   },
   {
@@ -73,6 +74,7 @@ export const GROUPS: Group[] = [
       ["/invoices", "Invoices"],
       ["/quotes", "Quotes (a tab under Invoices)"],
       ["/recurring/invoices", "Repeating invoices (a tab under Invoices)"],
+      ["/prices", "What I charge (a tab under Invoices)"],
       ["/receipts", "Receipts"],
       ["/receipts/review", "Needs review (a tab under Receipts)"],
       ["/recurring", "Repeating expenses (a tab under Receipts)"],
