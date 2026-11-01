@@ -5,6 +5,47 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (cloud, second job): business categories — `wip/business-categories`, NOT merged
+
+**BLOCKED: NOT PUSHED.** This cloud session was refused every write to GitHub (git push
+403; the API says "Resource not accessible by integration"), for this branch and for
+`wip/price-list` alike. Both sit committed in the cloud container only. No schema change.
+
+Launch review item 13: "Household" on a B&Q receipt, because the default list mixed
+personal and business on one level.
+- `src/lib/categories.ts`: `CATEGORIES` (the default for an account that hasn't said what
+  it is, and the scanner's and email import's fallback) is now the sole-trader list, which
+  follows the self-assessment expense headings. The old mixed list is kept as
+  `OLD_DEFAULT`, only to recognise it: a custom list identical to it was the old default
+  saved back by Settings, not a choice, so `effectiveCategories` reads it as the kind's
+  default. No stored row is rewritten; a list somebody actually edited is untouched.
+- Personal spending stays pickable: every category drop-down (`CategoryOptions`) shows the
+  account's list, then an optgroup **"Personal (not a business cost)"** with Groceries,
+  Household, Clothes and the rest. It is never sent to the scanner, so never guessed. A
+  personal account's list is personal already and gets no extra group; nor does a list
+  somebody made with Groceries or Household in it.
+- Stored categories: a receipt filed "Household" shows Household, selected, in the Personal
+  group; one filed under an old heading ("Supplies") shows it at the top as before
+  (`withCurrent`); the receipts filter offers every category in use (`withUsed`). Receipt
+  line-item drop-downs now show their own stored category too.
+- Not changed: the per-supplier "usual category" guess still learns from his own past
+  receipts, so a supplier he filed under Household before will still be offered Household.
+- **Settings not edited** (the Settings split). For the Mac after merging, optional: the
+  category editor in Settings could say under the list that personal spending is offered
+  in its own group on every receipt, so nobody adds Groceries back thinking it's gone.
+- Suites: new `test-business-categories` (23, logic), in run-all.sh. tsc, eslint, build
+  clean. Run here against `next start` with the built-in Chromium (mock Chrome paths
+  swapped locally, not committed): receipts-list 55, settings-save 41, dark-mode 48,
+  getting-started 16, labels 38, no-sideways 4, tax-rules 41, utc-today 18,
+  money-invariants 22, help-chat 61, all green. test-review-fixes and test-big-account
+  stop at their first wait (0 checks) **identically on a build of main**, so not this
+  branch; worth a look on the Mac.
+
+**Browser suites the Mac must run before merging**: test-receipts-list, test-settings-save,
+test-review-fixes, test-dark-mode, test-getting-started, test-big-account, test-labels,
+test-no-sideways, test-uploads, test-multi-docs, test-vat-rate-scan, and a scan on the
+test account to see a B&Q receipt land in Tools & equipment / Materials & stock.
+
 ## 2026-10-28 (evening): week 2, the menu and Home
 
 Atanas approved the drawing ("Build the menu and Home as drawn").

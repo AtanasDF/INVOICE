@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Client, Receipt, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
 import FieldFlag from "@/components/scan/FieldFlag";
-import { effectiveCategories, withCurrent } from "@/lib/categories";
+import { effectiveCategories } from "@/lib/categories";
+import CategoryOptions from "@/components/CategoryOptions";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed, saveFailed } from "@/lib/errorText";
@@ -268,7 +269,7 @@ export default function ReviewQueuePage() {
                       onChange={(e) => updateDraft(r.id, { category: e.target.value })}
                     >
                       <option value="">No category</option>
-                      {withCurrent(categories, draft.category).map((c) => <option key={c} value={c}>{c}</option>)}
+                      <CategoryOptions list={categories} current={draft.category} />
                     </select>
 
                     <div className="grid grid-cols-2 gap-3">
