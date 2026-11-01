@@ -13,6 +13,13 @@ Atanas asleep; "keep working till you can".
   the command line (handover top). Built that way, clean.
 - Nothing waiting to merge: handover's top block rewritten to say so.
 - `harness/feedback-inbox.mjs` not run: it needs the service key, which this Mac lacks.
+- **Nothing pushed tonight**: this Mac has no GitHub sign-in (`could not read Username`),
+  and the clone only worked because the repo is public. Every commit here is local until
+  Atanas signs git in on this Mac; then one `git push` sends the lot.
+- **No Chrome and no Pillow on this Mac**, so no browser suite and no camera clip can run
+  (`gen-pale.py` needs PIL; `camera2.mjs` wants `/Applications/Google Chrome.app`). Both
+  are installs on his machine, so they wait for his OK. The white-worktop fix waits with
+  them: a camera change nobody can measure should not be written blind.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 
