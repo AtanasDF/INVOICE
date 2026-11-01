@@ -5,6 +5,51 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (cloud): ready for invoiceover.com, `wip/domain-ready`
+
+Not merged. **Nothing live changes**: no environment variable is set and no Worker deploy is
+needed for this branch. Cut from `main` `e294b2b`, separate from `wip/settings-split`.
+- **One place for the address.** `src/lib/siteUrl.ts` already read `NEXT_PUBLIC_SITE_URL`,
+  with today's address as the default, for the layout, sitemap and robots. Four files
+  still wrote an address of their own, and they now use it:
+  - the three push senders' VAPID subject (`ownerPush.ts`, `notifications/check`,
+    `invoice-links/seen`);
+  - the address lookup's User-Agent.
+  Every other link (sign-in, reset, Google's return, `/i/`, `/q/`, `/r/`, emailed links) is
+  built from the address it was opened on, so it needs nothing.
+- **`harness/test-one-address.mjs`** (new, in run-all.sh, 4 checks) fails if any file in
+  `web/src` or `worker/src` other than siteUrl.ts writes an `https://...invoiceover.com` or
+  `vercel.app` address. Proved: it fails on `main`. The sending and email-in mailboxes
+  (`invoices@`, `u-<token>@`) are already on invoiceover.com and are not touched.
+- **Left as they are, as steps in the checklist**:
+  - `public/.well-known/security.txt`: a static file can't read a variable, and replacing it
+    with a route would mean removing a file (rule 1).
+  - `worker/wrangler.toml` `APP_INGEST_URL`: **the Worker only changes when somebody runs
+    `npx wrangler deploy` from `worker/` on the Mac**, so I did not touch `worker/`.
+- **`notes/domain-move.md`**: the ordered checklist with a test after each step.
+  1. Turnstile hostname first.
+  2. Supabase redirect URLs.
+  3. Google origin, if Google sign-in is on by then.
+  4. Vercel domain.
+  5. Cloudflare DNS, leaving the Email Routing and Resend records alone.
+  6. Walk the new address on the test account.
+  7. `NEXT_PUBLIC_SITE_URL` with a redeploy, then the Supabase Site URL.
+  8. The Worker.
+  9. security.txt.
+  10. Resend: nothing to do.
+  It recommends **keeping the old address serving, not redirected**: links already sent to
+  customers, home-screen icons, push subscriptions and sign-ins all belong to it.
+- Checks: tsc, eslint and build clean. Logic suites green except the ones red on `main`
+  too (camera-tip, inbox-worker, tiles, promises, every-screen's "." for Home, and tips,
+  whose browser part needs a camera this container can't fake); test-help-chat 61/61.
+- Browser suites that touch the changed routes, run here against `next start`: test-links
+  18/18 (the "invoice opened" push route), test-route-guards 57/57. test-locked-doors
+  stopped on "fetch failed" before its first check and was not investigated.
+- **Before merging**, the Mac runs test-one-address, test-links, test-route-guards,
+  test-locked-doors, test-bills and test-api-routes against `next start`. The VAPID
+  subject is only the sender's contact address inside each push's signed header, so
+  existing subscriptions are not affected.
+
 ## 2026-10-28 (evening): week 2, the menu and Home
 
 Atanas approved the drawing ("Build the menu and Home as drawn").
