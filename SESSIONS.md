@@ -67,6 +67,16 @@ Atanas asleep; "keep working till you can".
 - **No-browser run on `integrate/launch`** (`JOBS=1`, `next start -p 3101`): 81 green (73 on
   main this morning), and every suite that is not green is one that needs Chrome. Nothing
   that runs without a browser is red on the merge.
+- **`wip/launch-fixes` landed (cloud, 14:49)**: 98 browser suites on integrate/launch, two
+  at a time, every red re-run alone and compared with main. One merge break, fixed there
+  (Expenses' view toggle off a 320px screen at twice the text size, test-big-text 24/24).
+  Red on main too, so older: test-big-account (stale wait for "owed"), test-delight,
+  test-feel (Home's removed panels), test-one-total (Home's Recent row shows an invoice's
+  total, not what is owed: **his call**), test-terms-of-use, test-vat-lookup, test-pale.
+  **One to look at: test-big-slow**, 2,000 receipts on a throttled CPU, about 1.5-2 s
+  slower than main (11.6-12.3 s against a 12 s budget); not fixed, needs a profile.
+  50 iPhone shots in `notes/screens-2026-11-01/`. Checked here: tsc, eslint, build and
+  six logic suites clean.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 
