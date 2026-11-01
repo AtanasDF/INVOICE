@@ -7,6 +7,8 @@ and what is left open. Dates are session dates (Europe/London).
 
 ## 2026-11-01 (cloud): Settings split into short pages (launch step H), `wip/settings-split`
 
+**BLOCKED: every push from this cloud session is refused with 403** ("Claude doesn't have GitHub access to AtanasDF/INVOICE for your organization"; the GitHub API's create_branch gives "Resource not accessible by integration"). Fix: reconnect GitHub at claude.ai/connect-github and install the Claude GitHub App on the repo. `wip/domain-ready` is not started, because it would be stranded the same way.
+
 Not merged, not on main. No schema change.
 - **What moved where.** `/settings` is now a landing page: four links, a line each,
   ending inside one 844px screen. Behind it:
