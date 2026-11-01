@@ -341,8 +341,10 @@ data file into a spreadsheet, data, a web page, plain text or a PDF. PDF reading
 OpenCV (both gitignored); everything else is canvas and `pdf-lib`. Nothing is uploaded.
 
 Each tool carries a short **how it works** note the first few times it is opened (`Tip`,
-`tip:<id>` in localStorage): scan, copy, check a company, expenses, VAT, mileage, files
-and needs-review.
+`tip:<id>` in localStorage): scan, copy, check a company and the rest. Not Home, Money,
+Expenses, VAT, Mileage, Files or Needs review (2026-11-01, launch review item 6): there the
+subtitle under the heading says it, and `test-every-screen-explained` holds that subtitle
+to it.
 
 Signed in, `/` is the dashboard, and the same tools are its first row: Scan a receipt,
 Make an invoice, Copy a document, Check a company, with "+ Add" and "Upload photos or

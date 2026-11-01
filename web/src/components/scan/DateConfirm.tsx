@@ -19,7 +19,7 @@ export default function DateConfirm({ iso, alternative, printed, onSwap, onConfi
         {printed ? ` — the document shows ${printed}` : ""}. If it meant {longDate(alternative)}, swap.
       </p>
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={onSwap} className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-800">
+        <button type="button" onClick={onSwap} className="rounded-lg border border-amber-700 px-3 py-1 text-xs font-medium text-amber-800">
           Swap
         </button>
         <button type="button" onClick={onConfirm} className="rounded-lg bg-neutral-900 px-3 py-1 text-xs font-medium text-white">

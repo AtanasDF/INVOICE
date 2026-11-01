@@ -19,7 +19,6 @@ function PeriodText({ label }: { label: string }) {
   return <>{range.length === 2 ? `${day(range[0])} to ${day(range[1])}` : label}</>;
 }
 import { spendByCategory, weekOf } from "@/lib/expensePeriod";
-import Tip from "@/components/Tip";
 
 const SpendChart = dynamic(() => import("@/components/SpendChart"), { ssr: false });
 
@@ -134,13 +133,12 @@ export default function ExpensesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-bold">Expenses</h1>
-          <p className="mt-1 text-neutral-600"><PeriodText label={periodLabel} /></p>
+          <p className="mt-1 text-neutral-600"><PeriodText label={periodLabel} />. Every receipt and bill you save adds itself up here.</p>
           <span className="flex flex-wrap gap-3 text-sm font-medium text-neutral-700">
             <Link href="/mileage" className="underline">Mileage</Link>
             <Link href="/vat" className="underline">VAT</Link>
           </span>
         </div>
-      <Tip id="expenses-how">How it works: every receipt and bill you save adds itself up here, by category and by month.</Tip>
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
           {/* w-full so it takes a line of its own and wraps inside it: as a
               flex item sized to its content it was 363px wide on a 326px

@@ -5,6 +5,41 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-01 (cloud, later): item 6, the "How it works" boxes (`wip/how-it-works`, NOT merged)
+
+**BLOCKED: this session could not push**, the same 403 as the entry below. This branch
+is cut from `wip/visual-pass` and holds both pieces of work.
+
+Asked for by the Mac session: launch review item 6. Each box sat on top of a subtitle
+that said nearly the same thing and pushed the page down a third of a screen.
+- **Dropped on six pages, with the one new sentence moved into the subtitle**:
+  Money ("the late ones at the top. Mark a bill paid right here, or press Chase to
+  open the invoice"; the old subtitle said "latest first", which was wrong:
+  the lists are late first, as helpFacts already said), Expenses ("Every receipt and
+  bill you save adds itself up here", after the period), VAT ("Nothing is sent from
+  here"), Mileage ("and needs no receipt"), Files ("Tap one to see it or save it to
+  your device"), Needs review ("and it counts towards your totals"). The `Tip`
+  component and every other tip stay, Settings' included.
+- **test-every-screen-explained**: those six, and Home, are on a `SUBTITLE_SAYS_IT`
+  list. Each must have the `p.mt-1.text-neutral-600` subtitle straight under its `h1`,
+  at least eight words long, and no `<Tip>`. Home is there because week 2 removed its
+  welcome tip on purpose, which had left this suite red on main. **The suite exits 0
+  even when a check fails**, so judge it by its FAIL lines, not by its exit code.
+- **Dark mode, read from the classes** on every file either branch touches: no
+  `text-white` except on `bg-neutral-900`/`800`, black or `text-ink-on-dark` surfaces;
+  no `border-white` and no light `border-<colour>-100..300`. DateConfirm's swap button
+  moved from `border-amber-300` (never redefined for dark, so a bright edge) to
+  `amber-700`, which dark mode redefines, so it now matches the button's text.
+- tsc, eslint and build clean; test-every-screen-explained 20/20,
+  test-contrast-tokens, test-no-hardcoded-colour, test-accessibility-source,
+  test-source-text and test-govuk-words green. Still red, and not from this branch:
+  test-promises (the count of public pages), test-suites-report, and the server
+  checks in test-help-chat and test-route-guards.
+- **The Mac must run, as well as the visual-pass list below**: test-tips, test-help,
+  test-money-screen, test-pay-several, test-file-strip, test-vat-return, test-mileage,
+  test-review-fixes, test-first-week, test-plain-dates (Expenses' heading line now
+  carries a sentence after the period).
+
 ## 2026-11-01 (cloud): week 3 step I, one visual pass (`wip/visual-pass`, NOT merged)
 
 **BLOCKED: this session could not push.** Every write to GitHub was refused with 403

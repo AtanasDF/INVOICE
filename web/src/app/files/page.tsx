@@ -9,7 +9,6 @@ import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed } from "@/lib/errorText";
 import { shortDate } from "@/lib/dates";
-import Tip from "@/components/Tip";
 import EmailFileForm from "@/components/EmailFileForm";
 import SaveThese from "@/components/SaveThese";
 import { grossOf } from "@/lib/receiptAmounts";
@@ -189,9 +188,8 @@ export default function FilesPage() {
       <div inert={!!preview} className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">File library</h1>
-        <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place.</p>
+        <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place. Tap one to see it or save it to your device.</p>
       </div>
-      <Tip id="files-how">How it works: every photo and file you have saved is here, newest first. Tap one to see it or save it to your device.</Tip>
       {/* The strip that was on Home until 2026-10-28 (launch plan step G):
           a date roller and the documents sliding sideways, invoices
           included, and the records whose photo was emailed away. Home is for

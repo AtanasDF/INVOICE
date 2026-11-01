@@ -8,7 +8,6 @@ import { effectiveCategories, withCurrent } from "@/lib/categories";
 import { isPdfDataUrl } from "@/lib/fileType";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed, saveFailed } from "@/lib/errorText";
-import Tip from "@/components/Tip";
 import { rateAfterReview, receiptGbp } from "@/lib/receiptAmounts";
 
 type DraftState = {
@@ -151,10 +150,9 @@ export default function ReviewQueuePage() {
       <div>
         <h1 className="text-2xl font-bold">Needs review</h1>
         <p className="mt-1 text-neutral-600">
-          Receipts that came in by email. Check each one, then save it.
+          Receipts that came in by email. Check each one, then save it, and it counts towards your totals.
         </p>
       </div>
-      <Tip id="review-how">How it works: check what was read off each one. Once you save it, it counts towards your totals.</Tip>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {/* Always mounted, so what goes into it is read out; one that arrives with its words often is not. */}
