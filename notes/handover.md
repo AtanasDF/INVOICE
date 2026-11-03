@@ -435,7 +435,7 @@ the paywall conversation (56) · the deletions only he may make (61) ·
   a deletion, a dashboard change gets a check first. That line was learned the hard way on
   2026-09-23.
 - Plain words. He is not a programmer; explain in short sentences and open the exact page
-  in his Chrome rather than describing where to click.
+  yourself (Safari on this Mac; `harness/open-sql.sh` for SQL) and ask only for the one press you cannot make. See the top of CLAUDE.md.
 - Never type or read a secret. He pastes keys himself. `grep -c '^NAME=' web/.env.local`
   is the only way to confirm one exists (note: this shell's grep has no BRE `\+`).
 - Hidefield (`fragov@hidefield.co.uk`) is his real accounting record: never delete or

@@ -12,6 +12,15 @@ for testing and also you can see there some real data. Once we done testing I'll
 again and scan any invoice need scanning again or delete anything that doesn't have to be
 there."* So test there freely, look at the real rows, and leave the tidying to him.
 
+**He presses the button; you do everything else (2026-11-03, his words: "Point me, open
+the pages straight away... let me just place the order, basically. Press the button, press
+play, apply... Everything else, you do it.")** Never tell him where to paste or what to
+click in prose. Open the exact page yourself, already filled in, and ask for the one press
+you cannot make (Run, Save, Allow), then read the result back yourself or from his
+screenshot. For SQL: `harness/open-sql.sh <file.sql>` opens the Supabase SQL editor in
+Safari with the query in the box and on the clipboard. **This Mac (`fragov`) has no
+Chrome**, so claude-in-chrome cannot drive it; Safari is where he is signed in.
+
 **Two lines stay, and they are not his to waive casually:**
 1. **Never issue an invoice there.** Numbers are sequential and never reused, so an issued
    test invoice burns a number out of his real books for ever — the one thing he cannot
