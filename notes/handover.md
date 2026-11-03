@@ -31,7 +31,7 @@ waiting for **his call**: should Home's Recent row show what is owed rather than
 test-big-slow runs about 1.5–2 s slower on integrate than main; it needs a profile.
 
 **This Mac** (user `fragov`, clone `~/code/invoicer`): no `web/.env.local`, so build with the
-placeholder env on the command line (11/01 block below). No Chrome in /Applications and no
+placeholder env on the command line (the 2026-11-01 block below has the two values). No Chrome in /Applications and no
 Pillow, so browser suites and clip generators can't run here as is. Git pushes work: a
 fine-grained token (INVOICE repo only, contents read/write) is in the keychain.
 `harness/check-branch.sh` makes a throwaway worktree in $TMPDIR and runs tsc, eslint, the
