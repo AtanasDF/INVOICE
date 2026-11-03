@@ -1,3 +1,52 @@
+# Where things stand — 2026-11-03 (handover to a new Claude account, same Mac)
+
+**Read this first.** It replaces the 2026-11-01 block below where they differ.
+
+**Ready to go live, waiting on one database step from Atanas.**
+- `integrate/launch` (`c4ee303`) = main + how-it-works (with visual-pass) + settings-split
+  + price-list + business-categories + domain-ready. `wip/launch-fixes` (`c140b3d`) sits on
+  top: the Expenses toggle wrap fix and 50 iPhone-sized shots in `notes/screens-2026-11-01/`.
+  All checked on this Mac (tsc, eslint, build, logic suites, browser suites); details in
+  SESSIONS.md, entry "2026-11-01 (night)".
+- **Atanas saw the shots and said "Looks good" (01/11).** That is his yes to merge.
+- **Rule 4 blocks it**: price-list needs `migration-047` (one nullable jsonb column on
+  business_profile). The app works read-only without it, but the rule stands.
+- Order: Atanas runs `web/supabase/019-backup-before-migration-047.sql` (the create /
+  enable RLS / revoke lines) and the two verify queries (both 0). Then he runs 047 and the
+  check in its header. Then merge `integrate/launch` and then `wip/launch-fixes` into `main`
+  and push (deploys). Merge conflicts last time: SESSIONS.md is `merge=union` (set in
+  `.git/info/attributes`); in run-all.sh and tsconfig.logic.json keep both sides and keep
+  `test-upload-panel` out (retired).
+- He was sent the backup SQL on 01/11 and has **not yet confirmed it**.
+
+**Two cloud workers never pushed**: `wip/settings-look` (take the outlines off the price list
+and Settings menu cards) and `wip/white-worktop` (`test-pale`, a white invoice on a white
+worktop). Started 01/11 at about 13:00 and silent since then, most likely waiting for his
+Allow at claude.ai/code. Neither blocks the merge; check them with
+`harness/check-branch.sh <branch> <logic suites>` when they appear.
+
+**Still red, on main too (not from the merge)**: test-big-account (stale wait for "owed"),
+test-delight, test-feel, test-terms-of-use, test-vat-lookup, test-pale. test-one-total is
+waiting for **his call**: should Home's Recent row show what is owed rather than the total?
+test-big-slow runs about 1.5–2 s slower on integrate than main; it needs a profile.
+
+**This Mac** (user `fragov`, clone `~/code/invoicer`): no `web/.env.local`, so build with the
+placeholder env on the command line (11/01 block below). No Chrome in /Applications and no
+Pillow, so browser suites and clip generators can't run here as is. Git pushes work: a
+fine-grained token (INVOICE repo only, contents read/write) is in the keychain.
+`harness/check-branch.sh` makes a throwaway worktree in $TMPDIR and runs tsc, eslint, the
+placeholder build and the named logic suites. Never point it at main to merge.
+
+**Reaching Atanas when he is away**: send the local session "Mise PP desk project handover"
+a message that starts `FOR ATANAS:`, saying what you need plus one sentence on why it matters,
+1-3 sentences, no data or keys. Mise writes it to a handoff file and his assistant Klaudio
+WhatsApps him (about 30 minutes at worst). He confirmed this himself on 01/11. Mise is another
+private project: don't touch its files, its port 3000 or pp-build, and don't let it touch this repo.
+
+**Next for him**: the backup + 047, scanning real documents on his iPhone over the next few
+days, his call on the Recent row, then `notes/launch-list.md` (Vercel Pro, Supabase plan,
+invoiceover.com, ICO fee, business details).
+
 # Where things stand — 2026-11-01
 
 **Read this first.** Everything below is older and still true unless this section
