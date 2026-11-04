@@ -5,7 +5,7 @@ import { draftWhen } from "@/lib/formDraft";
 // The half-typed form kept on this device, offered back when the form opens.
 export default function DraftOffer({ what, savedAt, note, onRestore, onDiscard }: { what: string; savedAt: string; note?: string; onRestore: () => void; onDiscard: () => void }) {
   return (
-    <div role="status" className="rounded-xl border bg-white p-4 text-sm text-neutral-900 shadow-sm">
+    <div role="status" className="rounded-xl bg-white p-4 text-sm text-neutral-900 shadow-sm">
       <p>
         You were writing {what} {draftWhen(savedAt)}. It was kept on this device.
         {note && ` ${note}`}

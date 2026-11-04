@@ -214,7 +214,7 @@ export default function NewClientPage() {
         </p>
       </div>
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <CaptureButton
           onOpen={() => setCapturing(true)}
           onCapture={onScanned}
@@ -250,7 +250,7 @@ export default function NewClientPage() {
         {found.length > 0 && !reading && <p className="mt-2 text-sm text-neutral-600">Filled in from your scan — check the details below.</p>}
       </div>
 
-      <form onSubmit={addClient} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={addClient} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" checked={isCompany} onChange={() => setIsCompany(true)} />

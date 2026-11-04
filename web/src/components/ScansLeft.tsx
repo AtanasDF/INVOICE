@@ -61,7 +61,7 @@ export function PlanCard() {
 
   const paid = a.plan === "paid";
   return (
-    <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       <h2 className="font-semibold">What your account allows</h2>
       {paid ? (
         <p className="text-neutral-700">

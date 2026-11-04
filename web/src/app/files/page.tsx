@@ -9,7 +9,6 @@ import { money } from "@/lib/money";
 import { DocumentIcon } from "@/components/icons";
 import { loadFailed } from "@/lib/errorText";
 import { shortDate } from "@/lib/dates";
-import Tip from "@/components/Tip";
 import EmailFileForm from "@/components/EmailFileForm";
 import SaveThese from "@/components/SaveThese";
 import { grossOf } from "@/lib/receiptAmounts";
@@ -189,16 +188,15 @@ export default function FilesPage() {
       <div inert={!!preview} className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">File library</h1>
-        <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place.</p>
+        <p className="mt-1 text-neutral-600">Every scanned or uploaded receipt document, in one place. Tap one to see it or save it to your device.</p>
       </div>
-      <Tip id="files-how">How it works: every photo and file you have saved is here, newest first. Tap one to see it or save it to your device.</Tip>
       {/* The strip that was on Home until 2026-10-28 (launch plan step G):
           a date roller and the documents sliding sideways, invoices
           included, and the records whose photo was emailed away. Home is for
           doing; looking back through the year belongs here. */}
       {!loading && !error && (receipts.length > 0 || invoices.length > 0) && <FileStrip receipts={receipts} invoices={invoices} />}
       {emailed > 0 && (
-        <p className="rounded-xl border bg-white p-4 text-sm text-neutral-600 shadow-sm">
+        <p className="rounded-xl bg-neutral-100 p-4 text-sm text-neutral-600">
           {emailed === 1 ? "One older photo has" : `${emailed} older photos have`} been emailed to you and cleared from here to keep the app free.
           {" "}Those receipts are all still in your records — the supplier, the date, the amount and the VAT are untouched.
         </p>
@@ -216,7 +214,7 @@ export default function FilesPage() {
         />
       )}
 
-      <details className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
+      <details className="rounded-xl bg-white px-4 py-3 text-neutral-900 shadow-sm" open={!!hasActiveFilters}>
         <summary className="cursor-pointer text-sm font-medium">Filter</summary>
         <div className="mt-3 grid grid-cols-2 items-end gap-3 sm:grid-cols-3">
           <label className="flex flex-col gap-0.5 text-xs text-neutral-500">From<input type="date" className="rounded-lg border px-3 py-2 text-sm text-neutral-900" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></label>
@@ -249,14 +247,14 @@ export default function FilesPage() {
           )}
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {files.map((r) => {
             const extra = pageCounts.get(r.id) ?? 0;
             return (
               <button
                 key={r.id}
                 onClick={() => openPreview(r)}
-                className="rounded-xl border bg-white p-2 text-left shadow-sm transition hover:shadow-md"
+                className="rounded-xl bg-white p-2 text-left shadow-sm transition hover:shadow-md"
               >
                 {isPdfDataUrl(r.imageDataUrl) ? (
                   <div className="flex aspect-square items-center justify-center rounded-lg bg-neutral-100 text-neutral-500"><DocumentIcon className="h-8 w-8" /></div>

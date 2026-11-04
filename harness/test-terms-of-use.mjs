@@ -138,7 +138,7 @@ try {
   check("a page that was navigated to keeps focus in main", onArrival === "MAIN", String(onArrival));
 
   // ---- autocomplete, on the fields that are the PERSON'S own -------------
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "networkidle0" });
   await sleep(1200);
   const mine = await page.evaluate(() => {
     const get = (sel) => document.querySelector(sel)?.getAttribute("autocomplete");

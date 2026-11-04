@@ -195,7 +195,7 @@ const BTN = "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center g
           ) : (
             <p className="text-neutral-700">
               We could not make your address just now.{" "}
-              <Link href="/settings" className="font-medium underline">Try from Settings</Link>, and anything you forward to it lands in Needs review.
+              <Link href="/settings/expenses" className="font-medium underline">Try from Settings</Link>, and anything you forward to it lands in Needs review.
             </p>
           )}
         </div>

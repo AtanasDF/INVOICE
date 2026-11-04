@@ -132,7 +132,7 @@ try {
   check(`a statement for a customer with many invoices (${st}ms)`, st < 25000, `${st}ms`);
   const mo = await timed("/money", "Owed to you");
   check(`the money screen with 500 invoices and every bill (${mo}ms)`, mo < 25000, `${mo}ms`);
-  const se = await timed("/settings", "Business name");
+  const se = await timed("/settings/business", "Business name");
   check(`settings with 300 contacts behind it (${se}ms)`, se < 25000, `${se}ms`);
 
   // The mileage total is a calculation over every trip, not a list: HMRC

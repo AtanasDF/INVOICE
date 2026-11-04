@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NumberInput } from "@/components/free-invoice/fields";
 import { money } from "@/components/quote/QuoteDocument";
 import CustomerPicker, { NewCustomerStart } from "@/components/quote/CustomerPicker";
@@ -11,6 +11,9 @@ import DraftOffer from "@/components/DraftOffer";
 import { quoteDraftFields } from "@/lib/formDraft";
 import { useFormDraft } from "@/lib/useFormDraft";
 import PriceFinder from "@/components/PriceFinder";
+import PricePicker from "@/components/PricePicker";
+import { offerFromList } from "@/lib/priceList";
+import { usePriceList } from "@/lib/usePriceList";
 import { addDays, todayIso } from "@/lib/freeInvoiceDraft";
 import type { Client, InvoiceItem, QuoteDeposit } from "@/lib/storage";
 import { depositGross } from "@/lib/quoteDeposit";
@@ -68,6 +71,16 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   const set = (patch: Partial<QuoteFormValue>) => setV((prev) => ({ ...prev, ...patch }));
   const setLine = (i: number, patch: Partial<InvoiceItem>) => set({ items: v.items.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   const lines = v.items.filter((l) => l.description.trim() || l.unitPrice);
+  const priceList = usePriceList();
+  const offered = useMemo(
+    () => offerFromList(priceList.flatMap((i) => (i.learned ? [{ description: i.learned.description, unitPrice: i.learned.last, vatRate: i.learned.vatRate }] : [])), priceList, 12),
+    [priceList]
+  );
+  const addLine = (line: InvoiceItem) =>
+    setV((prev) => {
+      const empty = prev.items.findIndex((l) => !l.description.trim() && !l.unitPrice);
+      return { ...prev, items: empty >= 0 ? prev.items.map((l, j) => (j === empty ? line : l)) : [...prev.items, line] };
+    });
   const totals = computeInvoiceTotals(lines, vatRegistered);
   const depositShown = depositGross({ deposit: v.deposit, items: lines }, vatRegistered);
   const [baseline] = useState(() => JSON.stringify(quoteDraftFields(start)));
@@ -102,7 +115,7 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
   }
 
   return (
-    <div className="space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="space-y-4 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       {kept.offer && <DraftOffer what={draftScope ? "changes to this quote" : "a quote"} savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
       <CustomerPicker
         invalid={error === NO_CUSTOMER}
@@ -147,6 +160,8 @@ export default function QuoteForm({ initial, clients, vatRegistered, saveLabel, 
           <input type="date" aria-label="Valid until" className={INPUT} value={v.validUntil} onChange={(e) => set({ validUntil: e.target.value })} />
         </div>
       </div>
+
+      <PricePicker items={offered} heading="What you charge for — tap to add a line." onAdd={addLine} />
 
       <div className="space-y-2">
         <div className="hidden grid-cols-12 gap-2 px-1 text-xs font-medium text-neutral-500 sm:grid">

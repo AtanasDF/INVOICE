@@ -137,7 +137,7 @@ try {
     return page.evaluate(() => [...document.querySelectorAll("main nav a")].map((a) => [a.getAttribute("href"), a.getAttribute("aria-current") === "page"]));
   };
   const inv = await tabsOn("/invoices");
-  check("Invoices has its tabs: invoices, quotes, repeating", JSON.stringify(inv.map(([h]) => h)) === JSON.stringify(["/invoices", "/quotes", "/recurring/invoices"]) && inv[0][1], JSON.stringify(inv));
+  check("Invoices has its tabs: invoices, quotes, repeating, what I charge", JSON.stringify(inv.map(([h]) => h)) === JSON.stringify(["/invoices", "/quotes", "/recurring/invoices", "/prices"]) && inv[0][1], JSON.stringify(inv));
   const rec = await tabsOn("/mileage");
   check("Receipts has its tabs, and the one you are on is marked", JSON.stringify(rec.map(([h]) => h)) === JSON.stringify(["/receipts", "/receipts/review", "/recurring", "/mileage"]) && rec[3][1], JSON.stringify(rec));
   const mon = await tabsOn("/vat");

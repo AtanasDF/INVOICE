@@ -67,7 +67,7 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
             role="dialog"
             aria-modal="true"
             aria-label="Add"
-            className="relative max-h-[calc(100dvh-1rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-t-2xl border bg-white p-4 text-left text-neutral-900 shadow-lg sm:rounded-2xl"
+            className="relative max-h-[calc(100dvh-1rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-4 text-left text-neutral-900 shadow-lg sm:rounded-2xl"
             style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
           >
             <p className="text-xs text-neutral-500">What are you adding?</p>
@@ -75,7 +75,7 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
               <Link
                 href="/scan"
                 onClick={() => setOpen(false)}
-                className="flex items-start gap-3 rounded-lg border px-3 py-2.5 hover:bg-neutral-50"
+                className="flex items-start gap-3 rounded-lg bg-neutral-100 px-3 py-2.5 hover:bg-neutral-200"
               >
                 <CameraIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
                 <span>
@@ -119,7 +119,7 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
 
 function Choice({ choice, onPick }: { choice: AddChoice; onPick: () => void }) {
   return (
-    <Link href={choice.href} onClick={onPick} className="block rounded-lg border px-3 py-2.5 hover:bg-neutral-50">
+    <Link href={choice.href} onClick={onPick} className="block rounded-lg bg-neutral-100 px-3 py-2.5 hover:bg-neutral-200">
       <span className="block text-sm font-medium">{choice.label}</span>
       {choice.hint && <span className="block text-xs text-neutral-500">{choice.hint}</span>}
     </Link>

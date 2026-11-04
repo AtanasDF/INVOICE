@@ -83,7 +83,7 @@ try {
   await refuses("needs review", { path: "/receipts/review", ready: "Looks good", label: "Looks good", table: "receipts" });
 
   await refuses("settings", {
-    path: "/settings", ready: "Business name", label: "Save", table: "business_profile",
+    path: "/settings/business", ready: "Business name", label: "Save", table: "business_profile",
     fill: async () => { await setInput("Business name", "Changed Name Ltd"); },
     keep: () => page.evaluate(() => [...document.querySelectorAll("input")].some((i) => i.value === "Changed Name Ltd")),
   });

@@ -97,7 +97,7 @@ try {
 
   // --- Settings says plainly what the account allows ---
   const openSettings = async () => {
-    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+    await page.goto(`${BASE}/settings/account`, { waitUntil: "networkidle0" });
     await sleep(1400);
     return bodyText(page);
   };

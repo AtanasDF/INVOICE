@@ -17,7 +17,7 @@ export default function PaidChoice({ paid, onChange }: { paid: boolean; onChange
   return (
     <div>
       <p id={id} className="text-xs text-neutral-500">Payment</p>
-      <div role="group" aria-labelledby={id} className="mt-1 flex gap-1 rounded-lg border p-1">
+      <div role="group" aria-labelledby={id} className="mt-1 flex gap-1 rounded-lg bg-neutral-100 p-1">
         {option(true, "Already paid")}
         {option(false, "To be paid")}
       </div>

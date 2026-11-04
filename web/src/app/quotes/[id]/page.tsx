@@ -457,7 +457,7 @@ export default function QuotePage() {
 
       {error && <p role="alert" className="text-sm text-red-600 print:hidden">{error}</p>}
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
         <p className="text-xs text-neutral-500">For</p>
         <p className="font-medium">{client?.name ?? "No customer"}</p>
         {client && <p className="text-sm text-neutral-600">{customerKind(client)}</p>}
@@ -481,7 +481,7 @@ export default function QuotePage() {
         </dl>
       </div>
 
-      <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
         {answeredOnline && (
           <p className={`mb-2 text-sm font-medium ${answeredOnline.response === "accepted" ? "text-green-800" : "text-neutral-700"}`}>
             {answeredOnline.response === "accepted" ? "Accepted" : "Declined"} online{answeredOnline.responderName ? ` by ${answeredOnline.responderName}` : ""}
@@ -620,14 +620,14 @@ export default function QuotePage() {
         </QuoteSendCard>
       ) : (
         (link || linkUnknown) && (
-          <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm print:hidden">
+          <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm print:hidden">
             <h2 className="font-semibold">View and accept online</h2>
             {link ? linkSection : <p className="mt-1 text-sm text-amber-800">Couldn&apos;t check the online link just now, so whether it was opened or answered isn&apos;t shown. Reload to see.</p>}
           </div>
         )
       )}
 
-      <div className="overflow-x-auto rounded-xl border bg-white p-4 text-neutral-900 shadow-sm sm:p-6 print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none">
+      <div className="overflow-x-auto rounded-xl bg-white p-4 text-neutral-900 shadow-sm sm:p-6 print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none">
         <QuoteDocument quote={q} client={client} profile={docProfile} logo={logo} />
       </div>
     </div>

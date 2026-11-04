@@ -49,7 +49,7 @@ const sheetLogo = () => page.evaluate(() => [...document.querySelectorAll("main 
 
 try {
   await signIn(page, BASE);
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "networkidle0" });
   await sleep(700);
   check("Settings offers a logo, with none yet", (await bodyText(page)).includes("No logo yet. It goes at the top of your invoices and quotes."));
   const input = await page.$('input[type="file"][accept^="image/png"]');
@@ -70,17 +70,17 @@ try {
   check("so does the quote", await sheetLogo());
 
   // Saving something else must not lose it (Settings used to write null).
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "networkidle0" });
   await sleep(900);
   check("Settings shows the stored logo", !!(await page.$('img[alt="Your logo"]')) && (await bodyText(page)).includes("Change logo"));
   await page.evaluate(() => {
-    const el = document.querySelector('textarea[aria-label="Bank details"]');
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, "Sort 12-34-56 Acc 12345678");
+    const el = document.querySelector("#business-name");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Nasko Plastering Ltd");
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await press("Save");
   await sleep(800);
-  check("saving another change keeps the logo", lastProfile().logo_url === `storage:${uploads[0]?.path}` && lastProfile().bank_details === "Sort 12-34-56 Acc 12345678", String(lastProfile().logo_url));
+  check("saving another change keeps the logo", lastProfile().logo_url === `storage:${uploads[0]?.path}` && lastProfile().business_name === "Nasko Plastering Ltd", String(lastProfile().logo_url));
 
   await press("Remove logo");
   await sleep(300);
@@ -92,7 +92,7 @@ try {
   await sleep(1000);
   check("the invoice no longer shows it", !(await sheetLogo()));
 
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/settings/business`, { waitUntil: "networkidle0" });
   await sleep(700);
   await page.evaluate(() => [...document.querySelectorAll('input[name="account-kind"]')][2].click());
   await sleep(300);

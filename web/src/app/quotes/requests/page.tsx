@@ -31,7 +31,7 @@ export default function QuoteRequestsPage() {
   const nameOf = (id: string) => clients.find((c) => c.id === id)?.name ?? "Supplier";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Quotes</h1>
@@ -55,7 +55,7 @@ export default function QuoteRequestsPage() {
           {requests.map((r) => {
             const mine = rows.filter((s) => s.requestId === r.id);
             return (
-              <Link key={r.id} href={`/quotes/requests/${r.id}`} className="block rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+              <Link key={r.id} href={`/quotes/requests/${r.id}`} className="block rounded-xl bg-white p-4 text-neutral-900 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 truncate font-medium">{r.title}</p>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${r.status === "open" ? "bg-neutral-100 text-neutral-800" : "bg-neutral-200 text-neutral-600"}`}>

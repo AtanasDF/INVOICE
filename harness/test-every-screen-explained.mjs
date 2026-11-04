@@ -37,8 +37,16 @@ const NO_TIP = {
   "quotes/new": "a form with labels on every box, reached from the quotes list which explains it",
   "quotes/requests/new": "a form, reached from the requests list, which carries the explanation",
   "quotes/requests/[id]": "reached from the list, which explains the whole thing first",
+  "settings": "four links, each with a line saying what is inside it; the pages behind them carry the tips",
+  "settings/account": "every card on it says what its one button does, and nothing on it waits for a Save",
   "check-company": "its tip lives in CompanyChecker, the component that IS the page",
 };
+
+// Screens whose subtitle says what they are for, so a "How it works" box on top
+// of it said the same thing twice and pushed the page down a third of a screen
+// (launch review item 6). Home lost its welcome tip in week 2 for the same
+// reason. The subtitle has to carry it, and that is checked.
+const SUBTITLE_SAYS_IT = [".", "money", "expenses", "vat", "mileage", "files", "receipts/review"];
 
 const screens = [];
 (function walk(dir) {
@@ -53,10 +61,18 @@ const screens = [];
 check("there are screens to check, so this suite is looking at something", screens.length > 15, String(screens.length));
 
 const missing = screens.filter((s) => {
-  if (NO_TIP[s]) return false;
+  if (NO_TIP[s] || SUBTITLE_SAYS_IT.includes(s)) return false;
   return !/<Tip\b/.test(fs.readFileSync(path.join(APP, s === "." ? "" : s, "page.tsx"), "utf8"));
 });
 check("every screen says what it is for, the first few times", missing.length === 0, JSON.stringify(missing));
+
+for (const s of SUBTITLE_SAYS_IT) {
+  const text = fs.readFileSync(path.join(APP, s, "page.tsx"), "utf8");
+  const sub = text.match(/<h1 className="[^"]*text-2xl font-bold">[\s\S]*?<\/h1>\s*<p className="mt-1 text-neutral-600">([\s\S]*?)<\/p>/);
+  const words = (sub?.[1] ?? "").replace(/<[^>]+>|\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim();
+  check(`${s}: the subtitle under the heading says what the screen is for`, words.split(" ").length >= 8, JSON.stringify(words));
+  check(`${s}: and no "How it works" box repeats it`, !/<Tip\b/.test(text));
+}
 
 // The exceptions must keep earning their place: one for a screen that no
 // longer exists is a free pass waiting for the next person.

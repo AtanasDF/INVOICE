@@ -39,7 +39,7 @@ export default function ScanLimitNotice({ error, onTopUp, onCarryOn }: { error: 
   }
 
   return (
-    <div role="status" className="space-y-3 rounded-xl border bg-neutral-50 p-4 text-neutral-900">
+    <div role="status" className="space-y-3 rounded-xl bg-neutral-100 p-4 text-neutral-900">
       <p className="text-base">{message}</p>
 
       {state === "done" ? (

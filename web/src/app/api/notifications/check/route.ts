@@ -6,6 +6,7 @@ import { selfAssessmentNotice } from "@/lib/taxEstimate";
 import { todayISO } from "@/lib/today";
 import { SITE_NAME } from "@/lib/siteName";
 import { bearerMatches } from "@/lib/bearer";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 // Cron work grows with the number of accounts, and killing it part-way is
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
   // of that was caught before, so a bad key or a Supabase client error
   // surfaced as a bare, bodyless 500 with no indication of what broke.
   try {
-    webpush.setVapidDetails("https://invoice-omega-rust.vercel.app", vapidPublicKey, vapidPrivateKey);
+    webpush.setVapidDetails(SITE_URL, vapidPublicKey, vapidPrivateKey);
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const today = todayStr();

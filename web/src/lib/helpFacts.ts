@@ -24,11 +24,12 @@ export const HELP_FACTS: { route: string; what: string }[] = [
   { route: "/invoices", what: "Every sales invoice you have raised, with what is still owed on each: drafts, sent, part paid and paid. Open one to record a payment against it. A draft gets its number when it is marked sent. A new invoice being typed is kept on this device and offered back if the page is closed before it is saved. Once an invoice has been sent, its number, date, lines and customer are locked because that is what was actually issued -- a wrong amount is corrected by adding a credit note on that invoice, not by editing it." },
   { route: "/quotes", what: "Priced offers to a customer. Send one and they get a link to accept or decline; accepted, \"Turn into invoice\" copies the lines across. A deposit is set on the quote itself while it is still a draft, either as a percentage or as an amount; it goes out as its own invoice first and comes off the final one. There is also a From suppliers tab, for asking several suppliers to price the same list." },
   { route: "/money", what: "Everything owed to you and everything you owe, late first. A bill can be marked paid from here; Chase opens the invoice. Mark several paid ticks several invoices settled by one payment. Below: how late what you are owed is, and the tax so far this year." },
-  { route: "/jobs", what: "Work grouped by job: put the same tag on an invoice and on the receipts for one piece of work and they gather here together. Things can be tagged after the fact." },
+  { route: "/prices", what: "What I charge: your price list, a tab under Invoices. Built by itself from the invoices and quotes you have sent, with how many times each was charged and the usual price (the last one, or the range when it has varied). Each can be a fixed price or a price per hour, and the name, price, type and VAT rate can be changed, an item added by hand or hidden; the learned figure stays beside yours. On New invoice and New quote, tapping one adds the line; a per-hour one asks for the hours. Not the same as Jobs." },
+  { route: "/jobs", what: "Work grouped by job: put the same tag on an invoice and on the receipts for one piece of work and they gather here together. Things can be tagged after the fact. Your prices are not here: they are on What I charge, under Invoices." },
   { route: "/clients", what: "Customers and suppliers, on two tabs. Where a contact's address, VAT number and payment terms are kept, where payment reminders are switched on or off for a customer, and where two records for one business are merged." },
   { route: "/recurring/invoices", what: "Invoices for work billed every month. On the day, a draft invoice is made for you to check and send; nothing goes to the customer on its own." },
   { route: "/receipts", what: "Every receipt and bill you have saved, and the ones still to pay. A receipt being typed in by hand is kept on this device and offered back if the page is closed before it is saved." },
-  { route: "/receipts/review", what: "Receipts and bills emailed in to your own import address, read but not yet checked. What was read off each one is confirmed here before it counts towards any total. The address is in Settings, under Email import; an email sent to a mistyped address is returned to the sender." },
+  { route: "/receipts/review", what: "Receipts and bills emailed in to your own import address, read but not yet checked. What was read off each one is confirmed here before it counts towards any total. The address is in Settings, under Receipts and expenses, Email import; an email sent to a mistyped address is returned to the sender." },
   { route: "/expenses", what: "Everything you have spent, added up by category and by month." },
   { route: "/mileage", what: "Trips in your own vehicle, at HMRC's rates, worked out from the miles or from two postcodes." },
   { route: "/recurring", what: "Reminders for costs that come round every month, like insurance or a subscription. When one is due it asks you to log it as an expense; nothing is added until you do." },
@@ -40,7 +41,11 @@ export const HELP_FACTS: { route: string; what: string }[] = [
   { route: "/files", what: "Every photograph and PDF of a receipt or bill you have saved, as tiles, newest first. At the top, a strip to roll through by date, invoices included." },
   { route: "/help", what: "How it works: the walkthroughs, step by step." },
   { route: "/feedback", what: "Write to Atanas, who made the app. It reaches him by email and he replies to the address you signed up with." },
-  { route: "/settings", what: "Your business name and address, your bank details, your VAT setting, and what goes on every invoice you send. The address for emailing receipts in is here too, under Email import. The VAT switch changes new invoices only and never one already sent." },
+  { route: "/settings", what: "Settings, in four short pages: Business, Invoices and payments, Receipts and expenses, and Account. Each has its own Save." },
+  { route: "/settings/business", what: "Your business name, registered company name and number, address, logo, and whether you charge VAT, with your VAT number. What you are using the app for is here too. The VAT switch changes new invoices only and never one already sent." },
+  { route: "/settings/invoices", what: "Where your invoice numbers start, your bank details, a payment link for a Pay now button, the wording of the five payment reminders, the late-payment interest line, and whether Home reminds you about overdue invoices." },
+  { route: "/settings/expenses", what: "Your expense categories (reorder, rename, add or remove), and Email import: your own address to forward receipts to, which land in Needs review." },
+  { route: "/settings/account", what: "The email you sign in with, a sign-in link by email, Sign out, colours and dark mode, putting the app on your phone, push notifications, downloading all your data, and how to close the account." },
 ];
 
 // The header's own name for a page, so the chat calls it what the screen
@@ -48,6 +53,10 @@ export const HELP_FACTS: { route: string; what: string }[] = [
 const NAMES: Record<string, string> = Object.fromEntries([
   ["/", "Home"],
   ["/settings", "Settings"],
+  ["/settings/business", "Settings, Business"],
+  ["/settings/invoices", "Settings, Invoices and payments"],
+  ["/settings/expenses", "Settings, Receipts and expenses"],
+  ["/settings/account", "Settings, Account"],
   ...GROUPS.flatMap((g) => g.links.map(([href, label]) => [href, label] as const)),
 ]);
 

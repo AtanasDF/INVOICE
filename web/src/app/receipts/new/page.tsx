@@ -11,7 +11,8 @@ import DraftOffer from "@/components/DraftOffer";
 import { money } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Client, Receipt, ReceiptLineItem, businessProfileStore, clientsStore, receiptsStore } from "@/lib/storage";
-import { CATEGORIES, Category, effectiveCategories, mostUsedCategory, withCurrent } from "@/lib/categories";
+import { CATEGORIES, Category, effectiveCategories, mostUsedCategory } from "@/lib/categories";
+import CategoryOptions from "@/components/CategoryOptions";
 import { CURRENCIES, getFxRate, rateProblem } from "@/lib/fx";
 import { DocumentIcon } from "@/components/icons";
 import { downscaleImageDataUrl } from "@/lib/imageDownscale";
@@ -324,7 +325,7 @@ export default function NewReceiptPage() {
         />
       )}
 
-      <form onSubmit={addReceipt} className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+      <form onSubmit={addReceipt} className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
         <div
           onClick={() => fileRef.current?.click()}
           onDragOver={(e) => {
@@ -402,7 +403,7 @@ export default function NewReceiptPage() {
           />
           <select aria-label="Category" className="rounded-lg border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {/* The usual category may have left the list when the kind of account changed; it stays choosable. */}
-            {withCurrent(categories, category).map((c) => <option key={c} value={c}>{c}</option>)}
+            <CategoryOptions list={categories} current={category} />
           </select>
         </div>
         <input aria-label="Shop or supplier"
@@ -460,9 +461,9 @@ export default function NewReceiptPage() {
         )}
 
         {lineItems.length > 0 && (
-          <div className="space-y-2 rounded-lg border p-3">
+          <div className="space-y-2 rounded-lg bg-neutral-100 p-3">
             <p className="text-xs font-medium text-neutral-500">
-              Items — give each its own category to split this receipt across categories (e.g. Groceries + Household).
+              Items — give each its own category to split this receipt across categories (e.g. Materials & stock + Tools & equipment).
             </p>
             {lineItems.map((it, idx) => (
               <div key={idx} className="grid grid-cols-12 items-center gap-2 border-b pb-2 text-sm sm:border-0 sm:pb-0">
@@ -491,7 +492,7 @@ export default function NewReceiptPage() {
                   onChange={(e) => updateReceiptLine(idx, { category: e.target.value || null })}
                 >
                   <option value="">No category</option>
-                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                  <CategoryOptions list={categories} current={it.category} />
                 </select>
                 <button type="button" onClick={() => removeReceiptLine(idx)} aria-label={`Remove item ${idx + 1}`} className="col-span-12 min-h-11 min-w-11 justify-self-end sm:col-span-1 sm:justify-self-auto text-neutral-600">✕</button>
               </div>

@@ -77,6 +77,312 @@ Atanas asleep; "keep working till you can".
   slower than main (11.6-12.3 s against a 12 s budget); not fixed, needs a profile.
   50 iPhone shots in `notes/screens-2026-11-01/`. Checked here: tsc, eslint, build and
   six logic suites clean.
+## 2026-11-01 (cloud, later): item 6, the "How it works" boxes (`wip/how-it-works`, NOT merged)
+
+Pushed once GitHub access was allowed (see the entry below). This branch is cut from
+`wip/visual-pass` and holds both pieces of work.
+
+Asked for by the Mac session: launch review item 6. Each box sat on top of a subtitle
+that said nearly the same thing and pushed the page down a third of a screen.
+- **Dropped on six pages, with the one new sentence moved into the subtitle**:
+  Money ("the late ones at the top. Mark a bill paid right here, or press Chase to
+  open the invoice"; the old subtitle said "latest first", which was wrong:
+  the lists are late first, as helpFacts already said), Expenses ("Every receipt and
+  bill you save adds itself up here", after the period), VAT ("Nothing is sent from
+  here"), Mileage ("and needs no receipt"), Files ("Tap one to see it or save it to
+  your device"), Needs review ("and it counts towards your totals"). The `Tip`
+  component and every other tip stay, Settings' included.
+- **test-every-screen-explained**: those six, and Home, are on a `SUBTITLE_SAYS_IT`
+  list. Each must have the `p.mt-1.text-neutral-600` subtitle straight under its `h1`,
+  at least eight words long, and no `<Tip>`. Home is there because week 2 removed its
+  welcome tip on purpose, which had left this suite red on main. **The suite exits 0
+  even when a check fails**, so judge it by its FAIL lines, not by its exit code.
+- **Dark mode, read from the classes** on every file either branch touches: no
+  `text-white` except on `bg-neutral-900`/`800`, black or `text-ink-on-dark` surfaces;
+  no `border-white` and no light `border-<colour>-100..300`. DateConfirm's swap button
+  moved from `border-amber-300` (never redefined for dark, so a bright edge) to
+  `amber-700`, which dark mode redefines, so it now matches the button's text.
+- tsc, eslint and build clean; test-every-screen-explained 20/20,
+  test-contrast-tokens, test-no-hardcoded-colour, test-accessibility-source,
+  test-source-text and test-govuk-words green. Still red, and not from this branch:
+  test-promises (the count of public pages), test-suites-report, and the server
+  checks in test-help-chat and test-route-guards.
+- **The Mac must run, as well as the visual-pass list below**: test-tips, test-help,
+  test-money-screen, test-pay-several, test-file-strip, test-vat-return, test-mileage,
+  test-review-fixes, test-first-week, test-plain-dates (Expenses' heading line now
+  carries a sentence after the period).
+
+## 2026-11-01 (cloud): week 3 step I, one visual pass (`wip/visual-pass`, NOT merged)
+
+**Push was blocked, then fixed.** For most of the session every write to GitHub was
+refused with 403 ("Claude doesn't have GitHub access to AtanasDF/INVOICE for your
+organization"). Atanas allowed access later the same day, and both branches were pushed then.
+
+Atanas: "make it pretty... make it easy to work, everything more compact, clear,
+similar to other apps out there." Cut from `main` at `e294b2b`. No schema, no
+behaviour and no wording changed. Settings, /invoices/new and price-list pages were
+left alone (the other two cloud sessions own them).
+- **Cards lose their outline** and become the Home card: `rounded-xl bg-white p-4
+  sm:p-5 shadow-sm`. Outlines stay on inputs, secondary buttons and floating menus
+  (the header menus, Save as). A box inside a card is a `bg-neutral-100` tint, not a
+  second outline. CLAUDE.md's house style says so now.
+- **One segmented control.** There were three. The white-pill-on-neutral-100 one
+  (section tabs, Quotes tabs, VAT basis, File library, send-a-quote, customer picker's
+  Company/Private) was invisible in dark mode: white is `#191b1f` on a `#17181c`
+  track. All of them are now a `bg-neutral-100 p-1` track with the chosen one
+  `bg-neutral-900 text-white`, which is what Customers/Suppliers, Expenses and
+  PaidChoice already used. Out of scope and still on the old pill: SignInCard,
+  /help/home-screen, PriceFinder, Settings.
+- **Coloured notices lose `border-amber-200` / `border-red-200` / `border-red-300`**
+  (receipts, scan, DateConfirm, PagesStrip): dark mode never redefined those, so
+  they drew a bright line round a dark box.
+- **Invoice list**: the amount on the right of the name, as the quote list and every
+  app in notes/competitor-research.md lay it out; the badge, date, credit, paid and
+  due on the line under; Mark as paid / View / Remove in a row of their own, each at
+  least 24px tall. Text and its order are unchanged ("INV-1 · Name" still first).
+- **Spacing**: `space-y-6` between a page's blocks (was 8 on ten pages), `space-y-2`
+  between list rows (invoices, quotes, customers), rows `px-4 py-3`, Money's lines
+  `py-2.5`, Money's three figures the same tile as Home's, Files' grid `gap-2` on a
+  phone, the invoice sheet `p-5` on a phone (was `p-8`, a 294px invoice).
+- **Screens touched**: Home (panel radius), shell (section tabs), Invoices list, an
+  invoice's page, Quotes list and a quote, quote requests (list, one request, answer
+  entry, compare, orders, request form), Receipts, Receipts new (one inner box),
+  Needs review, Customers, Customers new (card), statement, Money, Expenses, VAT,
+  Mileage, Repeating expenses and invoices, Files and FileStrip, Scan's own screens
+  (status boxes, form card; not the viewfinder, not BatchReview), and the shared Tip,
+  AddAnything sheet, TaxSoFar, SaveThese, ScansLeft, ScanLimitNotice, DraftOffer,
+  GettingStarted, SendInvoicePanel, InvoiceReminders, QuoteForm, QuoteSendCard,
+  CustomerPicker, PaidChoice.
+- **Checked here**: tsc, eslint, `npm run build` clean (built with the placeholder
+  Supabase variables on the command line). Every logic and source-reading suite in
+  run-all.sh that runs without Chrome or a server passes, including
+  test-contrast-tokens, test-no-hardcoded-colour, test-accessibility-source,
+  test-every-screen-explained and test-source-text. Not green and not this branch:
+  test-suites-report (red on main: run-all.sh still names the retired
+  test-upload-panel), and test-help-chat's two checks that need a server.
+- **Suites moved to the new classes**: test-receipts-list (invoice list is
+  `space-y-2`), test-quotes-fixes (`.rounded-xl.border` on Customers is now
+  `main .rounded-xl`).
+- **The Mac must run before merging**, against `next start`: test-receipts-list,
+  test-quotes-fixes, test-quotes-ux, test-quotes, test-quote-requests, test-payments,
+  test-delight, test-double-press, test-one-total, test-same-again, test-multi-docs,
+  test-review-fixes, test-dashboard, test-money-screen, test-pay-several,
+  test-file-strip, test-first-week, test-tap-targets, test-one-handed, test-feel,
+  test-big-slow, test-texts, test-tips, test-keyboard-only, test-dark-mode,
+  test-readable, test-theme, test-worst-phone, test-big-text, test-fit-320,
+  test-fit-sweep, test-no-sideways, test-long-names-wrap, test-statement,
+  test-vat-return, test-mileage, test-scan-wall, test-page-print, test-print.
+- **Pictures for Atanas**: `harness/shots-launch.mjs` now also takes Invoices, an
+  invoice, Quotes, Receipts, Needs review, Customers, Money, Expenses, VAT, Files and
+  Scan as whole pages at 390pt, and `SCHEME=dark` takes the same set in dark. Before
+  and after = run it against a `next start` of main into one OUT folder, then of this
+  branch into another.
+## 2026-11-01 (cloud): Settings split into short pages (launch step H), `wip/settings-split`
+
+(The push was blocked by GitHub access for a while; Atanas allowed it and the branch went up on 2026-11-01.)
+
+Not merged, not on main. No schema change.
+- **What moved where.** `/settings` is now a landing page: four links, a line each,
+  ending inside one 844px screen. Behind it:
+  - `/settings/business` (title "About you" for personal use): what the app is for, business
+    name, registered name and company number, address, logo, VAT switch and number. Carries
+    the old `settings-how` tip.
+  - `/settings/invoices`: invoice numbering (with the "went backwards" warning, so it is the
+    one page that reads the invoices), bank details, Pay now link, the five reminder texts,
+    late-payment interest, the dashboard overdue nudge. Personal use gets one line pointing
+    to Business instead, as those cards were hidden from it before too; the landing page
+    leaves it out for personal use.
+  - `/settings/expenses` ("Receipts and expenses"): categories and Email import. **A fourth
+    page, not in the brief's three**: categories and the import address are about money
+    out, they would have been odd under Invoices and payments, and for personal use they are
+    almost all there is. No CIS or quote defaults existed in Settings to move.
+  - `/settings/account`: email and sign-in link, Sign out, plan, invite, theme and dark
+    mode, get the app, notifications, where data lives, download all, closing. **No Save
+    bar**: every control there acts when pressed, as before.
+- **How saving works now** (`src/components/settings/ProfileForm.tsx`, `useProfileForm` +
+  `SaveBar`). The profile is still one row saved whole through `businessProfileStore.save`,
+  so the PGRST204 retry is untouched. Each page writes its own fields and today's stored
+  value of every other field, read just before the save; writing back a page's copy of a
+  field it never showed would undo a change made on another Settings page. The invoice
+  counter and import-address rules are the same as before. Same leave guard, Save and go /
+  Leave without saving / Stay, `loadFailed`/`saveFailed`, `settings-error` id.
+- **Two deliberate differences.** (1) A kind change on Business swaps an untouched,
+  already-saved category list for the new kind's at Save (the old page did it on the click,
+  with the list on screen); a list never saved follows the kind by itself, an edited one is
+  kept. (2) The "needs a database update" note now names what each page actually lost: the
+  registered details on Business, the payment link on Invoices (046 is in `added` too, the
+  old wording never said so). It is not shown on Receipts and expenses, where nothing can be
+  lost that way.
+- **Old links.** No `/settings#anchor` exists anywhere in `web/src`, `harness/`, `worker/`
+  or the email templates, so nothing needed a hash redirect; `/settings` itself still works
+  and is the landing page. Repointed: Getting started (name, address -> business; numbering,
+  bank -> invoices), "Try from Settings" in `EmailItIn` and `UploadPanel` -> expenses (one
+  href each; the visual-pass session may touch those files). `helpFacts.ts` describes the
+  four pages and names them for the chat; `test-help-chat` 61/61.
+- **Harness.** Source readers repointed and green: accessibility-source 38, audit-guards 91,
+  audit-misc 15, ios-files-share 63, ios-forms-layout 52, leftovers 71, tips. The
+  every-screen suite lists the landing page and Account as tip-free with reasons; Invoices
+  and Expenses gained a tip each. Logic suites: all green except the ones red on `main` too
+  (address-fields, camera-tip, inbox-worker, tiles, promises, every-screen's "." for Home),
+  checked in a `main` worktree.
+- **Browser suites, run here** (Chromium from `/opt/pw-browsers` behind a shim at the Mac
+  Chrome path, against `next start` on 3100, one at a time). `test-settings-save` rewritten
+  for four pages, 56/56, including a new check that a Business save keeps a prefix and bank
+  details saved elsewhere since the page opened. Green after repointing: get-the-app 14,
+  invites 9, numbering 11, privacy-terms 23, quiet-failures 15, scans-left 18, settings-add 38,
+  stored-photos 8, theme 19, two-tabs 13, write-fails 26, half-saved 20. Also green: announced 12, autocomplete 11,
+  company 22, empty-account 146, getting-started 16, logo 13 (its "save another change"
+  step now edits the business name, since bank details are on another page), page-titles 5
+  (now covering the four pages). **Red here, not from this change:** big-account dies
+  waiting for "owed" on Home and no-accidents after its invoice step, both before Settings;
+  terms-of-use (1 check) and tips need a camera this Chromium does not fake.
+
+- **The Mac must run before merging**, against `next start`: test-settings-save,
+  test-settings-add, test-announced, test-autocomplete, test-company, test-logo,
+  test-numbering, test-two-tabs, test-quiet-failures, test-half-saved, test-write-fails,
+  test-no-accidents, test-stored-photos, test-get-the-app, test-theme, test-invites,
+  test-scans-left, test-terms-of-use, test-getting-started, test-empty-account,
+  test-big-account, test-page-titles, test-privacy-terms, and the sweeps that open `/settings`
+  (dark-mode, readable, neutral, big-text, keyboard-only, keyboards, labels, one-handed,
+  tap-targets, no-sideways, worst-phone, fit-sweep, vocabulary, plain-words, first-week,
+  first-page). The sweeps only see the landing page now; the four pages are covered by the
+  suites above, not by the sweeps.
+- And on his iPhone: each page at 390pt, the Save bar over the keyboard, Back from a page
+  with unsaved changes.
+## 2026-11-01 (cloud): "What I charge", the price list — `wip/price-list`, NOT merged
+
+**Cannot merge before migration-047 is run (rule 4). It has NOT been run, and nothing here
+claims it was.** Run `web/supabase/019-backup-before-migration-047.sql`, verify both ways,
+then `migration-047-price-list.sql` (adds `business_profile.price_list jsonb`, nullable, no
+default), then the checks and the rolled-back exercise in its footer. Until then the
+branch works read-only: learned prices only, and the page says changes can't be kept yet.
+
+- **`/prices`, "What I charge"**: fourth tab under Invoices; menu size unchanged. Built from
+  every sent invoice and quote with savedPrices' rules, with how often each was charged and
+  how the price was worked out (last price, or "£180.00 to £240.00, last £220.00").
+- Each item is **Fixed** or **Per hour** (hourly wording starts it per hour). Change name,
+  type, price, VAT rate; hide / show; add by hand; back to the learned price. The learned
+  figure stays beside his own ("yours is £250.00").
+- **New invoice and New quote** share `PricePicker`: fixed goes straight on; per hour asks
+  "Hours of …" and puts hours in quantity, rate in unit price. New invoice keeps the
+  customer's own prices first; his own price wins only where he set one; hidden items are
+  not offered. New quote had no suggestions before.
+- **Jobs** kept; the two pages point at each other in their tips. `helpFacts` and
+  `navGroups` GROUPS describe /prices.
+- Storage in its own store (`lib/priceListStore.ts`) so the parallel Settings split can't
+  overwrite it nor it Settings. Only his changes are stored (`editFor` keeps what differs
+  from the learned figure). Detail and decisions in `notes/price-list.md`.
+- Shared files touched, minimally: `navGroups.ts` (one tab, one GROUPS line),
+  `helpFacts.ts`, `savedPrices.ts` (`key` exported as `priceKey`), `QuoteForm.tsx`,
+  `invoices/new/page.tsx` (the chip block replaced by the picker), `jobs/page.tsx` (one
+  line in the tip). No change to `globals.css` or `AppShell`.
+- Pushing was refused (403) for most of the session; pushed once Atanas allowed GitHub
+  access.
+- **Suites**: new `test-price-list` (53, pure logic) and `test-prices-page` (24, browser,
+  includes the before-047 read-only case via a 42703 stand-in), both in run-all.sh.
+  `test-first-week` updated for the fourth Invoices tab. Run here in the cloud against
+  `next start` with the pre-installed Chromium (mockdb's Chrome path swapped locally for
+  the run, not committed). Green here: test-price-list 53/53, test-prices-page 24/24,
+  test-saved-prices 15, test-first-week 29, test-jobs 22, test-help-chat 61, test-quotes 35,
+  test-free-quote 13, test-lines 7, test-form-draft 67, test-draft-autosave 18,
+  test-dark-mode 48, test-no-sideways 4, test-fit-320 27, test-labels 38.
+  test-quotes-ux stops at 33 checks on "Waiting on the customer" -- **identically on a
+  build of main**, so not this branch; worth a look on the Mac.
+- tsc, eslint, build clean (build with the placeholder Supabase env on the command line).
+  Logic suites green; three reds are not this branch: test-help-chat's two server checks
+  (needs the server), test-suites-report (test-upload-panel retired, three clip suites
+  unlisted, same on main), test-every-screen-explained (Home "." has no tip since week 2).
+
+**Browser suites the Mac must run before merging** (against `next start`, after 047):
+test-prices-page, test-saved-prices, test-first-week, test-jobs, test-quotes, test-quotes-ux,
+test-free-quote, test-lines, test-form-draft, test-draft-autosave, test-dark-mode,
+test-no-sideways, test-fit-320, test-labels, test-help-chat, test-keyboard-only,
+test-big-text, test-page-titles. And one real save on the test account after 047, then
+reload on a second device.
+## 2026-11-01 (cloud, second job): business categories — `wip/business-categories`, NOT merged
+
+No schema change. Cut from `main`, separate from `wip/price-list` (pushed the same
+session); the two touch different files apart from SESSIONS.md, run-all.sh and
+tsconfig.logic.json, where each adds one line.
+
+Launch review item 13: "Household" on a B&Q receipt, because the default list mixed
+personal and business on one level.
+- `src/lib/categories.ts`: `CATEGORIES` (the default for an account that hasn't said what
+  it is, and the scanner's and email import's fallback) is now the sole-trader list, which
+  follows the self-assessment expense headings. The old mixed list is kept as
+  `OLD_DEFAULT`, only to recognise it: a custom list identical to it was the old default
+  saved back by Settings, not a choice, so `effectiveCategories` reads it as the kind's
+  default. No stored row is rewritten; a list somebody actually edited is untouched.
+- Personal spending stays pickable: every category drop-down (`CategoryOptions`) shows the
+  account's list, then an optgroup **"Personal (not a business cost)"** with Groceries,
+  Household, Clothes and the rest. It is never sent to the scanner, so never guessed. A
+  personal account's list is personal already and gets no extra group; nor does a list
+  somebody made with Groceries or Household in it.
+- Stored categories: a receipt filed "Household" shows Household, selected, in the Personal
+  group; one filed under an old heading ("Supplies") shows it at the top as before
+  (`withCurrent`); the receipts filter offers every category in use (`withUsed`). Receipt
+  line-item drop-downs now show their own stored category too.
+- Not changed: the per-supplier "usual category" guess still learns from his own past
+  receipts, so a supplier he filed under Household before will still be offered Household.
+- **Settings not edited** (the Settings split). For the Mac after merging, optional: the
+  category editor in Settings could say under the list that personal spending is offered
+  in its own group on every receipt, so nobody adds Groceries back thinking it's gone.
+- Suites: new `test-business-categories` (23, logic), in run-all.sh. tsc, eslint, build
+  clean. Run here against `next start` with the built-in Chromium (mock Chrome paths
+  swapped locally, not committed): receipts-list 55, settings-save 41, dark-mode 48,
+  getting-started 16, labels 38, no-sideways 4, tax-rules 41, utc-today 18,
+  money-invariants 22, help-chat 61, all green. test-review-fixes and test-big-account
+  stop at their first wait (0 checks) **identically on a build of main**, so not this
+  branch; worth a look on the Mac.
+
+**Browser suites the Mac must run before merging**: test-receipts-list, test-settings-save,
+test-review-fixes, test-dark-mode, test-getting-started, test-big-account, test-labels,
+test-no-sideways, test-uploads, test-multi-docs, test-vat-rate-scan, and a scan on the
+test account to see a B&Q receipt land in Tools & equipment / Materials & stock.
+## 2026-11-01 (cloud): ready for invoiceover.com, `wip/domain-ready`
+
+Not merged. **Nothing live changes**: no environment variable is set and no Worker deploy is
+needed for this branch. Cut from `main` `e294b2b`, separate from `wip/settings-split`.
+- **One place for the address.** `src/lib/siteUrl.ts` already read `NEXT_PUBLIC_SITE_URL`,
+  with today's address as the default, for the layout, sitemap and robots. Four files
+  still wrote an address of their own, and they now use it:
+  - the three push senders' VAPID subject (`ownerPush.ts`, `notifications/check`,
+    `invoice-links/seen`);
+  - the address lookup's User-Agent.
+  Every other link (sign-in, reset, Google's return, `/i/`, `/q/`, `/r/`, emailed links) is
+  built from the address it was opened on, so it needs nothing.
+- **`harness/test-one-address.mjs`** (new, in run-all.sh, 4 checks) fails if any file in
+  `web/src` or `worker/src` other than siteUrl.ts writes an `https://...invoiceover.com` or
+  `vercel.app` address. Proved: it fails on `main`. The sending and email-in mailboxes
+  (`invoices@`, `u-<token>@`) are already on invoiceover.com and are not touched.
+- **Left as they are, as steps in the checklist**:
+  - `public/.well-known/security.txt`: a static file can't read a variable, and replacing it
+    with a route would mean removing a file (rule 1).
+  - `worker/wrangler.toml` `APP_INGEST_URL`: **the Worker only changes when somebody runs
+    `npx wrangler deploy` from `worker/` on the Mac**, so I did not touch `worker/`.
+- **`notes/domain-move.md`**: the ordered checklist with a test after each step.
+  1. Turnstile hostname first.
+  2. Supabase redirect URLs.
+  3. Google origin, if Google sign-in is on by then.
+  4. Vercel domain.
+  5. Cloudflare DNS, leaving the Email Routing and Resend records alone.
+  6. Walk the new address on the test account.
+  7. `NEXT_PUBLIC_SITE_URL` with a redeploy, then the Supabase Site URL.
+  8. The Worker.
+  9. security.txt.
+  10. Resend: nothing to do.
+  It recommends **keeping the old address serving, not redirected**: links already sent to
+  customers, home-screen icons, push subscriptions and sign-ins all belong to it.
+- Checks: tsc, eslint and build clean. Logic suites green except the ones red on `main`
+  too (camera-tip, inbox-worker, tiles, promises, every-screen's "." for Home, and tips,
+  whose browser part needs a camera this container can't fake); test-help-chat 61/61.
+- Browser suites that touch the changed routes, run here against `next start`: test-links
+  18/18 (the "invoice opened" push route), test-route-guards 57/57. test-locked-doors
+  stopped on "fetch failed" before its first check and was not investigated.
+- **Before merging**, the Mac runs test-one-address, test-links, test-route-guards,
+  test-locked-doors, test-bills and test-api-routes against `next start`. The VAPID
+  subject is only the sender's contact address inside each push's signed header, so
+  existing subscriptions are not affected.
 
 ## 2026-10-28 (evening): week 2, the menu and Home
 

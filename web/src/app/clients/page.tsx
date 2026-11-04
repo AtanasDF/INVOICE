@@ -271,7 +271,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Customers &amp; suppliers</h1>
@@ -305,18 +305,18 @@ export default function ClientsPage() {
       )}
 
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex w-fit max-w-full flex-wrap rounded-lg border text-sm">
+        <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium">
           <button
             onClick={() => setTab("client")}
             aria-pressed={tab === "client"}
-            className={`px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+            className={`rounded-md px-4 py-1.5 ${tab === "client" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             Customers
           </button>
           <button
             onClick={() => setTab("supplier")}
             aria-pressed={tab === "supplier"}
-            className={`px-4 py-1.5 ${tab === "supplier" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+            className={`rounded-md px-4 py-1.5 ${tab === "supplier" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             Suppliers
           </button>
@@ -334,7 +334,7 @@ export default function ClientsPage() {
           nothing at all about the largest change on this page. */}
       <p role="status" className={merged ? "rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700" : "sr-only"}>{merged ?? ""}</p>
       {duplicates.map((pair) => (
-        <div key={pairKey(pair)} className="rounded-xl border bg-white p-4 text-neutral-900 shadow-sm">
+        <div key={pairKey(pair)} className="rounded-xl bg-white p-4 text-neutral-900 shadow-sm">
           <p className="text-sm">
             <strong>{pair.keep.name}</strong> and <strong>{pair.duplicate.name}</strong> look like the same {tab}: {pair.why}.
           </p>
@@ -357,7 +357,7 @@ export default function ClientsPage() {
       {loading ? (
         <p className="text-sm text-neutral-500">Loading…</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {visibleClients.length === 0 && archivedCount === 0 && !error && (
             <p className="text-sm text-neutral-500">
               No {tab === "client" ? "customer" : "supplier"}s yet. Scan a business card, letter or invoice to add one, or add one by hand.
@@ -371,7 +371,7 @@ export default function ClientsPage() {
             const expanded = expandedClientId === c.id;
             const editing = editingId === c.id;
             return (
-              <div key={c.id} className="rounded-xl border bg-white text-neutral-900 shadow-sm">
+              <div key={c.id} className="rounded-xl bg-white text-neutral-900 shadow-sm">
                 {editing && draft ? (
                   <div className="space-y-3 p-4">
                     <div className="flex gap-4 text-sm">
@@ -465,7 +465,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 wrap-anywhere font-medium">
                         {c.name}

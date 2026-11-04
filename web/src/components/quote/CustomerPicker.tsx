@@ -81,7 +81,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
     return (
       <div>
         <p className="text-xs text-neutral-500">For</p>
-        <div className="mt-1 flex items-start justify-between gap-3 rounded-lg border p-3">
+        <div className="mt-1 flex items-start justify-between gap-3 rounded-lg bg-neutral-100 p-3">
           <div className="min-w-0">
             <p className="font-medium">{picked.name}</p>
             <p className="text-sm text-neutral-600">{customerKind(picked)}</p>
@@ -136,7 +136,7 @@ export default function CustomerPicker({ people, value, onChange, onAdded, addin
           ))}
         </div>
       ) : (
-        <p className="rounded-lg border px-3 py-2.5 text-sm text-neutral-600">No one matches &ldquo;{query.trim()}&rdquo;.</p>
+        <p className="rounded-lg bg-neutral-100 px-3 py-2.5 text-sm text-neutral-600">No one matches &ldquo;{query.trim()}&rdquo;.</p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => onAdding({ name: groups.length ? "" : query.trim(), email: "", address: "" })} className={SECONDARY}>
@@ -218,7 +218,7 @@ function NewCustomer({ start, existing, onSaved, onCancel, describedBy }: {
       role="radio"
       aria-checked={isCompany === company}
       onClick={() => setIsCompany(company)}
-      className={`rounded-md py-2 text-sm font-medium ${isCompany === company ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+      className={`rounded-md py-2 text-sm font-medium ${isCompany === company ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
     >
       {label}
     </button>
@@ -226,12 +226,12 @@ function NewCustomer({ start, existing, onSaved, onCancel, describedBy }: {
 
   return (
     // The form's "finish adding the new customer first" is about this block as a whole.
-    <div role="group" aria-label="New customer" aria-describedby={describedBy} className="space-y-3 rounded-lg border p-4">
+    <div role="group" aria-label="New customer" aria-describedby={describedBy} className="space-y-3 rounded-lg bg-neutral-100 p-4">
       <div>
         <p className="font-medium">New customer</p>
         <p className="text-sm text-neutral-600">Saved to your customers, so it&apos;s there next time.</p>
       </div>
-      <div role="radiogroup" aria-label="Company or private person" className="grid grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-1">
+      <div role="radiogroup" aria-label="Company or private person" className="grid grid-cols-2 gap-1 rounded-lg bg-white p-1">
         {choice(true, "Company")}
         {choice(false, "Private person")}
       </div>

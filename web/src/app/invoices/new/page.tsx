@@ -9,6 +9,9 @@ import DraftOffer from "@/components/DraftOffer";
 import { addDays, daysBetween } from "@/lib/today";
 import { money } from "@/lib/money";
 import { pricesFor, savedPrices } from "@/lib/savedPrices";
+import { offerFromList } from "@/lib/priceList";
+import { usePriceList } from "@/lib/usePriceList";
+import PricePicker from "@/components/PricePicker";
 import { useRouter } from "next/navigation";
 import { BusinessProfile, Client, Invoice, InvoiceItem, businessProfileStore, clientsStore, invoicesStore } from "@/lib/storage";
 import { supabase } from "@/lib/supabaseClient";
@@ -353,6 +356,10 @@ export default function NewInvoicePage() {
       ),
     [everything, suggestedItems]
   );
+  // What I charge, laid over those: hidden ones go, his own names and
+  // prices win, and a per-hour item asks for the hours.
+  const priceList = usePriceList();
+  const offeredItems = useMemo(() => offerFromList(offered, priceList, 8), [offered, priceList]);
 
   // The VAT rate this client's most recent invoice used for a line with
   // this exact description -- scoped to (client, item), not the item
@@ -396,13 +403,11 @@ export default function NewInvoicePage() {
     if (days !== null && !dueDateManual) setDueDate(addDays(date, days));
   }
 
-  function addSuggestedItem(description: string, unitPrice: number, vatRate: VatRateKind) {
+  function addSuggestedItem(line: InvoiceItem) {
     setItems((prev) => {
       const emptyIdx = prev.findIndex((it) => !it.description.trim());
-      if (emptyIdx >= 0) {
-        return prev.map((it, i) => (i === emptyIdx ? { description, quantity: 1, unitPrice, vatRate } : it));
-      }
-      return [...prev, { description, quantity: 1, unitPrice, vatRate }];
+      if (emptyIdx >= 0) return prev.map((it, i) => (i === emptyIdx ? line : it));
+      return [...prev, line];
     });
   }
 
@@ -863,27 +868,11 @@ export default function NewInvoicePage() {
           emptyOption="Select a customer or company"
         />
 
-        {offered.length > 0 && (
-          <div>
-            <p className="text-xs text-neutral-500">
-              {suggestedItems.length > 0
-                ? "What you charge for, this customer's first — tap to add a line:"
-                : "What you charge for — tap to add a line:"}
-            </p>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {offered.map((s) => (
-                <button
-                  key={s.description}
-                  type="button"
-                  onClick={() => addSuggestedItem(s.description, s.unitPrice, s.vatRate)}
-                  className="rounded-full border px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-                >
-                  + {s.description} ({money(s.unitPrice)})
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <PricePicker
+          items={offeredItems}
+          heading={suggestedItems.length > 0 ? "What you charge for, this customer's first — tap to add a line." : "What you charge for — tap to add a line."}
+          onAdd={addSuggestedItem}
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <div>

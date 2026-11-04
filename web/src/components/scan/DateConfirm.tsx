@@ -13,13 +13,13 @@ export default function DateConfirm({ iso, alternative, printed, onSwap, onConfi
   onConfirm: () => void;
 }) {
   return (
-    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+    <div className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
       <p>
         Read as <span className="font-medium">{longDate(iso)}</span>
         {printed ? ` — the document shows ${printed}` : ""}. If it meant {longDate(alternative)}, swap.
       </p>
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={onSwap} className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-800">
+        <button type="button" onClick={onSwap} className="rounded-lg border border-amber-700 px-3 py-1 text-xs font-medium text-amber-800">
           Swap
         </button>
         <button type="button" onClick={onConfirm} className="rounded-lg bg-neutral-900 px-3 py-1 text-xs font-medium text-white">
