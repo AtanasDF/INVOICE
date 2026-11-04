@@ -7,6 +7,11 @@
 #   pale-wood.mjpeg      an A4 invoice on light oak
 #   white-worktop.mjpeg  the same invoice on an off-white worktop, a faint
 #                        shadow under its edge as paper casts in room light
+#   white-noshadow.mjpeg the same, lit from above: no shadow to help, only the
+#                        page's own few grey levels against the worktop
+#   bare-worktop.mjpeg   the worktop with nothing on it, which must never be
+#                        photographed (the gentler second look the detector
+#                        takes for a white-on-white page must not invent one)
 #
 # Same format as gen-conditions.py: concatenated JPEGs, 720x1080, 30fps, ten
 # seconds, the page wobbling a pixel or so as a held phone does.
@@ -80,5 +85,20 @@ def write(name, frames):
 PAGE = invoice()
 wobble = lambda t: (1.2 * math.sin(t * 1.1) + random.uniform(-0.5, 0.5), 1.2 * math.cos(t * 0.9) + random.uniform(-0.5, 0.5))
 N = FPS * SECS
-for name, bg, shadow in [("pale-wood.mjpeg", oak(), False), ("white-worktop.mjpeg", worktop(), True)]:
+# The same order of random draws as before the two new clips, so the first
+# two come out exactly as they always have.
+OAK, TOP = oak(), worktop()
+for name, bg, shadow in [("pale-wood.mjpeg", OAK, False), ("white-worktop.mjpeg", TOP, True), ("white-noshadow.mjpeg", TOP, False)]:
     write(name, [frame(bg, PAGE, 360 + wobble(i / FPS)[0], 540 + wobble(i / FPS)[1], 2.0, shadow) for i in range(N)])
+
+
+def bare(bg, t):
+    # A held phone over an empty worktop: the view drifts a pixel or two.
+    dx, dy = wobble(t)
+    im = bg.transform(bg.size, Image.AFFINE, (1, 0, dx, 0, 1, dy), resample=Image.BILINEAR)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=86)
+    return b.getvalue()
+
+
+write("bare-worktop.mjpeg", [bare(TOP, i / FPS) for i in range(N)])

@@ -45,6 +45,77 @@ wording changes apart from the one line in item 3.
     test-readable, test-theme, test-quotes (PriceFinder) and test-first-page (the front
     door's SignInCard).
 - Did not touch `invoices/new`, `QuoteForm` or `/prices`.
+## 2026-11-04 (cloud): the scanner finds a white invoice on a white worktop — `wip/white-worktop`, NOT merged
+
+**PUSH: if this entry is on GitHub, the push worked.** It was refused for most of the
+session (`fatal: unable to access 'https://github.com/AtanasDF/INVOICE/': The requested URL
+returned error: 403`). The commits waited in the cloud container and were pushed later.
+
+Fixes the open item from 28/10: a white invoice on an off-white worktop was never found.
+- **Cause, measured, not guessed.** The scanner's own readout (tap the strip beside Back)
+  showed `quads:0` on every tick. Temporary instrumentation in `pageCandidates` (taken out
+  again, not committed, in the manner of `trace-batch-capture.mjs`) showed no contour
+  surviving at all, while the same clip's JPEG frame gave a clean outline offline. The
+  difference is the camera: Chrome's camera path, like a phone exposing for a bright scene,
+  lifts the worktop from 224 to ~242 and clips the page at 255. That leaves an edge of
+  about 13 grey levels, and Canny at 50/150 breaks it into pieces. Light oak keeps a step
+  of ~60, which is why it always passed. Measured on the live frame with the app's own
+  opencv.js: with the clip's soft shadow the outline holds up to 35/105; lit from above
+  with no shadow, only up to 15/45.
+- **Fix** (`DocumentCapture.tsx`, `CANNY` / `CANNY_SOFT`): a second Canny pass at 15/45,
+  **only when the first (50/150) found nothing**. Every other test still applies: four
+  corners, the ink inside, paper on a table when small or zoomed. It is not a global
+  lowering, because at 15/45 the oak grain joins the outline and light oak stops being
+  found. Oak is found on the first look, so it never meets the second. The full-resolution
+  still (`cornersInStill`) gets the same second look, or such a page would always fall back
+  to the video frame. A tick with nothing found costs one more Canny pass: 18ms on the
+  empty worktop, within the 13 to 23ms seen before.
+- **test-pale** grew from 2 checks to 4: `white-noshadow.mjpeg` (no shadow to help) and
+  `bare-worktop.mjpeg`, which must never be photographed (it read `quads:0` on all 53 ticks
+  watched). `gen-pale.py` keeps its random draws in the same order, so the first two clips
+  come out byte-identical to before (checked with `cmp`).
+
+**Camera suites, before (main `c91a19d`) and after, same machine, same clips, one at a time
+against `next start`:**
+
+| suite | before (main) | after | |
+|---|---|---|---|
+| test-pale | 2/4 | **4/4** (three runs) | the white worktop, with and without shadow |
+| test-far | 32/35 | 32/35 | same three red on main: "still (upright/sideways/nudged): used the full-resolution still" |
+| test-autozoom | 8/8 | 8/8 | |
+| test-autozoom2 | 2/2 + 4 errors | same | `small`, `side`, `small-then-gone.mjpeg` have no generator in the repo |
+| test-autozoom3 | 2/2 + 4 errors | same | the same missing clips |
+| test-autozoom-out | 5/5 | 5/5 | |
+| test-conditions | 11/12 | 11/12 | same red on main: "...and IS captured once it stops" (moving clip) |
+| test-fit-320 | 27/27 | 27/27 | |
+| test-fit-sweep | 27/27 | 27/27 | |
+| test-bent | 64/64 | 64/64 | |
+| test-tiles | 12/12 | 12/12 | the kitchen wall is still never taken |
+| test-batch-handheld | 1/1 | 1/1 | |
+| test-still-interrupts | 3/3 | 3/3 | |
+| test-batch-stuck | 14/14 | 14/14 | |
+
+Nothing that was green went red. The machine is Linux Chromium 1243, not the Mac's Chrome,
+and the clips' fonts were FreeSans/FreeMono standing in for Arial/Courier New (symlinked
+locally at the Mac paths, nothing committed). So the absolute numbers may differ on the
+Mac; the comparison is like for like. tsc, eslint and build clean.
+
+**For the Mac before merging:** run the same camera list on the Mac, before and after.
+Worth a look separately: the 3 test-far still checks and the test-conditions "moving" check
+are red on main here, and autozoom2/3's three clips need a generator.
+
+**What Atanas should try on the iPhone** (the real test):
+1. A white invoice flat on the white or light grey kitchen worktop, phone held straight
+   above it at normal reading height, ceiling light on. Open Scan with Auto-capture on.
+   The green outline should appear on the page's edges within a second or two, and the
+   photo should take itself.
+2. The same with the phone's own shadow kept off the page, so nothing darkens the edges:
+   the hardest case.
+3. Point the camera at the empty worktop for ten seconds: no outline should appear and
+   nothing should be taken.
+4. Then the usual dark table and light wood, to check they still lock on as before.
+If 1 or 2 still fails, tap the strip beside Back and send a screenshot of the readout line
+(`quads:` and `cov:` are the useful numbers).
 
 ## 2026-11-04: Vercel builds only main, twice over
 
