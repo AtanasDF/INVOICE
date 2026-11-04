@@ -85,6 +85,19 @@ const MAX_EDGES_AROUND = 0.2;
 // that is accepted: it stops the green lock-on and auto-capture, never the
 // shutter, so a blank page is still one tap away.
 const MIN_INK = 0.015;
+// Canny's thresholds for the page's outline. A white page on a white or pale
+// grey worktop has an edge of about 13 grey levels once the phone has exposed
+// for the bright scene (the surface lifted to ~242, the page clipped at 255),
+// and 50/150 never finds it: the outline breaks into pieces and no page is
+// ever a candidate (harness test-pale, white-worktop.mjpeg; measured on the
+// live frame, the outline breaks at 40/120 and holds at 35/105). Lowering the
+// thresholds everywhere is not the answer: at 15/45 the grain of light oak
+// joins the outline and that page stops being found. So the gentle pair is a
+// second look, only when the first found nothing, and every other test --
+// four corners, the ink inside, paper on a table when small or zoomed --
+// still has to pass.
+const CANNY = [50, 150] as const;
+const CANNY_SOFT = [25, 75] as const;
 // Clear of the shape's own outline, which the dilation thickens.
 const INK_SHRINK = 0.85;
 // Bent paper: the simplified outline of a folded-over corner, a kink or a
@@ -521,9 +534,10 @@ function inkInside(cv: CVModule, m: WorkMats, pts: Point[]): number {
 // candidate has to look like paper on a table: lighter than what's round
 // it and clear of the edge. A page that has outgrown the frame fails that
 // too, which is what sends the zoom back out.
-function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePaper = false): { pts: Point[]; area: number; ink: number }[] {
+function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePaper = false, soft = false): { pts: Point[]; area: number; ink: number }[] {
   cv.GaussianBlur(m.gray, m.blurred, new cv.Size(5, 5), 0);
-  cv.Canny(m.blurred, m.edges, 50, 150);
+  const [low, high] = soft ? CANNY_SOFT : CANNY;
+  cv.Canny(m.blurred, m.edges, low, high);
   cv.dilate(m.edges, m.edges, m.kernel);
   cv.findContours(m.edges, m.contours, m.hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
   const frame = m.w * m.h;
@@ -565,7 +579,7 @@ function pageCandidates(cv: CVModule, m: WorkMats, firstOnly = false, requirePap
 }
 
 function findPage(cv: CVModule, m: WorkMats, requirePaper = false): { pts: Point[]; area: number; ink: number } | null {
-  return pageCandidates(cv, m, true, requirePaper)[0] ?? null;
+  return pageCandidates(cv, m, true, requirePaper)[0] ?? pageCandidates(cv, m, true, requirePaper, true)[0] ?? null;
 }
 
 // Variance of the Laplacian inside the quad's bounding box: how sharp it is.
@@ -1916,9 +1930,14 @@ export default function DocumentCapture({
       const guess = scaleQuad(quad, s.w, s.h);
       const limit = REFINE_TOLERANCE * Math.hypot(s.w, s.h);
       let best: { pts: Quad; off: number } | null = null;
-      for (const c of pageCandidates(cv, s)) {
-        const { q: pts, off } = alignTo(orderPoints(c.pts), guess);
-        if (off <= limit && (!best || off < best.off)) best = { pts, off };
+      // The still gets the same second, gentler look as the live frame, or a
+      // page found only that way would always fall back to the video frame.
+      for (const soft of [false, true]) {
+        for (const c of pageCandidates(cv, s, false, false, soft)) {
+          const { q: pts, off } = alignTo(orderPoints(c.pts), guess);
+          if (off <= limit && (!best || off < best.off)) best = { pts, off };
+        }
+        if (best) break;
       }
       if (!best) return null;
       const sharpStill = sharpnessIn(cv, s.gray, best.pts, s.w, s.h);
