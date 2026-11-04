@@ -127,6 +127,10 @@ If 1 or 2 still fails, tap the strip beside Back and send a screenshot of the re
   on the bill did not come from branch pushes of this project in that window. Not looked into further.
 - Crons unchanged: three daily, one weekly.
 - `wip/vercel-ignore-test` is left on GitHub (rule 1); he may remove it.
+- 13:00: the two cloud workers had been refused by GitHub (403: the Claude GitHub App had no access to
+  INVOICE for that account). Atanas fixed the access; both pushed. `wip/settings-look` (00b7c7e) and
+  `wip/white-worktop` (e81f838, test-pale 2/4 -> 4/4 in the cloud, other camera suites unchanged) passed
+  check-branch.sh, merged into main, tsc/eslint/build clean on the merge, pushed. Not seen on the iPhone yet.
 
 ## 2026-11-03/04: the launch reaches main
 
