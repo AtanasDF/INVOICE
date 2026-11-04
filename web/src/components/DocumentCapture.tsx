@@ -87,17 +87,19 @@ const MAX_EDGES_AROUND = 0.2;
 const MIN_INK = 0.015;
 // Canny's thresholds for the page's outline. A white page on a white or pale
 // grey worktop has an edge of about 13 grey levels once the phone has exposed
-// for the bright scene (the surface lifted to ~242, the page clipped at 255),
+// for the bright scene (the worktop lifted to ~242, the page clipped at 255),
 // and 50/150 never finds it: the outline breaks into pieces and no page is
-// ever a candidate (harness test-pale, white-worktop.mjpeg; measured on the
-// live frame, the outline breaks at 40/120 and holds at 35/105). Lowering the
-// thresholds everywhere is not the answer: at 15/45 the grain of light oak
-// joins the outline and that page stops being found. So the gentle pair is a
-// second look, only when the first found nothing, and every other test --
-// four corners, the ink inside, paper on a table when small or zoomed --
-// still has to pass.
+// ever a candidate (harness test-pale; the scanner's readout showed quads:0
+// on every tick). Measured on the live frame: with a soft shadow along one
+// edge the outline holds up to 35/105; lit from above with no shadow, only up
+// to 15/45. Lowering the thresholds everywhere is not the answer: at 15/45
+// the grain of light oak joins the outline and that page stops being found.
+// So the gentle pair is a second look, only when the first found nothing,
+// and every other test -- four corners, the ink inside, paper on a table when
+// small or zoomed -- still has to pass. An empty worktop, tiles and a
+// patterned floor are the clips that hold it to that.
 const CANNY = [50, 150] as const;
-const CANNY_SOFT = [25, 75] as const;
+const CANNY_SOFT = [15, 45] as const;
 // Clear of the shape's own outline, which the dilation thickens.
 const INK_SHRINK = 0.85;
 // Bent paper: the simplified outline of a folded-over corner, a kink or a
