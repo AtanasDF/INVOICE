@@ -5,6 +5,20 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-03/04: the launch reaches main
+
+- New Claude account. Atanas got lost doing backup 019 by hand from prose instructions; deep sweep
+  (`notes/deep-sweep-2026-11-03.md`): he presses one button, the session does the rest. `harness/open-sql.sh`
+  opens Supabase's SQL editor in Safari prefilled; rule at the top of CLAUDE.md; memory saved.
+- This Mac blocks keystrokes and screen capture for the session, and the Supabase connector here is the
+  Lurra org, so it was left alone. The press stays his; the check is done from outside via PostgREST.
+- `web/supabase/run-019-047-one-press.sql`: 019's check + 047 + 047's checks in one DO block, proved on
+  pglite (GREEN; bad backup refused with nothing changed; second press GREEN). He ran it; price_list
+  confirmed live.
+- Merged integrate/launch, then wip/launch-fixes, into main (no conflicts). tsc, eslint, placeholder build clean.
+- Vercel `invoice` showed Paused (503) for a while on 04/11; he fixed it on his side.
+- Cloud workers settings-look / white-worktop: still nothing on GitHub; this account can't see those sessions.
+
 ## 2026-11-01 (cloud, night): the browser suites on `integrate/launch` (`wip/launch-fixes`)
 
 Asked for by the Mac session, which has no Chrome. `integrate/launch` at `c4ee303`, built

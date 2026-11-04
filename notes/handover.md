@@ -1,3 +1,12 @@
+# Where things stand — 2026-11-04
+
+**Launch is on main.** Backup 019 and migration-047 applied (one press, GREEN; column confirmed live).
+`integrate/launch` and `wip/launch-fixes` merged into main and pushed; tsc, eslint, build clean.
+The Vercel project was **Paused** on 04/11 for a while (Atanas sorted it in Vercel; cause not known here).
+Still open: the two cloud workers (`wip/settings-look`, `wip/white-worktop`) never pushed; his call on
+Home's Recent row; `notes/launch-list.md`. This account's Supabase connector reaches only Lurra/Klaudio
+projects, so DB steps go through `harness/open-sql.sh` and one press from him.
+
 # Where things stand — 2026-11-03 (handover to a new Claude account, same Mac)
 
 **Read this first.** It replaces the 2026-11-01 block below where they differ.

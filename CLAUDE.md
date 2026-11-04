@@ -151,6 +151,11 @@ session log what was added so he knows what to clear.
    `authenticated` inside a transaction that ended in `raise exception`, and the rollback
    confirmed to have left no rows. `anon` has execute on none of them. **`SCAN_LIMITS=on` was
    set in Vercel on 2026-09-23, so all of this is LIVE** — see the environment section.
+   **Applied and verified up to 047 (2026-11-04)**: `business_profile.price_list jsonb`, nullable, for
+   What I charge. Backup 019 = `business_profile_backup_20261101`. Run as ONE press with
+   `run-019-047-one-press.sql` (backup checked both ways, column added, owner test undone, all in one
+   DO block that undoes everything on any failure; proved first on pglite: good, bad backup, second press).
+   Confirmed afterwards from outside: PostgREST selects price_list, refuses a made-up column (42703).
    **Applied and verified up to 046 (2026-10-22)**: `business_profile.payment_link text`,
    nullable, no default, for the Pay now button (`src/lib/paymentLink.ts`, https only, enforced
    in the app). Backup 018 = `business_profile_backup_20261022`, verified both ways (0/0, 2 rows,
