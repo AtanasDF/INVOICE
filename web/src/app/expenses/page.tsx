@@ -205,7 +205,7 @@ export default function ExpensesPage() {
         <p className="text-sm text-neutral-500">{viewMode === "combined" ? "Combined with invoices" : "Expenses only"}</p>
       </div>
 
-      <div className="flex w-fit gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium print:hidden">
+      <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium print:hidden">
         <button
           onClick={() => setViewMode("expenses")}
           aria-pressed={viewMode === "expenses"}
