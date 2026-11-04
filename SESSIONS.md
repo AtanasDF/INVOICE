@@ -5,6 +5,47 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-04 (cloud): Settings and the last white pills get the visual-pass look (`wip/settings-look`)
+
+Cut from `integrate/launch` `c4ee303`, rebased on `main` `c91a19d` on 2026-11-04. Not merged. No behaviour changes, no schema, and no
+wording changes apart from the one line in item 3.
+1. **Settings, the landing page and its four pages.** Cards lose their outline and become
+   `rounded-xl bg-white p-4 sm:p-5 shadow-sm`:
+   - `CARD` in `components/settings/ProfileForm.tsx`, and the landing list;
+   - the cards that only Settings → Account uses: ThemePicker, GetTheApp, InviteCard.
+     PlanCard already had the new look.
+   A box inside a card is now a `bg-neutral-100` tint, not an outline: the registered-company
+   box, "The ... list also has", and the email-in address. The VAT switch is the one segmented
+   control (`bg-neutral-100 p-1` track, chosen `bg-neutral-900 text-white`). There were no
+   light `border-<colour>-200/300` notices in Settings.
+   Left on purpose:
+   - the Save bar's outline on a wide screen (it floats);
+   - the reorder arrows and ThemePicker's colour choices (they are buttons);
+   - the `border-t` dividers inside a card.
+2. **The old white pill**, now `bg-neutral-900 text-white`:
+   - SignInCard's Sign in / New here tabs (its cards also lose the outline);
+   - the iPhone / Android picker on `/help/home-screen` (step cards lose the outline too;
+     the drawn phones are pictures and are unchanged);
+   - PriceFinder's product / work switch. Its box is now a neutral-100 tint and its answer
+     box drops the outline. The track stays `bg-neutral-200/60`, because it sits on that
+     tint.
+3. **Settings → Receipts and expenses**, under the category editor: "Personal spending
+   (Groceries, Household and the rest) is still offered on every receipt, in its own
+   "Personal (not a business cost)" group, so it doesn't need adding here." It shows only
+   when the list is a business one (`personalExtras` is not empty), so a personal-use account
+   doesn't see it.
+- **Checks:** tsc, eslint and build clean.
+  - Source suites: contrast-tokens, no-hardcoded-colour, accessibility-source 38,
+    every-screen-explained 20, source-text, audit-guards 91, audit-misc, ios-forms-layout,
+    ios-files-share, leftovers, one-address. All green.
+  - Against `next start` here: settings-save 56/56, get-the-app 14, sign-up 20,
+    dark-mode 48, tap-targets 6, labels 38.
+  - test-tips passes its 6 checks, then stops waiting for a camera this container's
+    Chromium can't fake, as on every run here. **The Mac should run test-tips**, plus
+    test-readable, test-theme, test-quotes (PriceFinder) and test-first-page (the front
+    door's SignInCard).
+- Did not touch `invoices/new`, `QuoteForm` or `/prices`.
+
 ## 2026-11-04: Vercel builds only main, twice over
 
 - `web/vercel.json` gains `ignoreCommand` (`f42a54e`): skip unless `VERCEL_GIT_COMMIT_REF` is main. A second
