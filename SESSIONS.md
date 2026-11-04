@@ -5,6 +5,17 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-04: Vercel builds only main, twice over
+
+- `web/vercel.json` gains `ignoreCommand` (`f42a54e`): skip unless `VERCEL_GIT_COMMIT_REF` is main. A second
+  guard behind `git.deploymentEnabled`, which was already turning branches off. Tested: main built (Ready,
+  25s); an empty commit on `wip/vercel-ignore-test` (0c67372) made no deployment at all, no Vercel status on
+  GitHub either, so deploymentEnabled stops it before the ignore step is even reached.
+- The last two weeks of deployments are all Production from main (about 20), so the "80+ builds since 03/11"
+  on the bill did not come from branch pushes of this project in that window. Not looked into further.
+- Crons unchanged: three daily, one weekly.
+- `wip/vercel-ignore-test` is left on GitHub (rule 1); he may remove it.
+
 ## 2026-11-03/04: the launch reaches main
 
 - New Claude account. Atanas got lost doing backup 019 by hand from prose instructions; deep sweep
