@@ -12,7 +12,7 @@ import { ReminderKind } from "@/lib/reminderTemplates";
 import { parseSequenceNumber } from "@/lib/invoiceNumber";
 import { loadFailed, saveFailed } from "@/lib/errorText";
 
-export const CARD = "space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
+export const CARD = "space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm";
 export const SMALL_BUTTON = "rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700 disabled:opacity-50";
 
 export type FormValues = {

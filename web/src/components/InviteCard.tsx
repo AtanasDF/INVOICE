@@ -47,7 +47,7 @@ export default function InviteCard({ className = "" }: { className?: string }) {
   }
 
   return (
-    <section className={`space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm ${className}`}>
+    <section className={`space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm ${className}`}>
       <div>
         <h2 className="font-semibold">Tell a mate</h2>
         <p className="mt-1 text-neutral-600">

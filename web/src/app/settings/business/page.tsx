@@ -149,7 +149,7 @@ export default function BusinessSettingsPage() {
           </div>
 
           {limited && (
-            <div className="space-y-3 rounded-lg border bg-neutral-50 p-3">
+            <div className="space-y-3 rounded-lg bg-neutral-100 p-3">
               <p className="text-sm text-neutral-600">
                 A limited company must print its registered name and number on its invoices. They go small at the foot;
                 your trading name stays the headline.
@@ -226,11 +226,11 @@ export default function BusinessSettingsPage() {
             {/* Wraps: a segmented control is a row until the words in it are
                 wider than the phone, and at 320px with the text turned up
                 "Not registered" alone is most of the screen. */}
-            <div className="inline-flex max-w-full flex-wrap rounded-lg border p-0.5">
+            <div className="inline-flex max-w-full flex-wrap gap-1 rounded-lg bg-neutral-100 p-1">
               {VAT_CHOICES.map((c) => (
                 <label key={c.label} className="cursor-pointer">
                   <input type="radio" name="vat" className="peer sr-only accent-neutral-900" checked={vatRegistered === c.on} onChange={() => set("vatRegistered", c.on)} />
-                  <span className={`block rounded-md px-3 py-1.5 text-sm font-medium peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-500 ${vatRegistered === c.on ? "bg-neutral-900 text-white" : "text-neutral-700"}`}>
+                  <span className={`block rounded-md px-3 py-1.5 text-sm font-medium peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-500 ${vatRegistered === c.on ? "bg-neutral-900 text-white" : "text-neutral-600"}`}>
                     {c.label}
                   </span>
                 </label>

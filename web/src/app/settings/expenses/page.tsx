@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { businessProfileStore } from "@/lib/storage";
-import { KIND_WORD, defaultCategoriesFor, missingFor, withKindCategories } from "@/lib/categories";
+import { KIND_WORD, PERSONAL_LABEL, defaultCategoriesFor, missingFor, personalExtras, withKindCategories } from "@/lib/categories";
 import { generateInboxToken, inboxAddress } from "@/lib/inboxToken";
 import { saveFailed } from "@/lib/errorText";
 import Tip from "@/components/Tip";
@@ -199,7 +199,7 @@ export default function ExpenseSettingsPage() {
             </button>
           </div>
           {accountKind && missing.length > 0 && (
-            <div className="rounded-lg border bg-neutral-50 p-3 text-sm">
+            <div className="rounded-lg bg-neutral-100 p-3 text-sm">
               <p className="text-neutral-600">
                 The {KIND_WORD[accountKind]} list also has: {missing.join(", ")}.
               </p>
@@ -211,6 +211,14 @@ export default function ExpenseSettingsPage() {
                 Add them
               </button>
             </div>
+          )}
+          {/* Personal spending left the business list, so somebody may add it back
+              thinking it has gone. */}
+          {personalExtras(categories).length > 0 && (
+            <p className="text-xs text-neutral-500">
+              Personal spending (Groceries, Household and the rest) is still offered on every receipt, in its own
+              &ldquo;{PERSONAL_LABEL}&rdquo; group, so it doesn&apos;t need adding here.
+            </p>
           )}
           <button type="button" onClick={resetCategories} className="text-sm text-neutral-500 underline">
             Reset to defaults
@@ -239,7 +247,7 @@ export default function ExpenseSettingsPage() {
               shouldn&apos;t.
             </p>
             {/* The address on a line of its own, the buttons on the next: on a phone the three never fitted one row. */}
-            <code className="block overflow-x-auto whitespace-nowrap rounded-lg border bg-neutral-50 px-3 py-2 text-sm">
+            <code className="block overflow-x-auto whitespace-nowrap rounded-lg bg-neutral-100 px-3 py-2 text-sm">
               {inboxRevealed ? inboxAddress(inboxToken) : `u-${"•".repeat(12)}@invoiceover.com`}
             </code>
             <div className="flex flex-wrap items-center gap-2">

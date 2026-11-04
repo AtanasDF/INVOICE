@@ -32,7 +32,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <ul className="divide-y rounded-xl border bg-white text-neutral-900 shadow-sm">
+      <ul className="divide-y rounded-xl bg-white text-neutral-900 shadow-sm">
         {SECTIONS.filter((s) => !(personal && s.business)).map((s) => (
           <li key={s.href}>
             <Link href={s.href} className="flex items-center gap-3 px-4 py-3.5">

@@ -14,7 +14,7 @@ export default function ThemePicker() {
   useEffect(() => watchSystemTheme(), []);
 
   return (
-    <div className="space-y-3 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+    <div className="space-y-3 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
       <h2 className="font-semibold">How it looks</h2>
       <p className="text-sm text-neutral-600">Pick a colour. It changes straight away, and only on this device.</p>
       <div role="radiogroup" aria-label="Colour" className="grid gap-2 sm:grid-cols-2">

@@ -31,7 +31,7 @@ export default function GetTheApp({ className = "" }: { className?: string }) {
   if (way === "installed") return null;
 
   return (
-    <section className={`space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm ${className}`}>
+    <section className={`space-y-4 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm ${className}`}>
       <div>
         <h2 className="text-lg font-bold">Put {SITE_NAME} on your phone</h2>
         <p className="mt-1 text-neutral-600">

@@ -246,7 +246,7 @@ export default function HomeScreenHelp() {
             role="tab"
             aria-selected={phone === value}
             onClick={() => setPicked(value)}
-            className={`rounded-md px-3 py-2.5 text-base font-medium ${phone === value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+            className={`rounded-md px-3 py-2.5 text-base font-medium ${phone === value ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             {text}
           </button>
@@ -255,7 +255,7 @@ export default function HomeScreenHelp() {
 
       <ol className="mt-5 space-y-4">
         {steps.map((s, i) => (
-          <li key={`${phone}-${i}`} className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+          <li key={`${phone}-${i}`} className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
             <p className="flex gap-3 text-base font-medium">
               <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-bold text-white">
                 {i + 1}

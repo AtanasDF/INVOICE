@@ -248,7 +248,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
     }
   }
 
-  const card = "space-y-4 rounded-xl border bg-white p-5 text-neutral-900 shadow-sm";
+  const card = "space-y-4 rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm";
   const bigButton = "w-full rounded-lg bg-neutral-900 px-4 py-3.5 text-base font-bold text-white disabled:opacity-50";
 
   if (mode === "check-email") {
@@ -349,7 +349,7 @@ export default function SignInCard({ start = "signin" }: { start?: "signin" | "s
             role="tab"
             aria-selected={mode === value}
             onClick={() => go(value)}
-            className={`rounded-md px-3 py-2.5 text-base font-medium ${mode === value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+            className={`rounded-md px-3 py-2.5 text-base font-medium ${mode === value ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             {text}
           </button>

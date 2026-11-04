@@ -88,7 +88,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
                 : "";
 
   return (
-    <div className="space-y-3 rounded-lg border bg-neutral-50 p-3">
+    <div className="space-y-3 rounded-lg bg-neutral-100 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium">Find it cheaper</p>
@@ -110,7 +110,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
               setKind(k);
               setFetched(null);
             }}
-            className={`rounded-md py-1.5 text-sm font-medium ${kind === k ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"}`}
+            className={`rounded-md py-1.5 text-sm font-medium ${kind === k ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
           >
             {k === "product" ? "Something to buy" : "Work being done"}
           </button>
@@ -148,7 +148,7 @@ export default function PriceFinder({ description, quantity, unit, priced, onClo
       {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
 
       {guide && (
-        <div className="space-y-2 rounded-lg border bg-white p-3 text-sm">
+        <div className="space-y-2 rounded-lg bg-white p-3 text-sm">
           <p className="font-medium">{guide.what}</p>
           {guide.low != null || guide.high != null ? (
             <p className="text-neutral-700">
