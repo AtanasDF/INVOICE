@@ -1362,39 +1362,43 @@ export default function ScanPage() {
           </div>
         )}
         {cameraBlocked && (
-          <div role="status" className="mb-3 rounded-xl bg-neutral-100 p-4 text-neutral-900">
-            <p className="text-base font-medium">The camera didn&apos;t open.</p>
-            <p className="mt-1 text-base text-neutral-700">
-              It&apos;s blocked for this site in your browser&apos;s settings. You can still upload a photo or
-              PDF of the document, or type the receipt in yourself.
-            </p>
-            {/* "Your browser's settings" is not something anybody can act on
-                from a phone, and the iPhone's own camera asks this site for
-                nothing -- so on iOS the exact route is given, and the way
-                that still works is offered first. */}
-            {isIOS && <p className="mt-1 text-sm text-neutral-600">{SAFARI_CAMERA_TIP}</p>}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div role="status" className="mb-3 space-y-3 rounded-xl bg-white p-4 text-neutral-900 shadow-sm">
+            <div>
+              <p className="text-lg font-semibold">The camera didn&apos;t open.</p>
+              <p className="mt-1 text-base text-neutral-700">It&apos;s blocked for this site in your browser&apos;s settings.</p>
+            </div>
+            {/* The way that still works comes first and biggest: on iOS the
+                iPhone's own camera asks this site for nothing. */}
+            <div className="space-y-2">
               {isIOS && (
                 <UploadFilesButton
                   camera
                   multiple={false}
                   onFiles={(files, failed) => { setCameraBlocked(false); readUploads(files.map((f) => [f]), leftOutNote(failed, files.length + failed)); }}
                   label="Use the iPhone camera instead"
-                  buttonClassName="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+                  className="w-full"
+                  buttonClassName="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-base font-semibold text-white"
                 />
               )}
               <UploadFilesButton
                 onFiles={(files, failed) => { setCameraBlocked(false); readUploads(files.map((f) => [f]), leftOutNote(failed, files.length + failed)); }}
                 label="Upload a photo or PDF"
-                buttonClassName={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium ${isIOS ? "border bg-white text-neutral-900 shadow-sm" : "bg-neutral-900 text-white"}`}
+                className="w-full"
+                buttonClassName={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium ${isIOS ? "min-h-12 border bg-white text-sm text-neutral-900" : "min-h-14 bg-neutral-900 text-base text-white"}`}
               />
-              <Link href="/receipts/new" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">
+            </div>
+            <div className="flex flex-wrap gap-x-4">
+              <Link href="/receipts/new" className="inline-flex min-h-11 items-center text-sm font-medium text-neutral-700 underline">
                 Add a receipt by hand
               </Link>
-              <button type="button" onClick={() => { setCameraBlocked(false); setCapture({ kind: "first" }); }} className="inline-block py-1 text-sm font-medium text-neutral-700 underline">
+              <button type="button" onClick={() => { setCameraBlocked(false); setCapture({ kind: "first" }); }} className="inline-flex min-h-11 items-center text-sm font-medium text-neutral-700 underline">
                 Try the camera again
               </button>
             </div>
+            {/* "Your browser's settings" is not something anybody can act on
+                from a phone, so on iOS the exact route is given -- under the
+                buttons, as the fix for next time rather than the way on now. */}
+            {isIOS && <p className="text-xs text-neutral-500">{SAFARI_CAMERA_TIP}</p>}
           </div>
         )}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -1507,11 +1511,11 @@ export default function ScanPage() {
               <button
                 onClick={addAsSupplier}
                 disabled={saving || supplierSaved || scanning}
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="min-h-12 flex-1 rounded-xl bg-neutral-900 px-5 py-3 text-base font-semibold text-white disabled:opacity-50 sm:flex-none"
               >
                 {saving ? "Saving…" : supplierSaved ? "Saved" : "Save as new supplier"}
               </button>
-              <button type="button" onClick={discard} disabled={saving} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+              <button type="button" onClick={discard} disabled={saving} className="min-h-12 rounded-xl border px-4 py-2 text-sm font-medium text-neutral-700">
                 {remaining ? "Skip" : "Discard"}
               </button>
               {saveAllButton}
@@ -1778,7 +1782,7 @@ export default function ScanPage() {
                     type="button"
                     onClick={() => save(true)}
                     disabled={saving || !!blockedReason}
-                    className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    className="min-h-11 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
                     Save anyway
                   </button>
@@ -1786,7 +1790,7 @@ export default function ScanPage() {
                     type="button"
                     onClick={discard}
                     disabled={saving}
-                    className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700"
+                    className="min-h-11 rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700"
                   >
                     {remaining ? "Skip this one" : "Discard"}
                   </button>
@@ -1797,11 +1801,11 @@ export default function ScanPage() {
               <button
                 onClick={() => save()}
                 disabled={saving || !!blockedReason}
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="min-h-12 flex-1 rounded-xl bg-neutral-900 px-5 py-3 text-base font-semibold text-white disabled:opacity-50 sm:flex-none"
               >
                 {saving ? "Saving…" : saveLabel}
               </button>
-              <button type="button" onClick={discard} disabled={saving} className="rounded-lg border px-4 py-2 text-sm font-medium text-neutral-700">
+              <button type="button" onClick={discard} disabled={saving} className="min-h-12 rounded-xl border px-4 py-2 text-sm font-medium text-neutral-700">
                 {remaining ? "Skip" : "Discard"}
               </button>
               {saveAllButton}
