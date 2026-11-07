@@ -738,7 +738,7 @@ export default function NewInvoicePage() {
         />
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="space-y-4">
         <div>
           <Link href="/invoices" className="text-sm text-neutral-500"><span aria-hidden="true">←</span> Invoices</Link>
           <h1 className="mt-1 text-2xl font-bold">New invoice</h1>
@@ -759,7 +759,7 @@ export default function NewInvoicePage() {
           onOpen={() => setCapture("attach")}
           onCapture={onDocumentCaptured}
           disabled={scanning}
-          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-neutral-900 shadow-sm disabled:opacity-50"
         >
           {scanning ? "Reading document…" : (<><CameraIcon /> Scan or attach a document</>)}
         </CaptureButton>
@@ -791,7 +791,7 @@ export default function NewInvoicePage() {
       {scanError && <p role="alert" className="text-sm text-red-600">{scanError}</p>}
       {kept.offer && <DraftOffer what="an invoice" savedAt={kept.offer.savedAt} onRestore={restoreDraft} onDiscard={kept.discard} />}
       {!copyMode && (
-        <div className="rounded-xl border bg-white p-5 text-neutral-900 shadow-sm">
+        <div className="rounded-xl bg-white p-4 sm:p-5 text-neutral-900 shadow-sm">
           <label className="text-xs text-neutral-500" htmlFor="describe-invoice">
             Or describe it and it&apos;s filled in for you
           </label>
@@ -808,11 +808,11 @@ export default function NewInvoicePage() {
               type="button"
               onClick={fillFromText}
               disabled={typing || !typed.trim()}
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="min-h-11 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               {typing ? "Filling in…" : "Fill in the invoice"}
             </button>
-            <span className="text-xs text-neutral-500">On a phone you can tap the microphone on the keyboard and say it.</span>
+            <span className="text-xs text-neutral-500">Or tap the keyboard&apos;s microphone and say it.</span>
           </div>
           {typedNote && !typedNote.ok && <p role="alert" className="mt-2 text-sm text-red-600">{typedNote.text}</p>}
           {typedNote?.ok && <p className="mt-2 text-sm text-neutral-600">{typedNote.text}</p>}
@@ -1046,9 +1046,9 @@ export default function NewInvoicePage() {
               ))}
             </>
           )}
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-lg font-bold">Total: {money(totals.total)}</div>
-            <button onClick={save} disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            <button onClick={save} disabled={saving} className="min-h-14 w-full rounded-xl bg-neutral-900 px-5 py-3 text-lg font-semibold text-white shadow-sm disabled:opacity-50 sm:w-auto">
               {saving ? "Saving…" : "Save draft"}
             </button>
           </div>
@@ -1061,7 +1061,7 @@ export default function NewInvoicePage() {
             />
           </div>
           <p className="text-right text-xs text-neutral-500">
-            Saved as a draft, so you can change anything. It gets its invoice number when you mark it sent; after that it can&apos;t be changed.
+            A draft can be changed. It gets its number when you mark it sent.
           </p>
         </div>
       </div>
