@@ -5,6 +5,19 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-07 (cloud): full harness run on main `23a6f9e` (`wip/test-run-2026-11-07`)
+
+Test run only, no app changes. Results are in `notes/test-run-2026-11-07.md`. After solo
+re-runs, 20 suites are not green:
+- 7 are known red;
+- 2 are environment (no postcodes.io/photon from the container);
+- 11 are new: test-tax, test-break-it, test-no-accidents, test-cis, test-cold-start,
+  test-odd-files, test-quotes-ux, test-bring-contacts, test-check-company,
+  test-address-stubbed. The first three probably come from the launch merge.
+
+test-conditions is green again. A dev server left behind by test-public-logo crashed every
+dev-server suite after it, which needs fixing in run-one.sh.
+
 ## 2026-11-04 (cloud): Settings and the last white pills get the visual-pass look (`wip/settings-look`)
 
 Cut from `integrate/launch` `c4ee303`, rebased on `main` `c91a19d` on 2026-11-04. Not merged. No behaviour changes, no schema, and no
