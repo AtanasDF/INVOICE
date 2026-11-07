@@ -5,6 +5,41 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-07 (cloud): the five main screens made simpler (`wip/simple-design`)
+
+Atanas: "make it beautiful, easy to work, easy. 3-year-old should be able to work on it."
+Cut from `main` `23a6f9e`. Not merged. No behaviour, data or route changes; nothing removed,
+only moved. Pictures at 390x844 (iPhone UA, light and dark) in `notes/screens-2026-11-07/`,
+`<screen>-before-<mode>.png` and `<screen>-after-<mode>.png`, made by the new
+`harness/shoot-screens.mjs before|after [screen]` against the mocked database.
+1. **Home**: the big Scan button comes straight under the heading, To do after it; "Several in
+   a row is fine" cut; "See everything in Files" is "See all" (full words kept as aria-label,
+   44pt). Suites: dashboard 23/23, first-page 18/18, every-screen-explained 20/20, delight 8/9
+   (the home-screen badge count, unrelated and in a file the other session is fixing).
+2. **Scan**: the blocked-camera box leads with one full-width way on (iPhone camera, or
+   Upload), Upload under it, the two links at 44pt, the Safari settings route underneath; the
+   sentence repeating the buttons cut. Save on the reading form fills the row at 48pt; Discard,
+   Save anyway, Skip this one at 44pt. Suites: camera-refusal 15/15, settings-add 38/38,
+   scan-wall 21/21, scan-sanity 22/22, scan-limit-text 13/13.
+3. **Receipts & bills**: one full-width + Add with Upload under it (`ScanOrAdd big`, only here);
+   "Download for a spreadsheet" moved under the list; subtitle trimmed. Row actions keep the
+   compact card (<=156px) and are pressed over 44pt with a `::before`. Suites: receipts-list
+   55/55, big-text, dark-mode, empty-account 146, tap-targets, no-sideways, fit-sweep,
+   open-receipt, plain-words, keyboard-only, worst-phone, every-screen-explained, all green.
+   no-accidents stops at its third step (`/recurring/invoices`), not a screen touched here.
+4. **New invoice**: the heading stands alone; "Scan or attach a document" is a full-width
+   button under it; the describe card loses its outline; Save draft is full width at 56pt under
+   the total; the two notes cut to a line each. Suites: announced, audit-guards 91, clear,
+   draft-autosave, exact-customer, fit-sweep, ios-forms-layout 52, ios-layout, lines,
+   one-handed, tap-targets, labels, half-saved, keyboards, uploads, all green.
+5. **Phone Menu**: Scan first as the one filled button with its icon, then Home and the
+   sections; tool rows and the Menu button 44pt. Suites: first-week 29, settings-save 56,
+   accessibility-source, audit-misc, ios-forms-layout, route-guards, help-chat 61, tap-targets,
+   dark-mode, keyboard-only, dashboard, no-sideways, all green.
+- **Checks:** tsc, eslint, build clean. Run in a Linux container: the harness's hard-coded Mac
+  Chrome path was met with a wrapper script at that path outside the repo; nothing in the
+  harness changed for it.
+
 ## 2026-11-04 (cloud): Settings and the last white pills get the visual-pass look (`wip/settings-look`)
 
 Cut from `integrate/launch` `c4ee303`, rebased on `main` `c91a19d` on 2026-11-04. Not merged. No behaviour changes, no schema, and no
