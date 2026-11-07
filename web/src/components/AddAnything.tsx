@@ -18,7 +18,7 @@ const STANDARD = ["/scan", "/receipts/new", "/invoices/new", "/quotes/new"];
 // (it works out which kind of document it is), then the by-hand routes.
 // `also` holds a page's own ways in; one that already appears below is
 // dropped rather than listed twice.
-export default function AddAnything({ also = [], label = "Add" }: { also?: AddChoice[]; label?: string }) {
+export default function AddAnything({ also = [], label = "Add", big = false }: { also?: AddChoice[]; label?: string; big?: boolean }) {
   const router = useRouter();
   const isIOS = useIsIOS();
   const [open, setOpen] = useState(false);
@@ -53,7 +53,7 @@ export default function AddAnything({ also = [], label = "Add" }: { also?: AddCh
         type="button"
         onClick={() => setOpen(true)}
         aria-expanded={open}
-        className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white"
+        className={big ? "flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 py-3 text-lg font-semibold text-white shadow-sm" : "inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white"}
       >
         + {label}
       </button>

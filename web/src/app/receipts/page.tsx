@@ -457,22 +457,12 @@ function ReceiptsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Receipts &amp; bills</h1>
-          <p className="mt-1 text-neutral-600">
-            Receipts, supplier invoices (bills) and credit notes you&apos;ve captured.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          {receipts.length > 0 && (
-            <button onClick={exportReceipts} className="rounded-lg border px-3 py-1.5 text-sm font-medium text-neutral-700">
-              Download for a spreadsheet
-            </button>
-          )}
-          <ScanOrAdd scanHref="/scan" scanLabel="Scan receipts" addHref="/receipts/new" />
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Receipts &amp; bills</h1>
+        <p className="mt-1 text-neutral-600">Receipts, supplier invoices (bills) and credit notes.</p>
       </div>
+
+      <ScanOrAdd big scanHref="/scan" scanLabel="Scan receipts" addHref="/receipts/new" />
 
       <Tip id="receipts-batch">
         Tip: <strong>Scan receipts</strong> keeps the camera open, so you can photograph a whole pile in one go, then
@@ -781,27 +771,29 @@ function ReceiptsPage() {
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-                <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="min-h-6 font-medium text-neutral-600">
+                {/* The actions keep a compact line but are pressed over 44pt:
+                    the ::before reaches 10px above and below each one. */}
+                <button onClick={() => toggleDetails(r.id)} aria-expanded={detailsOpen} className="relative before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] min-h-6 shrink-0 whitespace-nowrap font-medium text-neutral-600">
                   Details <span aria-hidden="true">{detailsOpen ? "▴" : "▾"}</span>
                 </button>
                 {/* gap-x only: they sit on one line at an ordinary text size
                     and the list is held to compact cards, but at twice the
                     size four labels are wider than a phone, and a button that
                     is off the side of the screen cannot be pressed. */}
-                <div className="flex flex-wrap items-center gap-x-3">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   {isInvoice && !r.paid && !r.needsReview && (
-                    <button onClick={() => markPaid(r)} className="font-medium text-neutral-700 underline">Mark as paid</button>
+                    <button onClick={() => markPaid(r)} className="relative before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] min-h-6 font-medium text-neutral-700 underline">Mark as paid</button>
                   )}
                   <button
                     onClick={() => toggleStar(r)}
                     aria-pressed={r.starred}
-                    className="flex min-h-6 items-center gap-1 text-sm text-neutral-700"
+                    className="relative before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] flex min-h-6 items-center gap-1 text-sm text-neutral-700"
                   >
                     <span aria-hidden="true" className={`text-lg leading-none ${r.starred ? "text-amber-500" : "text-neutral-500"}`}>★</span>
                     {r.starred ? "Kept handy" : "Keep handy"}
                   </button>
-                  <button onClick={() => startEditReceipt(r)} className="min-h-6 px-1 font-medium text-neutral-700 underline">Edit</button>
-                  <button onClick={() => removeReceipt(r)} className="min-h-6 text-neutral-600 underline">Remove</button>
+                  <button onClick={() => startEditReceipt(r)} className="relative before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] min-h-6 px-1 font-medium text-neutral-700 underline">Edit</button>
+                  <button onClick={() => removeReceipt(r)} className="relative before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] min-h-6 text-neutral-600 underline">Remove</button>
                 </div>
               </div>
               {detailsOpen && (
@@ -859,6 +851,14 @@ function ReceiptsPage() {
             );
           })}
         </div>
+      )}
+
+      {/* For the accountant, not for every visit: below the list, out of the
+          way of the button that adds one. */}
+      {receipts.length > 0 && (
+        <button onClick={exportReceipts} className="inline-flex min-h-11 items-center text-sm font-medium text-neutral-700 underline">
+          Download for a spreadsheet
+        </button>
       )}
     </div>
   );
