@@ -5,6 +5,23 @@ append yours before the final push. Keep each entry to what changed, what was de
 and what is left open. Dates are session dates (Europe/London).
 
 
+## 2026-11-07 (cloud): the old red suites, and why they were red (`wip/stale-reds`)
+
+Off `main`. Harness only, no app change. Each suite run on its own against `next start -p 3100`.
+Every red was a stale test, none an app bug, so `notes/stale-reds-2026-11-07.md` was not needed.
+
+| suite | before | after | why it was red |
+|---|---|---|---|
+| test-big-account | 0/0 (crash) | 22/22 | waited for lowercase "owed"; Home says "Owed to you" since 5f7bd6d, and the tab it clicked is gone |
+| test-feel | 9/10 | 9/9 | sliding-panels check removed: SwipePanels is no longer used anywhere (5f7bd6d) |
+| test-delight | 8/9 | 9/9 | INV-1 due a hard-coded 2026-10-30, overdue since 31/10, so the badge rightly said 4; now `day(30)` |
+| test-terms-of-use | 35/36 | 36/36 | /accessibility rewritten on purpose in 27ed439 (the camera speaks now); check pins the new admission |
+| test-vat-lookup | 27/28 + timeout | 30/30 | `SIGTERM` to npx left `next dev` alive; Next 16 refuses a second dev server in one folder. Process groups now |
+
+`test-one-total` left alone as asked (Atanas's call). Running the harness on Linux needs the Mac
+Chrome path to exist: this session put a wrapper at `/Applications/Google Chrome.app/...` that execs
+`/opt/pw-browsers/chromium-1243/chrome-linux64/chrome --no-sandbox`, outside the repo.
+
 ## 2026-11-04 (cloud): Settings and the last white pills get the visual-pass look (`wip/settings-look`)
 
 Cut from `integrate/launch` `c4ee303`, rebased on `main` `c91a19d` on 2026-11-04. Not merged. No behaviour changes, no schema, and no
