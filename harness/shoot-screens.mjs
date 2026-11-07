@@ -52,7 +52,7 @@ try {
       await page.goto(BASE + route, { waitUntil: "networkidle0" }).catch(() => {});
       await sleep(1800);
       if (menu) {
-        await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^Menu$/.test(b.textContent.trim()))?.click());
+        await page.evaluate(() => [...document.querySelectorAll("summary")].find((b) => /^Menu$/.test(b.textContent.trim()))?.click());
         await sleep(600);
       }
       await page.screenshot({ path: join(OUT, `${name}-${stage}-${mode}.png`), fullPage: !menu });

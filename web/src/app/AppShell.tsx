@@ -71,13 +71,13 @@ function Menu({ label, here, width, children }: { label: string; here: boolean; 
   }, []);
   return (
     <details ref={box} className="relative">
-      <summary className={`flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden ${here ? "font-semibold text-neutral-900" : ""}`.trim()}>
+      <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden ${here ? "font-semibold text-neutral-900" : ""}`.trim()}>
         {label}
         <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5">
           <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </summary>
-      <div className={`absolute right-0 z-30 mt-2 ${width} max-h-[80dvh] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>{children}</div>
+      <div className={`absolute right-0 z-30 mt-2 ${width} max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-xl border bg-white py-1 text-neutral-800 shadow-lg`}>{children}</div>
     </details>
   );
 }
@@ -145,10 +145,21 @@ function PhoneMenu() {
   const review = useNeedsReview();
   return (
     <Menu label="Menu" here={!!current && current !== "/"} width="w-[min(18rem,calc(100vw-2rem))]">
+      {/* Scanning is what the app is for, so it is the one filled button,
+          first, where a thumb lands without reading the list. */}
+      {SECTIONS.filter((s) => s.href === "/scan").map((s) => (
+        <SectionLink key={s.href} section={s} className="mx-2 my-1 flex min-h-12 items-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-base font-semibold text-white!">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+            <path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2" />
+            <circle cx="12" cy="12" r="3.25" />
+          </svg>
+          {s.label}
+        </SectionLink>
+      ))}
       <NavLink href="/" className="block px-4 py-3 text-base">
         Home
       </NavLink>
-      {SECTIONS.map((s) => (
+      {SECTIONS.filter((s) => s.href !== "/scan").map((s) => (
         <SectionLink key={s.href} section={s} className="block px-4 py-2.5 text-base">
           <span className="flex items-center">
             {s.label}
@@ -160,14 +171,14 @@ function PhoneMenu() {
       <div className="border-t pb-1">
         <p className="px-4 pb-1 pt-2 text-xs text-neutral-500">{TOOLS_LABEL}</p>
         {TOOLS.map(([href, label]) => (
-          <NavLink key={href} href={href} className="block px-4 py-2">
+          <NavLink key={href} href={href} className="block px-4 py-2.5">
             {label}
           </NavLink>
         ))}
       </div>
       <div className="border-t py-1">
         {[...AFTER_TOOLS, ["/settings", "Settings"] as [string, string]].map(([href, label]) => (
-          <NavLink key={href} href={href} className="block px-4 py-2">
+          <NavLink key={href} href={href} className="block px-4 py-2.5">
             {label}
           </NavLink>
         ))}
