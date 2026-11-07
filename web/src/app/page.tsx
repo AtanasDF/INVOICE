@@ -47,12 +47,12 @@ import { EmailAddressBox, MailIcon, useEmailItIn } from "@/components/EmailItIn"
 // outline was a bright white ring, and a page of rings reads as a form.
 const TILE = "flex min-h-20 w-full flex-col [&>svg]:size-5 items-center justify-center gap-1.5 rounded-xl bg-white p-3 text-center text-sm font-medium text-neutral-900 shadow-sm transition hover:shadow-md active:scale-[0.97]";
 const PANEL = "rounded-xl bg-white px-4 py-2 text-neutral-900 shadow-sm";
-const BIG_SCAN = "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]";
+const BIG_SCAN = "flex min-h-36 w-full flex-col items-center justify-center gap-3 rounded-3xl bg-neutral-900 p-6 text-center text-lg font-bold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]";
 const FIGURE = "rounded-xl bg-white p-3 text-neutral-900 shadow-sm";
 
 function ScanIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-8 w-8" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-10 w-10" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2" />
       <circle cx="12" cy="12" r="3.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -237,22 +237,6 @@ function Dashboard() {
         <p className="mt-1 text-neutral-600">Photograph the paper, and the rest fills itself in.</p>
       </div>
 
-      {todo.length > 0 && (
-        <section aria-labelledby="todo" className={PANEL}>
-          <h2 id="todo" className="pt-1 text-sm font-semibold">To do</h2>
-          <ul>
-            {todo.map((t) => (
-              <li key={t.href}>
-                <Link href={t.href} className="flex items-center justify-between gap-3 border-b border-neutral-200 py-3 text-sm last:border-b-0">
-                  <span className={`min-w-0 wrap-anywhere ${t.late ? "text-red-700" : ""}`}>{t.text}</span>
-                  <span aria-hidden="true" className="text-neutral-600">&rsaquo;</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {/* The scanner, which is what this page is for. On the iPhone's
           own-camera path the big button has to be the file input itself, or
           it takes two taps to open the camera. */}
@@ -260,15 +244,13 @@ function Dashboard() {
         {isIOS && readScannerMode() === "native" ? (
           <label aria-disabled={scanHandoffBusy} className={`${BIG_SCAN} cursor-pointer ${FILE_RING} rise-in`}>
             <ScanIcon />
-            <span>{scanHandoffBusy ? "Preparing…" : "Scan a receipt or bill"}</span>
-            <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
+            <span className="text-xl">{scanHandoffBusy ? "Preparing…" : "Scan a receipt or bill"}</span>
             <input type="file" accept="image/*" capture="environment" onChange={onIOSScanCapture} disabled={scanHandoffBusy} className="sr-only" />
           </label>
         ) : (
           <Link href="/scan" className={`${BIG_SCAN} rise-in`}>
             <ScanIcon />
-            <span>Scan a receipt or bill</span>
-            <span className="text-sm font-normal text-neutral-300">Several in a row is fine</span>
+            <span className="text-xl">Scan a receipt or bill</span>
           </Link>
         )}
 
@@ -291,6 +273,22 @@ function Dashboard() {
           Or <Link href="/free-invoice?start=photo" className="font-medium text-neutral-800 underline">photograph an old invoice</Link> and the next one is filled in for you.
         </p>
       </section>
+
+      {todo.length > 0 && (
+        <section aria-labelledby="todo" className={PANEL}>
+          <h2 id="todo" className="pt-1 text-sm font-semibold">To do</h2>
+          <ul>
+            {todo.map((t) => (
+              <li key={t.href}>
+                <Link href={t.href} className="flex items-center justify-between gap-3 border-b border-neutral-200 py-3 text-sm last:border-b-0">
+                  <span className={`min-w-0 wrap-anywhere ${t.late ? "text-red-700" : ""}`}>{t.text}</span>
+                  <span aria-hidden="true" className="text-neutral-600">&rsaquo;</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {hasAnything && (
         <>
@@ -315,7 +313,7 @@ function Dashboard() {
           <section aria-labelledby="recent" className={PANEL}>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <h2 id="recent" className="text-sm font-semibold">Recent</h2>
-              <Link href="/files" className="inline-block py-1 text-sm font-medium text-neutral-700 underline">See everything in Files</Link>
+              <Link href="/files" aria-label="See everything in Files" className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-neutral-700 underline">See all</Link>
             </div>
             <ul>
               {recentDocs.map((d) => (
