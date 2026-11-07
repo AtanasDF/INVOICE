@@ -79,7 +79,9 @@ try {
   // how everybody else writes this.
   check("including the button size we fail", /36 pixels/.test(a11y) && /44/.test(a11y), a11y.slice(0, 200));
   check("including that no screen reader has been tried", /VoiceOver/.test(a11y) && /TalkBack/.test(a11y));
-  check("including that the camera has no answer yet", /camera/i.test(a11y) && /type it in/i.test(a11y));
+  // Since 27ed439 the camera speaks, so the admission is that nobody who
+  // cannot see has tried it, and typing a receipt in is still the sure way.
+  check("including that the camera is untried by anyone who cannot see", /camera/i.test(a11y) && /nobody who cannot see has tried it/i.test(a11y) && /Typing a receipt in[^.]*is still the sure way/i.test(a11y));
   check("it says how to tell us, without needing the right words", /Feedback/.test(a11y) && /do not need to know the name/i.test(a11y));
   check("and where to go if we will not put it right", /Equality Advisory/.test(a11y));
   check("it is dated", /Last gone through on/.test(a11y));
