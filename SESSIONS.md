@@ -8,10 +8,10 @@ and what is left open. Dates are session dates (Europe/London).
 ## 2026-11-07 (cloud): full harness run on main `23a6f9e` (`wip/test-run-2026-11-07`)
 
 Test run only, no app changes. Results are in `notes/test-run-2026-11-07.md`. After solo
-re-runs, 20 suites are not green:
+re-runs, 19 suites are not green:
 - 7 are known red;
 - 2 are environment (no postcodes.io/photon from the container);
-- 11 are new: test-tax, test-break-it, test-no-accidents, test-cis, test-cold-start,
+- 10 are new: test-tax, test-break-it, test-no-accidents, test-cis, test-cold-start,
   test-odd-files, test-quotes-ux, test-bring-contacts, test-check-company,
   test-address-stubbed. The first three probably come from the launch merge.
 
