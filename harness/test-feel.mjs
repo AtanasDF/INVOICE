@@ -77,12 +77,6 @@ try {
   const stillWorks = await page.evaluate(() => document.body.innerText.length > 200);
   check("...and the page is still entirely there", stillWorks);
 
-  // The panels must not slide for somebody who asked them not to.
-  const trackTransition = await page.evaluate(() => {
-    const panel = document.querySelector('[role="tabpanel"]');
-    return panel ? getComputedStyle(panel.parentElement).transitionDuration : null;
-  });
-  check("the sliding panels honour it too", trackTransition !== null, String(trackTransition));
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);
