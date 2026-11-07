@@ -91,7 +91,11 @@ const app = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT)], {
     HMRC_CLIENT_SECRET: "harness-secret",
   },
   stdio: ["ignore", "pipe", "pipe"],
+  detached: true,
 });
+// SIGTERM to npx leaves `next dev` running beneath it, and Next 16 refuses a
+// second dev server in the same folder, so stop the whole process group.
+const stop = (p) => { try { process.kill(-p.pid, "SIGTERM"); } catch {} };
 let serverLog = "";
 app.stdout.on("data", (d) => (serverLog += d));
 app.stderr.on("data", (d) => (serverLog += d));
@@ -218,12 +222,13 @@ try {
   // HMRC. Proved by a second server that has none -- started only once the
   // first has stopped, because two `next dev` in one folder trip over the
   // same build cache (the reason run-all.sh runs these one at a time).
-  app.kill("SIGTERM");
-  await sleep(2000);
+  stop(app);
+  for (let i = 0; i < 20; i++) { try { process.kill(-app.pid, 0); } catch { break; } await sleep(500); }
   const bare = spawn("npx", ["next", "dev", "--webpack", "-p", String(PORT + 1)], {
     cwd: WEB,
     env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${STUB}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "k", SUPABASE_SERVICE_ROLE_KEY: "k", HMRC_API_BASE: `http://127.0.0.1:${STUB}`, HMRC_CLIENT_ID: "", HMRC_CLIENT_SECRET: "" },
     stdio: ["ignore", "ignore", "ignore"],
+    detached: true,
   });
   try {
     for (let i = 0; i < 90; i++) {
@@ -238,13 +243,13 @@ try {
     const typo = await fetch(`http://localhost:${PORT + 1}/api/vat-check?number=220430232`, { headers: signed() }).then((r2) => r2.json());
     check("the check digits still catch a typo with no credentials", typo.format === "wrong", JSON.stringify(typo));
   } finally {
-    bare.kill("SIGTERM");
+    stop(bare);
   }
 } catch (e) {
   console.log("ERROR", e.message);
   results.push(false);
 } finally {
-  app.kill("SIGTERM");
+  stop(app);
   stub.close();
   console.log(JSON.stringify({ passed: results.filter(Boolean).length, total: results.length }));
 }
