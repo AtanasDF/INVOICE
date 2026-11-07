@@ -71,7 +71,7 @@ const timed = async (path, waitFor) => {
 };
 try {
   await signIn(page, BASE);
-  const dash = await timed("/", "owed");
+  const dash = await timed("/", "Owed to you");
   check(`dashboard opens with 500 invoices and 2000 receipts (${dash}ms)`, dash < 20000, `${dash}ms`);
   const inv = await timed("/invoices", "INV-1499");
   check(`invoices list opens and shows the newest (${inv}ms)`, inv < 20000, `${inv}ms`);
@@ -87,11 +87,9 @@ try {
   // The dashboard's "owed" must match the sum of what's still unpaid.
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await sleep(1200);
-  // "Owed to you" is in the Invoices & customers panel, and money out is the
-  // one you land on now. Read the figure from its own square rather than
-  // taking the first pound sign on the page, which is what made this fragile.
-  await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].find((x) => x.textContent.includes("Invoices & customers"))?.click());
-  await sleep(700);
+  // "Owed to you" is one of Home's three figures since the two-screen Home
+  // (5f7bd6d). Read it from its own square rather than taking the first pound
+  // sign on the page, which is what made this fragile.
   const text = await page.evaluate(() => {
     const label = [...document.querySelectorAll("div")].find((d) => d.textContent.trim() === "Owed to you");
     return label?.parentElement?.innerText ?? document.body.innerText;
